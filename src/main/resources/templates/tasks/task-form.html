@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(${isEdit} ? 'Edit Task' : 'Create Task')}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navigation -->
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <!-- Main Content -->
+    <main class="container flex-grow-1">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <!-- Page Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="display-5" th:text="${isEdit} ? 'Edit Task' : 'Create New Task'">Task Form</h1>
+                    <a th:href="@{/web/tasks}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to List
+                    </a>
+                </div>
+
+                <!-- Form Card -->
+                <div class="card shadow">
+                    <div class="card-body p-4">
+                        <form th:action="${isEdit} ? @{/web/tasks/{id}(id=${task.id})} : @{/web/tasks}"
+                              th:object="${task}"
+                              method="post">
+
+                            <!-- Title Field -->
+                            <div class="mb-3">
+                                <label for="title" class="form-label fw-bold">
+                                    Title <span class="text-danger">*</span>
+                                </label>
+                                <input type="text"
+                                       id="title"
+                                       th:field="*{title}"
+                                       class="form-control form-control-lg"
+                                       th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
+                                       placeholder="Enter task title"
+                                       required>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
+                                    Title error
+                                </div>
+                                <div class="form-text">Enter a concise title for your task (1-100 characters)</div>
+                            </div>
+
+                            <!-- Description Field -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label fw-bold">Description</label>
+                                <textarea id="description"
+                                          th:field="*{description}"
+                                          class="form-control"
+                                          th:classappend="${#fields.hasErrors('description')} ? 'is-invalid' : ''"
+                                          rows="6"
+                                          placeholder="Enter task description (optional)"></textarea>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">
+                                    Description error
+                                </div>
+                                <div class="form-text">Provide additional details about this task (max 500 characters)</div>
+                            </div>
+
+                            <!-- Completed Checkbox (Edit Mode Only) -->
+                            <div class="mb-4" th:if="${isEdit}">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="completed" th:field="*{completed}">
+                                    <label class="form-check-label" for="completed">
+                                        <strong>Mark as completed</strong>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Action Buttons -->
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <a th:href="@{/web/tasks}" class="btn btn-outline-secondary btn-lg px-4">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary btn-lg px-4">
+                                    <i th:class="${isEdit} ? 'bi bi-save' : 'bi bi-plus-circle'"></i>
+                                    <span th:text="${isEdit} ? 'Update Task' : 'Create Task'">Submit</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Help Text -->
+                <div class="alert alert-light mt-4" role="alert">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-info-circle"></i> Tips:
+                    </h6>
+                    <ul class="mb-0">
+                        <li>Use clear, actionable titles for better task organization</li>
+                        <li>Add descriptions to provide context and track progress</li>
+                        <li th:if="${isEdit}">Toggle completion status to mark tasks as done</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div th:replace="~{layouts/base :: footer}"></div>
+
+    <!-- Scripts -->
+    <div th:replace="~{layouts/base :: scripts}"></div>
+</body>
+</html>

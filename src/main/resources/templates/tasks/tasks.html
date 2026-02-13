@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head('Task Manager - All Tasks')}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navigation -->
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <!-- Main Content -->
+    <main class="container flex-grow-1">
+        <div class="row">
+            <div class="col-12">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="display-4">My Tasks</h1>
+                    <a th:href="@{/web/tasks/new}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-plus-circle"></i> New Task
+                    </a>
+                </div>
+
+                <!-- Filters and Search Bar - Same Row -->
+                <div class="d-flex gap-3 mb-4">
+                    <!-- Filter Buttons -->
+                    <div class="btn-group" role="group" aria-label="Task filters">
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-dark active"
+                                id="filter-all"
+                                hx-get="/web/tasks/search"
+                                hx-target="#task-card-grid"
+                                hx-include="#search-input"
+                                hx-vals='{"filter": "all"}'>
+                            <i class="bi bi-list-ul"></i> All
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-success"
+                                id="filter-completed"
+                                hx-get="/web/tasks/search"
+                                hx-target="#task-card-grid"
+                                hx-include="#search-input"
+                                hx-vals='{"filter": "completed"}'>
+                            <i class="bi bi-check-circle-fill"></i> Completed
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-warning"
+                                id="filter-incomplete"
+                                hx-get="/web/tasks/search"
+                                hx-target="#task-card-grid"
+                                hx-include="#search-input"
+                                hx-vals='{"filter": "incomplete"}'>
+                            <i class="bi bi-circle"></i> Pending
+                        </button>
+                    </div>
+
+                    <!-- Search Bar -->
+                    <div class="flex-grow-1 position-relative">
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">
+                                <i class="bi bi-search"></i>
+                            </span>
+                            <input type="text"
+                                   id="search-input"
+                                   class="form-control"
+                                   placeholder="Search tasks by title or description..."
+                                   name="search"
+                                   hx-get="/web/tasks/search"
+                                   hx-trigger="input changed delay:300ms, search"
+                                   hx-target="#task-card-grid"
+                                   hx-include="#current-filter"
+                                   hx-indicator="#search-spinner">
+                            <input type="hidden" id="current-filter" name="filter" value="all">
+                        </div>
+                        <!-- Spinner positioned absolutely over the input -->
+                        <span id="search-spinner" class="htmx-indicator position-absolute top-50 end-0 translate-middle-y me-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Searching...</span>
+                            </div>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Task List Container (targeted by HTMX) -->
+                <div id="task-card-grid">
+                    <div th:replace="~{tasks/task-card-grid :: grid}"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <div th:replace="~{layouts/base :: footer}"></div>
+
+    <!-- Scripts -->
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <!-- Filter button handling -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle filter button clicks
+            document.querySelectorAll('[id^="filter-"]').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all filter buttons
+                    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+
+                    // Add active class to clicked button
+                    this.classList.add('active');
+
+                    // Update hidden filter input value
+                    const filterValue = this.id.replace('filter-', '');
+                    document.getElementById('current-filter').value = filterValue;
+                });
+            });
+        });
+    </script>
+</body>
+</html>

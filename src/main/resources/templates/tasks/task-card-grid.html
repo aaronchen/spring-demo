@@ -1,0 +1,16 @@
+<!-- Fragment for task card grid - used by both full page load and HTMX search -->
+<!-- Reads ${tasks} directly from the model -->
+<div th:fragment="grid">
+    <!-- Empty State -->
+    <div th:if="${tasks.isEmpty()}" class="alert alert-info text-center py-5">
+        <h4>No tasks found</h4>
+        <p class="mb-0">Try a different search term or create a new task.</p>
+    </div>
+
+    <!-- Task Cards -->
+    <div th:if="${!tasks.isEmpty()}" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <th:block th:each="task : ${tasks}">
+            <div th:replace="~{tasks/task-card :: card}"></div>
+        </th:block>
+    </div>
+</div>

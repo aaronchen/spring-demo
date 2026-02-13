@@ -1,0 +1,61 @@
+/* Custom CSS for Task Manager */
+/* This file is for any additional styling beyond Bootstrap */
+
+/* Ensure footer stays at bottom */
+body {
+    min-height: 100vh;
+}
+
+/* Smooth transitions */
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Completed tasks styling */
+.card.border-success {
+    border-width: 2px !important;
+}
+
+/* Button hover effects */
+.btn {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Form validation styling improvements */
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+    display: block;
+}
+
+/* Navbar branding */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+/* Sticky footer */
+.footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+}
+
+/* HTMX Loading Indicator - Hidden by default */
+.htmx-indicator {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Show indicator when HTMX adds htmx-request class to it */
+.htmx-indicator.htmx-request {
+    opacity: 1;
+    pointer-events: auto;
+    z-index: 100; /* Ensure it appears above input element */
+}
