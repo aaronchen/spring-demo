@@ -38,7 +38,7 @@ A modern, full-stack task management application built with Spring Boot 4.0, fea
 
 1. **Clone the repository**
    ```bash
-   git clone git@github.com:aaronchen/spring-demo.git
+   git clone https://github.com/aaronchen/spring-demo.git
    cd spring-demo
    ```
 
