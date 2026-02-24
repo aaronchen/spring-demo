@@ -1,9 +1,12 @@
 package cc.desuka.demo.service;
 
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskFilter;
 import cc.desuka.demo.repository.TaskRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class TaskService {
@@ -17,6 +20,10 @@ public class TaskService {
 
   public List<Task> getAllTasks() {
     return taskRepository.findAll();
+  }
+
+  public List<Task> getAllTasks(Sort sort) {
+    return taskRepository.findAll(sort);
   }
 
   public Task getTaskById(Long id) {
@@ -54,31 +61,28 @@ public class TaskService {
     return taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
   }
 
-  public List<Task> searchAndFilterTasks(String keyword, String filter) {
-    List<Task> tasks;
+  public List<Task> searchAndFilterTasks(String keyword, TaskFilter filter, Sort sort) {
+    List<Task> tasks = taskRepository.findAll(sort);
 
-    // First, get filtered tasks based on completion status
-    if ("completed".equals(filter)) {
-      tasks = taskRepository.findByCompleted(true);
-    } else if ("incomplete".equals(filter)) {
-      tasks = taskRepository.findByCompleted(false);
-    } else {
-      // "all" or any other value
-      tasks = taskRepository.findAll();
+    if (filter == TaskFilter.COMPLETED) {
+      tasks = tasks.stream().filter(Task::isCompleted).collect(Collectors.toList());
+    } else if (filter == TaskFilter.INCOMPLETE) {
+      tasks = tasks.stream().filter(t -> !t.isCompleted()).collect(Collectors.toList());
     }
 
-    // Then apply search filter if keyword is provided
     if (keyword != null && !keyword.trim().isEmpty()) {
-      String lowerKeyword = keyword.toLowerCase();
+      String lower = keyword.toLowerCase();
       tasks = tasks.stream()
-          .filter(task ->
-              (task.getTitle() != null && task.getTitle().toLowerCase().contains(lowerKeyword)) ||
-              (task.getDescription() != null && task.getDescription().toLowerCase().contains(lowerKeyword))
-          )
-          .toList();
+          .filter(t -> (t.getTitle() != null && t.getTitle().toLowerCase().contains(lower))
+              || (t.getDescription() != null && t.getDescription().toLowerCase().contains(lower)))
+          .collect(Collectors.toList());
     }
 
     return tasks;
+  }
+
+  public List<Task> searchAndFilterTasks(String keyword, TaskFilter filter) {
+    return searchAndFilterTasks(keyword, filter, Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT));
   }
 
   public Task toggleComplete(Long id) {

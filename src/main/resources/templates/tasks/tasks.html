@@ -18,64 +18,130 @@
                     </a>
                 </div>
 
-                <!-- Filters and Search Bar - Same Row -->
-                <div class="d-flex gap-3 mb-4">
+                <!-- Row 1: Search -->
+                <div class="mb-3 position-relative">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text">
+                            <i class="bi bi-search"></i>
+                        </span>
+                        <input type="text"
+                               id="search-input"
+                               class="form-control"
+                               placeholder="Search tasks by title or description..."
+                               name="search"
+                               hx-get="/web/tasks/search"
+                               hx-trigger="input changed delay:300ms, search"
+                               hx-target="#task-card-grid"
+                               hx-include="#current-filter, [name='sort']"
+                               hx-indicator="#search-spinner">
+                        <input type="hidden" id="current-filter" name="filter" value="all">
+                    </div>
+                    <span id="search-spinner" class="htmx-indicator position-absolute top-50 end-0 translate-middle-y me-3">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                            <span class="visually-hidden">Searching...</span>
+                        </div>
+                    </span>
+                </div>
+
+                <!-- Row 2: Filter + Sort -->
+                <div class="d-flex align-items-center gap-2 mb-4">
                     <!-- Filter Buttons -->
                     <div class="btn-group" role="group" aria-label="Task filters">
                         <button type="button"
-                                class="btn btn-outline-light border-secondary text-dark active"
+                                class="btn btn-outline-light border-secondary text-dark active fw-bold"
                                 id="filter-all"
                                 hx-get="/web/tasks/search"
                                 hx-target="#task-card-grid"
-                                hx-include="#search-input"
+                                hx-include="#search-input, [name='sort']"
                                 hx-vals='{"filter": "all"}'>
                             <i class="bi bi-list-ul"></i> All
                         </button>
                         <button type="button"
-                                class="btn btn-outline-light border-secondary text-success"
+                                class="btn btn-outline-light border-secondary text-success fw-bold"
                                 id="filter-completed"
                                 hx-get="/web/tasks/search"
                                 hx-target="#task-card-grid"
-                                hx-include="#search-input"
+                                hx-include="#search-input, [name='sort']"
                                 hx-vals='{"filter": "completed"}'>
                             <i class="bi bi-check-circle-fill"></i> Completed
                         </button>
                         <button type="button"
-                                class="btn btn-outline-light border-secondary text-warning"
+                                class="btn btn-outline-light border-secondary text-warning fw-bold"
                                 id="filter-incomplete"
                                 hx-get="/web/tasks/search"
                                 hx-target="#task-card-grid"
-                                hx-include="#search-input"
+                                hx-include="#search-input, [name='sort']"
                                 hx-vals='{"filter": "incomplete"}'>
                             <i class="bi bi-circle"></i> Pending
                         </button>
                     </div>
 
-                    <!-- Search Bar -->
-                    <div class="flex-grow-1 position-relative">
-                        <div class="input-group input-group-lg">
-                            <span class="input-group-text">
-                                <i class="bi bi-search"></i>
-                            </span>
-                            <input type="text"
-                                   id="search-input"
-                                   class="form-control"
-                                   placeholder="Search tasks by title or description..."
-                                   name="search"
-                                   hx-get="/web/tasks/search"
-                                   hx-trigger="input changed delay:300ms, search"
-                                   hx-target="#task-card-grid"
-                                   hx-include="#current-filter"
-                                   hx-indicator="#search-spinner">
-                            <input type="hidden" id="current-filter" name="filter" value="all">
-                        </div>
-                        <!-- Spinner positioned absolutely over the input -->
-                        <span id="search-spinner" class="htmx-indicator position-absolute top-50 end-0 translate-middle-y me-3">
-                            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                <span class="visually-hidden">Searching...</span>
-                            </div>
-                        </span>
+                    <!-- Sort Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle"
+                                type="button"
+                                id="sortDropdown"
+                                data-bs-toggle="dropdown"
+                                data-bs-auto-close="outside"
+                                aria-expanded="false">
+                            <i class="bi bi-sort-down"></i> <span id="sort-label">Newest First</span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="title" data-sort-dir="asc"
+                                   onclick="toggleSort('title','asc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-alpha-down"></i> Title (A-Z)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="title" data-sort-dir="desc"
+                                   onclick="toggleSort('title','desc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-alpha-up"></i> Title (Z-A)
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="createdAt" data-sort-dir="asc"
+                                   onclick="toggleSort('createdAt','asc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-numeric-down"></i> Oldest First
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="createdAt" data-sort-dir="desc"
+                                   onclick="toggleSort('createdAt','desc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-numeric-up"></i> Newest First
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="description" data-sort-dir="asc"
+                                   onclick="toggleSort('description','asc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-alpha-down"></i> Description (A-Z)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="description" data-sort-dir="desc"
+                                   onclick="toggleSort('description','desc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-alpha-up"></i> Description (Z-A)
+                                </a>
+                            </li>
+                        </ul>
                     </div>
+
+                    <!-- Hidden inputs for HTMX -->
+                    <div id="sort-inputs"></div>
                 </div>
 
                 <!-- Task List Container (targeted by HTMX) -->
@@ -92,23 +158,80 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <!-- Filter button handling -->
+    <!-- Sort and filter handling -->
     <script>
+        const SORT_LABELS = {
+            'title,asc':       'Title ↑',
+            'title,desc':      'Title ↓',
+            'createdAt,asc':   'Oldest First',
+            'createdAt,desc':  'Newest First',
+            'description,asc': 'Desc ↑',
+            'description,desc':'Desc ↓',
+        };
+
+        let activeSorts = [{field: 'createdAt', direction: 'desc'}]; // Default: Newest First
+
+        function toggleSort(field, direction) {
+            const idx = activeSorts.findIndex(s => s.field === field && s.direction === direction);
+            if (idx >= 0) {
+                if (activeSorts.length === 1) return; // Keep at least one sort active
+                activeSorts.splice(idx, 1);
+            } else {
+                // Remove the opposite direction for this field (can't sort both ways on same field)
+                const oppositeIdx = activeSorts.findIndex(s => s.field === field);
+                if (oppositeIdx >= 0) activeSorts.splice(oppositeIdx, 1);
+                activeSorts.push({field, direction});
+            }
+            renderSorts();
+            triggerSearch();
+        }
+
+        function renderSorts() {
+            // Update hidden inputs for HTMX
+            const inputsContainer = document.getElementById('sort-inputs');
+            inputsContainer.innerHTML = '';
+            activeSorts.forEach(sort => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'sort';
+                input.value = `${sort.field},${sort.direction}`;
+                inputsContainer.appendChild(input);
+            });
+
+            // Update button label (in selection order)
+            const label = activeSorts
+                .map(s => SORT_LABELS[`${s.field},${s.direction}`] || `${s.field} ${s.direction}`)
+                .join(', ');
+            document.getElementById('sort-label').textContent = label;
+
+            // Update checkmarks
+            document.querySelectorAll('[data-sort-field]').forEach(item => {
+                const check = item.querySelector('.sort-check');
+                const isActive = activeSorts.some(
+                    s => s.field === item.dataset.sortField && s.direction === item.dataset.sortDir
+                );
+                check.style.visibility = isActive ? 'visible' : 'hidden';
+            });
+        }
+
+        function triggerSearch() {
+            const search = document.getElementById('search-input').value;
+            const filter = document.getElementById('current-filter').value;
+            const sortParams = activeSorts.map(s => `sort=${s.field},${s.direction}`).join('&');
+            htmx.ajax('GET', `/web/tasks/search?search=${encodeURIComponent(search)}&filter=${encodeURIComponent(filter)}&${sortParams}`, {target: '#task-card-grid', swap: 'innerHTML'});
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            // Handle filter button clicks
+            renderSorts(); // Initialize display
+
+            // Filter button handling
             document.querySelectorAll('[id^="filter-"]').forEach(button => {
                 button.addEventListener('click', function() {
-                    // Remove active class from all filter buttons
-                    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-
-                    // Add active class to clicked button
+                    document.querySelectorAll('[id^="filter-"]').forEach(btn =>
+                        btn.classList.remove('active'));
                     this.classList.add('active');
-
-                    // Update hidden filter input value
-                    const filterValue = this.id.replace('filter-', '');
-                    document.getElementById('current-filter').value = filterValue;
+                    document.getElementById('current-filter').value =
+                        this.id.replace('filter-', '');
                 });
             });
         });

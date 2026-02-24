@@ -10,6 +10,11 @@ import java.time.LocalDateTime;
 @Table(name = "tasks")
 public class Task {
 
+  public static final String FIELD_TITLE = "title";
+  public static final String FIELD_DESCRIPTION = "description";
+  public static final String FIELD_CREATED_AT = "createdAt";
+  public static final String FIELD_COMPLETED = "completed";
+
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;

@@ -1,11 +1,14 @@
 package cc.desuka.demo.controller;
 
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskFilter;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -25,8 +28,10 @@ public class TaskWebController {
 
   // GET /web/tasks - Display all tasks
   @GetMapping
-  public String listTasks(Model model) {
-    model.addAttribute("tasks", taskService.getAllTasks());
+  public String listTasks(
+      @SortDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Sort sort,
+      Model model) {
+    model.addAttribute("tasks", taskService.getAllTasks(sort));
     return "tasks/tasks";
   }
 
@@ -34,9 +39,10 @@ public class TaskWebController {
   @GetMapping("/search")
   public String searchTasks(
       @RequestParam(required = false, defaultValue = "") String search,
-      @RequestParam(required = false, defaultValue = "all") String filter,
+      @RequestParam(required = false, defaultValue = "all") TaskFilter filter,
+      @SortDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Sort sort,
       Model model) {
-    List<Task> tasks = taskService.searchAndFilterTasks(search, filter);
+    List<Task> tasks = taskService.searchAndFilterTasks(search, filter, sort);
     model.addAttribute("tasks", tasks);
     return "tasks/task-card-grid :: grid";
   }
@@ -79,26 +85,24 @@ public class TaskWebController {
   }
 
   // POST /web/tasks/{id}/delete - Delete task
-  // Supports both HTMX (returns empty response to remove element) and regular form (redirects)
   @PostMapping("/{id}/delete")
   public Object deleteTask(@PathVariable Long id, HttpServletRequest request, Model model) {
     taskService.deleteTask(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
-      return ResponseEntity.ok().build(); // HTTP 200 with empty body removes the element
+      return ResponseEntity.ok().build();
     }
     return new RedirectView("/web/tasks");
   }
 
   // POST /web/tasks/{id}/toggle - Toggle completion
-  // Supports both HTMX (returns updated card) and regular form (redirects)
   @PostMapping("/{id}/toggle")
   public String toggleComplete(@PathVariable Long id, HttpServletRequest request, Model model) {
     Task task = taskService.toggleComplete(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
       model.addAttribute("task", task);
-      return "tasks/task-card :: card"; // Return just the updated card (reads task from model)
+      return "tasks/task-card :: card";
     }
     return "redirect:/web/tasks";
   }
