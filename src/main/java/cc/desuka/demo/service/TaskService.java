@@ -3,6 +3,9 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskFilter;
 import cc.desuka.demo.repository.TaskRepository;
+import cc.desuka.demo.repository.TaskSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import java.util.List;
@@ -83,6 +86,10 @@ public class TaskService {
 
   public List<Task> searchAndFilterTasks(String keyword, TaskFilter filter) {
     return searchAndFilterTasks(keyword, filter, Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT));
+  }
+
+  public Page<Task> searchAndFilterTasks(String keyword, TaskFilter filter, Pageable pageable) {
+    return taskRepository.findAll(TaskSpecifications.build(keyword, filter), pageable);
   }
 
   public Task toggleComplete(Long id) {

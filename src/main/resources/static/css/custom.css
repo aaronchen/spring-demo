@@ -6,19 +6,15 @@ body {
     min-height: 100vh;
 }
 
-/* Smooth transitions */
+/* Smooth transitions + clip header background to card's rounded corners */
 .card {
+    overflow: hidden;
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 .card:hover {
     transform: translateY(-5px);
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-}
-
-/* Completed tasks styling */
-.card.border-success {
-    border-width: 2px !important;
 }
 
 /* Button hover effects */

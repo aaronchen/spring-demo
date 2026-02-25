@@ -6,9 +6,10 @@ import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.web.SortDefault;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,25 +27,21 @@ public class TaskWebController {
     this.taskService = taskService;
   }
 
-  // GET /web/tasks - Display all tasks
+  // GET /web/tasks - Display task list (full page or HTMX fragment)
   @GetMapping
   public String listTasks(
-      @SortDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Sort sort,
-      Model model) {
-    model.addAttribute("tasks", taskService.getAllTasks(sort));
-    return "tasks/tasks";
-  }
-
-  // GET /web/tasks/search - Search tasks (HTMX endpoint)
-  @GetMapping("/search")
-  public String searchTasks(
       @RequestParam(required = false, defaultValue = "") String search,
       @RequestParam(required = false, defaultValue = "all") TaskFilter filter,
-      @SortDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Sort sort,
+      @PageableDefault(size = 25, sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
+      HttpServletRequest request,
       Model model) {
-    List<Task> tasks = taskService.searchAndFilterTasks(search, filter, sort);
-    model.addAttribute("tasks", tasks);
-    return "tasks/task-card-grid :: grid";
+    Page<Task> taskPage = taskService.searchAndFilterTasks(search, filter, pageable);
+    model.addAttribute("taskPage", taskPage);
+
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return "tasks/task-card-grid :: grid";
+    }
+    return "tasks/tasks";
   }
 
   // GET /web/tasks/new - Show create form

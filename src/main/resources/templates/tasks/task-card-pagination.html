@@ -1,0 +1,69 @@
+<!-- Reusable control bar fragment: result count | pagination | per-page -->
+<!-- Reads ${taskPage} from model context - no parameters needed for data -->
+<div th:fragment="controlBar(position)"
+     class="d-flex align-items-center"
+     th:classappend="${position == 'top' ? 'mb-3' : 'mt-2'}"
+     th:with="tp=${taskPage.totalPages},
+              cp=${taskPage.number},
+              sp=${cp - 2 < 0 ? 0 : cp - 2},
+              ep=${cp + 2 >= tp ? tp - 1 : cp + 2}">
+
+    <!-- Left: result count -->
+    <div style="flex: 1">
+        <small class="text-muted">
+            Showing
+            <span th:text="${cp * taskPage.size + 1}">1</span>–<span th:text="${cp * taskPage.size + taskPage.numberOfElements}">25</span>
+            of <span th:text="${taskPage.totalElements}">300</span> tasks
+        </small>
+    </div>
+
+    <!-- Middle: pagination -->
+    <nav th:if="${tp > 1}" th:attr="aria-label=|Task pagination (${position})|">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item" th:classappend="${taskPage.first ? 'disabled' : ''}">
+                <a class="page-link" href="#" th:onclick="|navigateToPage(${cp - 1}); return false;|">&laquo;</a>
+            </li>
+            <th:block th:if="${sp > 0}">
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="navigateToPage(0); return false;">1</a>
+                </li>
+                <li class="page-item disabled" th:if="${sp > 1}">
+                    <span class="page-link">…</span>
+                </li>
+            </th:block>
+            <th:block th:each="i : ${#numbers.sequence(sp, ep)}">
+                <li class="page-item" th:classappend="${i == cp ? 'active' : ''}">
+                    <a class="page-link" href="#"
+                       th:text="${i + 1}"
+                       th:onclick="|navigateToPage(${i}); return false;|">1</a>
+                </li>
+            </th:block>
+            <th:block th:if="${ep < tp - 1}">
+                <li class="page-item disabled" th:if="${ep < tp - 2}">
+                    <span class="page-link">…</span>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#"
+                       th:text="${tp}"
+                       th:onclick="|navigateToPage(${tp - 1}); return false;|">10</a>
+                </li>
+            </th:block>
+            <li class="page-item" th:classappend="${taskPage.last ? 'disabled' : ''}">
+                <a class="page-link" href="#" th:onclick="|navigateToPage(${cp + 1}); return false;|">&raquo;</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Right: per-page selector -->
+    <div style="flex: 1" class="d-flex justify-content-end">
+        <select class="form-select form-select-sm page-size-select"
+                style="width: auto;"
+                onchange="onPageSizeChange(this.value)">
+            <option value="10">10 / page</option>
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+            <option value="100">100 / page</option>
+        </select>
+    </div>
+
+</div>
