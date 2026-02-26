@@ -1,38 +1,43 @@
-# Spring Boot Task Manager
+# Spring Workshop
 
-A modern, full-stack task management application built with Spring Boot 4.0, featuring both a REST API and an interactive web UI powered by Thymeleaf and HTMX.
+A growing full-stack application built as a hands-on learning project for Spring Boot 4.0, featuring both a REST API and an interactive web UI powered by Thymeleaf and HTMX. New features and patterns are added as we continue exploring Spring Boot together.
 
 ## Features
 
 ### Web Interface
-- ✅ **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
-- 🔍 **Real-time Search** - Filter tasks as you type with HTMX
-- 🎨 **Color-Coded Tasks** - Visual status indicators (green for completed, yellow for pending)
-- ⚡ **Dynamic Updates** - Toggle and delete tasks without page reloads
-- 📋 **Filter Options** - View all tasks, completed only, or pending only
-- 🎯 **Intuitive UI** - Clean card-based layout with smooth animations
+- **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
+- **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via cookie
+- **Real-time Search** - Filter tasks as you type (debounced, 300ms)
+- **Filter Buttons** - All / Completed / Pending with color-coded active states
+- **Sortable Columns** - Sort by title, date, or description (ascending/descending)
+- **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
+- **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
+- **Color-Coded Tasks** - Green = completed, yellow = pending throughout UI
+- **Dynamic Updates** - Toggle completion and delete without page reloads via HTMX
 
 ### REST API
-- 🔌 **RESTful Endpoints** - Complete CRUD operations via JSON API
-- ✔️ **Data Validation** - Input validation with detailed error messages
-- 📊 **Search & Filter** - Query tasks by keyword and completion status
-- 🔄 **Toggle Completion** - Quick task completion endpoint
+- **RESTful Endpoints** - Complete CRUD operations via JSON API
+- **Data Validation** - Input validation with error messages
+- **Search & Filter** - Query tasks by keyword and completion status
+- **Toggle Completion** - Quick PATCH endpoint
 
 ### Technical Highlights
-- 🚀 Spring Boot 4.0.2 with Java 25
-- 💾 H2 in-memory database (easy development setup)
-- 🔄 Spring Data JPA for data persistence
-- 🎨 Thymeleaf for server-side rendering
-- ⚡ HTMX 2.0 for dynamic interactions
-- 🎭 Bootstrap 5.3 for styling
-- 🔧 Hot reload with Spring DevTools
+- Spring Boot 4.0.3 with Java 25
+- H2 in-memory database (easy development setup)
+- Spring Data JPA with Specifications for dynamic filtering
+- Thymeleaf with shared fragment architecture
+- HTMX 2.0 for dynamic interactions and HX-Trigger events
+- Bootstrap 5.3 for styling
+- Split CSS: `base.css` (global) + `tasks.css` (page-specific)
+- Split JS: `utils.js` (global) + `tasks.js` (page-specific)
+- Hot reload with Spring DevTools
 
 ## Getting Started
 
 ### Prerequisites
 
 - **Java 25** or higher
-- **Maven 3.6+** (or use included Maven wrapper)
+- **Maven 3.6+** (or use the included Maven wrapper)
 
 ### Installation
 
@@ -44,11 +49,7 @@ A modern, full-stack task management application built with Spring Boot 4.0, fea
 
 2. **Run the application**
    ```bash
-   # Using Maven wrapper (recommended)
    ./mvnw spring-boot:run
-
-   # Or using installed Maven
-   mvn spring-boot:run
    ```
 
 3. **Access the application**
@@ -59,10 +60,7 @@ A modern, full-stack task management application built with Spring Boot 4.0, fea
 ### Build for Production
 
 ```bash
-# Build JAR file
 ./mvnw clean package
-
-# Run the JAR
 java -jar target/demo-0.0.1-SNAPSHOT.jar
 ```
 
@@ -70,42 +68,31 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 
 ### Web Interface
 
+Navigate to http://localhost:8080/web/tasks.
+
 #### Viewing Tasks
 
-Navigate to http://localhost:8080/web/tasks to see all tasks. The interface includes:
-
-- **Search Bar** - Type to filter tasks by title or description
-- **Filter Buttons** - Click "All", "Completed", or "Pending" to filter by status
-- **Task Cards** - Color-coded cards showing task details
-  - 🟢 **Green** = Completed tasks
-  - 🟡 **Yellow** = Pending tasks
+- **Search** — type to filter tasks by title or description in real time
+- **Filter buttons** — All / Completed / Pending
+- **Sort dropdown** — sort by title, created date, or description
+- **View toggle** — switch between card grid and table view
+- **Page size** — choose 10 / 25 / 50 / 100 tasks per page
 
 #### Creating a Task
 
-1. Click the **"New Task"** button in the top right
-2. Fill in the task details:
-   - **Title** (required) - 1-100 characters
-   - **Description** (optional) - Up to 500 characters
-3. Click **"Create Task"**
+Click **New Task** — a modal opens. Fill in title (required, max 100 chars) and description (optional, max 500 chars), then click **Create Task**. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
-1. Click the **"Edit"** button on any task card
-2. Update the task details
-3. Optionally toggle the **"Mark as completed"** checkbox
-4. Click **"Update Task"**
+Click the title or the **Edit** button on any card or table row. The same modal opens pre-filled. In edit mode you can also toggle **Mark as completed**.
 
 #### Completing a Task
 
-Click the **"Complete"** button on any pending task. The card will update instantly to show green (completed status).
-
-To undo, click the **"Undo"** button on a completed task.
+Click the toggle button (checkmark icon) on a card or row to flip its completion status instantly.
 
 #### Deleting a Task
 
-1. Click the **"Delete"** button on any task card
-2. Confirm deletion in the modal dialog
-3. The task card will be removed instantly
+Click the trash icon, confirm in the dialog.
 
 ### REST API
 
@@ -116,38 +103,18 @@ http://localhost:8080/api/tasks
 
 #### Endpoints
 
-##### Get All Tasks
-```bash
-GET /api/tasks
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tasks` | List all tasks |
+| GET | `/api/tasks/{id}` | Get task by ID |
+| POST | `/api/tasks` | Create task (201 Created) |
+| PUT | `/api/tasks/{id}` | Update task |
+| DELETE | `/api/tasks/{id}` | Delete task (204 No Content) |
+| PATCH | `/api/tasks/{id}/toggle` | Toggle completion |
+| GET | `/api/tasks/search?keyword=` | Search by title/description |
+| GET | `/api/tasks/incomplete` | Get incomplete tasks only |
 
-# Response: 200 OK
-[
-  {
-    "id": 1,
-    "title": "Fix login bug",
-    "description": "Users can brute-force login...",
-    "completed": true,
-    "createdAt": "2026-01-15T10:30:00"
-  },
-  ...
-]
-```
-
-##### Get Task by ID
-```bash
-GET /api/tasks/1
-
-# Response: 200 OK
-{
-  "id": 1,
-  "title": "Fix login bug",
-  "description": "Users can brute-force login...",
-  "completed": true,
-  "createdAt": "2026-01-15T10:30:00"
-}
-```
-
-##### Create Task
+#### Example: Create Task
 ```bash
 POST /api/tasks
 Content-Type: application/json
@@ -156,269 +123,110 @@ Content-Type: application/json
   "title": "Write documentation",
   "description": "Document all API endpoints"
 }
-
-# Response: 201 Created
-{
-  "id": 123,
-  "title": "Write documentation",
-  "description": "Document all API endpoints",
-  "completed": false,
-  "createdAt": "2026-02-11T15:00:00"
-}
-```
-
-##### Update Task
-```bash
-PUT /api/tasks/1
-Content-Type: application/json
-
-{
-  "title": "Updated title",
-  "description": "Updated description",
-  "completed": true
-}
-
-# Response: 200 OK
-{
-  "id": 1,
-  "title": "Updated title",
-  "description": "Updated description",
-  "completed": true,
-  "createdAt": "2026-01-15T10:30:00"
-}
-```
-
-##### Delete Task
-```bash
-DELETE /api/tasks/1
-
-# Response: 204 No Content
-```
-
-##### Toggle Task Completion
-```bash
-PATCH /api/tasks/1/toggle
-
-# Response: 200 OK
-{
-  "id": 1,
-  "title": "Fix login bug",
-  "description": "Users can brute-force login...",
-  "completed": false,  # Toggled from true to false
-  "createdAt": "2026-01-15T10:30:00"
-}
-```
-
-##### Search Tasks
-```bash
-GET /api/tasks/search?keyword=bug
-
-# Response: 200 OK
-[
-  {
-    "id": 1,
-    "title": "Fix login bug",
-    "description": "Users can brute-force login...",
-    "completed": true,
-    "createdAt": "2026-01-15T10:30:00"
-  },
-  ...
-]
-```
-
-##### Get Incomplete Tasks
-```bash
-GET /api/tasks/incomplete
-
-# Response: 200 OK
-[
-  {
-    "id": 3,
-    "title": "Refactor search endpoint",
-    "description": "Split query parsing...",
-    "completed": false,
-    "createdAt": "2026-01-30T09:00:00"
-  },
-  ...
-]
 ```
 
 #### Validation Rules
-
-- **Title**: Required, 1-100 characters
-- **Description**: Optional, max 500 characters
-- **Completed**: Boolean, defaults to `false`
+- **title**: required, 1–100 characters
+- **description**: optional, max 500 characters
+- **completed**: boolean, defaults to `false`
 
 #### Error Responses
 
-**400 Bad Request** - Validation error
-```json
-{
-  "timestamp": "2026-02-11T15:00:00",
-  "status": 400,
-  "error": "Bad Request",
-  "message": "Validation failed",
-  "errors": [
-    {
-      "field": "title",
-      "message": "Title is required"
-    }
-  ]
-}
-```
-
-**404 Not Found** - Task not found
-```json
-{
-  "timestamp": "2026-02-11T15:00:00",
-  "status": 404,
-  "error": "Not Found",
-  "message": "Task not found with id: 999"
-}
-```
+**400 Bad Request** — validation failure
+**404 Not Found** — task not found
 
 ## Database Access
 
-The application uses an H2 in-memory database that can be accessed via the web console:
-
-**H2 Console URL**: http://localhost:8080/h2-console
-
-**Connection Settings:**
+**H2 Console**: http://localhost:8080/h2-console
 - JDBC URL: `jdbc:h2:mem:taskdb`
 - Username: `sa`
 - Password: (leave empty)
 
-**Note**: Data is lost when the application stops. This is intended for development/demo purposes.
+Data is lost on restart (in-memory, by design).
 
 ## Project Structure
 
 ```
 spring-demo/
-├── src/
-│   ├── main/
-│   │   ├── java/cc/desuka/demo/
-│   │   │   ├── controller/        # REST and Web controllers
-│   │   │   ├── model/              # JPA entities
-│   │   │   ├── repository/         # Spring Data repositories
-│   │   │   ├── service/            # Business logic
-│   │   │   ├── util/               # Utility classes
-│   │   │   ├── DataLoader.java     # Seeds sample data
-│   │   │   └── DemoApplication.java
-│   │   └── resources/
-│   │       ├── static/
-│   │       │   ├── css/            # Custom CSS
-│   │       │   └── bootstrap-icons/
-│   │       ├── templates/
-│   │       │   ├── layouts/        # Base layout
-│   │       │   └── tasks/          # Task views
-│   │       └── application.properties
-│   └── test/                       # Unit tests
-├── pom.xml                         # Maven configuration
-├── CLAUDE.md                       # Developer documentation
-└── README.md                       # This file
+├── src/main/
+│   ├── java/cc/desuka/demo/
+│   │   ├── controller/
+│   │   │   ├── TaskApiController.java   # REST API
+│   │   │   └── TaskWebController.java  # Web UI
+│   │   ├── model/
+│   │   │   ├── Task.java
+│   │   │   ├── TaskFilter.java
+│   │   │   ├── TaskRequest.java        # API DTO (reserved)
+│   │   │   └── TaskResponse.java       # API DTO (reserved)
+│   │   ├── repository/
+│   │   │   ├── TaskRepository.java
+│   │   │   └── TaskSpecifications.java
+│   │   ├── service/
+│   │   │   └── TaskService.java
+│   │   ├── util/
+│   │   │   └── HtmxUtils.java
+│   │   ├── DataLoader.java
+│   │   └── DemoApplication.java
+│   └── resources/
+│       ├── static/
+│       │   ├── css/
+│       │   │   ├── base.css            # Global styles
+│       │   │   └── tasks.css           # Task page styles
+│       │   ├── js/
+│       │   │   ├── utils.js            # Shared utilities (cookies)
+│       │   │   └── tasks.js            # Task list page logic
+│       │   └── bootstrap-icons/
+│       ├── templates/
+│       │   ├── layouts/
+│       │   │   └── base.html           # Base layout + fragments
+│       │   └── tasks/
+│       │       ├── tasks.html          # Task list page
+│       │       ├── task.html           # Full-page create/edit form
+│       │       ├── task-modal.html     # Modal create/edit (HTMX partial)
+│       │       ├── task-form.html      # Shared form fields fragment
+│       │       ├── task-cards.html     # Card grid fragment
+│       │       ├── task-card.html      # Single card fragment
+│       │       ├── task-table.html     # Table grid fragment
+│       │       ├── task-table-row.html # Single table row fragment
+│       │       └── task-pagination.html
+│       └── application.properties
+├── rest.http                           # VS Code REST Client test file
+├── pom.xml
+├── CLAUDE.md                           # Developer reference
+└── README.md
 ```
-
-## Development
-
-### Configuration
-
-Edit `src/main/resources/application.properties` to customize:
-
-```properties
-# Application name
-spring.application.name=demo
-
-# Database settings
-spring.datasource.url=jdbc:h2:mem:taskdb
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.show-sql=true
-
-# H2 console
-spring.h2.console.enabled=true
-```
-
-### Hot Reload
-
-The application uses Spring DevTools for automatic restart on code changes. Just save your Java files and the app will restart automatically.
-
-### Testing REST API
-
-Use the included `rest.http` file with VS Code's REST Client extension to test API endpoints interactively.
-
-## Technologies Used
-
-### Backend
-- **Spring Boot 4.0.2** - Application framework
-- **Spring Data JPA** - Data access layer
-- **Hibernate** - ORM
-- **H2 Database** - In-memory database
-- **Jakarta Validation** - Bean validation
-
-### Frontend
-- **Thymeleaf 3.x** - Template engine
-- **Bootstrap 5.3.3** - CSS framework
-- **Bootstrap Icons** - Icon library
-- **HTMX 2.0.4** - Dynamic HTML updates
-- **Custom CSS** - Additional styling
-
-### Build & Dev Tools
-- **Maven** - Build tool
-- **Spring DevTools** - Hot reload
-- **Lombok** - Boilerplate reduction
 
 ## Sample Data
 
-The application automatically loads 100+ realistic sample tasks on startup via `DataLoader.java`. These include:
+`DataLoader.java` seeds 100+ realistic tasks on startup with varied completion status and creation dates — ready to test search, filter, sort, and pagination immediately.
 
-- Tasks with various completion statuses
-- Tasks created on different dates
-- Realistic titles and descriptions covering common software development scenarios
+## Technologies
 
-This makes it easy to test search, filtering, and pagination features immediately.
-
-## Contributing
-
-When working on new features:
-
-1. Create a feature branch: `git checkout -b feature/your-feature-name`
-2. Make your changes
-3. Test thoroughly (web UI + REST API)
-4. Commit with clear messages
-5. Create a pull request
+| Layer | Technology |
+|-------|-----------|
+| Framework | Spring Boot 4.0.3 |
+| Language | Java 25 |
+| Database | H2 (in-memory) |
+| ORM | Spring Data JPA / Hibernate |
+| Validation | Jakarta Validation |
+| Templates | Thymeleaf 3.x |
+| CSS | Bootstrap 5.3.3 |
+| Icons | Bootstrap Icons |
+| Dynamic UI | HTMX 2.0.4 |
+| Build | Maven |
+| Dev Tools | Spring DevTools |
+| Monitoring | Spring Actuator |
 
 ## Troubleshooting
 
-### Application won't start
+**Application won't start** — check Java 25: `java -version`; check port: `lsof -i :8080`
 
-- Ensure Java 25 is installed: `java -version`
-- Check if port 8080 is available: `lsof -i :8080`
-- Try cleaning and rebuilding: `./mvnw clean install`
+**HTMX not working** — check browser console; verify `HX-Request` header is sent; ensure controller calls `HtmxUtils.isHtmxRequest()`
 
-### Database connection errors
+**Styles not loading** — clear browser cache; check `src/main/resources/static/css/`
 
-- H2 is in-memory, no external database needed
-- Check `application.properties` for correct JDBC URL
-- Verify H2 dependency is in `pom.xml`
-
-### HTMX not working
-
-- Check browser console for JavaScript errors
-- Verify HTMX library is loaded (view page source)
-- Ensure server returns correct fragment HTML
-
-### Styles not loading
-
-- Clear browser cache
-- Check static resources are in `src/main/resources/static/`
-- Verify WebJars are included in `pom.xml`
+**H2 connection error** — no external database needed; verify JDBC URL is `jdbc:h2:mem:taskdb`
 
 ## License
 
-This is a demo project for learning Spring Boot development.
-
-## Support
-
-For issues or questions:
-- Check `CLAUDE.md` for detailed developer documentation
-- Review Spring Boot documentation: https://spring.io/projects/spring-boot
-- Check HTMX documentation: https://htmx.org/
+Demo project for learning Spring Boot development.

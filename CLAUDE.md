@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-**Spring Boot Task Manager** - A full-stack task management application demonstrating modern Spring Boot 4.0 development with both REST API and server-side rendered UI.
+**Spring Workshop** - A growing full-stack learning project demonstrating modern Spring Boot 4.0 development with both REST API and server-side rendered UI. New features are added incrementally as we explore Spring Boot patterns together.
 
 - **Package**: `cc.desuka.demo`
 - **Java Version**: 25
-- **Spring Boot**: 4.0.2
+- **Spring Boot**: 4.0.3
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
 - **Frontend**: Bootstrap 5.3.3 + HTMX 2.0.4
@@ -14,8 +14,6 @@
 ## Architecture
 
 ### Layered Architecture
-The application follows standard Spring Boot layered architecture:
-
 ```
 Controller Layer (REST API + Web)
          ↓
@@ -31,8 +29,8 @@ The application provides **two interfaces** for the same backend:
 
 1. **REST API** (`TaskApiController`) - `/api/tasks/*`
    - JSON-based CRUD operations
-   - Follows RESTful conventions
-   - Suitable for client applications, mobile apps, etc.
+   - Returns `Task` entity directly (no DTO layer in use)
+   - DTOs exist (`TaskRequest`, `TaskResponse`) but are not yet wired in
 
 2. **Web UI** (`TaskWebController`) - `/web/tasks/*`
    - Server-side rendered with Thymeleaf
@@ -51,109 +49,122 @@ The application provides **two interfaces** for the same backend:
 
 #### Repository Layer
 - `repository/TaskRepository.java` - Spring Data JPA repository
-  - Extends `JpaRepository<Task, Long>`
-  - Custom query methods using Spring Data naming conventions
-  - Key methods: `findByCompleted`, `findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase`
+  - Extends `JpaRepository<Task, Long>` and `JpaSpecificationExecutor<Task>`
+  - Active query methods:
+    - `findByCompleted(boolean)` - used by `getIncompleteTasks()`
+    - `findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String, String)` - used by `searchTasks()`
+  - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
+
+- `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
+  - `build(keyword, filter)` - builds a combined search + filter specification
 
 #### Service Layer
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
-  - Methods: `getAllTasks`, `getTaskById`, `createTask`, `updateTask`, `deleteTask`, `toggleComplete`, `searchAndFilterTasks`
-  - Filter logic: all, completed, incomplete
-  - Search logic: case-insensitive search in title and description
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask`, `updateTask`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, filter, pageable)`, `toggleComplete`
 
 #### Controller Layer
 - `controller/TaskApiController.java` - REST API endpoints
   - `@RestController` with `/api/tasks` base path
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
-  - Returns JSON automatically
-  - Uses `@Valid` for validation
+  - Returns JSON automatically via entity serialization
 
 - `controller/TaskWebController.java` - Web UI endpoints
   - `@Controller` with `/web/tasks` base path
-  - Returns Thymeleaf template names
-  - HTMX support: detects `HX-Request` header and returns fragments
-  - Uses `RedirectView` for non-HTMX delete requests
+  - Returns Thymeleaf template names or fragment selectors
+  - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
+  - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
+  - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
 
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
-  - Helps controllers return fragments vs full pages
+  - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
 
 #### Bootstrap
-- `DataLoader.java` - Seeds database with 100+ realistic tasks
-  - Implements `CommandLineRunner`
-  - Runs on application startup
-  - Creates tasks with varied completion status and creation dates
+- `DataLoader.java` - Seeds database with 100+ realistic tasks on startup
 
 ### Thymeleaf Templates
 
 #### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
-  - `head(title)` - parameterized head fragment
+  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS
   - `navbar` - navigation bar
   - `footer` - footer
-  - `scripts` - Bootstrap + HTMX scripts
+  - `scripts` - Bootstrap + HTMX + `utils.js`
 
 #### Task Views
 - `templates/tasks/tasks.html` - Main task list page
-  - Search bar with HTMX live search (`input changed delay:300ms`)
-  - Filter buttons: All, Completed, Pending
-  - Grid container targeted by HTMX for dynamic updates
-  - JavaScript for filter button active state management
+  - Live search (JS-debounced, 300ms), filter buttons, sort dropdown, view toggle (cards/table)
+  - All state managed in JS (`tasks.js`) — synced to URL params and cookies
+  - Contains two shared modal shells loaded once per page:
+    - `#task-modal` — create/edit form, content loaded via HTMX
+    - `#task-delete-modal` — delete confirmation, populated via `show.bs.modal` JS event
 
-- `templates/tasks/task-card-grid.html` - Grid layout fragment
-  - `grid` fragment - renders task cards in responsive grid
-  - Empty state when no tasks found
-  - Bootstrap grid: `row-cols-1 row-cols-md-2 row-cols-lg-3`
+- `templates/tasks/task-cards.html` - Card grid fragment
+  - `grid` fragment — renders task cards + top/bottom pagination bars
 
 - `templates/tasks/task-card.html` - Individual task card fragment
-  - `card` fragment - single task card (non-parameterized, reads from context)
-  - Color-coded by status:
-    - **Completed**: Green border (`border-success`), green header (`bg-success`)
-    - **Incomplete**: Yellow border (`border-warning`), yellow header (`bg-warning`)
-  - HTMX actions:
-    - Toggle button: `hx-post`, `hx-target`, `hx-swap="outerHTML"`
-    - Delete button: Opens Bootstrap modal, then `hx-swap="delete"`
-  - Bootstrap modal for delete confirmation
+  - `card` fragment — reads `${task}` from context (non-parameterized)
+  - Color-coded: green = completed, yellow = pending
 
-- `templates/tasks/task-form.html` - Create/Edit form
-  - Dual-purpose form: create and edit
-  - Uses `${isEdit}` flag to customize behavior
-  - Validation error display with `is-invalid` class
-  - Completion checkbox only shown in edit mode
+- `templates/tasks/task-table.html` - Table view fragment
+  - `grid` fragment — sortable columns, renders rows via `task-table-row :: row`
+
+- `templates/tasks/task-table-row.html` - Single table row fragment
+  - `row` fragment — reads `${task}` from context
+
+- `templates/tasks/task-pagination.html` - Pagination control bar
+  - `controlBar(position)` fragment — top/bottom bars with page nav and page-size selector
+
+- `templates/tasks/task-form.html` - **Shared form fields fragment only**
+  - `fields` fragment — title, description, completed checkbox (edit only)
+  - No `<form>` tag; `th:object` is set by the including template
+  - Used by both `task.html` and `task-modal.html`
+
+- `templates/tasks/task.html` - Full-page create/edit form
+  - Standalone page with full layout (navbar, footer)
+  - Includes `task-form :: fields` inside its own `<form th:object="${task}">`
+
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, no HTML wrapper)
+  - Returned by controller as `"tasks/task-modal"` (whole file is the response)
+  - Includes `task-form :: fields` inside its own `<form>` with `hx-post`
+  - Swapped into `#task-modal-content` by HTMX
 
 ### Static Resources
 
-- `static/css/custom.css` - Custom styles
-  - Card hover effects (`transform: translateY(-5px)`)
-  - HTMX indicator styles (hidden by default, shown on `.htmx-request`)
-  - Button outline customization for filter buttons
-  - Footer styling
-
+- `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator)
+- `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides)
+- `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); loaded globally via base layout
+- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring); loaded only by `tasks.html`
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
-  - Font files and CSS
-  - Used throughout UI for icons
 
 ## Important Patterns and Conventions
 
 ### Thymeleaf Fragment Pattern
 
+**Bare fragment files (no HTML wrapper):**
+```html
+<!-- task-modal.html — whole file is the response content -->
+<div class="modal-header" xmlns:th="http://www.thymeleaf.org">...</div>
+<form ...>...</form>
+```
+Controller returns `"tasks/task-modal"` — no `::` fragment selector needed.
+
+**Fragment files with HTML wrapper (need `::` selector):**
+```html
+<!-- task-card.html — full HTML document, fragment is an inner element -->
+<div th:fragment="card" ...>...</div>
+```
+Controller returns `"tasks/task-card :: card"`.
+
 **Non-parameterized fragments reading from context:**
 ```html
-<!-- Fragment definition (no parameters) -->
 <div th:fragment="card" class="col">
-    <!-- Reads ${task} from context -->
+    <!-- Reads ${task} from context set by th:each or model -->
 </div>
-
-<!-- Fragment call (no parameters) -->
-<div th:replace="~{tasks/task-card :: card}"></div>
 ```
-
-**Why this pattern?**
-- Thymeleaf fragments can read variables from context (th:each loop, model attributes)
-- Controller return strings cannot use `${}` expressions in fragment parameters
-- Simpler than parameterized fragments for most use cases
+Use this pattern because controller return strings cannot use `${}` expressions in fragment parameters.
 
 ### Thymeleaf Ternary Operator Syntax
 
@@ -169,35 +180,64 @@ th:classappend="${task.completed} ? 'border-success' : 'border-warning'"
 
 The ternary operator `? :` must be **inside** the `${}` expression.
 
-### HTMX Integration Pattern
+### `th:object` Propagation to Fragments
 
-**Controller method:**
+`th:object` set on a `<form>` propagates into included fragments, so `*{field}` expressions work inside `task-form :: fields` even though the `<form>` tag is in the parent template. This enables the shared fields fragment pattern.
+
+### HTMX Fragment Pattern
+
+Controller detects HTMX request and returns a fragment:
 ```java
-@PostMapping("/{id}/toggle")
-public String toggleComplete(@PathVariable Long id, HttpServletRequest request, Model model) {
-    Task task = taskService.toggleComplete(id);
-
-    if (HtmxUtils.isHtmxRequest(request)) {
-        model.addAttribute("task", task);
-        return "tasks/task-card :: card";  // Return fragment
-    }
-    return "redirect:/web/tasks";  // Full page redirect for non-HTMX
+if (HtmxUtils.isHtmxRequest(request)) {
+    model.addAttribute("task", task);
+    return "tasks/task-card :: card";
 }
+return "redirect:/web/tasks";
 ```
 
-**Template:**
-```html
-<button hx-post="/web/tasks/5/toggle"
-        hx-target="#task-card-5"
-        hx-swap="outerHTML">
-    Toggle
-</button>
+### HTMX Event Trigger Pattern
+
+For actions that need client-side side effects after success (close modal, refresh grid):
+```java
+// Controller fires a named event
+return HtmxUtils.triggerEvent("taskSaved");
+// → ResponseEntity 200 with header: HX-Trigger: taskSaved
 ```
+
+```javascript
+// JavaScript listens for the event
+document.body.addEventListener('taskSaved', function() {
+    bootstrap.Modal.getInstance(...).hide();
+    doSearch(false);
+});
+```
+Active events: `taskSaved` (create/update), `taskDeleted` (delete).
+
+### Single Shared Modal Pattern
+
+One modal shell in `tasks.html` serves all tasks. Populated dynamically:
+
+**Task form modal** — content loaded via HTMX:
+```html
+<button hx-get="/web/tasks/new" hx-target="#task-modal-content" hx-swap="innerHTML">
+```
+`htmx:afterSwap` fires Bootstrap `modal.show()` when `#task-modal-content` is populated.
+
+**Delete confirmation modal** — content populated via JS:
+```javascript
+document.getElementById('task-delete-modal').addEventListener('show.bs.modal', function(e) {
+    const btn = e.relatedTarget; // the triggering delete button
+    document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
+    const confirmBtn = document.getElementById('delete-confirm-btn');
+    confirmBtn.setAttribute('hx-post', '/web/tasks/' + btn.dataset.taskId + '/delete');
+    htmx.process(confirmBtn); // re-process after dynamic hx-post assignment
+});
+```
+Delete buttons carry `data-task-id` and `data-task-title` attributes.
 
 ### Constructor Injection Pattern
 
-Always use constructor injection (Spring's preferred pattern):
-
+Always use constructor injection:
 ```java
 private final TaskService taskService;
 
@@ -205,33 +245,47 @@ public TaskWebController(TaskService taskService) {
     this.taskService = taskService;
 }
 ```
+Not `@Autowired` field injection.
 
-**Not** `@Autowired` field injection.
+### CSS Organization
 
-### Color-Coded UI Pattern
+- **`base.css`** — styles used on every page; included by `base.html`
+- **`tasks.css`** — styles only needed on task pages; passed to `head(title, cssFile)` parameter
+- For btn-outline active state overrides, use Bootstrap CSS custom properties (`--bs-btn-active-bg`, etc.) rather than class overrides
+- Bootstrap utility classes use `!important` — override with `!important` if needed
 
-Task cards use Bootstrap color utilities for status indication:
+### Page-Specific CSS via Head Fragment
 
-- **Completed tasks**: `border-success`, `bg-success`, `text-success`
-- **Incomplete tasks**: `border-warning`, `bg-warning`, `text-warning`
-- Filter buttons match task card colors for visual consistency
+```html
+<!-- base.html head fragment accepts optional cssFile -->
+<head th:fragment="head(title, cssFile)">
+    <link rel="stylesheet" th:href="@{/css/base.css}">
+    <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
+</head>
 
-### Filter Button Styling
+<!-- tasks.html and task.html pass tasks.css -->
+<head th:replace="~{layouts/base :: head('Tasks', '/css/tasks.css')}"></head>
 
-Filter buttons use:
-- `btn-outline-light` base class
-- `border-secondary` utility class for visible borders
-- `fw-bold` for better text visibility
-- JavaScript to manage `active` class on click
+<!-- Future non-task pages pass null -->
+<head th:replace="~{layouts/base :: head('Some Page', null)}"></head>
+```
 
 ## Configuration
 
 ### Application Properties (`application.properties`)
 
 ```properties
+spring.application.name=demo
+
 # H2 in-memory database (data lost on restart)
 spring.datasource.url=jdbc:h2:mem:taskdb
-spring.jpa.hibernate.ddl-auto=create-drop  # Recreates schema on startup
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+
+# JPA / Hibernate
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=create-drop
 
 # H2 Console: http://localhost:8080/h2-console
 spring.h2.console.enabled=true
@@ -248,33 +302,28 @@ Key dependencies:
 - `spring-boot-starter-data-jpa` - JPA/Hibernate
 - `spring-boot-starter-thymeleaf` - Template engine
 - `spring-boot-starter-validation` - Bean validation
+- `spring-boot-starter-actuator` - Health and metrics endpoints
 - `spring-boot-devtools` - Hot reload during development
 - `bootstrap` (WebJar 5.3.3) - CSS framework
 - `htmx.org` (WebJar 2.0.4) - AJAX library
 - `h2` (2.4.240) - In-memory database
-- `lombok` - Boilerplate reduction (optional, not used on entities)
+- `lombok` - Boilerplate reduction (not used on entities)
 
 ## Development Workflow
 
 ### Running the Application
 
 ```bash
-# Using Maven wrapper
 ./mvnw spring-boot:run
-
-# Or build and run JAR
-./mvnw clean package
-java -jar target/demo-0.0.1-SNAPSHOT.jar
 ```
-
 Application runs on: `http://localhost:8080`
 
 ### Available URLs
 
 **Web UI:**
-- `http://localhost:8080/web/tasks` - Task list
-- `http://localhost:8080/web/tasks/new` - Create task
-- `http://localhost:8080/web/tasks/{id}/edit` - Edit task
+- `http://localhost:8080/web/tasks` - Task list (cards or table view)
+- `http://localhost:8080/web/tasks/new` - Create task (full page; modal preferred)
+- `http://localhost:8080/web/tasks/{id}/edit` - Edit task (full page; modal preferred)
 
 **REST API:**
 - `GET /api/tasks` - List all tasks
@@ -283,18 +332,16 @@ Application runs on: `http://localhost:8080`
 - `PUT /api/tasks/{id}` - Update task
 - `DELETE /api/tasks/{id}` - Delete task
 - `PATCH /api/tasks/{id}/toggle` - Toggle completion
-- `GET /api/tasks/search?keyword=...` - Search tasks
-- `GET /api/tasks/incomplete` - Get incomplete tasks
+- `GET /api/tasks/search?keyword=...` - Search by title/description
+- `GET /api/tasks/incomplete` - Get incomplete tasks only
 
 **Admin:**
 - `http://localhost:8080/h2-console` - H2 database console
-  - JDBC URL: `jdbc:h2:mem:taskdb`
-  - Username: `sa`
-  - Password: (empty)
+  - JDBC URL: `jdbc:h2:mem:taskdb` / Username: `sa` / Password: (empty)
 
 ### Testing with rest.http
 
-The project includes `rest.http` file for testing REST API endpoints in VS Code with REST Client extension.
+The project includes `rest.http` for testing REST API endpoints with VS Code REST Client extension.
 
 ## Common Issues and Solutions
 
@@ -304,26 +351,26 @@ The project includes `rest.http` file for testing REST API endpoints in VS Code 
 
 **Solution:** Ensure ternary operators are inside `${}`:
 ```html
-<!-- Correct -->
-th:classappend="${condition ? 'class1' : 'class2'}"
-
-<!-- Wrong -->
-th:classappend="${condition} ? 'class1' : 'class2'"
+th:classappend="${condition ? 'class1' : 'class2'}"   <!-- correct -->
+th:classappend="${condition} ? 'class1' : 'class2'"   <!-- wrong -->
 ```
 
 ### Fragment Parameter Errors
 
 **Problem:** `Parameters in a view specification must be named (non-synthetic)`
 
-**Solution:** Don't use `${}` in controller return strings. Use context-based fragments:
+**Solution:** Don't use `${}` in controller return strings. Put data in model:
 ```java
-// Correct
 model.addAttribute("task", task);
-return "tasks/task-card :: card";
-
-// Wrong
-return "tasks/task-card :: card(${task})";
+return "tasks/task-card :: card";   // correct
+return "tasks/task-card :: card(${task})";  // wrong
 ```
+
+### HTMX dynamic attribute not firing
+
+**Problem:** Dynamically set `hx-post` (via `setAttribute`) doesn't fire
+
+**Solution:** Call `htmx.process(element)` after setting the attribute to re-initialize HTMX on that element.
 
 ### HTMX Not Working
 
@@ -331,18 +378,17 @@ return "tasks/task-card :: card(${task})";
 
 **Solution:** Check controller uses `HtmxUtils.isHtmxRequest(request)` to detect HTMX and return fragment instead of redirect.
 
-### Bootstrap Styles Not Visible
+### Bootstrap Active State Color Not Applying
 
-**Problem:** Custom colors or utility classes not working
+**Problem:** CSS custom property override for `--bs-btn-active-color` ignored
 
-**Solution:**
-1. Use Bootstrap utility classes where possible (`border-secondary`, `fw-bold`)
-2. For btn-outline variants, override CSS variables in custom.css
-3. Don't override global CSS variables unless necessary
+**Solution:** Bootstrap utility classes use `!important`. Override with `!important` on the active selector:
+```css
+#filter-completed.active { color: #fff !important; }
+```
 
 ## Database Schema
 
-### tasks table
 ```sql
 CREATE TABLE tasks (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -355,19 +401,12 @@ CREATE TABLE tasks (
 
 ## Git Workflow
 
-### Recommended Branching Strategy
-
 - `main` - Production-ready code
-- `feature/*` - New features (e.g., `feature/add-tags`)
-- `fix/*` - Bug fixes (e.g., `fix/search-bug`)
-- `refactor/*` - Code improvements (e.g., `refactor/service-layer`)
+- `feature/*` - New features
+- `fix/*` - Bug fixes
+- `refactor/*` - Code improvements
 
-### Git Ignore
-
-Standard Spring Boot `.gitignore` includes:
-- `target/` - Build artifacts
-- `.mvn/wrapper/maven-wrapper.jar`
-- IDE files (`.idea`, `.vscode`, `.classpath`)
+Always ask before committing. Never auto-commit.
 
 ## Future Enhancement Ideas
 
@@ -375,7 +414,6 @@ Standard Spring Boot `.gitignore` includes:
 - Implement task tags/categories
 - Add due dates and reminders
 - Support task priority levels
-- Add pagination for large task lists
 - Implement dark mode toggle
 - Add task assignment to users
 - Export tasks to CSV/PDF

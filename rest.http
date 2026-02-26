@@ -1,7 +1,7 @@
 ### Get all tasks
 GET http://localhost:8080/api/tasks
 
-### Get single task
+### Get task by ID
 GET http://localhost:8080/api/tasks/1
 
 ### Create task
@@ -23,5 +23,14 @@ Content-Type: application/json
     "completed": true
 }
 
+### Toggle task completion
+PATCH http://localhost:8080/api/tasks/1/toggle
+
 ### Delete task
 DELETE http://localhost:8080/api/tasks/1
+
+### Search tasks by keyword
+GET http://localhost:8080/api/tasks/search?keyword=bug
+
+### Get incomplete tasks only
+GET http://localhost:8080/api/tasks/incomplete
