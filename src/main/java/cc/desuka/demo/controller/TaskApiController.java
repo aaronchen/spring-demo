@@ -6,7 +6,6 @@ import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
-// import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -32,30 +31,12 @@ public class TaskApiController {
     return taskService.getTaskById(id);
   }
 
-  // @GetMapping("/{id}")
-  // public ResponseEntity<Task> getTaskById(@PathVariable Long id) {
-  // try {
-  // Task task = taskService.getTaskById(id);
-  // return ResponseEntity.ok(task); // 200 OK
-  // } catch (RuntimeException e) {
-  // return ResponseEntity.notFound().build(); // 404
-  // }
-  // }
-
   // POST /api/tasks
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public Task createTask(@Valid @RequestBody Task task) {
     return taskService.createTask(task);
   }
-
-  // @PostMapping
-  // public ResponseEntity<Task> createTask(@Valid @RequestBody Task task) {
-  // Task created = taskService.createTask(task);
-  // return ResponseEntity
-  // .status(HttpStatus.CREATED) // 201
-  // .body(created);
-  // }
 
   // PUT /api/tasks/5
   @PutMapping("/{id}")

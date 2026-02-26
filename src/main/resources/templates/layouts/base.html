@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:fragment="head(title)">
+<head th:fragment="head(title, cssFile)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title}">Task Manager</title>
@@ -11,8 +11,11 @@
     <!-- Bootstrap Icons (locally hosted) -->
     <link rel="stylesheet" th:href="@{/bootstrap-icons/bootstrap-icons.min.css}">
 
-    <!-- Custom CSS (optional - for additional styling) -->
-    <link rel="stylesheet" th:href="@{/css/custom.css}">
+    <!-- Base styles -->
+    <link rel="stylesheet" th:href="@{/css/base.css}">
+
+    <!-- Page-specific styles -->
+    <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
 </head>
 <body>
     <!-- Navigation Fragment -->
@@ -47,6 +50,8 @@
         <script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
         <!-- HTMX via WebJars -->
         <script th:src="@{/webjars/htmx.org/2.0.4/dist/htmx.min.js}"></script>
+        <!-- Shared utilities -->
+        <script th:src="@{/js/utils.js}"></script>
     </div>
 </body>
 </html>

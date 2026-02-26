@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layouts/base :: head(${isEdit} ? 'Edit Task' : 'Create Task')}"></head>
+<head th:replace="~{layouts/base :: head(${isEdit} ? 'Edit Task' : 'Create Task', '/css/tasks.css')}"></head>
 <body class="d-flex flex-column min-vh-100">
 
     <!-- Navigation -->
