@@ -1,0 +1,28 @@
+<!-- Modal content — loaded by HTMX into #task-modal-content.
+     No HTML wrapper; the whole file is swapped in directly. -->
+<div class="modal-header" xmlns:th="http://www.thymeleaf.org">
+    <h5 class="modal-title">
+        <i th:class="${isEdit} ? 'bi bi-pencil-square' : 'bi bi-plus-circle'"></i>
+        <span th:text="${isEdit} ? 'Edit Task' : 'New Task'">Task</span>
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<form th:action="${isEdit} ? @{/web/tasks/{id}(id=${task.id})} : @{/web/tasks}"
+      th:attr="hx-post=${isEdit ? '/web/tasks/' + task.id : '/web/tasks'}"
+      hx-target="#task-modal-content"
+      hx-swap="innerHTML"
+      th:object="${task}"
+      method="post">
+    <div class="modal-body">
+        <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> Cancel
+        </button>
+        <button type="submit" class="btn btn-primary">
+            <i th:class="${isEdit} ? 'bi bi-save' : 'bi bi-plus-circle'"></i>
+            <span th:text="${isEdit} ? 'Update Task' : 'Create Task'">Submit</span>
+        </button>
+    </div>
+</form>

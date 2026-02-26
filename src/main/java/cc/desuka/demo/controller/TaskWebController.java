@@ -11,7 +11,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -55,41 +54,66 @@ public class TaskWebController {
     return "tasks/tasks";
   }
 
-  // GET /web/tasks/new - Show create form
+  // GET /web/tasks/new - Show create form (full page or modal fragment)
   @GetMapping("/new")
-  public String showCreateForm(Model model) {
+  public String showCreateForm(Model model, HttpServletRequest request) {
     model.addAttribute("task", new Task());
     model.addAttribute("isEdit", false);
-    return "tasks/task-form";
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return "tasks/task-modal";
+    }
+    return "tasks/task";
   }
 
   // POST /web/tasks - Create new task
   @PostMapping
-  public String createTask(@Valid @ModelAttribute Task task, BindingResult result) {
+  public Object createTask(
+      @Valid @ModelAttribute Task task, BindingResult result,
+      HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
-      return "tasks/task-form";
+      model.addAttribute("isEdit", false);
+      if (HtmxUtils.isHtmxRequest(request)) {
+        return "tasks/task-modal";
+      }
+      return "tasks/task";
     }
     taskService.createTask(task);
-    return "redirect:/web/tasks";
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return HtmxUtils.triggerEvent("taskSaved");
+    }
+    return new RedirectView("/web/tasks");
   }
 
-  // GET /web/tasks/{id}/edit - Show edit form
+  // GET /web/tasks/{id}/edit - Show edit form (full page or modal fragment)
   @GetMapping("/{id}/edit")
-  public String showEditForm(@PathVariable Long id, Model model) {
+  public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest request) {
     Task task = taskService.getTaskById(id);
     model.addAttribute("task", task);
     model.addAttribute("isEdit", true);
-    return "tasks/task-form";
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return "tasks/task-modal";
+    }
+    return "tasks/task";
   }
 
   // POST /web/tasks/{id} - Update task
   @PostMapping("/{id}")
-  public String updateTask(@PathVariable Long id, @Valid @ModelAttribute Task task, BindingResult result) {
+  public Object updateTask(
+      @PathVariable Long id,
+      @Valid @ModelAttribute Task task, BindingResult result,
+      HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
-      return "tasks/task-form";
+      model.addAttribute("isEdit", true);
+      if (HtmxUtils.isHtmxRequest(request)) {
+        return "tasks/task-modal";
+      }
+      return "tasks/task";
     }
     taskService.updateTask(id, task);
-    return "redirect:/web/tasks";
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return HtmxUtils.triggerEvent("taskSaved");
+    }
+    return new RedirectView("/web/tasks");
   }
 
   // POST /web/tasks/{id}/delete - Delete task
@@ -98,7 +122,7 @@ public class TaskWebController {
     taskService.deleteTask(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
-      return ResponseEntity.ok().build();
+      return HtmxUtils.triggerEvent("taskDeleted");
     }
     return new RedirectView("/web/tasks");
   }

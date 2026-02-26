@@ -10,6 +10,9 @@
     th:classappend="${task.completed ? 'table-success' : ''}">
     <td>
         <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
+           th:attr="hx-get=@{/web/tasks/{id}/edit(id=${task.id})}"
+           hx-target="#task-modal-content"
+           hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
            th:text="${task.title}">Title</a>
     </td>
@@ -38,6 +41,9 @@
             </button>
             <!-- Edit Button -->
             <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
+               th:attr="hx-get=@{/web/tasks/{id}/edit(id=${task.id})}"
+               hx-target="#task-modal-content"
+               hx-swap="innerHTML"
                class="btn btn-outline-primary"
                title="Edit">
                 <i class="bi bi-pencil"></i>
@@ -45,7 +51,9 @@
             <!-- Delete Button -->
             <button class="btn btn-outline-danger"
                     data-bs-toggle="modal"
-                    th:data-bs-target="'#deleteModal-' + ${task.id}"
+                    data-bs-target="#task-delete-modal"
+                    th:data-task-id="${task.id}"
+                    th:data-task-title="${task.title}"
                     title="Delete">
                 <i class="bi bi-trash"></i>
             </button>
