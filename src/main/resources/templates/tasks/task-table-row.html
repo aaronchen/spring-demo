@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Row fragment: a single <tr> for use in task-table.html tbody and HTMX toggle swap -->
+<table>
+<tbody>
+<tr th:fragment="row"
+    th:id="'task-row-' + ${task.id}"
+    th:classappend="${task.completed ? 'table-success' : ''}">
+    <td>
+        <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
+           class="fw-semibold text-decoration-none"
+           th:text="${task.title}">Title</a>
+    </td>
+    <td style="white-space: nowrap;">
+        <span th:if="${task.completed}" class="badge bg-success">
+            <i class="bi bi-check-circle-fill"></i> Completed
+        </span>
+        <span th:if="${!task.completed}" class="badge bg-warning text-dark">
+            <i class="bi bi-circle"></i> Pending
+        </span>
+    </td>
+    <td style="white-space: nowrap;">
+        <small class="text-muted" th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</small>
+    </td>
+    <td class="text-truncate" style="max-width: 280px;">
+        <span class="text-muted small" th:text="${task.description} ?: 'No description'">Description</span>
+    </td>
+    <td>
+        <div class="btn-group btn-group-sm">
+            <!-- Toggle Button -->
+            <button th:class="${task.completed ? 'btn btn-outline-warning' : 'btn btn-outline-success'}"
+                    th:attr="hx-post=@{/web/tasks/{id}/toggle(id=${task.id}, view='table')},hx-target='#task-row-' + ${task.id}"
+                    hx-swap="outerHTML"
+                    th:title="${task.completed ? 'Mark as pending' : 'Mark as complete'}">
+                <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
+            </button>
+            <!-- Edit Button -->
+            <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
+               class="btn btn-outline-primary"
+               title="Edit">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <!-- Delete Button -->
+            <button class="btn btn-outline-danger"
+                    data-bs-toggle="modal"
+                    th:data-bs-target="'#deleteModal-' + ${task.id}"
+                    title="Delete">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    </td>
+</tr>
+</tbody>
+</table>
+
+</body>
+</html>

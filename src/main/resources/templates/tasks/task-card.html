@@ -6,7 +6,7 @@
              th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
             <h5 class="mb-0" th:text="${task.title}">Task Title</h5>
             <span th:if="${task.completed}" class="badge bg-light text-success">
-                <i class="bi bi-check-circle-fill"></i> Done
+                <i class="bi bi-check-circle-fill"></i> Completed
             </span>
             <span th:if="${!task.completed}" class="badge bg-light text-warning">
                 <i class="bi bi-circle"></i> Pending

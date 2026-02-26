@@ -12,7 +12,7 @@
             <div class="col-12">
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="display-4">My Tasks</h1>
+                    <h1 class="display-4">Tasks</h1>
                     <a th:href="@{/web/tasks/new}" class="btn btn-primary btn-lg">
                         <i class="bi bi-plus-circle"></i> New Task
                     </a>
@@ -32,7 +32,7 @@
                     </div>
                 </div>
 
-                <!-- Row 2: Filter + Sort -->
+                <!-- Row 2: Filter + Sort + View Toggle -->
                 <div class="d-flex align-items-center gap-2 mb-4">
                     <!-- Filter Buttons -->
                     <div class="btn-group" role="group" aria-label="Task filters">
@@ -114,14 +114,43 @@
                                     <i class="bi bi-sort-alpha-up"></i> Description (Z-A)
                                 </a>
                             </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   onclick="resetSort(); return false;">
+                                    <i class="bi bi-check-lg" style="visibility: hidden;"></i>
+                                    <i class="bi bi-arrow-counterclockwise"></i> Default
+                                </a>
+                            </li>
                         </ul>
+                    </div>
+
+                    <!-- View Toggle -->
+                    <div class="btn-group ms-auto" role="group" aria-label="View toggle">
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                id="view-cards"
+                                onclick="switchView('cards')">
+                            <i class="bi bi-grid-3x3-gap-fill"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                id="view-table"
+                                onclick="switchView('table')">
+                            <i class="bi bi-table"></i>
+                        </button>
                     </div>
 
                 </div>
 
                 <!-- Task List Container (targeted by HTMX) -->
-                <div id="task-card-grid">
-                    <div th:replace="~{tasks/task-card-grid :: grid}"></div>
+                <div id="tasks-view">
+                    <th:block th:if="${view == 'table'}">
+                        <div th:replace="~{tasks/task-table :: grid}"></div>
+                    </th:block>
+                    <th:block th:if="${view != 'table'}">
+                        <div th:replace="~{tasks/task-cards :: grid}"></div>
+                    </th:block>
                 </div>
             </div>
         </div>
@@ -146,7 +175,19 @@
 
         let activeSorts = [{field: 'createdAt', direction: 'desc'}];
         let currentPage = 0;
-        let pageSize = parseInt(localStorage.getItem('pageSize') || '25');
+        let pageSize = parseInt(getCookie('pageSize') || '25');
+        let currentView = 'cards';
+
+        // Read a cookie by name
+        function getCookie(name) {
+            const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+            return match ? match[1] : null;
+        }
+
+        // Write a persistent cookie (1 year)
+        function setCookie(name, value) {
+            document.cookie = `${name}=${value}; path=/; max-age=31536000`;
+        }
 
         // Build the URL for the current state
         function buildUrl(page) {
@@ -158,6 +199,7 @@
             activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
             params.set('size', pageSize);
             if (page > 0) params.set('page', page);
+            if (currentView !== 'cards') params.set('view', currentView);
             return `/web/tasks?${params.toString()}`;
         }
 
@@ -165,7 +207,7 @@
         function doSearch(resetPage) {
             if (resetPage) currentPage = 0;
             const url = buildUrl(currentPage);
-            htmx.ajax('GET', url, {target: '#task-card-grid', swap: 'innerHTML'});
+            htmx.ajax('GET', url, {target: '#tasks-view', swap: 'innerHTML'});
             window.history.replaceState({}, '', url);
         }
 
@@ -174,14 +216,28 @@
             if (page < 0) return;
             currentPage = page;
             const url = buildUrl(page);
-            htmx.ajax('GET', url, {target: '#task-card-grid', swap: 'innerHTML'});
+            htmx.ajax('GET', url, {target: '#tasks-view', swap: 'innerHTML'});
             window.history.pushState({}, '', url);
+        }
+
+        // Switch between card and table views
+        function switchView(view) {
+            currentView = view;
+            setCookie('view', view);
+            renderViewToggle();
+            doSearch(false);
+        }
+
+        // Update active state on view toggle buttons
+        function renderViewToggle() {
+            document.getElementById('view-cards').classList.toggle('active', currentView === 'cards');
+            document.getElementById('view-table').classList.toggle('active', currentView === 'table');
         }
 
         // Per-page selector change — syncs all instances (top and bottom bars)
         function onPageSizeChange(newSize) {
             pageSize = parseInt(newSize);
-            localStorage.setItem('pageSize', pageSize);
+            setCookie('pageSize', pageSize);
             syncPageSizeSelects();
             currentPage = 0;
             doSearch(false);
@@ -189,6 +245,13 @@
 
         function syncPageSizeSelects() {
             document.querySelectorAll('.page-size-select').forEach(el => el.value = pageSize);
+        }
+
+        // Reset sort to default (newest first)
+        function resetSort() {
+            activeSorts = [{field: 'createdAt', direction: 'desc'}];
+            renderSorts();
+            doSearch(true);
         }
 
         // Toggle a sort option (mutual exclusion within same field)
@@ -219,7 +282,7 @@
                 const isActive = activeSorts.some(
                     s => s.field === item.dataset.sortField && s.direction === item.dataset.sortDir
                 );
-                check.style.visibility = isActive ? 'visible' : 'hidden';
+                if (check) check.style.visibility = isActive ? 'visible' : 'hidden';
             });
         }
 
@@ -239,10 +302,10 @@
             // Page
             currentPage = parseInt(params.get('page') || '0');
 
-            // Size (URL takes precedence over localStorage)
+            // Size (URL takes precedence over cookie)
             if (params.has('size')) {
                 pageSize = parseInt(params.get('size'));
-                localStorage.setItem('pageSize', pageSize);
+                setCookie('pageSize', pageSize);
             }
             syncPageSizeSelects();
 
@@ -255,6 +318,10 @@
 
             // Search
             document.getElementById('search-input').value = params.get('search') || '';
+
+            // View: URL takes precedence; fall back to cookie (mirrors server-side logic)
+            currentView = params.get('view') || getCookie('view') || 'cards';
+            renderViewToggle();
 
             // Render sort checkmarks and label
             renderSorts();
@@ -284,8 +351,15 @@
 
             // After HTMX replaces the grid, re-sync the per-page selects in the new HTML
             document.addEventListener('htmx:afterSwap', function(evt) {
-                if (evt.detail.target && evt.detail.target.id === 'task-card-grid') {
+                if (evt.detail.target && evt.detail.target.id === 'tasks-view') {
                     syncPageSizeSelects();
+                }
+            });
+
+            // Table view: after a delete, refresh the grid (hx-swap="none" so grid doesn't auto-update)
+            document.addEventListener('htmx:afterRequest', function(evt) {
+                if (evt.target.classList.contains('table-delete-confirm') && evt.detail.successful) {
+                    doSearch(false);
                 }
             });
 

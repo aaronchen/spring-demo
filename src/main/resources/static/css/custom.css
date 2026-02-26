@@ -43,6 +43,39 @@ body {
     border-top: 1px solid #dee2e6;
 }
 
+/* Filter button (All): grey active state */
+[id^="filter-"] {
+    --bs-btn-active-bg: rgba(108, 117, 125, 0.35);
+    --bs-btn-active-border-color: #6c757d;
+    --bs-btn-active-color: inherit;
+}
+
+/* Filter button (Completed): green pill when active */
+#filter-completed {
+    --bs-btn-active-bg: #198754;
+    --bs-btn-active-border-color: #198754;
+    --bs-btn-active-color: #fff;
+}
+#filter-completed.active { color: #fff !important; }
+
+/* Filter button (Pending): yellow pill when active */
+#filter-incomplete {
+    --bs-btn-active-bg: #ffc107;
+    --bs-btn-active-border-color: #ffc107;
+    --bs-btn-active-color: #000;
+}
+#filter-incomplete.active { color: #000 !important; }
+
+/* Table action buttons: uniform secondary border/icon in default state,
+   colored fill on hover (Bootstrap's native hover vars handle the rest) */
+.table .btn-group .btn-outline-success,
+.table .btn-group .btn-outline-warning,
+.table .btn-group .btn-outline-primary,
+.table .btn-group .btn-outline-danger {
+    --bs-btn-color: #6c757d;
+    --bs-btn-border-color: #6c757d;
+}
+
 /* HTMX Loading Indicator - Hidden by default */
 .htmx-indicator {
     opacity: 0;

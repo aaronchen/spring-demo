@@ -7,6 +7,7 @@ import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -32,14 +33,24 @@ public class TaskWebController {
   public String listTasks(
       @RequestParam(required = false, defaultValue = "") String search,
       @RequestParam(required = false, defaultValue = "all") TaskFilter filter,
+      @RequestParam(required = false) String view,
+      @CookieValue(name = "view", required = false, defaultValue = "cards") String viewCookie,
+      @CookieValue(name = "pageSize", required = false, defaultValue = "25") int pageSizeCookie,
       @PageableDefault(size = 25, sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
       HttpServletRequest request,
       Model model) {
+    // URL param takes precedence over cookie (supports bookmarks, shared links)
+    String resolvedView = (view != null) ? view : viewCookie;
+    // Use cookie page size when URL didn't explicitly specify one
+    if (!request.getParameterMap().containsKey("size")) {
+      pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
+    }
     Page<Task> taskPage = taskService.searchAndFilterTasks(search, filter, pageable);
     model.addAttribute("taskPage", taskPage);
+    model.addAttribute("view", resolvedView);
 
     if (HtmxUtils.isHtmxRequest(request)) {
-      return "tasks/task-card-grid :: grid";
+      return "table".equals(resolvedView) ? "tasks/task-table :: grid" : "tasks/task-cards :: grid";
     }
     return "tasks/tasks";
   }
@@ -94,12 +105,16 @@ public class TaskWebController {
 
   // POST /web/tasks/{id}/toggle - Toggle completion
   @PostMapping("/{id}/toggle")
-  public String toggleComplete(@PathVariable Long id, HttpServletRequest request, Model model) {
+  public String toggleComplete(
+      @PathVariable Long id,
+      @RequestParam(required = false, defaultValue = "cards") String view,
+      HttpServletRequest request,
+      Model model) {
     Task task = taskService.toggleComplete(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
       model.addAttribute("task", task);
-      return "tasks/task-card :: card";
+      return "table".equals(view) ? "tasks/task-table-row :: row" : "tasks/task-card :: card";
     }
     return "redirect:/web/tasks";
   }

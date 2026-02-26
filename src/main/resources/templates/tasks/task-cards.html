@@ -11,7 +11,7 @@
     <!-- Content: top bar + cards + bottom bar -->
     <th:block th:if="${!taskPage.isEmpty()}">
 
-        <div th:replace="~{tasks/task-card-pagination :: controlBar('top')}"></div>
+        <div th:replace="~{tasks/task-pagination :: controlBar('top')}"></div>
 
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-3">
             <th:block th:each="task : ${taskPage.content}">
@@ -19,7 +19,7 @@
             </th:block>
         </div>
 
-        <div th:replace="~{tasks/task-card-pagination :: controlBar('bottom')}"></div>
+        <div th:replace="~{tasks/task-pagination :: controlBar('bottom')}"></div>
 
     </th:block>
 
