@@ -14,10 +14,10 @@ import lombok.Data;
 @Data
 public class TaskRequest {
 
-  @NotBlank(message = "Title is required")
-  @Size(min = 1, max = 100)
+  @NotBlank(message = "{task.title.notBlank}")
+  @Size(min = 1, max = 100, message = "{task.title.size}")
   private String title;
 
-  @Size(max = 500)
+  @Size(max = 500, message = "{task.description.size}")
   private String description;
 }

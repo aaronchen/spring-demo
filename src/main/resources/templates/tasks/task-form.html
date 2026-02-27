@@ -5,13 +5,13 @@
     <!-- Title Field -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold">
-            Title <span class="text-danger">*</span>
+            <span th:text="#{task.field.title}">Title</span> <span class="text-danger">*</span>
         </label>
         <input type="text"
                th:field="*{title}"
                class="form-control"
                th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
-               placeholder="Enter task title">
+               th:placeholder="#{task.field.title.placeholder}">
         <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
             Title error
         </div>
@@ -19,12 +19,12 @@
 
     <!-- Description Field -->
     <div class="mb-3">
-        <label for="description" class="form-label fw-bold">Description</label>
+        <label for="description" class="form-label fw-bold" th:text="#{task.field.description}">Description</label>
         <textarea th:field="*{description}"
                   class="form-control"
                   th:classappend="${#fields.hasErrors('description')} ? 'is-invalid' : ''"
                   rows="4"
-                  placeholder="Enter task description (optional)"></textarea>
+                  th:placeholder="#{task.field.description.placeholder}"></textarea>
         <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">
             Description error
         </div>
@@ -35,7 +35,7 @@
         <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="completed" th:field="*{completed}">
             <label class="form-check-label" for="completed">
-                <strong>Mark as completed</strong>
+                <strong th:text="#{action.markAsCompleted}">Mark as completed</strong>
             </label>
         </div>
     </div>

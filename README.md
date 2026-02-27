@@ -25,11 +25,14 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Spring Boot 4.0.3 with Java 25
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
+- DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions and HX-Trigger events
 - Bootstrap 5.3 for styling
 - Split CSS: `base.css` (global) + `tasks.css` (page-specific)
 - Split JS: `utils.js` (global) + `tasks.js` (page-specific)
+- Externalized UI strings via `messages.properties` (Spring MessageSource)
+- Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Hot reload with Spring DevTools
 
 ## Getting Started
@@ -151,13 +154,16 @@ spring-demo/
 ├── src/main/
 │   ├── java/cc/desuka/demo/
 │   │   ├── controller/
-│   │   │   ├── TaskApiController.java   # REST API
+│   │   │   ├── TaskApiController.java   # REST API (uses DTOs)
 │   │   │   └── TaskWebController.java  # Web UI
+│   │   ├── dto/
+│   │   │   ├── TaskRequest.java        # API input DTO (create/update)
+│   │   │   └── TaskResponse.java       # API output DTO
+│   │   ├── mapper/
+│   │   │   └── TaskMapper.java         # MapStruct interface (impl generated at compile time)
 │   │   ├── model/
 │   │   │   ├── Task.java
-│   │   │   ├── TaskFilter.java
-│   │   │   ├── TaskRequest.java        # API DTO (reserved)
-│   │   │   └── TaskResponse.java       # API DTO (reserved)
+│   │   │   └── TaskFilter.java
 │   │   ├── repository/
 │   │   │   ├── TaskRepository.java
 │   │   │   └── TaskSpecifications.java
@@ -189,6 +195,8 @@ spring-demo/
 │       │       ├── task-table.html     # Table grid fragment
 │       │       ├── task-table-row.html # Single table row fragment
 │       │       └── task-pagination.html
+│       ├── messages.properties         # UI display strings (#{key} in Thymeleaf)
+│       ├── ValidationMessages.properties # Bean Validation error messages ({key} in annotations)
 │       └── application.properties
 ├── rest.http                           # VS Code REST Client test file
 ├── pom.xml
@@ -214,12 +222,15 @@ spring-demo/
 | Icons | Bootstrap Icons |
 | Dynamic UI | HTMX 2.0.4 |
 | Build | Maven |
+| Mapping | MapStruct 1.6 |
 | Dev Tools | Spring DevTools |
 | Monitoring | Spring Actuator |
 
 ## Troubleshooting
 
 **Application won't start** — check Java 25: `java -version`; check port: `lsof -i :8080`
+
+**`No qualifying bean of type 'TaskMapper'`** — MapStruct generates `TaskMapperImpl` at compile time. Run `./mvnw compile` once so the class exists, then restart the app.
 
 **HTMX not working** — check browser console; verify `HX-Request` header is sent; ensure controller calls `HtmxUtils.isHtmxRequest()`
 

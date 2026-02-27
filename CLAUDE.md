@@ -29,8 +29,8 @@ The application provides **two interfaces** for the same backend:
 
 1. **REST API** (`TaskApiController`) - `/api/tasks/*`
    - JSON-based CRUD operations
-   - Returns `Task` entity directly (no DTO layer in use)
-   - DTOs exist (`TaskRequest`, `TaskResponse`) but are not yet wired in
+   - Accepts `TaskRequest` DTO for input; returns `TaskResponse` DTO for output
+   - `TaskMapper` (MapStruct) handles all entity ↔ DTO conversion; `TaskMapperImpl` is generated at compile time
 
 2. **Web UI** (`TaskWebController`) - `/web/tasks/*`
    - Server-side rendered with Thymeleaf
@@ -58,6 +58,24 @@ The application provides **two interfaces** for the same backend:
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
   - `build(keyword, filter)` - builds a combined search + filter specification
 
+#### DTO Layer
+- `dto/TaskRequest.java` - API input DTO (create and update operations)
+  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars)
+  - Validation annotations used by `@Valid` in the controller
+  - Lombok `@Data` for getters/setters/equals/hashCode
+
+- `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
+  - Fields: `id`, `title`, `description`, `completed`, `createdAt`
+  - Lombok `@Data` + `@AllArgsConstructor`
+
+#### Mapper Layer
+- `mapper/TaskMapper.java` - MapStruct mapper interface
+  - `@Mapper(componentModel = "spring")` — generates a `@Component` Spring bean
+  - `toResponse(Task)` — maps entity to response DTO (field names match, no config needed)
+  - `toResponseList(List<Task>)` — calls `toResponse()` per element; generated automatically
+  - `toEntity(TaskRequest)` — maps request DTO to entity; `id`, `completed`, `createdAt` explicitly ignored
+  - Implementation `TaskMapperImpl` is generated into `target/generated-sources/` at compile time
+
 #### Service Layer
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
@@ -67,7 +85,8 @@ The application provides **two interfaces** for the same backend:
 - `controller/TaskApiController.java` - REST API endpoints
   - `@RestController` with `/api/tasks` base path
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
-  - Returns JSON automatically via entity serialization
+  - Accepts `TaskRequest`, returns `TaskResponse` — no raw entity exposure
+  - Injects `TaskMapper` for all DTO ↔ entity conversion
 
 - `controller/TaskWebController.java` - Web UI endpoints
   - `@Controller` with `/web/tasks` base path
@@ -139,6 +158,23 @@ The application provides **two interfaces** for the same backend:
 - `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring); loaded only by `tasks.html`
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
+### Resource Files
+
+- `resources/messages.properties` - UI display strings (field labels, button text, page titles, status badges, etc.)
+  - Spring Boot auto-discovers this file; no extra configuration needed
+  - Reference with `#{key}` in Thymeleaf templates
+  - Namespace conventions (see Message Source Pattern section for full detail):
+    - `action.*` — generic actions reusable across features (`action.cancel`, `action.delete`, ...)
+    - `pagination.*` — pagination controls, reusable for any paginated list
+    - `nav.*`, `footer.*`, `page.title.*` — layout and browser title strings
+    - `task.*` — everything specific to the Task feature (`task.field.*`, `task.sort.*`, `task.filter.*`, `task.table.column.*`, ...)
+
+- `resources/ValidationMessages.properties` - Bean Validation error messages
+  - Used by Hibernate Validator for `@NotBlank`, `@Size`, `@NotNull`, etc.
+  - Reference with `{key}` syntax (curly braces) inside constraint annotation `message` attribute
+  - `{min}`, `{max}`, `{value}` placeholders are interpolated from the constraint's own attributes
+  - Both `Task.java` (entity, validated by the web layer) and `TaskRequest.java` (DTO, validated by the API layer) reference these keys
+
 ## Important Patterns and Conventions
 
 ### Thymeleaf Fragment Pattern
@@ -166,6 +202,53 @@ Controller returns `"tasks/task-card :: card"`.
 ```
 Use this pattern because controller return strings cannot use `${}` expressions in fragment parameters.
 
+### Message Source Pattern
+
+All user-facing UI strings are externalized to `messages.properties`. Reference them in Thymeleaf with `#{key}`:
+
+```html
+<label th:text="#{task.field.title}">Title</label>
+<span th:text="#{task.status.completed}">Completed</span>
+```
+
+The static fallback text inside the tag (e.g., `Title`) is shown in IDE preview but replaced at runtime.
+
+**Parameterized messages** use `{0}`, `{1}`, ... placeholders (Java `MessageFormat`):
+
+```properties
+# messages.properties
+pagination.showing=Showing {0}–{1} of {2} tasks
+pagination.perPage={0} / page
+```
+
+```html
+<small th:text="#{pagination.showing(${start}, ${end}, ${total})}">Showing 1–25 of 300</small>
+<option th:text="#{pagination.perPage(10)}">10 / page</option>
+```
+
+**Conditional with message keys** — when a ternary picks between two `#{...}` expressions, use the *outer* conditional form (not inside `${}`):
+
+```html
+<!-- Correct: #{...} expressions go outside ${} in a conditional -->
+<span th:text="${isEdit} ? #{task.edit.heading} : #{action.newTask}">Task</span>
+
+<!-- Only use the inner form for string literals inside SpEL -->
+<div th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
+```
+
+**Validation error messages** reference `ValidationMessages.properties` with `{key}` (curly braces, not `${key}`) in constraint annotations. Hibernate Validator resolves `{min}` / `{max}` from the annotation's own attributes:
+
+```java
+@NotBlank(message = "{task.title.notBlank}")
+@Size(min = 1, max = 100, message = "{task.title.size}")
+```
+
+```properties
+# ValidationMessages.properties
+task.title.notBlank=Title is required
+task.title.size=Title must be between {min} and {max} characters
+```
+
 ### Thymeleaf Ternary Operator Syntax
 
 **Correct:**
@@ -178,7 +261,7 @@ th:classappend="${task.completed ? 'border-success' : 'border-warning'}"
 th:classappend="${task.completed} ? 'border-success' : 'border-warning'"
 ```
 
-The ternary operator `? :` must be **inside** the `${}` expression.
+The ternary operator `? :` must be **inside** the `${}` expression when both branches are string literals. For message key branches, use the outer conditional form shown in the Message Source Pattern section above.
 
 ### `th:object` Propagation to Fragments
 
@@ -263,11 +346,14 @@ Not `@Autowired` field injection.
     <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
 </head>
 
-<!-- tasks.html and task.html pass tasks.css -->
-<head th:replace="~{layouts/base :: head('Tasks', '/css/tasks.css')}"></head>
+<!-- tasks.html passes a message key for the title -->
+<head th:replace="~{layouts/base :: head(#{page.title.tasks}, '/css/tasks.css')}"></head>
 
-<!-- Future non-task pages pass null -->
-<head th:replace="~{layouts/base :: head('Some Page', null)}"></head>
+<!-- task.html: conditional title using message keys -->
+<head th:replace="~{layouts/base :: head(${isEdit} ? #{page.title.task.edit} : #{page.title.task.create}, '/css/tasks.css')}"></head>
+
+<!-- Future non-task pages pass null for no page-specific CSS -->
+<head th:replace="~{layouts/base :: head(#{page.title.some.page}, null)}"></head>
 ```
 
 ## Configuration
@@ -308,6 +394,8 @@ Key dependencies:
 - `htmx.org` (WebJar 2.0.4) - AJAX library
 - `h2` (2.4.240) - In-memory database
 - `lombok` - Boilerplate reduction (not used on entities)
+- `mapstruct` (1.6.3) - Compile-time DTO mapping code generation
+  - `mapstruct-processor` in `annotationProcessorPaths` (after Lombok — order matters)
 
 ## Development Workflow
 
@@ -317,6 +405,27 @@ Key dependencies:
 ./mvnw spring-boot:run
 ```
 Application runs on: `http://localhost:8080`
+
+### Development Workflow with MapStruct
+
+MapStruct generates `TaskMapperImpl` at **compile time** via the annotation processor.
+DevTools hot-reload handles most code changes automatically, but not annotation processor output.
+
+| Change type | Action needed |
+|---|---|
+| Controller, service, template, JS, CSS | Nothing — DevTools hot-reloads automatically |
+| `TaskMapper.java` (the interface) | Run `./mvnw compile` in a second terminal |
+| Added a new dependency to `pom.xml` | Restart the app (`Ctrl+C`, then `./mvnw spring-boot:run`) |
+
+**Two-terminal dev setup (recommended when actively editing mappers):**
+```bash
+# Terminal 1 — keep running
+./mvnw spring-boot:run
+
+# Terminal 2 — run after changing TaskMapper.java
+./mvnw compile
+```
+DevTools detects the new `.class` files from `target/` and automatically restarts the context.
 
 ### Available URLs
 

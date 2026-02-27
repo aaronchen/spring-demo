@@ -22,7 +22,7 @@
     <nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" th:href="@{/web/tasks}">
-                <i class="bi bi-hammer"></i> Spring Workshop
+                <i class="bi bi-hammer"></i> <span th:text="#{nav.brand}">Spring Workshop</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -30,7 +30,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/web/tasks}">Tasks</a>
+                        <a class="nav-link" th:href="@{/web/tasks}" th:text="#{nav.tasks}">Tasks</a>
                     </li>
                 </ul>
             </div>
@@ -40,7 +40,7 @@
     <!-- Footer Fragment -->
     <footer th:fragment="footer" class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
-            <span class="text-muted">Spring Workshop &copy; 2026 | Built with Spring Boot / Bootstrap / HTMX</span>
+            <span class="text-muted" th:text="#{footer.text}">Spring Workshop &copy; 2026 | Built with Spring Boot / Bootstrap / HTMX</span>
         </div>
     </footer>
 

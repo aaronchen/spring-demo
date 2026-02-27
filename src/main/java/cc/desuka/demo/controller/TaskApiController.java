@@ -1,6 +1,8 @@
 package cc.desuka.demo.controller;
 
-import cc.desuka.demo.model.Task;
+import cc.desuka.demo.dto.TaskRequest;
+import cc.desuka.demo.dto.TaskResponse;
+import cc.desuka.demo.mapper.TaskMapper;
 import cc.desuka.demo.service.TaskService;
 
 import jakarta.validation.Valid;
@@ -14,34 +16,36 @@ import java.util.List;
 public class TaskApiController {
 
   private final TaskService taskService;
+  private final TaskMapper taskMapper;
 
-  public TaskApiController(TaskService taskService) {
+  public TaskApiController(TaskService taskService, TaskMapper taskMapper) {
     this.taskService = taskService;
+    this.taskMapper = taskMapper;
   }
 
   // GET /api/tasks
   @GetMapping
-  public List<Task> getAllTasks() {
-    return taskService.getAllTasks();
+  public List<TaskResponse> getAllTasks() {
+    return taskMapper.toResponseList(taskService.getAllTasks());
   }
 
   // GET /api/tasks/5
   @GetMapping("/{id}")
-  public Task getTaskById(@PathVariable Long id) {
-    return taskService.getTaskById(id);
+  public TaskResponse getTaskById(@PathVariable Long id) {
+    return taskMapper.toResponse(taskService.getTaskById(id));
   }
 
   // POST /api/tasks
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public Task createTask(@Valid @RequestBody Task task) {
-    return taskService.createTask(task);
+  public TaskResponse createTask(@Valid @RequestBody TaskRequest request) {
+    return taskMapper.toResponse(taskService.createTask(taskMapper.toEntity(request)));
   }
 
   // PUT /api/tasks/5
   @PutMapping("/{id}")
-  public Task updateTask(@PathVariable Long id, @Valid @RequestBody Task task) {
-    return taskService.updateTask(id, task);
+  public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
+    return taskMapper.toResponse(taskService.updateTask(id, taskMapper.toEntity(request)));
   }
 
   // DELETE /api/tasks/5
@@ -53,19 +57,19 @@ public class TaskApiController {
 
   // GET /api/tasks/search?keyword=spring
   @GetMapping("/search")
-  public List<Task> searchTasks(@RequestParam String keyword) {
-    return taskService.searchTasks(keyword);
+  public List<TaskResponse> searchTasks(@RequestParam String keyword) {
+    return taskMapper.toResponseList(taskService.searchTasks(keyword));
   }
 
   // GET /api/tasks/incomplete
   @GetMapping("/incomplete")
-  public List<Task> getIncompleteTasks() {
-    return taskService.getIncompleteTasks();
+  public List<TaskResponse> getIncompleteTasks() {
+    return taskMapper.toResponseList(taskService.getIncompleteTasks());
   }
 
   // PATCH /api/tasks/5/toggle
   @PatchMapping("/{id}/toggle")
-  public Task toggleComplete(@PathVariable Long id) {
-    return taskService.toggleComplete(id);
+  public TaskResponse toggleComplete(@PathVariable Long id) {
+    return taskMapper.toResponse(taskService.toggleComplete(id));
   }
 }

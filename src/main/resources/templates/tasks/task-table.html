@@ -7,8 +7,8 @@
 
     <!-- Empty State -->
     <div th:if="${taskPage.isEmpty()}" class="alert alert-info text-center py-5">
-        <h4>No tasks found</h4>
-        <p class="mb-0">Try a different search term or create a new task.</p>
+        <h4 th:text="#{task.empty.heading}">No tasks found</h4>
+        <p class="mb-0" th:text="#{task.empty.body}">Try a different search term or create a new task.</p>
     </div>
 
     <!-- Content: top bar + table + bottom bar -->
@@ -27,13 +27,13 @@
                             data-sort-field="title"
                             th:attr="data-sort-dir=${nextDir}"
                             onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
-                            Title
+                            <span th:text="#{task.table.column.title}">Title</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
                         </th>
                         <!-- Status column -->
-                        <th style="white-space: nowrap;">Status</th>
+                        <th style="white-space: nowrap;" th:text="#{task.table.column.status}">Status</th>
                         <!-- Created column -->
                         <th th:with="ord=${taskPage.pageable.sort.getOrderFor('createdAt')},
                                      nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"
@@ -41,7 +41,7 @@
                             data-sort-field="createdAt"
                             th:attr="data-sort-dir=${nextDir}"
                             onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
-                            Created
+                            <span th:text="#{task.table.column.created}">Created</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
@@ -53,13 +53,13 @@
                             data-sort-field="description"
                             th:attr="data-sort-dir=${nextDir}"
                             onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
-                            Description
+                            <span th:text="#{task.table.column.description}">Description</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
                         </th>
                         <!-- Actions column -->
-                        <th style="white-space: nowrap;">Actions</th>
+                        <th style="white-space: nowrap;" th:text="#{task.table.column.actions}">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

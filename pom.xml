@@ -29,6 +29,7 @@
 	</scm>
 	<properties>
 		<java.version>25</java.version>
+		<mapstruct.version>1.6.3</mapstruct.version>
 	</properties>
 	<dependencies>
 
@@ -104,6 +105,13 @@
 			<version>2.0.4</version>
 		</dependency>
 		<!-- Bootstrap Icons: Downloaded locally to static/bootstrap-icons/ -->
+
+		<!-- MapStruct: compile-time mapping code generation -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${mapstruct.version}</version>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -113,9 +121,16 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<annotationProcessorPaths>
+						<!-- Lombok must come BEFORE MapStruct so its generated
+						     getters/setters are visible to the MapStruct processor -->
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
+						</path>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${mapstruct.version}</version>
 						</path>
 					</annotationProcessorPaths>
 				</configuration>

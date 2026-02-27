@@ -6,20 +6,20 @@
              th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
             <h5 class="mb-0" th:text="${task.title}">Task Title</h5>
             <span th:if="${task.completed}" class="badge bg-light text-success">
-                <i class="bi bi-check-circle-fill"></i> Completed
+                <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
             </span>
             <span th:if="${!task.completed}" class="badge bg-light text-warning">
-                <i class="bi bi-circle"></i> Pending
+                <i class="bi bi-circle"></i> <span th:text="#{task.status.pending}">Pending</span>
             </span>
         </div>
 
         <!-- Card Body -->
         <div class="card-body">
-            <p class="card-text" th:text="${task.description} ?: 'No description'">Description</p>
+            <p class="card-text" th:text="${task.description} ?: #{task.noDescription}">Description</p>
             <p class="card-text">
                 <small class="text-muted">
                     <i class="bi bi-calendar"></i>
-                    Created: <span th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</span>
+                    <span th:text="#{task.field.createdAt}">Created</span>: <span th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</span>
                 </small>
             </p>
         </div>
@@ -33,7 +33,7 @@
                         th:attr="hx-post=@{/web/tasks/{id}/toggle(id=${task.id})},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">
                     <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
-                    <span th:text="${task.completed ? 'Undo' : 'Complete'}">Toggle</span>
+                    <span th:text="${task.completed} ? #{task.card.toggle.undo} : #{task.card.toggle.complete}">Toggle</span>
                 </button>
 
                 <!-- Edit Button -->
@@ -42,7 +42,7 @@
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="btn btn-sm btn-outline-primary flex-fill">
-                    <i class="bi bi-pencil"></i> Edit
+                    <i class="bi bi-pencil"></i> <span th:text="#{action.editTask}">Edit</span>
                 </a>
 
                 <!-- Delete Button -->
@@ -51,7 +51,7 @@
                         data-bs-target="#task-delete-modal"
                         th:data-task-id="${task.id}"
                         th:data-task-title="${task.title}">
-                    <i class="bi bi-trash"></i> Delete
+                    <i class="bi bi-trash"></i> <span th:text="#{action.delete}">Delete</span>
                 </button>
             </div>
         </div>

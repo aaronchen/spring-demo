@@ -10,10 +10,9 @@
 
     <!-- Left: result count -->
     <div style="flex: 1">
-        <small class="text-muted">
-            Showing
-            <span th:text="${cp * taskPage.size + 1}">1</span>–<span th:text="${cp * taskPage.size + taskPage.numberOfElements}">25</span>
-            of <span th:text="${taskPage.totalElements}">300</span> tasks
+        <small class="text-muted"
+               th:text="#{pagination.showing(${cp * taskPage.size + 1}, ${cp * taskPage.size + taskPage.numberOfElements}, ${taskPage.totalElements})}">
+            Showing 1–25 of 300 tasks
         </small>
     </div>
 
@@ -59,10 +58,10 @@
         <select class="form-select form-select-sm page-size-select"
                 style="width: auto;"
                 onchange="onPageSizeChange(this.value)">
-            <option value="10">10 / page</option>
-            <option value="25">25 / page</option>
-            <option value="50">50 / page</option>
-            <option value="100">100 / page</option>
+            <option value="10" th:text="#{pagination.perPage(10)}">10 / page</option>
+            <option value="25" th:text="#{pagination.perPage(25)}">25 / page</option>
+            <option value="50" th:text="#{pagination.perPage(50)}">50 / page</option>
+            <option value="100" th:text="#{pagination.perPage(100)}">100 / page</option>
         </select>
     </div>
 

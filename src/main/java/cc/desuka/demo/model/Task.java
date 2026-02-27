@@ -19,12 +19,12 @@ public class Task {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @NotBlank(message = "Title is required")
-  @Size(min = 1, max = 100, message = "Title must be between 1 and 100 characters")
+  @NotBlank(message = "{task.title.notBlank}")
+  @Size(min = 1, max = 100, message = "{task.title.size}")
   @Column(nullable = false)
   private String title;
 
-  @Size(max = 500, message = "Description cannot exceed 500 characters")
+  @Size(max = 500, message = "{task.description.size}")
   private String description;
 
   private boolean completed = false;

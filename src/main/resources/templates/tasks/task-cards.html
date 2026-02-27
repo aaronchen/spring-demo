@@ -4,8 +4,8 @@
 
     <!-- Empty State -->
     <div th:if="${taskPage.isEmpty()}" class="alert alert-info text-center py-5">
-        <h4>No tasks found</h4>
-        <p class="mb-0">Try a different search term or create a new task.</p>
+        <h4 th:text="#{task.empty.heading}">No tasks found</h4>
+        <p class="mb-0" th:text="#{task.empty.body}">Try a different search term or create a new task.</p>
     </div>
 
     <!-- Content: top bar + cards + bottom bar -->

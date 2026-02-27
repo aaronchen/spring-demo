@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layouts/base :: head('Spring Workshop - Tasks', '/css/tasks.css')}"></head>
+<head th:replace="~{layouts/base :: head(#{page.title.tasks}, '/css/tasks.css')}"></head>
 <body class="d-flex flex-column min-vh-100">
 
     <!-- Navigation -->
@@ -12,12 +12,12 @@
             <div class="col-12">
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="display-4">Tasks</h1>
+                    <h1 class="display-4" th:text="#{task.list.heading}">Tasks</h1>
                     <button class="btn btn-primary btn-lg"
                             hx-get="/web/tasks/new"
                             hx-target="#task-modal-content"
                             hx-swap="innerHTML">
-                        <i class="bi bi-plus-circle"></i> New Task
+                        <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>
                     </button>
                 </div>
 
@@ -30,7 +30,7 @@
                         <input type="text"
                                id="search-input"
                                class="form-control"
-                               placeholder="Search tasks by title or description...">
+                               th:placeholder="#{task.search.placeholder}">
                         <input type="hidden" id="current-filter" value="all">
                     </div>
                 </div>
@@ -42,17 +42,17 @@
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-dark active fw-bold"
                                 id="filter-all">
-                            <i class="bi bi-list-ul"></i> All
+                            <i class="bi bi-list-ul"></i> <span th:text="#{task.filter.all}">All</span>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-success fw-bold"
                                 id="filter-completed">
-                            <i class="bi bi-check-circle-fill"></i> Completed
+                            <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.filter.completed}">Completed</span>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-warning fw-bold"
                                 id="filter-incomplete">
-                            <i class="bi bi-circle"></i> Pending
+                            <i class="bi bi-circle"></i> <span th:text="#{task.filter.pending}">Pending</span>
                         </button>
                     </div>
 
@@ -64,7 +64,7 @@
                                 data-bs-toggle="dropdown"
                                 data-bs-auto-close="outside"
                                 aria-expanded="false">
-                            <i class="bi bi-sort-down"></i> <span id="sort-label">Newest First</span>
+                            <i class="bi bi-sort-down"></i> <span id="sort-label" th:text="#{task.sort.newestFirst}">Newest First</span>
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="sortDropdown">
                             <li>
@@ -72,7 +72,7 @@
                                    data-sort-field="title" data-sort-dir="asc"
                                    onclick="toggleSort('title','asc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-alpha-down"></i> Title (A-Z)
+                                    <i class="bi bi-sort-alpha-down"></i> <span th:text="#{task.sort.title.asc}">Title (A-Z)</span>
                                 </a>
                             </li>
                             <li>
@@ -80,7 +80,7 @@
                                    data-sort-field="title" data-sort-dir="desc"
                                    onclick="toggleSort('title','desc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-alpha-up"></i> Title (Z-A)
+                                    <i class="bi bi-sort-alpha-up"></i> <span th:text="#{task.sort.title.desc}">Title (Z-A)</span>
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -89,7 +89,7 @@
                                    data-sort-field="createdAt" data-sort-dir="asc"
                                    onclick="toggleSort('createdAt','asc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-numeric-down"></i> Oldest First
+                                    <i class="bi bi-sort-numeric-down"></i> <span th:text="#{task.sort.createdAt.asc}">Oldest First</span>
                                 </a>
                             </li>
                             <li>
@@ -97,7 +97,7 @@
                                    data-sort-field="createdAt" data-sort-dir="desc"
                                    onclick="toggleSort('createdAt','desc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-numeric-up"></i> Newest First
+                                    <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.createdAt.desc}">Newest First</span>
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -106,7 +106,7 @@
                                    data-sort-field="description" data-sort-dir="asc"
                                    onclick="toggleSort('description','asc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-alpha-down"></i> Description (A-Z)
+                                    <i class="bi bi-sort-alpha-down"></i> <span th:text="#{task.sort.description.asc}">Description (A-Z)</span>
                                 </a>
                             </li>
                             <li>
@@ -114,7 +114,7 @@
                                    data-sort-field="description" data-sort-dir="desc"
                                    onclick="toggleSort('description','desc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
-                                    <i class="bi bi-sort-alpha-up"></i> Description (Z-A)
+                                    <i class="bi bi-sort-alpha-up"></i> <span th:text="#{task.sort.description.desc}">Description (Z-A)</span>
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -122,7 +122,7 @@
                                 <a class="dropdown-item d-flex align-items-center gap-2" href="#"
                                    onclick="resetSort(); return false;">
                                     <i class="bi bi-check-lg" style="visibility: hidden;"></i>
-                                    <i class="bi bi-arrow-counterclockwise"></i> Default
+                                    <i class="bi bi-arrow-counterclockwise"></i> <span th:text="#{task.sort.default}">Default</span>
                                 </a>
                             </li>
                         </ul>
@@ -174,21 +174,21 @@
             <div class="modal-content">
                 <div class="modal-header bg-danger text-white">
                     <h5 class="modal-title">
-                        <i class="bi bi-exclamation-triangle"></i> Confirm Delete
+                        <i class="bi bi-exclamation-triangle"></i> <span th:text="#{task.delete.title}">Confirm Delete</span>
                     </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this task?</p>
+                    <p th:text="#{task.delete.confirm}">Are you sure you want to delete this task?</p>
                     <p id="task-delete-modal-title" class="fw-bold"></p>
-                    <p class="text-muted small">This action cannot be undone.</p>
+                    <p class="text-muted small" th:text="#{task.delete.warning}">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle"></i> Cancel
+                        <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
                     </button>
                     <button id="delete-confirm-btn" class="btn btn-danger" hx-swap="none" data-bs-dismiss="modal">
-                        <i class="bi bi-trash"></i> Delete
+                        <i class="bi bi-trash"></i> <span th:text="#{action.delete}">Delete</span>
                     </button>
                 </div>
             </div>

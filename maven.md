@@ -112,12 +112,30 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 #    (DevTools auto-restarts for most changes, but not for pom.xml changes)
 ./mvnw spring-boot:run
 
-# 3. Before committing code:
+# 3. After changing a MapStruct mapper interface (e.g. TaskMapper.java):
+#    Run in a second terminal while the app is still running.
+#    DevTools detects the new .class and hot-reloads automatically.
+./mvnw compile
+
+# 4. Before committing code:
 ./mvnw clean test
 
-# 4. To create a deployable JAR:
+# 5. To create a deployable JAR:
 ./mvnw clean package
 ```
+
+## Two-Terminal Dev Setup (MapStruct projects)
+
+```bash
+# Terminal 1 — keep running
+./mvnw spring-boot:run
+
+# Terminal 2 — only needed after changing a mapper interface
+./mvnw compile
+```
+
+Most code changes (controllers, services, templates, JS, CSS) are handled by DevTools automatically.
+Only mapper interface changes require a manual `./mvnw compile`.
 
 ## Project Dependencies (Current)
 
@@ -132,5 +150,6 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 | spring-boot-devtools | Auto-restart during development |
 | h2 | In-memory database |
 | lombok | Reduce boilerplate (getters/setters) |
+| mapstruct | Compile-time DTO mapping code generation |
 | bootstrap (WebJar) | CSS framework |
 | htmx.org (WebJar) | Reactive HTML updates |

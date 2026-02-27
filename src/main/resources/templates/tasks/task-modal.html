@@ -3,7 +3,7 @@
 <div class="modal-header" xmlns:th="http://www.thymeleaf.org">
     <h5 class="modal-title">
         <i th:class="${isEdit} ? 'bi bi-pencil-square' : 'bi bi-plus-circle'"></i>
-        <span th:text="${isEdit} ? 'Edit Task' : 'New Task'">Task</span>
+        <span th:text="${isEdit} ? #{task.edit.heading} : #{action.newTask}">Task</span>
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
@@ -18,11 +18,11 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle"></i> Cancel
+            <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
         </button>
         <button type="submit" class="btn btn-primary">
             <i th:class="${isEdit} ? 'bi bi-save' : 'bi bi-plus-circle'"></i>
-            <span th:text="${isEdit} ? 'Update Task' : 'Create Task'">Submit</span>
+            <span th:text="${isEdit} ? #{action.updateTask} : #{action.createTask}">Submit</span>
         </button>
     </div>
 </form>

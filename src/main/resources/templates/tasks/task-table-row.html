@@ -18,17 +18,17 @@
     </td>
     <td style="white-space: nowrap;">
         <span th:if="${task.completed}" class="badge bg-success">
-            <i class="bi bi-check-circle-fill"></i> Completed
+            <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
         </span>
         <span th:if="${!task.completed}" class="badge bg-warning text-dark">
-            <i class="bi bi-circle"></i> Pending
+            <i class="bi bi-circle"></i> <span th:text="#{task.status.pending}">Pending</span>
         </span>
     </td>
     <td style="white-space: nowrap;">
         <small class="text-muted" th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</small>
     </td>
     <td class="text-truncate" style="max-width: 280px;">
-        <span class="text-muted small" th:text="${task.description} ?: 'No description'">Description</span>
+        <span class="text-muted small" th:text="${task.description} ?: #{task.noDescription}">Description</span>
     </td>
     <td>
         <div class="btn-group btn-group-sm">
@@ -36,7 +36,7 @@
             <button th:class="${task.completed ? 'btn btn-outline-warning' : 'btn btn-outline-success'}"
                     th:attr="hx-post=@{/web/tasks/{id}/toggle(id=${task.id}, view='table')},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
-                    th:title="${task.completed ? 'Mark as pending' : 'Mark as complete'}">
+                    th:title="${task.completed} ? #{task.table.toggle.markPending} : #{task.table.toggle.markComplete}">
                 <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
             </button>
             <!-- Edit Button -->
