@@ -35,6 +35,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Split JS: `utils.js` (global) + `tasks.js` (page-specific)
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
+- Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
 - Hot reload with Spring DevTools
 
 ## Getting Started
@@ -176,11 +177,15 @@ Data is lost on restart (in-memory, by design).
 spring-demo/
 ├── src/main/
 │   ├── java/cc/desuka/demo/
+│   │   ├── config/
+│   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
+│   │   │   └── GlobalModelAttributes.java   # @ControllerAdvice: injects appRoutes into all Thymeleaf models
 │   │   ├── controller/
 │   │   │   ├── api/
 │   │   │   │   ├── TagApiController.java    # Tag REST API
 │   │   │   │   ├── TaskApiController.java   # Task REST API (uses DTOs)
 │   │   │   │   └── UserApiController.java   # User REST API
+│   │   │   ├── FrontendConfigController.java # Serves /config.js with APP_CONFIG routes
 │   │   │   ├── HomeController.java          # Home page (GET /)
 │   │   │   └── TaskController.java          # Task web UI
 │   │   ├── dto/
@@ -217,8 +222,8 @@ spring-demo/
 │       │   │   ├── base.css            # Global styles
 │       │   │   └── tasks.css           # Task page styles
 │       │   ├── js/
-│       │   │   ├── utils.js            # Shared utilities (cookies)
-│       │   │   └── tasks.js            # Task list page logic
+│       │   │   ├── utils.js            # Shared utilities (cookies); loaded globally
+│       │   │   └── tasks.js            # Task list page logic; reads APP_CONFIG.routes
 │       │   └── bootstrap-icons/
 │       ├── templates/
 │       │   ├── layouts/
@@ -233,6 +238,8 @@ spring-demo/
 │       │       ├── task-table.html     # Table grid fragment
 │       │       ├── task-table-row.html # Single table row fragment
 │       │       └── task-pagination.html
+│       ├── META-INF/
+│       │   └── additional-spring-configuration-metadata.json  # IDE autocomplete for app.routes.*
 │       ├── messages.properties         # UI display strings (#{key} in Thymeleaf)
 │       ├── ValidationMessages.properties # Bean Validation error messages ({key} in annotations)
 │       └── application.properties

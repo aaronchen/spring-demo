@@ -10,7 +10,7 @@
     th:classappend="${task.completed ? 'table-success' : ''}">
     <td>
         <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
-           th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
+           th:attr="hx-get=${appRoutes.tasks + '/' + task.id + '/edit'}"
            hx-target="#task-modal-content"
            hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
@@ -41,14 +41,14 @@
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
             <button th:class="${task.completed ? 'btn btn-outline-warning' : 'btn btn-outline-success'}"
-                    th:attr="hx-post=@{/tasks/{id}/toggle(id=${task.id}, view='table')},hx-target='#task-row-' + ${task.id}"
+                    th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
                     th:title="${task.completed} ? #{action.toggle.markPending} : #{action.toggle.markComplete}">
                 <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
             </button>
             <!-- Edit Button -->
             <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
-               th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
+               th:attr="hx-get=${appRoutes.tasks + '/' + task.id + '/edit'}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="btn btn-outline-primary"

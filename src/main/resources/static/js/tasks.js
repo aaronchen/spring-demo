@@ -13,6 +13,7 @@ let activeSorts = [{field: 'createdAt', direction: 'desc'}];
 let currentPage = 0;
 let pageSize = parseInt(getCookie('pageSize') || '25');
 let currentView = 'cards';
+const TASKS_BASE = APP_CONFIG.routes.tasks;
 
 // Build the URL for the current state
 function buildUrl(page) {
@@ -25,7 +26,7 @@ function buildUrl(page) {
     params.set('size', pageSize);
     if (page > 0) params.set('page', page);
     if (currentView !== 'cards') params.set('view', currentView);
-    return `/tasks?${params.toString()}`;
+    return `${TASKS_BASE}?${params.toString()}`;
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
@@ -213,7 +214,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = e.relatedTarget;
         document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
         const confirmBtn = document.getElementById('delete-confirm-btn');
-        confirmBtn.setAttribute('hx-post', '/tasks/' + btn.dataset.taskId + '/delete');
+        confirmBtn.setAttribute('hx-post', `${TASKS_BASE}/${btn.dataset.taskId}/delete`);
         htmx.process(confirmBtn);
     });
 

@@ -146,6 +146,22 @@ The application provides **two interfaces** for the same backend:
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
   - Injects `UserService` and `TagService`; adds `users` and `tags` lists to all form-serving methods
 
+- `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
+  - `@RestController` producing `application/javascript`
+  - Reads `AppRoutesProperties` and emits `window.APP_CONFIG = { routes: { tasks, api } };`
+  - `escapeJs()` helper sanitizes property values before embedding in JS output
+  - Loaded by the `scripts` fragment on every page; `APP_CONFIG` is available globally to all page scripts
+
+#### Configuration
+
+- `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
+  - Fields: `tasks` (default `/tasks`), `api` (default `/api`)
+  - Single source of truth for the two base paths used by both Thymeleaf templates and frontend JS
+
+- `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects `appRoutes` into every Thymeleaf model
+  - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
+  - Used by HTMX attributes (`th:attr="hx-get=${appRoutes.tasks + ...}"`) where `@{}` URL syntax cannot be used
+
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
@@ -164,7 +180,7 @@ The application provides **two interfaces** for the same backend:
   - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS
   - `navbar` - navigation bar
   - `footer` - footer
-  - `scripts` - Bootstrap + HTMX + `utils.js`
+  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
 
 #### Task Views
 - `templates/tasks/tasks.html` - Main task list page
@@ -210,7 +226,7 @@ The application provides **two interfaces** for the same backend:
 - `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator)
 - `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides, search clear button overlay)
 - `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); loaded globally via base layout
-- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`
+- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`; reads `APP_CONFIG.routes.tasks` for URL construction
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
 ### Resource Files
@@ -225,6 +241,11 @@ The application provides **two interfaces** for the same backend:
     - `task.*` — everything specific to the Task feature (`task.field.*`, `task.sort.*`, `task.filter.*`, `task.table.column.*`, `task.view.*`, `task.search.*`, ...)
     - `tag.*` — Tag feature strings (`tag.field.*`)
     - `user.*` — User feature strings (`user.field.*`)
+
+- `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom properties
+  - Provides descriptions and types for `app.routes.tasks` and `app.routes.api`
+  - Enables autocomplete and documentation in IntelliJ / VS Code for `application.properties`
+  - No runtime effect — purely a developer-experience file
 
 - `resources/ValidationMessages.properties` - Bean Validation error messages
   - Used by Hibernate Validator for `@NotBlank`, `@Size`, `@NotNull`, etc.
@@ -375,6 +396,34 @@ document.getElementById('task-delete-modal').addEventListener('show.bs.modal', f
 ```
 Delete buttons carry `data-task-id` and `data-task-title` attributes.
 
+### Frontend Route Configuration Pattern
+
+Route base paths are defined once in `application.properties` and flow to two consumers:
+
+**Thymeleaf templates** — via `GlobalModelAttributes` which exposes `appRoutes` as a model attribute on every request:
+```html
+<!-- Use @{} for th:href and th:action — it's context-path-aware -->
+<a th:href="@{/tasks}">Tasks</a>
+<a th:href="@{/tasks/{id}/edit(id=${task.id})}">Edit</a>
+<form th:action="${isEdit} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}">
+
+<!-- Use ${appRoutes.tasks + ...} only for HTMX th:attr — @{} doesn't work there -->
+<button th:attr="hx-get=${appRoutes.tasks + '/new'}">New</button>
+<button th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle'}">Toggle</button>
+```
+
+**JavaScript** — via `FrontendConfigController` which serves `/config.js`, loaded before all page scripts:
+```js
+// In the browser after /config.js loads:
+window.APP_CONFIG = { routes: { tasks: '/tasks', api: '/api' } };
+
+// Page scripts read it as a plain global:
+const TASKS_BASE = APP_CONFIG.routes.tasks;
+htmx.ajax('GET', `${TASKS_BASE}?${params}`, ...);
+```
+
+**Key rule:** use `@{}` for `th:href` / `th:action` — it adds the server's context path automatically. Use `${appRoutes.tasks + ...}` only where `@{}` cannot be used (HTMX `th:attr` values). Never use `${appRoutes.tasks}` inside a `th:href` — it bypasses context-path handling.
+
 ### Constructor Injection Pattern
 
 Always use constructor injection:
@@ -437,6 +486,8 @@ spring.h2.console.enabled=true
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 ```
+
+`app.routes.*` properties are **not** listed here — their defaults live in `AppRoutesProperties.java` (the single source of truth). Only add them to `application.properties` when overriding the defaults.
 
 ### Maven Dependencies (pom.xml)
 
