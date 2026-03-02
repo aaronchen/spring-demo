@@ -9,8 +9,9 @@
     th:id="'task-row-' + ${task.id}"
     th:classappend="${task.completed ? 'table-success' : ''}">
     <td>
-        <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
-           th:attr="hx-get=${appRoutes.tasks + '/' + task.id + '/edit'}"
+        <!-- Unassigned → edit mode (no owner); assigned → view mode (owner check comes with Spring Security) -->
+        <a th:href="${task.user == null} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+           th:attr="hx-get=${task.user == null ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
            hx-target="#task-modal-content"
            hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
@@ -46,14 +47,14 @@
                     th:title="${task.completed} ? #{action.toggle.markPending} : #{action.toggle.markComplete}">
                 <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
             </button>
-            <!-- Edit Button -->
-            <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
-               th:attr="hx-get=${appRoutes.tasks + '/' + task.id + '/edit'}"
+            <!-- View/Edit Button — unassigned tasks open in edit mode, assigned in view mode -->
+            <a th:href="${task.user == null} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+               th:attr="hx-get=${task.user == null ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="btn btn-outline-primary"
-               title="Edit">
-                <i class="bi bi-pencil"></i>
+               th:title="${task.user == null} ? #{action.editTask} : #{action.viewTask}">
+                <i th:class="${task.user == null} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
             </a>
             <!-- Delete Button -->
             <button class="btn btn-outline-danger"

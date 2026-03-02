@@ -1,17 +1,20 @@
 <!-- Shared form fields fragment — included by task.html (full page) and task-modal.html (HTMX modal).
-     th:object must be set on the enclosing <form> in the including template. -->
+     th:object must be set on the enclosing <form> in the including template.
+     mode='view' disables all fields for read-only display; the layout is otherwise identical. -->
 <th:block th:fragment="fields" xmlns:th="http://www.thymeleaf.org">
 
     <!-- Title Field -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold">
-            <span th:text="#{task.field.title}">Title</span> <span class="text-danger">*</span>
+            <span th:text="#{task.field.title}">Title</span>
+            <span class="text-danger" th:if="${mode != 'view'}">*</span>
         </label>
         <input type="text"
                th:field="*{title}"
                class="form-control"
                th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
-               th:placeholder="#{task.field.title.placeholder}">
+               th:placeholder="#{task.field.title.placeholder}"
+               th:disabled="${mode == 'view'}">
         <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
             Title error
         </div>
@@ -24,7 +27,8 @@
                   class="form-control"
                   th:classappend="${#fields.hasErrors('description')} ? 'is-invalid' : ''"
                   rows="4"
-                  th:placeholder="#{task.field.description.placeholder}"></textarea>
+                  th:placeholder="#{task.field.description.placeholder}"
+                  th:disabled="${mode == 'view'}"></textarea>
         <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">
             Description error
         </div>
@@ -35,7 +39,7 @@
     <!-- Contrast with tag checkboxes below (@ManyToMany — multiple tags allowed). -->
     <div class="mb-3" th:if="${users != null}">
         <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <select id="userId" name="userId" class="form-select">
+        <select id="userId" name="userId" class="form-select" th:disabled="${mode == 'view'}">
             <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
             <option th:each="u : ${users}"
                     th:value="${u.id}"
@@ -55,16 +59,19 @@
                        th:id="'tag-' + ${tag.id}"
                        name="tagIds"
                        th:value="${tag.id}"
-                       th:checked="${task.tags != null && task.tags.contains(tag)}">
+                       th:checked="${task.tags != null && task.tags.contains(tag)}"
+                       th:disabled="${mode == 'view'}">
                 <label class="form-check-label" th:for="'tag-' + ${tag.id}" th:text="${tag.name}">Tag</label>
             </div>
         </div>
     </div>
 
-    <!-- Completed Checkbox (Edit Mode Only) -->
-    <div th:if="${isEdit}">
+    <!-- Completed Toggle — shown in edit and view mode, hidden on create -->
+    <div th:if="${mode != 'create'}">
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="completed" th:field="*{completed}">
+            <input class="form-check-input" type="checkbox" id="completed"
+                   th:field="*{completed}"
+                   th:disabled="${mode == 'view'}">
             <label class="form-check-label" for="completed">
                 <strong th:text="#{action.markAsCompleted}">Mark as completed</strong>
             </label>

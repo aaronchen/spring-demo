@@ -62,11 +62,25 @@ public class TaskController {
     return "tasks/tasks";
   }
 
+  // GET /tasks/{id} - Show task in view (read-only) mode
+  @GetMapping("/{id}")
+  public String showTask(@PathVariable Long id, Model model, HttpServletRequest request) {
+    Task task = taskService.getTaskById(id);
+    model.addAttribute("task", task);
+    model.addAttribute("mode", "view");
+    model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
+    if (HtmxUtils.isHtmxRequest(request)) {
+      return "tasks/task-modal";
+    }
+    return "tasks/task";
+  }
+
   // GET /tasks/new - Show create form (full page or modal fragment)
   @GetMapping("/new")
   public String showCreateForm(Model model, HttpServletRequest request) {
     model.addAttribute("task", new Task());
-    model.addAttribute("isEdit", false);
+    model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
     model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
@@ -85,7 +99,7 @@ public class TaskController {
       @RequestParam(required = false) Long userId,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
-      model.addAttribute("isEdit", false);
+      model.addAttribute("mode", "create");
       model.addAttribute("tags", tagService.getAllTags());
       model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
@@ -93,11 +107,11 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    taskService.createTask(task, tagIds, userId);
+    Task created = taskService.createTask(task, tagIds, userId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
-    return new RedirectView("/tasks");
+    return new RedirectView("/tasks/" + created.getId());
   }
 
   // GET /tasks/{id}/edit - Show edit form (full page or modal fragment)
@@ -105,7 +119,7 @@ public class TaskController {
   public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest request) {
     Task task = taskService.getTaskById(id);
     model.addAttribute("task", task);
-    model.addAttribute("isEdit", true);
+    model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
     model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
@@ -125,7 +139,7 @@ public class TaskController {
       @RequestParam(required = false) Long userId,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
-      model.addAttribute("isEdit", true);
+      model.addAttribute("mode", "edit");
       model.addAttribute("tags", tagService.getAllTags());
       model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
@@ -137,7 +151,7 @@ public class TaskController {
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
-    return new RedirectView("/tasks");
+    return new RedirectView("/tasks/" + id);
   }
 
   // POST /tasks/{id}/delete - Delete task

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.error.500}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 d-flex align-items-center justify-content-center">
+        <div class="text-center py-5">
+            <div class="display-1 fw-bold text-muted">500</div>
+            <h2 class="mb-3" th:text="#{error.500.heading}">Internal Server Error</h2>
+            <p class="text-muted mb-4" th:text="#{error.500.message}">
+                An unexpected error occurred. Please try again later.
+            </p>
+            <a th:href="@{/}" class="btn btn-primary">
+                <i class="bi bi-house"></i> <span th:text="#{error.goHome}">Go Home</span>
+            </a>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+</body>
+</html>

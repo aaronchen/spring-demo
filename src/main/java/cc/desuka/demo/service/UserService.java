@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
@@ -25,7 +26,7 @@ public class UserService {
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("User", id));
     }
 
     public User createUser(User user) {
