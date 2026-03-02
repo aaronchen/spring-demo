@@ -1,7 +1,11 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
+import cc.desuka.demo.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -13,9 +17,13 @@ import java.util.List;
 public class DataLoader implements CommandLineRunner {
 
   private final TaskRepository taskRepository;
+  private final TagRepository tagRepository;
+  private final UserRepository userRepository;
 
-  public DataLoader(TaskRepository taskRepository) {
+  public DataLoader(TaskRepository taskRepository, TagRepository tagRepository, UserRepository userRepository) {
     this.taskRepository = taskRepository;
+    this.tagRepository = tagRepository;
+    this.userRepository = userRepository;
   }
 
   @Override
@@ -418,9 +426,111 @@ public class DataLoader implements CommandLineRunner {
         seedTask("Document API versioning strategy", "Define version lifecycle policy and deprecation timeline.", true, 120)
     ));
 
+    // Seed 50 users — saved first so tasks can reference them.
+    // Diverse names; emails follow firstname.lastname@example.com.
+    List<User> users = userRepository.saveAll(List.of(
+        new User("Alice Johnson", "alice.johnson@example.com"),
+        new User("Bob Smith", "bob.smith@example.com"),
+        new User("Carol Williams", "carol.williams@example.com"),
+        new User("David Brown", "david.brown@example.com"),
+        new User("Eva Martinez", "eva.martinez@example.com"),
+        new User("Frank Lee", "frank.lee@example.com"),
+        new User("Grace Kim", "grace.kim@example.com"),
+        new User("Henry Davis", "henry.davis@example.com"),
+        new User("Isabel Garcia", "isabel.garcia@example.com"),
+        new User("James Wilson", "james.wilson@example.com"),
+        new User("Karen Chen", "karen.chen@example.com"),
+        new User("Liam Taylor", "liam.taylor@example.com"),
+        new User("Mia Anderson", "mia.anderson@example.com"),
+        new User("Noah Thomas", "noah.thomas@example.com"),
+        new User("Olivia Jackson", "olivia.jackson@example.com"),
+        new User("Patrick White", "patrick.white@example.com"),
+        new User("Quinn Harris", "quinn.harris@example.com"),
+        new User("Rachel Martin", "rachel.martin@example.com"),
+        new User("Samuel Thompson", "samuel.thompson@example.com"),
+        new User("Tina Garcia", "tina.garcia@example.com"),
+        new User("Uma Patel", "uma.patel@example.com"),
+        new User("Victor Nguyen", "victor.nguyen@example.com"),
+        new User("Wendy Clark", "wendy.clark@example.com"),
+        new User("Xavier Lewis", "xavier.lewis@example.com"),
+        new User("Yara Robinson", "yara.robinson@example.com"),
+        new User("Zane Walker", "zane.walker@example.com"),
+        new User("Amber Hall", "amber.hall@example.com"),
+        new User("Blake Allen", "blake.allen@example.com"),
+        new User("Chloe Young", "chloe.young@example.com"),
+        new User("Derek Hernandez", "derek.hernandez@example.com"),
+        new User("Elena King", "elena.king@example.com"),
+        new User("Felix Wright", "felix.wright@example.com"),
+        new User("Gabriela Lopez", "gabriela.lopez@example.com"),
+        new User("Hugo Scott", "hugo.scott@example.com"),
+        new User("Iris Green", "iris.green@example.com"),
+        new User("Julian Adams", "julian.adams@example.com"),
+        new User("Kira Baker", "kira.baker@example.com"),
+        new User("Lucas Gonzalez", "lucas.gonzalez@example.com"),
+        new User("Maya Nelson", "maya.nelson@example.com"),
+        new User("Nathan Carter", "nathan.carter@example.com"),
+        new User("Opal Mitchell", "opal.mitchell@example.com"),
+        new User("Pedro Perez", "pedro.perez@example.com"),
+        new User("Rosa Roberts", "rosa.roberts@example.com"),
+        new User("Sean Turner", "sean.turner@example.com"),
+        new User("Tara Phillips", "tara.phillips@example.com"),
+        new User("Ulrich Campbell", "ulrich.campbell@example.com"),
+        new User("Vera Parker", "vera.parker@example.com"),
+        new User("Walter Evans", "walter.evans@example.com"),
+        new User("Xena Edwards", "xena.edwards@example.com"),
+        new User("Yusuf Collins", "yusuf.collins@example.com")
+    ));
+
+    // Seed tags — three orthogonal dimensions so combinations feel natural:
+    //   domain  (Work / Personal / Home)
+    //   priority (Urgent / Someday)
+    //   type     (Meeting / Research / Errand)
+    // A task tagged "Work + Urgent + Meeting" or "Personal + Errand" reads like real data.
+    List<Tag> tags = tagRepository.saveAll(List.of(
+        new Tag("Work"),
+        new Tag("Personal"),
+        new Tag("Home"),
+        new Tag("Urgent"),
+        new Tag("Someday"),
+        new Tag("Meeting"),
+        new Tag("Research"),
+        new Tag("Errand")
+    ));
+
+    // Tags are split into three orthogonal dimensions by index:
+    //   domain   → indices 0-2: Work, Personal, Home
+    //   priority → indices 3-4: Urgent, Someday
+    //   type     → indices 5-7: Meeting, Research, Errand
+    //
+    // Each task gets a domain tag (always), then optionally a priority and/or type tag,
+    // producing natural combinations like "Work + Urgent + Meeting" or "Home + Errand".
+    // Every 7th task gets no tags — demonstrates the empty join table case.
+    List<Tag> domain   = tags.subList(0, 3); // Work, Personal, Home
+    List<Tag> priority = tags.subList(3, 5); // Urgent, Someday
+    List<Tag> type     = tags.subList(5, 8); // Meeting, Research, Errand
+
+    for (int i = 0; i < tasks.size(); i++) {
+      if (i % 7 == 6) continue; // ~14% of tasks get no tags
+      List<Tag> taskTags = new ArrayList<>();
+      taskTags.add(domain.get(i % domain.size()));           // always a domain
+      if (i % 3 != 0) taskTags.add(priority.get(i % priority.size())); // ~67% get a priority
+      if (i % 2 == 0) taskTags.add(type.get(i % type.size()));         // ~50% get a type
+      tasks.get(i).setTags(taskTags);
+    }
+
+    // Assign users to tasks — ~80% assigned, every 5th task unassigned.
+    // Demonstrates nullable @ManyToOne: some tasks have no owner.
+    for (int i = 0; i < tasks.size(); i++) {
+      if (i % 5 != 4) {
+        tasks.get(i).setUser(users.get(i % users.size()));
+      }
+    }
+
     taskRepository.saveAll(tasks);
 
-    System.out.println("Seed data loaded: " + taskRepository.count() + " tasks.");
+    System.out.println("Seed data loaded: " + userRepository.count() + " users, "
+        + tagRepository.count() + " tags, "
+        + taskRepository.count() + " tasks.");
   }
 
   private Task seedTask(String title, String description, boolean completed, int daysAgo) {

@@ -2,7 +2,9 @@ package cc.desuka.demo.controller;
 
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskFilter;
+import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -17,17 +19,23 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.util.List;
+
 @Controller
-@RequestMapping("/web/tasks")
-public class TaskWebController {
+@RequestMapping("/tasks")
+public class TaskController {
 
   private final TaskService taskService;
+  private final TagService tagService;
+  private final UserService userService;
 
-  public TaskWebController(TaskService taskService) {
+  public TaskController(TaskService taskService, TagService tagService, UserService userService) {
     this.taskService = taskService;
+    this.tagService = tagService;
+    this.userService = userService;
   }
 
-  // GET /web/tasks - Display task list (full page or HTMX fragment)
+  // GET /tasks - Display task list (full page or HTMX fragment)
   @GetMapping
   public String listTasks(
       @RequestParam(required = false, defaultValue = "") String search,
@@ -54,69 +62,85 @@ public class TaskWebController {
     return "tasks/tasks";
   }
 
-  // GET /web/tasks/new - Show create form (full page or modal fragment)
+  // GET /tasks/new - Show create form (full page or modal fragment)
   @GetMapping("/new")
   public String showCreateForm(Model model, HttpServletRequest request) {
     model.addAttribute("task", new Task());
     model.addAttribute("isEdit", false);
+    model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
     return "tasks/task";
   }
 
-  // POST /web/tasks - Create new task
+  // POST /tasks - Create new task
+  // tagIds: list of selected tag IDs from form checkboxes. null when no checkbox is checked.
+  // userId: selected user ID from dropdown. null when "Unassigned" is selected.
   @PostMapping
   public Object createTask(
       @Valid @ModelAttribute Task task, BindingResult result,
+      @RequestParam(required = false) List<Long> tagIds,
+      @RequestParam(required = false) Long userId,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
       model.addAttribute("isEdit", false);
+      model.addAttribute("tags", tagService.getAllTags());
+      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }
       return "tasks/task";
     }
-    taskService.createTask(task);
+    taskService.createTask(task, tagIds, userId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
-    return new RedirectView("/web/tasks");
+    return new RedirectView("/tasks");
   }
 
-  // GET /web/tasks/{id}/edit - Show edit form (full page or modal fragment)
+  // GET /tasks/{id}/edit - Show edit form (full page or modal fragment)
   @GetMapping("/{id}/edit")
   public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest request) {
     Task task = taskService.getTaskById(id);
     model.addAttribute("task", task);
     model.addAttribute("isEdit", true);
+    model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
     return "tasks/task";
   }
 
-  // POST /web/tasks/{id} - Update task
+  // POST /tasks/{id} - Update task
+  // tagIds: null when no checkboxes are checked — means remove all tags from this task.
+  // userId: null when "Unassigned" is selected — means remove the user assignment.
   @PostMapping("/{id}")
   public Object updateTask(
       @PathVariable Long id,
       @Valid @ModelAttribute Task task, BindingResult result,
+      @RequestParam(required = false) List<Long> tagIds,
+      @RequestParam(required = false) Long userId,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
       model.addAttribute("isEdit", true);
+      model.addAttribute("tags", tagService.getAllTags());
+      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }
       return "tasks/task";
     }
-    taskService.updateTask(id, task);
+    taskService.updateTask(id, task, tagIds, userId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
-    return new RedirectView("/web/tasks");
+    return new RedirectView("/tasks");
   }
 
-  // POST /web/tasks/{id}/delete - Delete task
+  // POST /tasks/{id}/delete - Delete task
   @PostMapping("/{id}/delete")
   public Object deleteTask(@PathVariable Long id, HttpServletRequest request, Model model) {
     taskService.deleteTask(id);
@@ -124,10 +148,10 @@ public class TaskWebController {
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskDeleted");
     }
-    return new RedirectView("/web/tasks");
+    return new RedirectView("/tasks");
   }
 
-  // POST /web/tasks/{id}/toggle - Toggle completion
+  // POST /tasks/{id}/toggle - Toggle completion
   @PostMapping("/{id}/toggle")
   public String toggleComplete(
       @PathVariable Long id,
@@ -140,6 +164,6 @@ public class TaskWebController {
       model.addAttribute("task", task);
       return "table".equals(view) ? "tasks/task-table-row :: row" : "tasks/task-card :: card";
     }
-    return "redirect:/web/tasks";
+    return "redirect:/tasks";
   }
 }

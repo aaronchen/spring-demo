@@ -30,6 +30,37 @@
         </div>
     </div>
 
+    <!-- User Assignment -->
+    <!-- Single <select> because @ManyToOne — one task belongs to one user.       -->
+    <!-- Contrast with tag checkboxes below (@ManyToMany — multiple tags allowed). -->
+    <div class="mb-3" th:if="${users != null}">
+        <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
+        <select id="userId" name="userId" class="form-select">
+            <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
+            <option th:each="u : ${users}"
+                    th:value="${u.id}"
+                    th:text="${u.name}"
+                    th:selected="${task.user != null && task.user.id == u.id}">
+            </option>
+        </select>
+    </div>
+
+    <!-- Tag Checkboxes -->
+    <!-- tags list is added to the model by the web controller for all form pages -->
+    <div class="mb-3" th:if="${tags != null}">
+        <label class="form-label fw-bold" th:text="#{task.field.tags}">Tags</label>
+        <div class="d-flex flex-wrap gap-2">
+            <div th:each="tag : ${tags}" class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox"
+                       th:id="'tag-' + ${tag.id}"
+                       name="tagIds"
+                       th:value="${tag.id}"
+                       th:checked="${task.tags != null && task.tags.contains(tag)}">
+                <label class="form-check-label" th:for="'tag-' + ${tag.id}" th:text="${tag.name}">Tag</label>
+            </div>
+        </div>
+    </div>
+
     <!-- Completed Checkbox (Edit Mode Only) -->
     <div th:if="${isEdit}">
         <div class="form-check form-switch">

@@ -16,12 +16,22 @@
         <!-- Card Body -->
         <div class="card-body">
             <p class="card-text" th:text="${task.description} ?: #{task.noDescription}">Description</p>
-            <p class="card-text">
+            <p class="card-text mt-1 mb-0">
                 <small class="text-muted">
-                    <i class="bi bi-calendar"></i>
-                    <span th:text="#{task.field.createdAt}">Created</span>: <span th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</span>
+                    <span th:if="${task.user != null}" class="d-block">
+                        <i class="bi bi-person"></i> <span th:text="${task.user.name}">User</span>
+                    </span>
+                    <span class="d-block">
+                        <i class="bi bi-calendar"></i>
+                        <span th:text="#{task.field.createdAt}">Created</span>: <span th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</span>
+                    </span>
                 </small>
             </p>
+            <div th:if="${task.tags != null && !task.tags.isEmpty()}" class="mt-2">
+                <span th:each="tag : ${task.tags}" class="badge bg-secondary me-1">
+                    <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
+                </span>
+            </div>
         </div>
 
         <!-- Card Footer -->
@@ -30,15 +40,15 @@
                 <!-- Toggle Button (HTMX - swaps this card without page reload) -->
                 <button class="btn btn-sm flex-fill"
                         th:classappend="${task.completed ? 'btn-outline-warning' : 'btn-outline-success'}"
-                        th:attr="hx-post=@{/web/tasks/{id}/toggle(id=${task.id})},hx-target='#task-card-' + ${task.id}"
+                        th:attr="hx-post=@{/tasks/{id}/toggle(id=${task.id})},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">
                     <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
-                    <span th:text="${task.completed} ? #{task.card.toggle.undo} : #{task.card.toggle.complete}">Toggle</span>
+                    <span th:text="${task.completed} ? #{action.toggle.undo} : #{action.toggle.complete}">Toggle</span>
                 </button>
 
                 <!-- Edit Button -->
-                <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
-                   th:attr="hx-get=@{/web/tasks/{id}/edit(id=${task.id})}"
+                <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
+                   th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="btn btn-sm btn-outline-primary flex-fill">

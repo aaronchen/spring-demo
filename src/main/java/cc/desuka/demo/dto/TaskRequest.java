@@ -2,6 +2,7 @@ package cc.desuka.demo.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import java.util.List;
 
 /**
  * @Data generates:
@@ -20,4 +21,10 @@ public class TaskRequest {
 
   @Size(max = 500, message = "{task.description.size}")
   private String description;
+
+  // null or empty = no tags (or remove all existing tags from this task)
+  private List<Long> tagIds;
+
+  // null = unassigned (task not assigned to any user)
+  private Long userId;
 }

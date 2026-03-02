@@ -7,16 +7,18 @@ A growing full-stack application built as a hands-on learning project for Spring
 ### Web Interface
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
 - **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via cookie
-- **Real-time Search** - Filter tasks as you type (debounced, 300ms)
+- **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
 - **Filter Buttons** - All / Completed / Pending with color-coded active states
 - **Sortable Columns** - Sort by title, date, or description (ascending/descending)
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
 - **Color-Coded Tasks** - Green = completed, yellow = pending throughout UI
 - **Dynamic Updates** - Toggle completion and delete without page reloads via HTMX
+- **User Assignment** - Assign tasks to users via dropdown (`@ManyToOne`)
+- **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
 
 ### REST API
-- **RESTful Endpoints** - Complete CRUD operations via JSON API
+- **RESTful Endpoints** - Complete CRUD for tasks and users via JSON API
 - **Data Validation** - Input validation with error messages
 - **Search & Filter** - Query tasks by keyword and completion status
 - **Toggle Completion** - Quick PATCH endpoint
@@ -56,7 +58,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    ```
 
 3. **Access the application**
-   - **Web UI**: http://localhost:8080/web/tasks
+   - **Web UI**: http://localhost:8080/
    - **REST API**: http://localhost:8080/api/tasks
    - **H2 Console**: http://localhost:8080/h2-console
 
@@ -71,7 +73,7 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 
 ### Web Interface
 
-Navigate to http://localhost:8080/web/tasks.
+Navigate to http://localhost:8080/tasks.
 
 #### Viewing Tasks
 
@@ -104,7 +106,7 @@ Click the trash icon, confirm in the dialog.
 http://localhost:8080/api/tasks
 ```
 
-#### Endpoints
+#### Task Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -117,6 +119,24 @@ http://localhost:8080/api/tasks
 | GET | `/api/tasks/search?keyword=` | Search by title/description |
 | GET | `/api/tasks/incomplete` | Get incomplete tasks only |
 
+#### Tag Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/tags` | List all tags |
+| GET | `/api/tags/{id}` | Get tag by ID |
+| POST | `/api/tags` | Create tag (201 Created) |
+| DELETE | `/api/tags/{id}` | Delete tag; tasks retain their other tags (204 No Content) |
+
+#### User Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/users` | List all users |
+| GET | `/api/users/{id}` | Get user by ID |
+| POST | `/api/users` | Create user (201 Created) |
+| DELETE | `/api/users/{id}` | Delete user; tasks auto-unassigned (204 No Content) |
+
 #### Example: Create Task
 ```bash
 POST /api/tasks
@@ -124,14 +144,17 @@ Content-Type: application/json
 
 {
   "title": "Write documentation",
-  "description": "Document all API endpoints"
+  "description": "Document all API endpoints",
+  "tagIds": [1, 3],
+  "userId": 5
 }
 ```
 
 #### Validation Rules
 - **title**: required, 1–100 characters
 - **description**: optional, max 500 characters
-- **completed**: boolean, defaults to `false`
+- **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
+- **userId**: optional; omit or send `null` to leave unassigned
 
 #### Error Responses
 
@@ -154,21 +177,36 @@ spring-demo/
 ├── src/main/
 │   ├── java/cc/desuka/demo/
 │   │   ├── controller/
-│   │   │   ├── TaskApiController.java   # REST API (uses DTOs)
-│   │   │   └── TaskWebController.java  # Web UI
+│   │   │   ├── api/
+│   │   │   │   ├── TagApiController.java    # Tag REST API
+│   │   │   │   ├── TaskApiController.java   # Task REST API (uses DTOs)
+│   │   │   │   └── UserApiController.java   # User REST API
+│   │   │   ├── HomeController.java          # Home page (GET /)
+│   │   │   └── TaskController.java          # Task web UI
 │   │   ├── dto/
-│   │   │   ├── TaskRequest.java        # API input DTO (create/update)
-│   │   │   └── TaskResponse.java       # API output DTO
+│   │   │   ├── TagResponse.java
+│   │   │   ├── TaskRequest.java         # API input DTO (create/update)
+│   │   │   ├── TaskResponse.java        # API output DTO
+│   │   │   ├── UserRequest.java
+│   │   │   └── UserResponse.java
 │   │   ├── mapper/
-│   │   │   └── TaskMapper.java         # MapStruct interface (impl generated at compile time)
+│   │   │   ├── TagMapper.java           # MapStruct (impl generated at compile time)
+│   │   │   ├── TaskMapper.java
+│   │   │   └── UserMapper.java
 │   │   ├── model/
+│   │   │   ├── Tag.java
 │   │   │   ├── Task.java
-│   │   │   └── TaskFilter.java
+│   │   │   ├── TaskFilter.java
+│   │   │   └── User.java
 │   │   ├── repository/
+│   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
-│   │   │   └── TaskSpecifications.java
+│   │   │   ├── TaskSpecifications.java
+│   │   │   └── UserRepository.java
 │   │   ├── service/
-│   │   │   └── TaskService.java
+│   │   │   ├── TagService.java
+│   │   │   ├── TaskService.java
+│   │   │   └── UserService.java
 │   │   ├── util/
 │   │   │   └── HtmxUtils.java
 │   │   ├── DataLoader.java
@@ -206,7 +244,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds 100+ realistic tasks on startup with varied completion status and creation dates — ready to test search, filter, sort, and pagination immediately.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), and **300 tasks** with varied completion status and creation dates — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags.
 
 ## Technologies
 

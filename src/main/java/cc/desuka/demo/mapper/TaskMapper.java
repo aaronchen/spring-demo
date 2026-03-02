@@ -8,26 +8,25 @@ import org.mapstruct.Mapping;
 
 import java.util.List;
 
-// componentModel = "spring" tells MapStruct to generate a @Component,
-// so Spring can inject this mapper just like any other bean.
-@Mapper(componentModel = "spring")
+// uses = {TagMapper.class, UserMapper.class}: MapStruct auto-discovers these converters.
+// - TagMapper.toResponse(Tag) handles List<Tag> → List<TagResponse> for the tags field.
+// - UserMapper.toResponse(User) handles User → UserResponse for the user field.
+// No extra @Mapping needed for either field — names match on both sides.
+@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})
 public interface TaskMapper {
 
-    // MapStruct matches fields by name. Task and TaskResponse share the same
-    // field names (id, title, description, completed, createdAt), so no
-    // extra configuration is needed here.
+    // Task.tags (List<Tag>) → TaskResponse.tags (List<TagResponse>)
+    // MapStruct calls TagMapper.toResponseList(task.getTags()) automatically via the uses clause.
     TaskResponse toResponse(Task task);
 
-    // MapStruct knows how to map Task → TaskResponse, so it automatically
-    // implements this list variant by calling toResponse() for each element.
     List<TaskResponse> toResponseList(List<Task> tasks);
 
-    // TaskRequest only carries title and description — the remaining Task
-    // fields are set by the DB (id) or by application logic (completed,
-    // createdAt). @Mapping(ignore = true) makes that intent explicit and
-    // silences the "unmapped target" warning.
+    // tags is ignored here — the mapper can't do DB lookups.
+    // TaskService.resolveTags() fetches Tag entities from tagIds and sets them on the task.
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "completed", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "user", ignore = true)
     Task toEntity(TaskRequest request);
 }

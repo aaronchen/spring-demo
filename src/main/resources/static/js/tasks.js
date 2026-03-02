@@ -25,7 +25,7 @@ function buildUrl(page) {
     params.set('size', pageSize);
     if (page > 0) params.set('page', page);
     if (currentView !== 'cards') params.set('view', currentView);
-    return `/web/tasks?${params.toString()}`;
+    return `/tasks?${params.toString()}`;
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
@@ -143,6 +143,8 @@ function initFromUrl() {
 
     // Search
     document.getElementById('search-input').value = params.get('search') || '';
+    const clearBtn = document.getElementById('search-clear-btn');
+    if (clearBtn) clearBtn.classList.toggle('d-none', !params.get('search'));
 
     // View: URL takes precedence; fall back to cookie (mirrors server-side logic)
     currentView = params.get('view') || getCookie('view') || 'cards';
@@ -155,11 +157,26 @@ function initFromUrl() {
 document.addEventListener('DOMContentLoaded', function() {
     initFromUrl();
 
-    // Debounced live search
+    // Debounced live search + clear button visibility
+    const searchInput = document.getElementById('search-input');
+    const searchClearBtn = document.getElementById('search-clear-btn');
+
+    function updateClearBtn() {
+        searchClearBtn.classList.toggle('d-none', searchInput.value === '');
+    }
+
     let searchDebounce;
-    document.getElementById('search-input').addEventListener('input', function() {
+    searchInput.addEventListener('input', function() {
+        updateClearBtn();
         clearTimeout(searchDebounce);
         searchDebounce = setTimeout(() => doSearch(true), 300);
+    });
+
+    searchClearBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        updateClearBtn();
+        searchInput.focus();
+        doSearch(true);
     });
 
     // Filter button click handlers
@@ -196,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = e.relatedTarget;
         document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
         const confirmBtn = document.getElementById('delete-confirm-btn');
-        confirmBtn.setAttribute('hx-post', '/web/tasks/' + btn.dataset.taskId + '/delete');
+        confirmBtn.setAttribute('hx-post', '/tasks/' + btn.dataset.taskId + '/delete');
         htmx.process(confirmBtn);
     });
 

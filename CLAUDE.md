@@ -32,7 +32,7 @@ The application provides **two interfaces** for the same backend:
    - Accepts `TaskRequest` DTO for input; returns `TaskResponse` DTO for output
    - `TaskMapper` (MapStruct) handles all entity ↔ DTO conversion; `TaskMapperImpl` is generated at compile time
 
-2. **Web UI** (`TaskWebController`) - `/web/tasks/*`
+2. **Web UI** (`TaskWebController`) - `/tasks/*`
    - Server-side rendered with Thymeleaf
    - HTMX for dynamic updates without full page reloads
    - Bootstrap for responsive styling
@@ -43,9 +43,21 @@ The application provides **two interfaces** for the same backend:
 
 #### Model Layer
 - `model/Task.java` - Entity class with JPA annotations
-  - Fields: id, title, description, completed, createdAt
+  - Fields: id, title, description, completed, createdAt, tags, user
+  - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — Task owns the FK column; user is optional (nullable)
   - Validation: `@NotBlank`, `@Size` constraints
   - Manual getters/setters (no Lombok on entities)
+
+- `model/Tag.java` - Tag entity
+  - Fields: id, name (unique, max 50 chars)
+  - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here)
+  - Manual getters/setters; `equals()`/`hashCode()` on `id` only
+
+- `model/User.java` - User entity (auth-ready: password field to be added when Spring Security is introduced)
+  - Fields: id, name (max 100), email (max 150, unique)
+  - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
+  - Manual getters/setters; `equals()`/`hashCode()` on `id` only
 
 #### Repository Layer
 - `repository/TaskRepository.java` - Spring Data JPA repository
@@ -53,47 +65,86 @@ The application provides **two interfaces** for the same backend:
   - Active query methods:
     - `findByCompleted(boolean)` - used by `getIncompleteTasks()`
     - `findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String, String)` - used by `searchTasks()`
+    - `findByUser(User)` - used by `UserService.deleteUser()` to reassign tasks before deleting a user
+  - `@EntityGraph(attributePaths = {"tags", "user"})` on the paginated query — loads both associations in one LEFT JOIN to prevent N+1
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
   - `build(keyword, filter)` - builds a combined search + filter specification
 
+- `repository/UserRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<User, Long>`
+  - `findByEmail(String)` — for DataLoader dedup and future auth lookup (Spring Security `UserDetailsService`)
+
 #### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
-  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars)
+  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars), `tagIds` (optional `List<Long>`), `userId` (optional `Long`)
   - Validation annotations used by `@Valid` in the controller
   - Lombok `@Data` for getters/setters/equals/hashCode
 
 - `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
-  - Fields: `id`, `title`, `description`, `completed`, `createdAt`
-  - Lombok `@Data` + `@AllArgsConstructor`
+  - Fields: `id`, `title`, `description`, `completed`, `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable)
+  - Lombok `@Data`
+
+- `dto/TagResponse.java` - Tag output DTO
+  - Fields: `id`, `name`
+  - Lombok `@Data`
+
+- `dto/UserRequest.java` - User input DTO
+  - Fields: `name` (required, max 100), `email` (required, max 150)
+  - Lombok `@Data`
+
+- `dto/UserResponse.java` - User output DTO
+  - Fields: `id`, `name`, `email`
+  - Lombok `@Data`
 
 #### Mapper Layer
 - `mapper/TaskMapper.java` - MapStruct mapper interface
-  - `@Mapper(componentModel = "spring")` — generates a `@Component` Spring bean
-  - `toResponse(Task)` — maps entity to response DTO (field names match, no config needed)
-  - `toResponseList(List<Task>)` — calls `toResponse()` per element; generated automatically
-  - `toEntity(TaskRequest)` — maps request DTO to entity; `id`, `completed`, `createdAt` explicitly ignored
-  - Implementation `TaskMapperImpl` is generated into `target/generated-sources/` at compile time
+  - `@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})` — auto-discovers nested converters
+  - `toResponse(Task)` — MapStruct auto-calls `TagMapper` and `UserMapper` for relationship fields
+  - `toResponseList(List<Task>)` — generated automatically
+  - `toEntity(TaskRequest)` — `id`, `completed`, `createdAt`, `tags`, `user` explicitly ignored (service resolves relationships)
+  - Implementation `TaskMapperImpl` generated into `target/generated-sources/` at compile time
+
+- `mapper/TagMapper.java` - MapStruct mapper for Tag ↔ TagResponse
+
+- `mapper/UserMapper.java` - MapStruct mapper for User ↔ UserResponse / UserRequest
 
 #### Service Layer
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
-  - Active methods: `getAllTasks`, `getTaskById`, `createTask`, `updateTask`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, filter, pageable)`, `toggleComplete`
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, filter, pageable)`, `toggleComplete`
+  - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
+
+- `service/UserService.java` - User business logic
+  - `getAllUsers`, `getUserById`, `createUser`, `deleteUser`
+  - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
 
 #### Controller Layer
-- `controller/TaskApiController.java` - REST API endpoints
+- `controller/api/TaskApiController.java` - Task REST API endpoints
   - `@RestController` with `/api/tasks` base path
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
-  - Accepts `TaskRequest`, returns `TaskResponse` — no raw entity exposure
+  - Accepts `TaskRequest` (includes `tagIds`, `userId`), returns `TaskResponse` — no raw entity exposure
   - Injects `TaskMapper` for all DTO ↔ entity conversion
 
-- `controller/TaskWebController.java` - Web UI endpoints
-  - `@Controller` with `/web/tasks` base path
+- `controller/api/UserApiController.java` - User REST API endpoints
+  - `@RestController` with `/api/users` base path
+  - `GET /api/users` — list all; `GET /api/users/{id}` — get by id; `POST /api/users` (201) — create; `DELETE /api/users/{id}` (204) — delete
+
+- `controller/api/TagApiController.java` - Tag REST API endpoints
+  - `@RestController` with `/api/tags` base path
+  - `GET /api/tags` — list all; `GET /api/tags/{id}` — get by id; `POST /api/tags` (201) — create; `DELETE /api/tags/{id}` (204) — delete (join table rows cleaned up by Hibernate; tasks are not deleted)
+
+- `controller/HomeController.java` - Home page
+  - `@Controller` — single `GET /` mapping, returns `"home"` template
+
+- `controller/TaskController.java` - Task web UI endpoints
+  - `@Controller` with `/tasks` base path
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
+  - Injects `UserService` and `TagService`; adds `users` and `tags` lists to all form-serving methods
 
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
@@ -101,7 +152,10 @@ The application provides **two interfaces** for the same backend:
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
 
 #### Bootstrap
-- `DataLoader.java` - Seeds database with 100+ realistic tasks on startup
+- `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**
+  - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
+  - Each task gets 1–2 tags drawn from different dimensions for natural combos (e.g. "Work + Urgent")
+  - ~80% of tasks are assigned to a user (every 5th task is unassigned)
 
 ### Thymeleaf Templates
 
@@ -137,7 +191,8 @@ The application provides **two interfaces** for the same backend:
   - `controlBar(position)` fragment — top/bottom bars with page nav and page-size selector
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — title, description, completed checkbox (edit only)
+  - `fields` fragment — title, description, user `<select>` (one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
+  - The user/tag widgets side-by-side illustrate the difference: `<select>` for single FK vs checkboxes for join table
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
@@ -153,9 +208,9 @@ The application provides **two interfaces** for the same backend:
 ### Static Resources
 
 - `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator)
-- `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides)
+- `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides, search clear button overlay)
 - `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); loaded globally via base layout
-- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring); loaded only by `tasks.html`
+- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
 ### Resource Files
@@ -167,7 +222,9 @@ The application provides **two interfaces** for the same backend:
     - `action.*` — generic actions reusable across features (`action.cancel`, `action.delete`, ...)
     - `pagination.*` — pagination controls, reusable for any paginated list
     - `nav.*`, `footer.*`, `page.title.*` — layout and browser title strings
-    - `task.*` — everything specific to the Task feature (`task.field.*`, `task.sort.*`, `task.filter.*`, `task.table.column.*`, ...)
+    - `task.*` — everything specific to the Task feature (`task.field.*`, `task.sort.*`, `task.filter.*`, `task.table.column.*`, `task.view.*`, `task.search.*`, ...)
+    - `tag.*` — Tag feature strings (`tag.field.*`)
+    - `user.*` — User feature strings (`user.field.*`)
 
 - `resources/ValidationMessages.properties` - Bean Validation error messages
   - Used by Hibernate Validator for `@NotBlank`, `@Size`, `@NotNull`, etc.
@@ -275,7 +332,7 @@ if (HtmxUtils.isHtmxRequest(request)) {
     model.addAttribute("task", task);
     return "tasks/task-card :: card";
 }
-return "redirect:/web/tasks";
+return "redirect:/tasks";
 ```
 
 ### HTMX Event Trigger Pattern
@@ -302,7 +359,7 @@ One modal shell in `tasks.html` serves all tasks. Populated dynamically:
 
 **Task form modal** — content loaded via HTMX:
 ```html
-<button hx-get="/web/tasks/new" hx-target="#task-modal-content" hx-swap="innerHTML">
+<button hx-get="/tasks/new" hx-target="#task-modal-content" hx-swap="innerHTML">
 ```
 `htmx:afterSwap` fires Bootstrap `modal.show()` when `#task-modal-content` is populated.
 
@@ -312,7 +369,7 @@ document.getElementById('task-delete-modal').addEventListener('show.bs.modal', f
     const btn = e.relatedTarget; // the triggering delete button
     document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
     const confirmBtn = document.getElementById('delete-confirm-btn');
-    confirmBtn.setAttribute('hx-post', '/web/tasks/' + btn.dataset.taskId + '/delete');
+    confirmBtn.setAttribute('hx-post', '/tasks/' + btn.dataset.taskId + '/delete');
     htmx.process(confirmBtn); // re-process after dynamic hx-post assignment
 });
 ```
@@ -430,11 +487,12 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 ### Available URLs
 
 **Web UI:**
-- `http://localhost:8080/web/tasks` - Task list (cards or table view)
-- `http://localhost:8080/web/tasks/new` - Create task (full page; modal preferred)
-- `http://localhost:8080/web/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/` - Home page
+- `http://localhost:8080/tasks` - Task list (cards or table view)
+- `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
+- `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 
-**REST API:**
+**REST API — Tasks:**
 - `GET /api/tasks` - List all tasks
 - `GET /api/tasks/{id}` - Get task by ID
 - `POST /api/tasks` - Create task
@@ -443,6 +501,18 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `PATCH /api/tasks/{id}/toggle` - Toggle completion
 - `GET /api/tasks/search?keyword=...` - Search by title/description
 - `GET /api/tasks/incomplete` - Get incomplete tasks only
+
+**REST API — Tags:**
+- `GET /api/tags` - List all tags
+- `GET /api/tags/{id}` - Get tag by ID
+- `POST /api/tags` - Create tag (201 Created)
+- `DELETE /api/tags/{id}` - Delete tag; join table rows removed automatically (204 No Content)
+
+**REST API — Users:**
+- `GET /api/users` - List all users
+- `GET /api/users/{id}` - Get user by ID
+- `POST /api/users` - Create user (201 Created)
+- `DELETE /api/users/{id}` - Delete user; their tasks are automatically unassigned first (204 No Content)
 
 **Admin:**
 - `http://localhost:8080/h2-console` - H2 database console
@@ -499,14 +569,44 @@ return "tasks/task-card :: card(${task})";  // wrong
 ## Database Schema
 
 ```sql
+CREATE TABLE users (
+    id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name  VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE
+);
+
 CREATE TABLE tasks (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(100) NOT NULL,
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title       VARCHAR(100) NOT NULL,
     description VARCHAR(500),
-    completed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP
+    completed   BOOLEAN DEFAULT FALSE,
+    created_at  TIMESTAMP,
+    user_id     BIGINT REFERENCES users(id)   -- nullable FK; @ManyToOne owning side
+);
+
+CREATE TABLE tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+-- Join table for the @ManyToMany between Task and Tag.
+-- Task is the owning side (@JoinTable lives on Task); Tag is the inverse side (mappedBy = "tags").
+CREATE TABLE task_tags (
+    task_id BIGINT NOT NULL REFERENCES tasks(id),
+    tag_id  BIGINT NOT NULL REFERENCES tags(id),
+    PRIMARY KEY (task_id, tag_id)
 );
 ```
+
+### Join Table Naming Convention
+
+`task_tags` follows the pattern **singular owning entity + plural inverse entity**.
+
+- Owning side (`Task`) → singular: `task`
+- Inverse side (`Tag`) → plural: `tags`
+- Result: `task_tags` — reads naturally as "a task's tags"
+
+This is the most common Spring/JPA community style. Hibernate's auto-generated name (without `@JoinTable(name=...)`) would be `task_tag` (both singular). Rails uses alphabetical + both plural. There is no enforced standard — consistency within the project is what matters.
 
 ## Git Workflow
 
@@ -519,12 +619,10 @@ Always ask before committing. Never auto-commit.
 
 ## Future Enhancement Ideas
 
-- Add user authentication and authorization
-- Implement task tags/categories
+- Add user authentication and authorization (Spring Security — `users` table is already auth-ready)
 - Add due dates and reminders
 - Support task priority levels
 - Implement dark mode toggle
-- Add task assignment to users
 - Export tasks to CSV/PDF
 - Add task comments/notes
 - Implement recurring tasks

@@ -7,8 +7,8 @@
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form th:action="${isEdit} ? @{/web/tasks/{id}(id=${task.id})} : @{/web/tasks}"
-      th:attr="hx-post=${isEdit ? '/web/tasks/' + task.id : '/web/tasks'}"
+<form th:action="${isEdit} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
+      th:attr="hx-post=${isEdit ? '/tasks/' + task.id : '/tasks'}"
       hx-target="#task-modal-content"
       hx-swap="innerHTML"
       th:object="${task}"

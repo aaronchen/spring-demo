@@ -1,4 +1,4 @@
-package cc.desuka.demo.controller;
+package cc.desuka.demo.controller.api;
 
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
@@ -39,13 +39,15 @@ public class TaskApiController {
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
   public TaskResponse createTask(@Valid @RequestBody TaskRequest request) {
-    return taskMapper.toResponse(taskService.createTask(taskMapper.toEntity(request)));
+    return taskMapper.toResponse(
+        taskService.createTask(taskMapper.toEntity(request), request.getTagIds(), request.getUserId()));
   }
 
   // PUT /api/tasks/5
   @PutMapping("/{id}")
   public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
-    return taskMapper.toResponse(taskService.updateTask(id, taskMapper.toEntity(request)));
+    return taskMapper.toResponse(
+        taskService.updateTask(id, taskMapper.toEntity(request), request.getTagIds(), request.getUserId()));
   }
 
   // DELETE /api/tasks/5

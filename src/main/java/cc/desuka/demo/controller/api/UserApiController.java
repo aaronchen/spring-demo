@@ -1,0 +1,52 @@
+package cc.desuka.demo.controller.api;
+
+import cc.desuka.demo.dto.UserRequest;
+import cc.desuka.demo.dto.UserResponse;
+import cc.desuka.demo.mapper.UserMapper;
+import cc.desuka.demo.model.User;
+import cc.desuka.demo.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/users")
+public class UserApiController {
+
+    private final UserService userService;
+    private final UserMapper userMapper;
+
+    public UserApiController(UserService userService, UserMapper userMapper) {
+        this.userService = userService;
+        this.userMapper = userMapper;
+    }
+
+    // GET /api/users
+    @GetMapping
+    public List<UserResponse> getAllUsers() {
+        return userMapper.toResponseList(userService.getAllUsers());
+    }
+
+    // GET /api/users/{id}
+    @GetMapping("/{id}")
+    public UserResponse getUserById(@PathVariable Long id) {
+        return userMapper.toResponse(userService.getUserById(id));
+    }
+
+    // POST /api/users
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponse createUser(@Valid @RequestBody UserRequest request) {
+        User user = userMapper.toEntity(request);
+        return userMapper.toResponse(userService.createUser(user));
+    }
+
+    // DELETE /api/users/{id}
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+    }
+}

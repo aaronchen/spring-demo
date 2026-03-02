@@ -14,7 +14,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1 class="display-4" th:text="#{task.list.heading}">Tasks</h1>
                     <button class="btn btn-primary btn-lg"
-                            hx-get="/web/tasks/new"
+                            hx-get="/tasks/new"
                             hx-target="#task-modal-content"
                             hx-swap="innerHTML">
                         <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>
@@ -23,7 +23,7 @@
 
                 <!-- Row 1: Search -->
                 <div class="mb-3">
-                    <div class="input-group input-group-lg">
+                    <div class="input-group input-group-lg position-relative">
                         <span class="input-group-text">
                             <i class="bi bi-search"></i>
                         </span>
@@ -31,6 +31,13 @@
                                id="search-input"
                                class="form-control"
                                th:placeholder="#{task.search.placeholder}">
+                        <button id="search-clear-btn"
+                                class="d-none position-absolute top-50 end-0 translate-middle-y"
+                                type="button"
+                                th:title="#{task.search.clear}"
+                                aria-label="Clear search">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                         <input type="hidden" id="current-filter" value="all">
                     </div>
                 </div>
@@ -133,12 +140,14 @@
                         <button type="button"
                                 class="btn btn-outline-secondary"
                                 id="view-cards"
+                                th:title="#{task.view.cards}"
                                 onclick="switchView('cards')">
                             <i class="bi bi-grid-3x3-gap-fill"></i>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-secondary"
                                 id="view-table"
+                                th:title="#{task.view.table}"
                                 onclick="switchView('table')">
                             <i class="bi bi-table"></i>
                         </button>

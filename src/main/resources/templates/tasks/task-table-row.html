@@ -9,12 +9,19 @@
     th:id="'task-row-' + ${task.id}"
     th:classappend="${task.completed ? 'table-success' : ''}">
     <td>
-        <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
-           th:attr="hx-get=@{/web/tasks/{id}/edit(id=${task.id})}"
+        <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
+           th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
            hx-target="#task-modal-content"
            hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
            th:text="${task.title}">Title</a>
+        <span th:each="tag : ${task.tags}" class="badge bg-secondary ms-1">
+            <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
+        </span>
+        <br th:if="${task.user != null}">
+        <small class="text-muted" th:if="${task.user != null}">
+            <i class="bi bi-person"></i> <span th:text="${task.user.name}">User</span>
+        </small>
     </td>
     <td style="white-space: nowrap;">
         <span th:if="${task.completed}" class="badge bg-success">
@@ -34,14 +41,14 @@
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
             <button th:class="${task.completed ? 'btn btn-outline-warning' : 'btn btn-outline-success'}"
-                    th:attr="hx-post=@{/web/tasks/{id}/toggle(id=${task.id}, view='table')},hx-target='#task-row-' + ${task.id}"
+                    th:attr="hx-post=@{/tasks/{id}/toggle(id=${task.id}, view='table')},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
-                    th:title="${task.completed} ? #{task.table.toggle.markPending} : #{task.table.toggle.markComplete}">
+                    th:title="${task.completed} ? #{action.toggle.markPending} : #{action.toggle.markComplete}">
                 <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
             </button>
             <!-- Edit Button -->
-            <a th:href="@{/web/tasks/{id}/edit(id=${task.id})}"
-               th:attr="hx-get=@{/web/tasks/{id}/edit(id=${task.id})}"
+            <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
+               th:attr="hx-get=@{/tasks/{id}/edit(id=${task.id})}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="btn btn-outline-primary"
