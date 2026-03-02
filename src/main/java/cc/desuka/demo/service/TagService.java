@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class TagService {
 
     public Tag getTagById(Long id) {
         return tagRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Tag not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Tag", id));
     }
 
     public Tag createTag(Tag tag) {

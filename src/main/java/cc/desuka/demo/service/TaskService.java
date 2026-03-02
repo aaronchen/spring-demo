@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskFilter;
@@ -33,7 +34,7 @@ public class TaskService {
 
   public Task getTaskById(Long id) {
     return taskRepository.findById(id)
-        .orElseThrow(() -> new RuntimeException("Task not found with id: " + id));
+        .orElseThrow(() -> new EntityNotFoundException("Task", id));
   }
 
   // tagIds and userId come from the caller (API or web controller).

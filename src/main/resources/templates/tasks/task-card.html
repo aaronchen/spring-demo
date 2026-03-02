@@ -4,7 +4,16 @@
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
              th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
-            <h5 class="mb-0" th:text="${task.title}">Task Title</h5>
+            <h5 class="mb-0">
+                <!-- Unassigned → edit mode (no owner); assigned → view mode (owner check comes with Spring Security) -->
+                <a th:href="${task.user == null} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+                   th:attr="hx-get=${task.user == null ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                   hx-target="#task-modal-content"
+                   hx-swap="innerHTML"
+                   class="text-decoration-none"
+                   th:classappend="${task.completed ? 'text-white' : 'text-dark'}"
+                   th:text="${task.title}">Task Title</a>
+            </h5>
             <span th:if="${task.completed}" class="badge bg-light text-success">
                 <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
             </span>
@@ -46,13 +55,14 @@
                     <span th:text="${task.completed} ? #{action.toggle.undo} : #{action.toggle.complete}">Toggle</span>
                 </button>
 
-                <!-- Edit Button -->
-                <a th:href="@{/tasks/{id}/edit(id=${task.id})}"
-                   th:attr="hx-get=${appRoutes.tasks + '/' + task.id + '/edit'}"
+                <!-- View/Edit Button — unassigned tasks open in edit mode, assigned in view mode -->
+                <a th:href="${task.user == null} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+                   th:attr="hx-get=${task.user == null ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="btn btn-sm btn-outline-primary flex-fill">
-                    <i class="bi bi-pencil"></i> <span th:text="#{action.editTask}">Edit</span>
+                    <i th:class="${task.user == null} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
+                    <span th:text="${task.user == null} ? #{action.editTask} : #{action.viewTask}">Edit</span>
                 </a>
 
                 <!-- Delete Button -->

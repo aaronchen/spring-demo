@@ -95,3 +95,49 @@ Content-Type: application/json
 
 ### Delete user (their tasks are automatically unassigned first)
 DELETE http://localhost:8080/api/users/1
+
+
+### ============================================================
+### Error Handling (ApiExceptionHandler)
+### ============================================================
+
+### 404 — task not found
+### Expects: { status: 404, error: "Task not found with id: 99999" }
+GET http://localhost:8080/api/tasks/99999
+
+### 404 — tag not found
+### Expects: { status: 404, error: "Tag not found with id: 99999" }
+GET http://localhost:8080/api/tags/99999
+
+### 404 — user not found
+### Expects: { status: 404, error: "User not found with id: 99999" }
+GET http://localhost:8080/api/users/99999
+
+### 400 — validation: missing required title
+### Expects: { status: 400, errors: { title: "..." } }
+POST http://localhost:8080/api/tasks
+Content-Type: application/json
+
+{
+    "title": "",
+    "description": "No title provided"
+}
+
+### 400 — validation: title too long (max 100 chars)
+### Expects: { status: 400, errors: { title: "..." } }
+POST http://localhost:8080/api/tasks
+Content-Type: application/json
+
+{
+    "title": "This title is way too long and exceeds the one hundred character limit set on the Task title field by quite a bit"
+}
+
+### 400 — validation: multiple field errors at once
+### Expects: { status: 400, errors: { title: "...", description: "..." } }
+POST http://localhost:8080/api/tasks
+Content-Type: application/json
+
+{
+    "title": "",
+    "description": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}

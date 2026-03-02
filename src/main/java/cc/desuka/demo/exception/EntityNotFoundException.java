@@ -1,0 +1,17 @@
+package cc.desuka.demo.exception;
+
+/**
+ * Thrown when a requested entity (Task, User, Tag, etc.) cannot be found by ID.
+ * <p>
+ * Handled by:
+ * <ul>
+ *   <li>{@link GlobalExceptionHandler} → 404 JSON response for REST API requests</li>
+ *   <li>{@link WebExceptionHandler}    → 404 Thymeleaf error page for web UI requests</li>
+ * </ul>
+ */
+public class EntityNotFoundException extends RuntimeException {
+
+    public EntityNotFoundException(String entityType, Long id) {
+        super(entityType + " not found with id: " + id);
+    }
+}
