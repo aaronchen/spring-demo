@@ -8,7 +8,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Form Login** - Email + password authentication with BCrypt hashing
 - **Self-Registration** - New users can sign up; default role is USER
 - **Role-Based Access** - Two roles: USER (standard) and ADMIN (elevated privileges)
-- **Ownership Checks** - Users can only edit/delete their own tasks; admins can access all
+- **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
 - **Admin Panel** - Manage user roles at `/admin/users` (admin only)
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
 
@@ -100,8 +100,8 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 Navigate to http://localhost:8080/login. Enter your email and password, or click **Register** to create a new account. New accounts are created with the USER role.
 
 **Roles:**
-- **USER** — can create tasks (auto-assigned to self), edit/delete own tasks, view all tasks
-- **ADMIN** — full access to all tasks, can manage users and tags, can assign tasks to other users
+- **USER** — can create tasks (defaults to self, can assign to others), edit/delete own and unassigned tasks, view all tasks
+- **ADMIN** — full access to all tasks, can manage users and tags, can assign tasks to any user
 
 ### Web Interface
 

@@ -8,10 +8,10 @@
 <tr th:fragment="row"
     th:id="'task-row-' + ${task.id}"
     th:classappend="${task.completed ? 'table-success' : ''}"
-    th:with="isOwner=${#auth.canEdit(task)}">
+    th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
     <td>
-        <a th:href="${isOwner} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-           th:attr="hx-get=${isOwner ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+        <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+           th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
            hx-target="#task-modal-content"
            hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
@@ -48,16 +48,16 @@
                 <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
             </button>
             <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->
-            <a th:href="${isOwner} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-               th:attr="hx-get=${isOwner ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+            <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="btn btn-outline-primary"
-               th:title="${isOwner} ? #{action.editTask} : #{action.viewTask}">
-                <i th:class="${isOwner} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
+               th:title="${canEdit} ? #{action.editTask} : #{action.viewTask}">
+                <i th:class="${canEdit} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
             </a>
             <!-- Delete Button — owners only -->
-            <button th:if="${isOwner}" class="btn btn-outline-danger"
+            <button th:if="${canEdit}" class="btn btn-outline-danger"
                     data-bs-toggle="modal"
                     data-bs-target="#task-delete-modal"
                     th:data-task-id="${task.id}"

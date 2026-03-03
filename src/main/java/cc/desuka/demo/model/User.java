@@ -116,17 +116,18 @@ public class User {
         this.tasks = tasks;
     }
 
-    // equals/hashCode on id only — LAZY proxies only have id populated.
+    // equals/hashCode use getId() (not field access) — Hibernate LAZY proxies
+    // intercept getter calls but direct field access bypasses the proxy and returns null.
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof User)) return false;
         User user = (User) o;
-        return Objects.equals(id, user.id);
+        return Objects.equals(getId(), user.getId());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(id);
+        return Objects.hashCode(getId());
     }
 }

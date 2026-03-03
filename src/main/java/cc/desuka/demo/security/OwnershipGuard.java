@@ -36,8 +36,9 @@ public class OwnershipGuard {
      * Throws {@link AccessDeniedException} unless the authenticated user is an admin
      * or the entity's owner.
      *
-     * <p>Unassigned entities ({@code entity.getUser() == null}) are editable by
-     * admins only — regular users cannot claim ownership.
+     * <p>Does NOT handle unassigned entities — callers should check
+     * {@code entity.getUser() == null} before calling this method if
+     * unassigned entities should be accessible to all users.
      *
      * @param entity         the entity to check access for
      * @param currentDetails the currently authenticated user's details

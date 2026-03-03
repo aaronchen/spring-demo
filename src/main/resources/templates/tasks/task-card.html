@@ -1,13 +1,13 @@
 <!-- Reusable task card fragment - used by both full page and HTMX partial responses -->
 <div th:fragment="card" class="col" th:id="'task-card-' + ${task.id}"
-     th:with="isOwner=${#auth.canEdit(task)}">
+     th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
     <div class="card h-100 shadow-sm" th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
              th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
             <h5 class="mb-0">
-                <a th:href="${isOwner} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-                   th:attr="hx-get=${isOwner ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+                   th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="text-decoration-none"
@@ -56,17 +56,17 @@
                 </button>
 
                 <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->
-                <a th:href="${isOwner} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-                   th:attr="hx-get=${isOwner ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+                   th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="btn btn-sm btn-outline-primary flex-fill">
-                    <i th:class="${isOwner} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
-                    <span th:text="${isOwner} ? #{action.editTask} : #{action.viewTask}">Edit</span>
+                    <i th:class="${canEdit} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
+                    <span th:text="${canEdit} ? #{action.editTask} : #{action.viewTask}">Edit</span>
                 </a>
 
                 <!-- Delete Button — owners only -->
-                <button th:if="${isOwner}" class="btn btn-sm btn-outline-danger flex-fill"
+                <button th:if="${canEdit}" class="btn btn-sm btn-outline-danger flex-fill"
                         data-bs-toggle="modal"
                         data-bs-target="#task-delete-modal"
                         th:data-task-id="${task.id}"

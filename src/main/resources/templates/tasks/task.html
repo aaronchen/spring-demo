@@ -10,7 +10,7 @@
     <main class="container flex-grow-1">
         <div class="row justify-content-center">
             <div class="col-lg-8 col-md-10"
-                 th:with="isOwner=${#auth.canEdit(task)}">
+                 th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
                 <!-- Page Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1 class="display-5"
@@ -36,8 +36,8 @@
                                 <a th:href="@{/tasks}" class="btn btn-outline-secondary btn-lg px-4">
                                     <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
                                 </a>
-                                <!-- View mode: show Edit Task only for the task owner -->
-                                <a th:if="${mode == 'view' && isOwner}"
+                                <!-- View mode: show Edit Task button if user can edit -->
+                                <a th:if="${mode == 'view' && canEdit}"
                                    th:href="@{/tasks/{id}/edit(id=${task.id})}"
                                    class="btn btn-primary btn-lg px-4">
                                     <i class="bi bi-pencil"></i>
