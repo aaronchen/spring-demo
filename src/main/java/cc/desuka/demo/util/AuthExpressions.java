@@ -61,6 +61,9 @@ public class AuthExpressions {
      * Returns {@code true} if the current user can edit the given entity —
      * either as its owner or as an admin. Use in templates to control
      * edit/delete button visibility.
+     *
+     * <p>Does NOT cover special cases like unassigned entities — those are
+     * business decisions that belong in the controller or template.
      */
     public boolean canEdit(OwnedEntity entity) {
         return isAdmin() || isOwner(entity);

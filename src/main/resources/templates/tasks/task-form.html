@@ -34,16 +34,17 @@
         </div>
     </div>
 
-    <!-- Assigned To: read-only display in view/edit mode. Hidden in create (auto-assigned to current user). -->
-    <div class="mb-3" th:if="${mode != 'create'}">
-        <label class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <p class="form-control-plaintext">
-            <span th:if="${task.user != null}">
-                <i class="bi bi-person"></i> <span th:text="${task.user.name}">User Name</span>
-            </span>
-            <span th:if="${task.user == null}" class="text-muted"
-                  th:text="#{task.field.user.unassigned}">Unassigned</span>
-        </p>
+    <!-- Assigned To: editable select in create/edit mode, disabled in view mode -->
+    <div class="mb-3" th:if="${users != null}">
+        <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
+        <select name="userId" id="userId" class="form-select"
+                th:disabled="${mode == 'view'}">
+            <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
+            <option th:each="user : ${users}"
+                    th:value="${user.id}"
+                    th:text="${user.name}"
+                    th:selected="${task.user != null && task.user.id == user.id}">User</option>
+        </select>
     </div>
 
     <!-- Tag Checkboxes -->

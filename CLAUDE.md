@@ -68,14 +68,14 @@ The application provides **two interfaces** for the same backend:
 - `model/Tag.java` - Tag entity
   - Fields: id, name (unique, max 50 chars)
   - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here)
-  - Manual getters/setters; `equals()`/`hashCode()` on `id` only
+  - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 - `model/User.java` - User entity with authentication fields
   - Fields: id, name (max 100), email (max 150, unique), password (max 72, nullable), role (Role enum, defaults to USER)
   - `password` — BCrypt hash; nullable for API-created users (who cannot log in)
   - `role` — `@Enumerated(EnumType.STRING)`, stored as "USER" or "ADMIN" in the database
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
-  - Manual getters/setters; `equals()`/`hashCode()` on `id` only
+  - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 #### Repository Layer
 - `repository/TaskRepository.java` - Spring Data JPA repository
@@ -190,8 +190,8 @@ The application provides **two interfaces** for the same backend:
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `UserService` and `TagService`; adds `users` and `tags` lists to all form-serving methods
-  - **Security**: uses `OwnershipGuard` for edit/delete; auto-assigns new tasks to current user
+  - Injects `UserService`, `TagService`, and `OwnershipGuard`; adds `users` and `tags` lists to all form-serving methods
+  - **Security**: uses `OwnershipGuard` for edit/delete; new tasks default to current user (changeable via dropdown)
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
   - `@RestController` producing `application/javascript`
@@ -213,7 +213,7 @@ The application provides **two interfaces** for the same backend:
 
 - `security/OwnershipGuard.java` - Reusable access control component
   - `requireAccess(OwnedEntity entity, CustomUserDetails currentDetails)` — throws `AccessDeniedException` if caller is neither admin nor owner
-  - Admins get unrestricted access; unassigned entities are admin-only
+  - Does NOT handle unassigned entities — callers should check `entity.getUser() == null` before calling if unassigned entities should be open
   - Used by both `TaskApiController` and `TaskController` (web)
 
 #### Configuration
@@ -248,7 +248,7 @@ The application provides **two interfaces** for the same backend:
 
 - `exception/WebExceptionHandler.java` - `@ControllerAdvice` for Thymeleaf web controllers
   - Handles: `EntityNotFoundException` → `error/404.html`, catch-all → `error/500.html`
-  - **403 not handled here** — Spring Security's `ExceptionTranslationFilter` intercepts `AccessDeniedException` before `@ControllerAdvice` runs; `BasicErrorController` resolves `templates/error/403.html` automatically
+  - `AccessDeniedException` is explicitly re-thrown so Spring Security's `ExceptionTranslationFilter` can handle it → `error/403.html` (without this, the catch-all `Exception` handler would swallow it as a 500)
 
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
@@ -259,7 +259,7 @@ The application provides **two interfaces** for the same backend:
   - Exposed as `${#auth}` in Thymeleaf templates via `AuthDialect`
   - Instance methods (template use): `isOwner(OwnedEntity)`, `isAdmin()`, `canEdit(OwnedEntity)` (admin OR owner)
   - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)` — reused by `OwnershipGuard`
-  - Unassigned entities (`entity.getUser() == null`): `isOwner()` returns false → only admins can edit
+  - Unassigned entities (`entity.getUser() == null`): `isOwner()` and `canEdit()` return false — business rules for unassigned entities belong in the controller/template, not here
 
 - `util/AuthDialect.java` - Thymeleaf `IExpressionObjectDialect` implementation
   - Registers `${#auth}` expression object, built per-request from `SecurityContextHolder`
@@ -313,6 +313,7 @@ The application provides **two interfaces** for the same backend:
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
   - `fields` fragment — title, description, user `<select>` (one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
+  - User select: `name="userId"` submitted as `@RequestParam` (not bound to `th:object`); visible in all modes, disabled in view mode; defaults to current user on create
   - The user/tag widgets side-by-side illustrate the difference: `<select>` for single FK vs checkboxes for join table
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
@@ -582,13 +583,18 @@ Use for endpoints where the entire operation is role-restricted (admin panel, ta
 **2. Controller-level (OwnershipGuard)** — fine-grained, ownership-based:
 ```java
 Task task = taskService.getTaskById(id);
-ownershipGuard.requireAccess(task, currentDetails); // throws AccessDeniedException
+if (task.getUser() != null) {
+    ownershipGuard.requireAccess(task, currentDetails); // throws AccessDeniedException
+}
 ```
-Use for endpoints where access depends on who owns the entity (task edit/delete).
+Use for endpoints where access depends on who owns the entity (task edit/delete). Unassigned-entity handling is a business rule — callers skip the guard when `getUser() == null`.
 
-**3. Template-level (AuthExpressions)** — UI visibility only (not a security boundary):
+**3. Template-level** — UI visibility only (not a security boundary):
 ```html
-<button th:if="${#auth.canEdit(task)}">Edit</button>
+<!-- canEdit: owner OR admin OR unassigned (task-specific business rule) -->
+<div th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
+    <button th:if="${canEdit}">Edit</button>
+</div>
 <li sec:authorize="hasRole('ADMIN')">Admin Panel</li>
 ```
 `${#auth}` is the custom expression object; `sec:authorize` is Spring Security's Thymeleaf dialect.
@@ -598,9 +604,10 @@ Use for endpoints where access depends on who owns the entity (task edit/delete)
 Entities that have an owner implement `OwnedEntity`:
 ```java
 public interface OwnedEntity {
-    User getUser(); // null = unassigned (admin-only access)
+    User getUser(); // null = unassigned
 }
 ```
+Unassigned-entity rules are business decisions — handled in controllers (skip `requireAccess()` when `getUser() == null`) and templates (`${#auth.canEdit(task) || task.user == null}`), not in the generic auth utilities.
 `Task implements OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
 
 ### CSRF Token Pattern for HTMX

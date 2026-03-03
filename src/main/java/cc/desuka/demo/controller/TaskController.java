@@ -6,6 +6,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,12 +30,14 @@ public class TaskController {
 
   private final TaskService taskService;
   private final TagService tagService;
+  private final UserService userService;
   private final OwnershipGuard ownershipGuard;
 
   public TaskController(TaskService taskService, TagService tagService,
-      OwnershipGuard ownershipGuard) {
+      UserService userService, OwnershipGuard ownershipGuard) {
     this.taskService = taskService;
     this.tagService = tagService;
+    this.userService = userService;
     this.ownershipGuard = ownershipGuard;
   }
 
@@ -70,6 +73,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "view");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -77,11 +81,16 @@ public class TaskController {
   }
 
   // GET /tasks/new - Show create form (full page or modal fragment)
+  // Default user assignment is the current user (can be changed via dropdown).
   @GetMapping("/new")
-  public String showCreateForm(Model model, HttpServletRequest request) {
-    model.addAttribute("task", new Task());
+  public String showCreateForm(Model model, HttpServletRequest request,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
+    Task task = new Task();
+    task.setUser(currentDetails.getUser());
+    model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -89,24 +98,25 @@ public class TaskController {
   }
 
   // POST /tasks - Create new task
-  // Auto-assigns the new task to the logged-in user.
+  // Defaults to current user; user can pick a different assignee via the dropdown.
   // tagIds: list of selected tag IDs from form checkboxes. null when no checkbox is checked.
   @PostMapping
   public Object createTask(
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
+      @RequestParam(required = false) Long userId,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
       model.addAttribute("mode", "create");
       model.addAttribute("tags", tagService.getAllTags());
+      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }
       return "tasks/task";
     }
-    Long currentUserId = currentDetails.getUser().getId();
-    Task created = taskService.createTask(task, tagIds, currentUserId);
+    Task created = taskService.createTask(task, tagIds, userId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
@@ -114,15 +124,18 @@ public class TaskController {
   }
 
   // GET /tasks/{id}/edit - Show edit form (full page or modal fragment)
-  // Only the task owner may edit. Non-owners get 403.
+  // Owner or admin may edit. Unassigned tasks are open to any user.
   @GetMapping("/{id}/edit")
   public String showEditForm(@PathVariable Long id, Model model, HttpServletRequest request,
       @AuthenticationPrincipal CustomUserDetails currentDetails) {
     Task task = taskService.getTaskById(id);
-    ownershipGuard.requireAccess(task, currentDetails);
+    if (task.getUser() != null) {
+      ownershipGuard.requireAccess(task, currentDetails);
+    }
     model.addAttribute("task", task);
     model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -130,29 +143,30 @@ public class TaskController {
   }
 
   // POST /tasks/{id} - Update task
-  // Only the task owner may update. tagIds: null means remove all tags.
-  // User assignment is preserved from the existing task — the form no longer has a userId field.
+  // Owner or admin may update. Unassigned tasks are open to any user.
+  // tagIds: null means remove all tags. userId comes from the user select dropdown.
   @PostMapping("/{id}")
   public Object updateTask(
       @PathVariable Long id,
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
+      @RequestParam(required = false) Long userId,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     Task existing = taskService.getTaskById(id);
-    ownershipGuard.requireAccess(existing, currentDetails);
+    if (existing.getUser() != null) {
+      ownershipGuard.requireAccess(existing, currentDetails);
+    }
     if (result.hasErrors()) {
       model.addAttribute("mode", "edit");
       model.addAttribute("tags", tagService.getAllTags());
+      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }
       return "tasks/task";
     }
-    // Preserve existing user assignment — the form no longer has a userId field,
-    // so passing null would accidentally unassign the task.
-    Long existingUserId = existing.getUser() != null ? existing.getUser().getId() : null;
-    taskService.updateTask(id, task, tagIds, existingUserId);
+    taskService.updateTask(id, task, tagIds, userId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
@@ -160,13 +174,15 @@ public class TaskController {
   }
 
   // POST /tasks/{id}/delete - Delete task
-  // Only the task owner may delete.
+  // Owner or admin may delete. Unassigned tasks are open to any user.
   @PostMapping("/{id}/delete")
   public Object deleteTask(@PathVariable Long id,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     Task task = taskService.getTaskById(id);
-    ownershipGuard.requireAccess(task, currentDetails);
+    if (task.getUser() != null) {
+      ownershipGuard.requireAccess(task, currentDetails);
+    }
     taskService.deleteTask(id);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskDeleted");

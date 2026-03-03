@@ -1,6 +1,7 @@
 package cc.desuka.demo.exception;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
@@ -17,13 +18,21 @@ import org.springframework.web.servlet.ModelAndView;
  *   <li>Any other {@link Exception}     → 500 page (message not exposed to the user)</li>
  * </ul>
  *
- * <p><b>403 is not handled here.</b> {@code AccessDeniedException} is intercepted by
- * Spring Security's {@code ExceptionTranslationFilter} in the filter chain — before
- * {@code @ControllerAdvice} runs. The filter triggers {@code BasicErrorController},
- * which resolves {@code templates/error/403.html} automatically.
+ * <p>{@code AccessDeniedException} is re-thrown so Spring Security's
+ * {@code ExceptionTranslationFilter} can intercept it and render
+ * {@code templates/error/403.html} via {@code BasicErrorController}.
+ * Without this, the catch-all {@code Exception} handler would swallow it
+ * and return a 500 page.
  */
 @ControllerAdvice
 public class WebExceptionHandler {
+
+    // Re-throw so Spring Security's ExceptionTranslationFilter handles it → error/403.html.
+    // Without this, the catch-all Exception handler below would swallow it as a 500.
+    @ExceptionHandler(AccessDeniedException.class)
+    public void handleAccessDenied(AccessDeniedException ex) throws AccessDeniedException {
+        throw ex;
+    }
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ModelAndView handleNotFound(EntityNotFoundException ex) {
