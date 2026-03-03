@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:fragment="head(title, cssFile)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,6 +17,11 @@
 
     <!-- Page-specific styles -->
     <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
+
+    <!-- CSRF meta tags — read by utils.js to inject the token into HTMX requests
+         that bypass <form th:action> (toggle buttons, delete confirm button). -->
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
 </head>
 <body>
     <!-- Navigation Fragment -->
@@ -28,9 +34,55 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <!-- Left nav links -->
+                <ul class="navbar-nav me-auto ms-3">
                     <li class="nav-item">
-                        <a class="nav-link" th:href="@{/tasks}" th:text="#{nav.tasks}">Tasks</a>
+                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/tasks}" th:text="#{nav.tasks}">Tasks</a>
+                    </li>
+                </ul>
+                <!-- Right-aligned auth controls -->
+                <ul class="navbar-nav align-items-center">
+                    <!-- Register link — visible only when NOT logged in -->
+                    <li class="nav-item" sec:authorize="!isAuthenticated()">
+                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
+                    </li>
+                    <!-- User dropdown — visible only when logged in -->
+                    <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
+                        <a class="nav-link dropdown-toggle text-white" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle"></i>
+                            <span th:text="#{nav.user.greeting(${#authentication.principal.user.name})}">User</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm py-2">
+                            <!-- User info header -->
+                            <li class="px-3 py-2">
+                                <div class="fw-semibold">
+                                    <span th:text="${#authentication.principal.user.name}">Alice Johnson</span>
+                                    <span class="badge ms-1"
+                                          th:classappend="${#authentication.principal.user.role.name() == 'ADMIN' ? 'bg-success' : 'bg-secondary'}"
+                                          th:text="${#authentication.principal.user.role.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</span>
+                                </div>
+                                <small class="text-muted" th:text="${#authentication.principal.user.email}">email@example.com</small>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <!-- Admin links -->
+                            <li sec:authorize="hasRole('ADMIN')">
+                                <a class="dropdown-item py-2" th:href="@{/admin/users}">
+                                    <i class="bi bi-people me-2"></i>
+                                    <span th:text="#{nav.admin.users}">Manage Users</span>
+                                </a>
+                            </li>
+                            <li sec:authorize="hasRole('ADMIN')"><hr class="dropdown-divider my-1"></li>
+                            <!-- Sign out -->
+                            <li>
+                                <form th:action="@{/logout}" method="post">
+                                    <button type="submit" class="dropdown-item py-2 text-danger">
+                                        <i class="bi bi-box-arrow-right me-2"></i>
+                                        <span th:text="#{nav.logout}">Sign Out</span>
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>

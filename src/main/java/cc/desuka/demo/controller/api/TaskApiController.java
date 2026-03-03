@@ -3,11 +3,16 @@ package cc.desuka.demo.controller.api;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
 import cc.desuka.demo.mapper.TaskMapper;
+import cc.desuka.demo.model.Task;
+import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.util.AuthExpressions;
 
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -17,10 +22,13 @@ public class TaskApiController {
 
   private final TaskService taskService;
   private final TaskMapper taskMapper;
+  private final OwnershipGuard ownershipGuard;
 
-  public TaskApiController(TaskService taskService, TaskMapper taskMapper) {
+  public TaskApiController(TaskService taskService, TaskMapper taskMapper,
+      OwnershipGuard ownershipGuard) {
     this.taskService = taskService;
     this.taskMapper = taskMapper;
+    this.ownershipGuard = ownershipGuard;
   }
 
   // GET /api/tasks
@@ -36,24 +44,39 @@ public class TaskApiController {
   }
 
   // POST /api/tasks
+  // Regular users: task auto-assigned to caller (userId in body is ignored).
+  // Admins: can optionally specify userId to assign task to another user.
   @PostMapping
   @ResponseStatus(HttpStatus.CREATED)
-  public TaskResponse createTask(@Valid @RequestBody TaskRequest request) {
+  public TaskResponse createTask(@Valid @RequestBody TaskRequest request,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
+    Long userId = currentDetails.getUser().getId();
+    if (request.getUserId() != null && AuthExpressions.isAdmin(currentDetails.getUser())) {
+      userId = request.getUserId();
+    }
     return taskMapper.toResponse(
-        taskService.createTask(taskMapper.toEntity(request), request.getTagIds(), request.getUserId()));
+        taskService.createTask(taskMapper.toEntity(request), request.getTagIds(), userId));
   }
 
   // PUT /api/tasks/5
+  // Owner or admin only.
   @PutMapping("/{id}")
-  public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request) {
+  public TaskResponse updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequest request,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
+    Task existing = taskService.getTaskById(id);
+    ownershipGuard.requireAccess(existing, currentDetails);
     return taskMapper.toResponse(
         taskService.updateTask(id, taskMapper.toEntity(request), request.getTagIds(), request.getUserId()));
   }
 
   // DELETE /api/tasks/5
+  // Owner or admin only.
   @DeleteMapping("/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
-  public void deleteTask(@PathVariable Long id) {
+  public void deleteTask(@PathVariable Long id,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
+    Task task = taskService.getTaskById(id);
+    ownershipGuard.requireAccess(task, currentDetails);
     taskService.deleteTask(id);
   }
 
@@ -70,6 +93,7 @@ public class TaskApiController {
   }
 
   // PATCH /api/tasks/5/toggle
+  // Open to all authenticated users (matches web UI behavior).
   @PatchMapping("/{id}/toggle")
   public TaskResponse toggleComplete(@PathVariable Long id) {
     return taskMapper.toResponse(taskService.toggleComplete(id));

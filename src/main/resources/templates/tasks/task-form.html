@@ -34,19 +34,16 @@
         </div>
     </div>
 
-    <!-- User Assignment -->
-    <!-- Single <select> because @ManyToOne — one task belongs to one user.       -->
-    <!-- Contrast with tag checkboxes below (@ManyToMany — multiple tags allowed). -->
-    <div class="mb-3" th:if="${users != null}">
-        <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <select id="userId" name="userId" class="form-select" th:disabled="${mode == 'view'}">
-            <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
-            <option th:each="u : ${users}"
-                    th:value="${u.id}"
-                    th:text="${u.name}"
-                    th:selected="${task.user != null && task.user.id == u.id}">
-            </option>
-        </select>
+    <!-- Assigned To: read-only display in view/edit mode. Hidden in create (auto-assigned to current user). -->
+    <div class="mb-3" th:if="${mode != 'create'}">
+        <label class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
+        <p class="form-control-plaintext">
+            <span th:if="${task.user != null}">
+                <i class="bi bi-person"></i> <span th:text="${task.user.name}">User Name</span>
+            </span>
+            <span th:if="${task.user == null}" class="text-muted"
+                  th:text="#{task.field.user.unassigned}">Unassigned</span>
+        </p>
     </div>
 
     <!-- Tag Checkboxes -->

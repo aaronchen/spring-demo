@@ -16,6 +16,11 @@ import org.springframework.web.servlet.ModelAndView;
  *   <li>{@link EntityNotFoundException} → 404 page with the entity's error message</li>
  *   <li>Any other {@link Exception}     → 500 page (message not exposed to the user)</li>
  * </ul>
+ *
+ * <p><b>403 is not handled here.</b> {@code AccessDeniedException} is intercepted by
+ * Spring Security's {@code ExceptionTranslationFilter} in the filter chain — before
+ * {@code @ControllerAdvice} runs. The filter triggers {@code BasicErrorController},
+ * which resolves {@code templates/error/403.html} automatically.
  */
 @ControllerAdvice
 public class WebExceptionHandler {

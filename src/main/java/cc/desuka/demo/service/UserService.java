@@ -7,7 +7,10 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import cc.desuka.demo.model.Role;
+
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -29,7 +32,17 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User", id));
     }
 
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
     public User createUser(User user) {
+        return userRepository.save(user);
+    }
+
+    public User updateRole(Long userId, Role role) {
+        User user = getUserById(userId);
+        user.setRole(role);
         return userRepository.save(user);
     }
 

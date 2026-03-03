@@ -1,5 +1,6 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
@@ -7,6 +8,7 @@ import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -19,11 +21,14 @@ public class DataLoader implements CommandLineRunner {
   private final TaskRepository taskRepository;
   private final TagRepository tagRepository;
   private final UserRepository userRepository;
+  private final PasswordEncoder passwordEncoder;
 
-  public DataLoader(TaskRepository taskRepository, TagRepository tagRepository, UserRepository userRepository) {
+  public DataLoader(TaskRepository taskRepository, TagRepository tagRepository,
+                    UserRepository userRepository, PasswordEncoder passwordEncoder) {
     this.taskRepository = taskRepository;
     this.tagRepository = tagRepository;
     this.userRepository = userRepository;
+    this.passwordEncoder = passwordEncoder;
   }
 
   @Override
@@ -428,57 +433,60 @@ public class DataLoader implements CommandLineRunner {
 
     // Seed 50 users — saved first so tasks can reference them.
     // Diverse names; emails follow firstname.lastname@example.com.
+    // BCrypt encode once — encoding is intentionally slow, so we reuse the same hash.
+    // All seeded users share the password "password" for development convenience.
+    String encoded = passwordEncoder.encode("password");
     List<User> users = userRepository.saveAll(List.of(
-        new User("Alice Johnson", "alice.johnson@example.com"),
-        new User("Bob Smith", "bob.smith@example.com"),
-        new User("Carol Williams", "carol.williams@example.com"),
-        new User("David Brown", "david.brown@example.com"),
-        new User("Eva Martinez", "eva.martinez@example.com"),
-        new User("Frank Lee", "frank.lee@example.com"),
-        new User("Grace Kim", "grace.kim@example.com"),
-        new User("Henry Davis", "henry.davis@example.com"),
-        new User("Isabel Garcia", "isabel.garcia@example.com"),
-        new User("James Wilson", "james.wilson@example.com"),
-        new User("Karen Chen", "karen.chen@example.com"),
-        new User("Liam Taylor", "liam.taylor@example.com"),
-        new User("Mia Anderson", "mia.anderson@example.com"),
-        new User("Noah Thomas", "noah.thomas@example.com"),
-        new User("Olivia Jackson", "olivia.jackson@example.com"),
-        new User("Patrick White", "patrick.white@example.com"),
-        new User("Quinn Harris", "quinn.harris@example.com"),
-        new User("Rachel Martin", "rachel.martin@example.com"),
-        new User("Samuel Thompson", "samuel.thompson@example.com"),
-        new User("Tina Garcia", "tina.garcia@example.com"),
-        new User("Uma Patel", "uma.patel@example.com"),
-        new User("Victor Nguyen", "victor.nguyen@example.com"),
-        new User("Wendy Clark", "wendy.clark@example.com"),
-        new User("Xavier Lewis", "xavier.lewis@example.com"),
-        new User("Yara Robinson", "yara.robinson@example.com"),
-        new User("Zane Walker", "zane.walker@example.com"),
-        new User("Amber Hall", "amber.hall@example.com"),
-        new User("Blake Allen", "blake.allen@example.com"),
-        new User("Chloe Young", "chloe.young@example.com"),
-        new User("Derek Hernandez", "derek.hernandez@example.com"),
-        new User("Elena King", "elena.king@example.com"),
-        new User("Felix Wright", "felix.wright@example.com"),
-        new User("Gabriela Lopez", "gabriela.lopez@example.com"),
-        new User("Hugo Scott", "hugo.scott@example.com"),
-        new User("Iris Green", "iris.green@example.com"),
-        new User("Julian Adams", "julian.adams@example.com"),
-        new User("Kira Baker", "kira.baker@example.com"),
-        new User("Lucas Gonzalez", "lucas.gonzalez@example.com"),
-        new User("Maya Nelson", "maya.nelson@example.com"),
-        new User("Nathan Carter", "nathan.carter@example.com"),
-        new User("Opal Mitchell", "opal.mitchell@example.com"),
-        new User("Pedro Perez", "pedro.perez@example.com"),
-        new User("Rosa Roberts", "rosa.roberts@example.com"),
-        new User("Sean Turner", "sean.turner@example.com"),
-        new User("Tara Phillips", "tara.phillips@example.com"),
-        new User("Ulrich Campbell", "ulrich.campbell@example.com"),
-        new User("Vera Parker", "vera.parker@example.com"),
-        new User("Walter Evans", "walter.evans@example.com"),
-        new User("Xena Edwards", "xena.edwards@example.com"),
-        new User("Yusuf Collins", "yusuf.collins@example.com")
+        new User("Alice Johnson", "alice.johnson@example.com", encoded, Role.ADMIN),
+        new User("Bob Smith", "bob.smith@example.com", encoded),
+        new User("Carol Williams", "carol.williams@example.com", encoded),
+        new User("David Brown", "david.brown@example.com", encoded),
+        new User("Eva Martinez", "eva.martinez@example.com", encoded),
+        new User("Frank Lee", "frank.lee@example.com", encoded),
+        new User("Grace Kim", "grace.kim@example.com", encoded),
+        new User("Henry Davis", "henry.davis@example.com", encoded),
+        new User("Isabel Garcia", "isabel.garcia@example.com", encoded),
+        new User("James Wilson", "james.wilson@example.com", encoded),
+        new User("Karen Chen", "karen.chen@example.com", encoded),
+        new User("Liam Taylor", "liam.taylor@example.com", encoded),
+        new User("Mia Anderson", "mia.anderson@example.com", encoded),
+        new User("Noah Thomas", "noah.thomas@example.com", encoded),
+        new User("Olivia Jackson", "olivia.jackson@example.com", encoded),
+        new User("Patrick White", "patrick.white@example.com", encoded),
+        new User("Quinn Harris", "quinn.harris@example.com", encoded),
+        new User("Rachel Martin", "rachel.martin@example.com", encoded),
+        new User("Samuel Thompson", "samuel.thompson@example.com", encoded),
+        new User("Tina Garcia", "tina.garcia@example.com", encoded),
+        new User("Uma Patel", "uma.patel@example.com", encoded),
+        new User("Victor Nguyen", "victor.nguyen@example.com", encoded),
+        new User("Wendy Clark", "wendy.clark@example.com", encoded),
+        new User("Xavier Lewis", "xavier.lewis@example.com", encoded),
+        new User("Yara Robinson", "yara.robinson@example.com", encoded),
+        new User("Zane Walker", "zane.walker@example.com", encoded),
+        new User("Amber Hall", "amber.hall@example.com", encoded),
+        new User("Blake Allen", "blake.allen@example.com", encoded),
+        new User("Chloe Young", "chloe.young@example.com", encoded),
+        new User("Derek Hernandez", "derek.hernandez@example.com", encoded),
+        new User("Elena King", "elena.king@example.com", encoded),
+        new User("Felix Wright", "felix.wright@example.com", encoded),
+        new User("Gabriela Lopez", "gabriela.lopez@example.com", encoded),
+        new User("Hugo Scott", "hugo.scott@example.com", encoded),
+        new User("Iris Green", "iris.green@example.com", encoded),
+        new User("Julian Adams", "julian.adams@example.com", encoded),
+        new User("Kira Baker", "kira.baker@example.com", encoded),
+        new User("Lucas Gonzalez", "lucas.gonzalez@example.com", encoded),
+        new User("Maya Nelson", "maya.nelson@example.com", encoded),
+        new User("Nathan Carter", "nathan.carter@example.com", encoded),
+        new User("Opal Mitchell", "opal.mitchell@example.com", encoded),
+        new User("Pedro Perez", "pedro.perez@example.com", encoded),
+        new User("Rosa Roberts", "rosa.roberts@example.com", encoded),
+        new User("Sean Turner", "sean.turner@example.com", encoded),
+        new User("Tara Phillips", "tara.phillips@example.com", encoded),
+        new User("Ulrich Campbell", "ulrich.campbell@example.com", encoded),
+        new User("Vera Parker", "vera.parker@example.com", encoded),
+        new User("Walter Evans", "walter.evans@example.com", encoded),
+        new User("Xena Edwards", "xena.edwards@example.com", encoded),
+        new User("Yusuf Collins", "yusuf.collins@example.com", encoded)
     ));
 
     // Seed tags — three orthogonal dimensions so combinations feel natural:
