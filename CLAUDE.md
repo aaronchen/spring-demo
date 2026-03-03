@@ -7,6 +7,7 @@
 - **Package**: `cc.desuka.demo`
 - **Java Version**: 25
 - **Spring Boot**: 4.0.3
+- **Security**: Spring Security 7.0 (form login, BCrypt, role-based access)
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
 - **Frontend**: Bootstrap 5.3.3 + HTMX 2.0.4
@@ -15,13 +16,19 @@
 
 ### Layered Architecture
 ```
-Controller Layer (REST API + Web)
-         ↓
-  Service Layer
-         ↓
-Repository Layer (Spring Data JPA)
-         ↓
-   Database (H2)
+       Spring Security Filter Chain
+       (authentication, CSRF, role checks)
+                   ↓
+      Controller Layer (REST API + Web)
+          ↓                  ↓
+   OwnershipGuard      AuthExpressions
+   (server-side)       (template-side)
+                   ↓
+            Service Layer
+                   ↓
+         Repository Layer (Spring Data JPA)
+                   ↓
+            Database (H2)
 ```
 
 ### Dual Interface Pattern
@@ -42,20 +49,31 @@ The application provides **two interfaces** for the same backend:
 ### Java Source Files
 
 #### Model Layer
-- `model/Task.java` - Entity class with JPA annotations
+- `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
   - Fields: id, title, description, completed, createdAt, tags, user
   - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — Task owns the FK column; user is optional (nullable)
   - Validation: `@NotBlank`, `@Size` constraints
   - Manual getters/setters (no Lombok on entities)
 
+- `model/OwnedEntity.java` - Marker interface for entities that have an owner
+  - Single method: `User getUser()` — returns owner or null if unassigned
+  - Implemented by `Task`; enables generic ownership checks via `AuthExpressions` and `OwnershipGuard`
+  - Future entities with ownership can implement this for automatic access control
+
+- `model/Role.java` - Enum with two values: `USER`, `ADMIN`
+  - Stored as string in database via `@Enumerated(EnumType.STRING)` on User
+  - Defaults to `USER` for new registrations and API-created users
+
 - `model/Tag.java` - Tag entity
   - Fields: id, name (unique, max 50 chars)
   - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here)
   - Manual getters/setters; `equals()`/`hashCode()` on `id` only
 
-- `model/User.java` - User entity (auth-ready: password field to be added when Spring Security is introduced)
-  - Fields: id, name (max 100), email (max 150, unique)
+- `model/User.java` - User entity with authentication fields
+  - Fields: id, name (max 100), email (max 150, unique), password (max 72, nullable), role (Role enum, defaults to USER)
+  - `password` — BCrypt hash; nullable for API-created users (who cannot log in)
+  - `role` — `@Enumerated(EnumType.STRING)`, stored as "USER" or "ADMIN" in the database
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` on `id` only
 
@@ -74,7 +92,7 @@ The application provides **two interfaces** for the same backend:
 
 - `repository/UserRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<User, Long>`
-  - `findByEmail(String)` — for DataLoader dedup and future auth lookup (Spring Security `UserDetailsService`)
+  - `findByEmail(String)` — used by `CustomUserDetailsService` for login and `RegistrationController` for duplicate checks
 
 #### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
@@ -98,6 +116,11 @@ The application provides **two interfaces** for the same backend:
   - Fields: `id`, `name`, `email`
   - Lombok `@Data`
 
+- `dto/RegistrationRequest.java` - Registration form DTO
+  - Fields: `name` (required, max 100), `email` (required, max 150), `password` (required, 8–72 chars), `confirmPassword` (required)
+  - Cross-field validation (password match) handled programmatically in `RegistrationController`
+  - Lombok `@Data`
+
 #### Mapper Layer
 - `mapper/TaskMapper.java` - MapStruct mapper interface
   - `@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})` — auto-discovers nested converters
@@ -117,7 +140,9 @@ The application provides **two interfaces** for the same backend:
   - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
 
 - `service/UserService.java` - User business logic
-  - `getAllUsers`, `getUserById`, `createUser`, `deleteUser`
+  - `getAllUsers`, `getUserById`, `findByEmail`, `createUser`, `updateRole`, `deleteUser`
+  - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
+  - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `AdminController`
   - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
 
 #### Controller Layer
@@ -126,17 +151,38 @@ The application provides **two interfaces** for the same backend:
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
   - Accepts `TaskRequest` (includes `tagIds`, `userId`), returns `TaskResponse` — no raw entity exposure
   - Injects `TaskMapper` for all DTO ↔ entity conversion
+  - **Security**: injects `OwnershipGuard`; uses `@AuthenticationPrincipal CustomUserDetails` on POST, PUT, DELETE
+  - POST: auto-assigns task to caller; admins can override via `request.getUserId()`
+  - PUT/DELETE: calls `ownershipGuard.requireAccess()` — owner or admin only
+  - PATCH toggle: open to all authenticated users (matches web UI behavior)
 
 - `controller/api/UserApiController.java` - User REST API endpoints
   - `@RestController` with `/api/users` base path
   - `GET /api/users` — list all; `GET /api/users/{id}` — get by id; `POST /api/users` (201) — create; `DELETE /api/users/{id}` (204) — delete
+  - **Security**: POST and DELETE restricted to admins via `SecurityConfig` URL matchers (no code changes needed here)
 
 - `controller/api/TagApiController.java` - Tag REST API endpoints
   - `@RestController` with `/api/tags` base path
   - `GET /api/tags` — list all; `GET /api/tags/{id}` — get by id; `POST /api/tags` (201) — create; `DELETE /api/tags/{id}` (204) — delete (join table rows cleaned up by Hibernate; tasks are not deleted)
+  - **Security**: POST and DELETE restricted to admins via `SecurityConfig` URL matchers (no code changes needed here)
 
 - `controller/HomeController.java` - Home page
   - `@Controller` — single `GET /` mapping, returns `"home"` template
+
+- `controller/LoginController.java` - Login page
+  - `@Controller` — single `GET /login` mapping, returns `"login"` template
+  - Spring Security handles `POST /login` automatically via `UsernamePasswordAuthenticationFilter`
+
+- `controller/RegistrationController.java` - User self-registration
+  - `GET /register` — serves registration form with empty `RegistrationRequest`
+  - `POST /register` — validates form, checks password match, checks email uniqueness, creates user with `Role.USER`
+  - Encodes password via `PasswordEncoder.encode()` before persisting
+  - Redirects to `/login?registered` on success
+
+- `controller/AdminController.java` - Admin panel
+  - `@Controller` with `/admin` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
+  - `GET /admin/users` — lists all users with role dropdown
+  - `POST /admin/users/{id}/role` — changes a user's role via `UserService.updateRole()`
 
 - `controller/TaskController.java` - Task web UI endpoints
   - `@Controller` with `/tasks` base path
@@ -145,6 +191,7 @@ The application provides **two interfaces** for the same backend:
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
   - Injects `UserService` and `TagService`; adds `users` and `tags` lists to all form-serving methods
+  - **Security**: uses `OwnershipGuard` for edit/delete; auto-assigns new tasks to current user
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
   - `@RestController` producing `application/javascript`
@@ -152,23 +199,77 @@ The application provides **two interfaces** for the same backend:
   - `escapeJs()` helper sanitizes property values before embedding in JS output
   - Loaded by the `scripts` fragment on every page; `APP_CONFIG` is available globally to all page scripts
 
+#### Security Layer
+- `security/CustomUserDetails.java` - Implements Spring Security's `UserDetails`
+  - Wraps the `User` entity; exposes it via `getUser()` for controllers and templates
+  - `getUsername()` returns `user.getEmail()` (email is the login identifier)
+  - `getAuthorities()` returns single authority: `ROLE_USER` or `ROLE_ADMIN`
+  - Account status methods all return `true` (no expiry/lock features yet)
+
+- `security/CustomUserDetailsService.java` - Implements Spring Security's `UserDetailsService`
+  - `loadUserByUsername(String email)` — looks up user via `UserRepository.findByEmail()`
+  - Throws `UsernameNotFoundException` if not found
+  - Wraps result in `CustomUserDetails`
+
+- `security/OwnershipGuard.java` - Reusable access control component
+  - `requireAccess(OwnedEntity entity, CustomUserDetails currentDetails)` — throws `AccessDeniedException` if caller is neither admin nor owner
+  - Admins get unrestricted access; unassigned entities are admin-only
+  - Used by both `TaskApiController` and `TaskController` (web)
+
 #### Configuration
+
+- `config/SecurityConfig.java` - Spring Security configuration
+  - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
+  - `SecurityFilterChain` bean — HTTP security rules:
+    - Public: `/login`, `/register`, static assets, `/h2-console/**`
+    - Admin-only: `/admin/**`, `POST /api/tags`, `DELETE /api/tags/**`, `POST /api/users`, `DELETE /api/users/**`
+    - Everything else: `authenticated()`
+  - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
+  - Logout: `POST /logout` → `/login?logout`, invalidates session, deletes JSESSIONID
+  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/h2-console/**`
+  - Headers: `X-Frame-Options: SAMEORIGIN` (for H2 console)
 
 - `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
   - Fields: `tasks` (default `/tasks`), `api` (default `/api`)
   - Single source of truth for the two base paths used by both Thymeleaf templates and frontend JS
 
-- `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects `appRoutes` into every Thymeleaf model
+- `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects shared attributes into every Thymeleaf model
   - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
+  - `@ModelAttribute("currentUser")` — resolves authenticated `User` from `SecurityContextHolder`; null for anonymous
   - Used by HTMX attributes (`th:attr="hx-get=${appRoutes.tasks + ...}"`) where `@{}` URL syntax cannot be used
+
+#### Exception Handling
+- `exception/EntityNotFoundException.java` - Custom unchecked exception for missing entities
+
+- `exception/ApiExceptionHandler.java` - `@RestControllerAdvice` scoped to `controller.api`
+  - Ordered at `HIGHEST_PRECEDENCE` to win over `WebExceptionHandler`
+  - Handles: `MethodArgumentNotValidException` (400), `EntityNotFoundException` (404), `AccessDeniedException` (403), catch-all `Exception` (500)
+  - All responses are JSON maps with `timestamp`, `status`, `error` fields
+
+- `exception/WebExceptionHandler.java` - `@ControllerAdvice` for Thymeleaf web controllers
+  - Handles: `EntityNotFoundException` → `error/404.html`, catch-all → `error/500.html`
+  - **403 not handled here** — Spring Security's `ExceptionTranslationFilter` intercepts `AccessDeniedException` before `@ControllerAdvice` runs; `BasicErrorController` resolves `templates/error/403.html` automatically
 
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
 
+- `util/AuthExpressions.java` - Ownership and role check logic (shared between templates and Java)
+  - Exposed as `${#auth}` in Thymeleaf templates via `AuthDialect`
+  - Instance methods (template use): `isOwner(OwnedEntity)`, `isAdmin()`, `canEdit(OwnedEntity)` (admin OR owner)
+  - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)` — reused by `OwnershipGuard`
+  - Unassigned entities (`entity.getUser() == null`): `isOwner()` returns false → only admins can edit
+
+- `util/AuthDialect.java` - Thymeleaf `IExpressionObjectDialect` implementation
+  - Registers `${#auth}` expression object, built per-request from `SecurityContextHolder`
+  - Auto-discovered by Spring Boot; no manual configuration needed
+
 #### Bootstrap
 - `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**
+  - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
+  - All passwords: `"password"` (BCrypt-encoded once, reused for all 50 users for speed)
+  - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
   - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
   - Each task gets 1–2 tags drawn from different dimensions for natural combos (e.g. "Work + Urgent")
   - ~80% of tasks are assigned to a user (every 5th task is unassigned)
@@ -178,7 +279,11 @@ The application provides **two interfaces** for the same backend:
 #### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
   - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS
-  - `navbar` - navigation bar
+  - `navbar` - navigation bar with auth-aware elements:
+    - Anonymous: shows Register link
+    - Authenticated: user dropdown with name, email, role badge, logout button
+    - Admin: additional "Manage Users" link in dropdown
+    - Uses `sec:authorize` (Spring Security Thymeleaf dialect) and `${#auth}` for conditional rendering
   - `footer` - footer
   - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
 
@@ -221,11 +326,32 @@ The application provides **two interfaces** for the same backend:
   - Includes `task-form :: fields` inside its own `<form>` with `hx-post`
   - Swapped into `#task-modal-content` by HTMX
 
+#### Auth Views
+- `templates/login.html` - Login page
+  - Card-styled form with email and password fields
+  - `th:action="@{/login}"` — Spring Security handles POST automatically and injects CSRF token
+  - Alert messages via query params: `?error` (bad credentials), `?logout` (logged out), `?registered` (just registered)
+  - Dev credentials hint (removable for production)
+
+- `templates/register.html` - Registration page
+  - Form bound to `RegistrationRequest` via `th:object`
+  - Fields: name, email, password, confirmPassword with per-field validation errors
+  - Success redirects to `/login?registered`
+
+- `templates/error/403.html` - Access Denied page
+  - Resolved automatically by Spring Boot's `BasicErrorController` (not via `@ControllerAdvice`)
+  - Shows "Access Denied" message with link back to task list
+
+- `templates/admin/users.html` - Admin user management page
+  - Table of all users: name, email, role badge, role-change dropdown
+  - Form submits `POST /admin/users/{id}/role` with selected role
+  - Role badges: green for ADMIN, gray for USER
+
 ### Static Resources
 
 - `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator)
 - `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides, search clear button overlay)
-- `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); loaded globally via base layout
+- `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); CSRF token injection for HTMX requests via `htmx:configRequest` listener; loaded globally via base layout
 - `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`; reads `APP_CONFIG.routes.tasks` for URL construction
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
@@ -241,6 +367,11 @@ The application provides **two interfaces** for the same backend:
     - `task.*` — everything specific to the Task feature (`task.field.*`, `task.sort.*`, `task.filter.*`, `task.table.column.*`, `task.view.*`, `task.search.*`, ...)
     - `tag.*` — Tag feature strings (`tag.field.*`)
     - `user.*` — User feature strings (`user.field.*`)
+    - `login.*` — Login page strings (`login.heading`, `login.field.*`, `login.error`, `login.loggedOut`)
+    - `register.*` — Registration page strings (`register.heading`, `register.field.*`, `register.error.*`, `register.success`)
+    - `admin.*` — Admin panel strings (`admin.users.heading`, `admin.users.table.*`, `admin.users.role.change`)
+    - `role.*` — Role display names (`role.user`, `role.admin`)
+    - `error.*` — Error page strings (`error.403.heading`, `error.403.message`)
 
 - `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom properties
   - Provides descriptions and types for `app.routes.tasks` and `app.routes.api`
@@ -251,7 +382,7 @@ The application provides **two interfaces** for the same backend:
   - Used by Hibernate Validator for `@NotBlank`, `@Size`, `@NotNull`, etc.
   - Reference with `{key}` syntax (curly braces) inside constraint annotation `message` attribute
   - `{min}`, `{max}`, `{value}` placeholders are interpolated from the constraint's own attributes
-  - Both `Task.java` (entity, validated by the web layer) and `TaskRequest.java` (DTO, validated by the API layer) reference these keys
+  - Referenced by `Task.java`, `TaskRequest.java`, `User.java`, and `RegistrationRequest.java`
 
 ## Important Patterns and Conventions
 
@@ -436,6 +567,52 @@ public TaskWebController(TaskService taskService) {
 ```
 Not `@Autowired` field injection.
 
+### Security Authorization Patterns
+
+Security is enforced at **three layers** — any one can block access:
+
+**1. URL-level (SecurityConfig)** — coarse-grained, role-based:
+```java
+.requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
+.requestMatchers(HttpMethod.POST, "/api/tags").hasRole(Role.ADMIN.name())
+.anyRequest().authenticated()
+```
+Use for endpoints where the entire operation is role-restricted (admin panel, tag/user mutations).
+
+**2. Controller-level (OwnershipGuard)** — fine-grained, ownership-based:
+```java
+Task task = taskService.getTaskById(id);
+ownershipGuard.requireAccess(task, currentDetails); // throws AccessDeniedException
+```
+Use for endpoints where access depends on who owns the entity (task edit/delete).
+
+**3. Template-level (AuthExpressions)** — UI visibility only (not a security boundary):
+```html
+<button th:if="${#auth.canEdit(task)}">Edit</button>
+<li sec:authorize="hasRole('ADMIN')">Admin Panel</li>
+```
+`${#auth}` is the custom expression object; `sec:authorize` is Spring Security's Thymeleaf dialect.
+
+### OwnedEntity Pattern
+
+Entities that have an owner implement `OwnedEntity`:
+```java
+public interface OwnedEntity {
+    User getUser(); // null = unassigned (admin-only access)
+}
+```
+`Task implements OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
+
+### CSRF Token Pattern for HTMX
+
+Thymeleaf auto-injects CSRF into `<form th:action>` tags. For standalone HTMX buttons (not inside a form), `utils.js` reads `<meta>` tags and adds the token header:
+```javascript
+document.body.addEventListener('htmx:configRequest', function(e) {
+    e.detail.headers['X-CSRF-TOKEN'] = document.querySelector('meta[name="_csrf"]').content;
+});
+```
+The `<meta>` tags are set in `base.html`'s `<head>`. REST API (`/api/**`) is CSRF-exempt.
+
 ### CSS Organization
 
 - **`base.css`** — styles used on every page; included by `base.html`
@@ -495,6 +672,8 @@ Key dependencies:
 - `spring-boot-starter-web` - REST API support
 - `spring-boot-starter-data-jpa` - JPA/Hibernate
 - `spring-boot-starter-thymeleaf` - Template engine
+- `spring-boot-starter-security` - Authentication and authorization
+- `thymeleaf-extras-springsecurity7` - `sec:authorize` attributes in Thymeleaf templates
 - `spring-boot-starter-validation` - Bean validation
 - `spring-boot-starter-actuator` - Health and metrics endpoints
 - `spring-boot-devtools` - Hot reload during development
@@ -537,41 +716,47 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 
 ### Available URLs
 
-**Web UI:**
+**Authentication:**
+- `http://localhost:8080/login` - Login page (email + password)
+- `http://localhost:8080/register` - Self-registration (creates `USER` role)
+- Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
+
+**Web UI** (requires login):
 - `http://localhost:8080/` - Home page
 - `http://localhost:8080/tasks` - Task list (cards or table view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/admin/users` - User management (admin only)
 
-**REST API — Tasks:**
+**REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - List all tasks
 - `GET /api/tasks/{id}` - Get task by ID
-- `POST /api/tasks` - Create task
-- `PUT /api/tasks/{id}` - Update task
-- `DELETE /api/tasks/{id}` - Delete task
-- `PATCH /api/tasks/{id}/toggle` - Toggle completion
+- `POST /api/tasks` - Create task (auto-assigned to caller; admins can specify `userId`)
+- `PUT /api/tasks/{id}` - Update task (owner or admin)
+- `DELETE /api/tasks/{id}` - Delete task (owner or admin)
+- `PATCH /api/tasks/{id}/toggle` - Toggle completion (any authenticated user)
 - `GET /api/tasks/search?keyword=...` - Search by title/description
 - `GET /api/tasks/incomplete` - Get incomplete tasks only
 
-**REST API — Tags:**
+**REST API — Tags** (requires login):
 - `GET /api/tags` - List all tags
 - `GET /api/tags/{id}` - Get tag by ID
-- `POST /api/tags` - Create tag (201 Created)
-- `DELETE /api/tags/{id}` - Delete tag; join table rows removed automatically (204 No Content)
+- `POST /api/tags` - Create tag (admin only, 201 Created)
+- `DELETE /api/tags/{id}` - Delete tag (admin only, 204 No Content)
 
-**REST API — Users:**
+**REST API — Users** (requires login):
 - `GET /api/users` - List all users
 - `GET /api/users/{id}` - Get user by ID
-- `POST /api/users` - Create user (201 Created)
-- `DELETE /api/users/{id}` - Delete user; their tasks are automatically unassigned first (204 No Content)
+- `POST /api/users` - Create user (admin only, 201 Created)
+- `DELETE /api/users/{id}` - Delete user (admin only, 204 No Content)
 
-**Admin:**
+**Dev Tools:**
 - `http://localhost:8080/h2-console` - H2 database console
   - JDBC URL: `jdbc:h2:mem:taskdb` / Username: `sa` / Password: (empty)
 
 ### Testing with rest.http
 
-The project includes `rest.http` for testing REST API endpoints with VS Code REST Client extension.
+The project includes `rest.http` for testing REST API endpoints with VS Code REST Client extension. CSRF is disabled for `/api/**`, so only a valid session cookie is needed. Log in via browser, copy your `JSESSIONID` from DevTools, and paste it in the `@sessionId` variable.
 
 ## Common Issues and Solutions
 
@@ -622,8 +807,10 @@ return "tasks/task-card :: card(${task})";  // wrong
 ```sql
 CREATE TABLE users (
     id    BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name  VARCHAR(100) NOT NULL,
-    email VARCHAR(150) NOT NULL UNIQUE
+    name     VARCHAR(100) NOT NULL,
+    email    VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(72),                       -- BCrypt hash; nullable for API-created users
+    role     VARCHAR(255) NOT NULL DEFAULT 'USER' -- 'USER' or 'ADMIN' (@Enumerated STRING)
 );
 
 CREATE TABLE tasks (
@@ -670,7 +857,6 @@ Always ask before committing. Never auto-commit.
 
 ## Future Enhancement Ideas
 
-- Add user authentication and authorization (Spring Security — `users` table is already auth-ready)
 - Add due dates and reminders
 - Support task priority levels
 - Implement dark mode toggle

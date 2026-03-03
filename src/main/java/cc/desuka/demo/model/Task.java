@@ -10,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "tasks")
-public class Task {
+public class Task implements OwnedEntity {
 
   public static final String FIELD_TITLE = "title";
   public static final String FIELD_DESCRIPTION = "description";

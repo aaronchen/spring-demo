@@ -28,6 +28,19 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // Nullable: API-created users have no password and cannot log in.
+    // DataLoader seeds a BCrypt-encoded password for all seeded users.
+    // BCrypt hashes are always 60 characters; 72 gives headroom for other algorithms.
+    @Column(length = 72)
+    private String password;
+
+    // Stored as the enum name string ("USER", "ADMIN") via @Enumerated(STRING).
+    // Defaults to USER — registration and API-created users start here.
+    // Only admins can promote via /admin/users.
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.USER;
+
     // LAZY: don't load all tasks for this user unless explicitly requested.
     // No cascade: deleting a user does NOT cascade-delete their tasks.
     // UserService.deleteUser() handles reassignment (sets task.user = null) before deletion.
@@ -40,6 +53,19 @@ public class User {
     public User(String name, String email) {
         this.name = name;
         this.email = email;
+    }
+
+    public User(String name, String email, String password) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+    }
+
+    public User(String name, String email, String password, Role role) {
+        this.name = name;
+        this.email = email;
+        this.password = password;
+        this.role = role;
     }
 
     public Long getId() {
@@ -64,6 +90,22 @@ public class User {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 
     public List<Task> getTasks() {

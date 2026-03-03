@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.login}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 d-flex align-items-center justify-content-center">
+        <div class="col-sm-8 col-md-5 col-lg-4">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="card-title text-center mb-4">
+                        <i class="bi bi-lock"></i> <span th:text="#{login.heading}">Sign In</span>
+                    </h2>
+
+                    <!-- Invalid credentials -->
+                    <div th:if="${param.error}" class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span th:text="#{login.error}">Invalid email or password.</span>
+                    </div>
+
+                    <!-- Logged out successfully -->
+                    <div th:if="${param.logout}" class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle"></i>
+                        <span th:text="#{login.loggedOut}">You have been signed out.</span>
+                    </div>
+
+                    <!-- Registration success -->
+                    <div th:if="${param.registered}" class="alert alert-success" role="alert">
+                        <i class="bi bi-check-circle"></i>
+                        <span th:text="#{register.success}">Account created! Please sign in.</span>
+                    </div>
+
+                    <!-- th:action causes Thymeleaf to inject the _csrf hidden input automatically -->
+                    <form th:action="@{/login}" method="post">
+                        <div class="mb-3">
+                            <label for="username" class="form-label fw-bold"
+                                   th:text="#{login.field.email}">Email</label>
+                            <!-- name="username" is Spring Security's default parameter name -->
+                            <input type="email" id="username" name="username"
+                                   class="form-control"
+                                   th:placeholder="#{user.field.email.placeholder}"
+                                   required autofocus>
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label fw-bold"
+                                   th:text="#{login.field.password}">Password</label>
+                            <input type="password" id="password" name="password"
+                                   class="form-control"
+                                   th:placeholder="#{login.field.password.placeholder}"
+                                   required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span th:text="#{login.submit}">Sign In</span>
+                            </button>
+                        </div>
+                    </form>
+
+                    <p class="text-center mt-3 small">
+                        <span th:text="#{login.registerLink}">Don't have an account?</span>
+                        <a th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
+                    </p>
+
+                    <!-- Dev hint — remove for production -->
+                    <div class="alert alert-light border text-center mt-3 small mb-0" role="alert">
+                        <div class="fw-bold mb-2">
+                            <i class="bi bi-info-circle"></i> <span th:text="#{login.hint.heading}">Demo Credentials</span>
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-success" th:text="#{role.admin}">Admin</span>
+                            <code th:text="#{login.hint.admin.email}">alice.johnson@example.com</code>
+                        </div>
+                        <div class="mb-1">
+                            <span class="badge bg-secondary" th:text="#{role.user}">User</span>
+                            <code th:text="#{login.hint.user.email}">bob.smith@example.com</code>
+                        </div>
+                        <div class="text-muted mt-1">
+                            <span th:text="#{login.field.password}">Password</span>:
+                            <code th:text="#{login.hint.password}">password</code>
+                            <span th:text="#{login.hint.forAll}">(for all accounts)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+</body>
+</html>

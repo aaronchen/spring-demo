@@ -36,6 +36,16 @@ body {
     font-size: 1.5rem;
 }
 
+/* Brighter nav links — more visible than default, with hover contrast */
+.nav-link-bright {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.nav-link-bright:hover,
+.nav-link-bright:focus {
+    color: #fff !important;
+}
+
 /* Sticky footer */
 .footer {
     background-color: #f8f9fa;
