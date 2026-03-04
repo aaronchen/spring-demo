@@ -17,7 +17,7 @@ public class TagService {
     }
 
     public List<Tag> getAllTags() {
-        return tagRepository.findAll();
+        return tagRepository.findAllByOrderByNameAsc();
     }
 
     public Tag getTagById(Long id) {

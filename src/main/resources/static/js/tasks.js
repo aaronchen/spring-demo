@@ -161,7 +161,14 @@ function initFromUrl() {
     if (params.has('userId')) {
         currentUserId = params.get('userId') || null; // empty string → null (All Users)
     }
-    renderUserFilter();
+    // If filtering by another user, read their name from the data attribute
+    const mineId = document.getElementById('user-filter-mine')?.dataset.userId;
+    if (currentUserId && currentUserId !== mineId) {
+        const filterUserName = document.getElementById('user-filter-mine')?.dataset.filterUserName;
+        renderUserFilter(filterUserName || null);
+    } else {
+        renderUserFilter();
+    }
 
     // Tag filter
     const tagsParam = params.get('tags');
@@ -188,7 +195,10 @@ function setMyFilter() {
 }
 
 function clearUserFilter() {
-    currentUserId = null;
+    const mineBtn = document.getElementById('user-filter-mine');
+    const myId = mineBtn?.dataset.userId;
+    // Clearing "Mine" → All Users; clearing another user → Mine
+    currentUserId = (currentUserId === myId) ? null : myId;
     renderUserFilter(null);
     doSearch(true);
 }

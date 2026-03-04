@@ -97,11 +97,17 @@ The application provides **two interfaces** for the same backend:
   - Inner `StringConverter` auto-converts URL params to enum values
   - Previously named `TaskFilter`; renamed for clarity alongside user/tag filters
 
+- `repository/TagRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<Tag, Long>`
+  - `findByName(String)` — exact name lookup
+  - `findAllByOrderByNameAsc()` — sorted tag list for tag page and task form checkboxes
+
 - `repository/UserRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<User, Long>`
   - `findByEmail(String)` — used by `CustomUserDetailsService` for login and `RegistrationController` for duplicate checks
   - `findAllByOrderByNameAsc()` — sorted user list for dropdowns and admin panel
   - `findByNameContainingIgnoreCaseOrderByNameAsc(String)` — server-side user search for remote searchable-select
+  - `findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(String, String)` — user page search (name or email)
 
 #### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
@@ -150,7 +156,7 @@ The application provides **two interfaces** for the same backend:
 
 - `service/UserService.java` - User business logic
   - `getAllUsers`, `getUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
-  - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name (case-insensitive substring); used by `GET /api/users?q=`
+  - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by `GET /api/users?q=` and `UserController`
   - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
   - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `AdminController`
   - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
@@ -194,14 +200,25 @@ The application provides **two interfaces** for the same backend:
   - `GET /admin/users` — lists all users with role dropdown
   - `POST /admin/users/{id}/role` — changes a user's role via `UserService.updateRole()`
 
+- `controller/TagController.java` - Tag web UI
+  - `@Controller` with `/tags` base path
+  - `GET /tags` — lists all tags sorted A-Z in a table; tag names link to `/tasks?tags={id}&userId=` (all users)
+
+- `controller/UserController.java` - User web UI
+  - `@Controller` with `/users` base path
+  - `GET /users` — lists all users sorted A-Z in a table with HTMX live search (name/email)
+  - User names link to `/tasks?userId={id}` to show that user's tasks
+  - HTMX requests return `users/user-table` fragment; full requests return `users/users`
+
 - `controller/TaskController.java` - Task web UI endpoints
   - `@Controller` with `/tasks` base path
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `TagService` and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
+  - Injects `TagService`, `UserService`, and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
   - Task list defaults to current user's tasks on first visit; explicit empty `userId=` param means "All Users"
+  - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - **Security**: uses `OwnershipGuard` for edit/delete; new tasks default to current user (changeable via dropdown)
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
@@ -291,6 +308,7 @@ The application provides **two interfaces** for the same backend:
 - `templates/layouts/base.html` - Base layout with reusable fragments
   - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS
   - `navbar` - navigation bar with auth-aware elements:
+    - Left nav links: Tasks, Tags, Users
     - Anonymous: shows Register link
     - Authenticated: user dropdown with name, email, role badge, logout button
     - Admin: additional "Manage Users" link in dropdown
@@ -339,6 +357,20 @@ The application provides **two interfaces** for the same backend:
   - Includes `task-form :: fields` inside its own `<form>` with `hx-post`
   - Swapped into `#task-modal-content` by HTMX
 
+#### Tag Views
+- `templates/tags/tags.html` - Tag list page
+  - Table with ID and Name columns; tag names are `bg-primary` badge links to `/tasks?tags={id}&userId=`
+  - Card uses `overflow-hidden` to clip table corners to card border radius
+
+#### User Views
+- `templates/users/users.html` - User list page
+  - HTMX live search input (300ms debounce, searches name and email)
+  - Includes `users/user-table` fragment via `th:replace`
+
+- `templates/users/user-table.html` - User table fragment (bare file, no HTML wrapper)
+  - Table with Name, Email, Role columns; user names link to `/tasks?userId={id}`
+  - Role badges: green for ADMIN, gray for USER
+
 #### Auth Views
 - `templates/login.html` - Login page
   - Card-styled form with email and password fields
@@ -362,7 +394,7 @@ The application provides **two interfaces** for the same backend:
 
 ### Static Resources
 
-- `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator); `.card-clip` for overflow clipping on cards with colored headers
+- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator); `.card-clip` for overflow clipping on cards with colored headers; `.card-lift` opt-in hover lift effect (cards are static by default)
 - `static/css/tasks.css` - Task page styles (status/user/tag filter active states, table action button overrides, search clear button overlay, user link hover, tag badge active states)
 - `static/css/components/searchable-select-bootstrap5.css` - Standalone Bootstrap 5 theme for `<searchable-select>` (focus ring, connected corners, clear button, keyboard highlight)
 - `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); CSRF token injection for HTMX requests via `htmx:configRequest` listener; loaded globally via base layout
@@ -751,6 +783,8 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tasks` - Task list (cards or table view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/tags` - Tag list
+- `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management (admin only)
 
 **REST API — Tasks** (requires login; CSRF exempt):

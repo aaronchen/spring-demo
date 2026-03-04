@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.users}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <h1 class="display-5 mb-4" th:text="#{user.list.heading}">Users</h1>
+
+        <div class="mb-3">
+            <input type="search" class="form-control"
+                   id="user-search"
+                   th:placeholder="#{user.search.placeholder}"
+                   th:value="${search}"
+                   hx-get="/users"
+                   hx-target="#user-table"
+                   hx-swap="outerHTML"
+                   hx-trigger="input changed delay:300ms, search"
+                   name="search">
+        </div>
+
+        <div th:replace="~{users/user-table}"></div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+</body>
+</html>

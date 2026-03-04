@@ -15,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAllByOrderByNameAsc();
 
     List<User> findByNameContainingIgnoreCaseOrderByNameAsc(String name);
+
+    List<User> findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(String name, String email);
 }

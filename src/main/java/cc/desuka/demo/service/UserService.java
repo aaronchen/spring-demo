@@ -34,7 +34,7 @@ public class UserService {
 
     public List<User> searchUsers(String query) {
         if (query == null || query.isBlank()) return getAllUsers();
-        return userRepository.findByNameContainingIgnoreCaseOrderByNameAsc(query);
+        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(query, query);
     }
 
     public Optional<User> findByEmail(String email) {

@@ -6,6 +6,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -29,12 +30,14 @@ public class TaskController {
 
   private final TaskService taskService;
   private final TagService tagService;
+  private final UserService userService;
   private final OwnershipGuard ownershipGuard;
 
   public TaskController(TaskService taskService, TagService tagService,
-      OwnershipGuard ownershipGuard) {
+      UserService userService, OwnershipGuard ownershipGuard) {
     this.taskService = taskService;
     this.tagService = tagService;
+    this.userService = userService;
     this.ownershipGuard = ownershipGuard;
   }
 
@@ -66,6 +69,14 @@ public class TaskController {
     model.addAttribute("taskPage", taskPage);
     model.addAttribute("allTags", tagService.getAllTags());
     model.addAttribute("view", resolvedView);
+
+    // Resolve filtered user's name for the user filter button label
+    Long currentId = currentDetails != null ? currentDetails.getUser().getId() : null;
+    if (userId != null && !userId.equals(currentId)) {
+      try {
+        model.addAttribute("filterUserName", userService.getUserById(userId).getName());
+      } catch (Exception ignored) {}
+    }
 
     if (HtmxUtils.isHtmxRequest(request)) {
       return "table".equals(resolvedView) ? "tasks/task-table :: grid" : "tasks/task-cards :: grid";

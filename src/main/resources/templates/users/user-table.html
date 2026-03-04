@@ -1,0 +1,29 @@
+<div id="user-table" class="card shadow overflow-hidden" xmlns:th="http://www.thymeleaf.org">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th th:text="#{user.table.column.name}">Name</th>
+                    <th th:text="#{user.table.column.email}">Email</th>
+                    <th th:text="#{user.table.column.role}">Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="user : ${users}">
+                    <td>
+                        <a th:href="@{/tasks(userId=${user.id})}" th:text="${user.name}" class="text-decoration-none">Name</a>
+                    </td>
+                    <td th:text="${user.email}">email@example.com</td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${user.role.name() == 'ADMIN' ? 'bg-success' : 'bg-secondary'}"
+                              th:text="${user.role.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</span>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td colspan="3" class="text-center text-muted py-4" th:text="#{user.empty}">No users found.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -57,6 +57,7 @@
                                 id="user-filter-mine"
                                 th:data-user-id="${currentUser?.id}"
                                 th:data-user-name="${currentUser?.name}"
+                                th:data-filter-user-name="${filterUserName}"
                                 onclick="setMyFilter()">
                             <i class="bi bi-person"></i>
                             <span id="user-filter-label" th:text="#{task.filter.user.mine}">Mine</span>
