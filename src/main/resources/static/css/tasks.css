@@ -12,28 +12,51 @@
 #search-clear-btn:hover { color: #343a40; }
 #search-input { padding-right: 2.25rem; }
 
-/* Filter button (All): grey active state */
-[id^="filter-"] {
+/* Status filter button (All): grey active state */
+[id^="status-filter-"] {
     --bs-btn-active-bg: rgba(108, 117, 125, 0.35);
     --bs-btn-active-border-color: #6c757d;
     --bs-btn-active-color: inherit;
 }
 
-/* Filter button (Completed): green pill when active */
-#filter-completed {
+/* Status filter button (Completed): green pill when active */
+#status-filter-completed {
     --bs-btn-active-bg: #198754;
     --bs-btn-active-border-color: #198754;
     --bs-btn-active-color: #fff;
 }
-#filter-completed.active { color: #fff !important; }
+#status-filter-completed.active { color: #fff !important; }
 
-/* Filter button (Pending): yellow pill when active */
-#filter-incomplete {
+/* Status filter button (Pending): yellow pill when active */
+#status-filter-incomplete {
     --bs-btn-active-bg: #ffc107;
     --bs-btn-active-border-color: #ffc107;
     --bs-btn-active-color: #000;
 }
-#filter-incomplete.active { color: #000 !important; }
+#status-filter-incomplete.active { color: #000 !important; }
+
+/* User filter: grey for "All Users", blue for "Mine" / specific user */
+#user-filter-all {
+    --bs-btn-active-bg: rgba(108, 117, 125, 0.35);
+    --bs-btn-active-border-color: #6c757d;
+    --bs-btn-active-color: inherit;
+}
+#user-filter-mine {
+    --bs-btn-active-bg: #0d6efd;
+    --bs-btn-active-border-color: #0d6efd;
+    --bs-btn-active-color: #fff;
+}
+#user-filter-mine.active { color: #fff !important; }
+
+/* Clickable user names on cards/rows */
+a.user-link:hover { text-decoration: underline !important; color: #0d6efd !important; }
+
+/* Clickable tag badges on cards/rows */
+a.badge:hover { opacity: 0.85; cursor: pointer; }
+a.badge.tag-active { background-color: #0d6efd !important; }
+
+/* Tag pills */
+#tag-pills .badge { font-size: 0.85rem; }
 
 /* Table action buttons: uniform secondary border/icon in default state,
    colored fill on hover (Bootstrap's native hover vars handle the rest) */

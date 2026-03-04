@@ -34,17 +34,19 @@
         </div>
     </div>
 
-    <!-- Assigned To: editable select in create/edit mode, disabled in view mode -->
-    <div class="mb-3" th:if="${users != null}">
+    <!-- Assigned To: searchable dropdown (remote) in create/edit mode, disabled in view mode -->
+    <div class="mb-3">
         <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <select name="userId" id="userId" class="form-select"
-                th:disabled="${mode == 'view'}">
+        <searchable-select name="userId" id="userId"
+                           src="/api/users" value-field="id" text-field="name"
+                           th:placeholder="#{task.field.user.placeholder}"
+                           th:disabled="${mode == 'view'}">
             <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
-            <option th:each="user : ${users}"
-                    th:value="${user.id}"
-                    th:text="${user.name}"
-                    th:selected="${task.user != null && task.user.id == user.id}">User</option>
-        </select>
+            <option th:if="${task.user != null}"
+                    th:value="${task.user.id}"
+                    th:text="${task.user.name}"
+                    selected>Selected User</option>
+        </searchable-select>
     </div>
 
     <!-- Tag Checkboxes -->

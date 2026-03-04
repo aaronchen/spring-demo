@@ -5,10 +5,16 @@ body {
     min-height: 100vh;
 }
 
-/* Smooth transitions + clip header background to card's rounded corners */
+/* Smooth transitions for cards */
 .card {
-    overflow: hidden;
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Clip header background to rounded corners — only on cards with colored headers
+   (task list cards). Not applied globally because overflow:hidden clips dropdowns
+   inside form cards. */
+.card.card-clip {
+    overflow: hidden;
 }
 
 .card:hover {
@@ -51,6 +57,7 @@ body {
     background-color: #f8f9fa;
     border-top: 1px solid #dee2e6;
 }
+
 
 /* HTMX Loading Indicator — hidden by default, shown on htmx-request */
 .htmx-indicator {

@@ -16,12 +16,20 @@
            hx-swap="innerHTML"
            class="fw-semibold text-decoration-none"
            th:text="${task.title}">Title</a>
-        <span th:each="tag : ${task.tags}" class="badge bg-secondary ms-1">
+        <a th:each="tag : ${task.tags}" href="#"
+           class="badge bg-secondary ms-1 text-decoration-none text-white"
+           th:data-tag-id="${tag.id}"
+           onclick="toggleTagFilter(this.dataset.tagId); return false;">
             <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
-        </span>
+        </a>
         <br th:if="${task.user != null}">
-        <small class="text-muted" th:if="${task.user != null}">
-            <i class="bi bi-person"></i> <span th:text="${task.user.name}">User</span>
+        <small th:if="${task.user != null}">
+            <i class="bi bi-person text-muted"></i>
+            <a href="#" class="text-muted text-decoration-none user-link"
+               th:data-user-id="${task.user.id}"
+               th:data-user-name="${task.user.name}"
+               onclick="setUserFilter(this.dataset.userId, this.dataset.userName); return false;"
+               th:text="${task.user.name}">User</a>
         </small>
     </td>
     <td style="white-space: nowrap;">

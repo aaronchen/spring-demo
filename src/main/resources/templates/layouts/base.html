@@ -15,6 +15,9 @@
     <!-- Base styles -->
     <link rel="stylesheet" th:href="@{/css/base.css}">
 
+    <!-- Web Component themes -->
+    <link rel="stylesheet" th:href="@{/css/components/searchable-select-bootstrap5.css}">
+
     <!-- Page-specific styles -->
     <link th:if="${cssFile != null}" rel="stylesheet" th:href="@{${cssFile}}">
 
@@ -106,6 +109,8 @@
         <script th:src="@{/config.js}"></script>
         <!-- Shared utilities -->
         <script th:src="@{/js/utils.js}"></script>
+        <!-- Reusable Web Components -->
+        <script th:src="@{/js/components/searchable-select.js}"></script>
     </div>
 </body>
 </html>

@@ -24,12 +24,17 @@ public class UserService {
     }
 
     public List<User> getAllUsers() {
-        return userRepository.findAll();
+        return userRepository.findAllByOrderByNameAsc();
     }
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User", id));
+    }
+
+    public List<User> searchUsers(String query) {
+        if (query == null || query.isBlank()) return getAllUsers();
+        return userRepository.findByNameContainingIgnoreCaseOrderByNameAsc(query);
     }
 
     public Optional<User> findByEmail(String email) {

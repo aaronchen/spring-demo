@@ -1,12 +1,11 @@
 package cc.desuka.demo.controller;
 
 import cc.desuka.demo.model.Task;
-import cc.desuka.demo.model.TaskFilter;
+import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
-import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -30,14 +29,12 @@ public class TaskController {
 
   private final TaskService taskService;
   private final TagService tagService;
-  private final UserService userService;
   private final OwnershipGuard ownershipGuard;
 
   public TaskController(TaskService taskService, TagService tagService,
-      UserService userService, OwnershipGuard ownershipGuard) {
+      OwnershipGuard ownershipGuard) {
     this.taskService = taskService;
     this.tagService = tagService;
-    this.userService = userService;
     this.ownershipGuard = ownershipGuard;
   }
 
@@ -45,19 +42,29 @@ public class TaskController {
   @GetMapping
   public String listTasks(
       @RequestParam(required = false, defaultValue = "") String search,
-      @RequestParam(required = false, defaultValue = "all") TaskFilter filter,
+      @RequestParam(required = false, defaultValue = "all") TaskStatusFilter statusFilter,
+      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) List<Long> tags,
       @RequestParam(required = false) String view,
       @CookieValue(name = "view", required = false, defaultValue = "cards") String viewCookie,
       @CookieValue(name = "pageSize", required = false, defaultValue = "25") int pageSizeCookie,
       @PageableDefault(size = 25, sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
+      @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request,
       Model model) {
+    // Default to current user's tasks when userId param is absent (first visit).
+    // An explicit empty userId= (from "All Users" click) is present in the param map
+    // but binds as null — distinguished by checking the raw param map.
+    if (userId == null && !request.getParameterMap().containsKey("userId") && currentDetails != null) {
+      userId = currentDetails.getUser().getId();
+    }
     String resolvedView = (view != null) ? view : viewCookie;
     if (!request.getParameterMap().containsKey("size")) {
       pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
     }
-    Page<Task> taskPage = taskService.searchAndFilterTasks(search, filter, pageable);
+    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, userId, tags, pageable);
     model.addAttribute("taskPage", taskPage);
+    model.addAttribute("allTags", tagService.getAllTags());
     model.addAttribute("view", resolvedView);
 
     if (HtmxUtils.isHtmxRequest(request)) {
@@ -73,7 +80,6 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "view");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -90,7 +96,6 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -110,7 +115,6 @@ public class TaskController {
     if (result.hasErrors()) {
       model.addAttribute("mode", "create");
       model.addAttribute("tags", tagService.getAllTags());
-      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }
@@ -135,7 +139,6 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("users", userService.getAllUsers());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -160,7 +163,6 @@ public class TaskController {
     if (result.hasErrors()) {
       model.addAttribute("mode", "edit");
       model.addAttribute("tags", tagService.getAllTags());
-      model.addAttribute("users", userService.getAllUsers());
       if (HtmxUtils.isHtmxRequest(request)) {
         return "tasks/task-modal";
       }

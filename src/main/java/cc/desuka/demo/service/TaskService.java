@@ -3,7 +3,7 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
-import cc.desuka.demo.model.TaskFilter;
+import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
@@ -71,8 +71,10 @@ public class TaskService {
     return taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(keyword, keyword);
   }
 
-  public Page<Task> searchAndFilterTasks(String keyword, TaskFilter filter, Pageable pageable) {
-    return taskRepository.findAll(TaskSpecifications.build(keyword, filter), pageable);
+  public Page<Task> searchAndFilterTasks(String keyword, TaskStatusFilter statusFilter,
+                                         Long userId, List<Long> tagIds,
+                                         Pageable pageable) {
+    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, userId, tagIds), pageable);
   }
 
   public Task toggleComplete(Long id) {
