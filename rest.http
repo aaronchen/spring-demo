@@ -146,8 +146,12 @@ Cookie: JSESSIONID={{sessionId}}
 ### Users — Read (any authenticated user)
 ### ============================================================
 
-### Get all users
+### Get all users (sorted A-Z)
 GET {{baseUrl}}/api/users
+Cookie: JSESSIONID={{sessionId}}
+
+### Search users by name
+GET {{baseUrl}}/api/users?q=ali
 Cookie: JSESSIONID={{sessionId}}
 
 ### Get user by ID

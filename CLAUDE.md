@@ -88,11 +88,20 @@ The application provides **two interfaces** for the same backend:
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
-  - `build(keyword, filter)` - builds a combined search + filter specification
+  - `build(keyword, statusFilter, userId, tagIds)` - builds a combined search + status + user + tag specification
+  - `withStatusFilter(TaskStatusFilter)` — filters by completion status (all/completed/pending)
+  - `withUserId(Long)` — filters tasks by assigned user
+  - `withTagIds(List<Long>)` — filters tasks having any of the given tags (OR logic, uses INNER JOIN + distinct)
+
+- `model/TaskStatusFilter.java` - Enum for task status filtering (ALL, COMPLETED, PENDING)
+  - Inner `StringConverter` auto-converts URL params to enum values
+  - Previously named `TaskFilter`; renamed for clarity alongside user/tag filters
 
 - `repository/UserRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<User, Long>`
   - `findByEmail(String)` — used by `CustomUserDetailsService` for login and `RegistrationController` for duplicate checks
+  - `findAllByOrderByNameAsc()` — sorted user list for dropdowns and admin panel
+  - `findByNameContainingIgnoreCaseOrderByNameAsc(String)` — server-side user search for remote searchable-select
 
 #### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
@@ -136,11 +145,12 @@ The application provides **two interfaces** for the same backend:
 #### Service Layer
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
-  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, filter, pageable)`, `toggleComplete`
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, userId, tagIds, pageable)`, `toggleComplete`
   - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
 
 - `service/UserService.java` - User business logic
-  - `getAllUsers`, `getUserById`, `findByEmail`, `createUser`, `updateRole`, `deleteUser`
+  - `getAllUsers`, `getUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
+  - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name (case-insensitive substring); used by `GET /api/users?q=`
   - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
   - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `AdminController`
   - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
@@ -158,7 +168,7 @@ The application provides **two interfaces** for the same backend:
 
 - `controller/api/UserApiController.java` - User REST API endpoints
   - `@RestController` with `/api/users` base path
-  - `GET /api/users` — list all; `GET /api/users/{id}` — get by id; `POST /api/users` (201) — create; `DELETE /api/users/{id}` (204) — delete
+  - `GET /api/users` — list all; `GET /api/users?q=ali` — search by name; `GET /api/users/{id}` — get by id; `POST /api/users` (201) — create; `DELETE /api/users/{id}` (204) — delete
   - **Security**: POST and DELETE restricted to admins via `SecurityConfig` URL matchers (no code changes needed here)
 
 - `controller/api/TagApiController.java` - Tag REST API endpoints
@@ -190,7 +200,8 @@ The application provides **two interfaces** for the same backend:
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `UserService`, `TagService`, and `OwnershipGuard`; adds `users` and `tags` lists to all form-serving methods
+  - Injects `TagService` and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
+  - Task list defaults to current user's tasks on first visit; explicit empty `userId=` param means "All Users"
   - **Security**: uses `OwnershipGuard` for edit/delete; new tasks default to current user (changeable via dropdown)
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
@@ -289,7 +300,7 @@ The application provides **two interfaces** for the same backend:
 
 #### Task Views
 - `templates/tasks/tasks.html` - Main task list page
-  - Live search (JS-debounced, 300ms), filter buttons, sort dropdown, view toggle (cards/table)
+  - Live search (JS-debounced, 300ms), status filter buttons, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown, view toggle (cards/table)
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
   - Contains two shared modal shells loaded once per page:
     - `#task-modal` — create/edit form, content loaded via HTMX
@@ -301,6 +312,7 @@ The application provides **two interfaces** for the same backend:
 - `templates/tasks/task-card.html` - Individual task card fragment
   - `card` fragment — reads `${task}` from context (non-parameterized)
   - Color-coded: green = completed, yellow = pending
+  - Clickable user names (filter by user) and tag badges (toggle tag filter)
 
 - `templates/tasks/task-table.html` - Table view fragment
   - `grid` fragment — sortable columns, renders rows via `task-table-row :: row`
@@ -312,9 +324,9 @@ The application provides **two interfaces** for the same backend:
   - `controlBar(position)` fragment — top/bottom bars with page nav and page-size selector
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — title, description, user `<select>` (one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
-  - User select: `name="userId"` submitted as `@RequestParam` (not bound to `th:object`); visible in all modes, disabled in view mode; defaults to current user on create
-  - The user/tag widgets side-by-side illustrate the difference: `<select>` for single FK vs checkboxes for join table
+  - `fields` fragment — title, description, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
+  - User select: `<searchable-select src="/api/users">` fetches users remotely; `name="userId"` submitted as `@RequestParam`; pre-selected user provided via `<option selected>` to avoid initial fetch
+  - The user/tag widgets illustrate the difference: searchable select for single FK vs checkboxes for join table
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
@@ -332,7 +344,7 @@ The application provides **two interfaces** for the same backend:
   - Card-styled form with email and password fields
   - `th:action="@{/login}"` — Spring Security handles POST automatically and injects CSRF token
   - Alert messages via query params: `?error` (bad credentials), `?logout` (logged out), `?registered` (just registered)
-  - Dev credentials hint (removable for production)
+  - Dev credentials hint with clickable autofill (removable for production)
 
 - `templates/register.html` - Registration page
   - Form bound to `RegistrationRequest` via `th:object`
@@ -350,10 +362,12 @@ The application provides **two interfaces** for the same backend:
 
 ### Static Resources
 
-- `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator)
-- `static/css/tasks.css` - Task page styles (filter button active states, table action button overrides, search clear button overlay)
+- `static/css/base.css` - Global styles (body, card hover, btn transitions, validation, navbar, footer, HTMX indicator); `.card-clip` for overflow clipping on cards with colored headers
+- `static/css/tasks.css` - Task page styles (status/user/tag filter active states, table action button overrides, search clear button overlay, user link hover, tag badge active states)
+- `static/css/components/searchable-select-bootstrap5.css` - Standalone Bootstrap 5 theme for `<searchable-select>` (focus ring, connected corners, clear button, keyboard highlight)
 - `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); CSRF token injection for HTMX requests via `htmx:configRequest` listener; loaded globally via base layout
-- `static/js/tasks.js` - Task list page logic (sort, filter, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`; reads `APP_CONFIG.routes.tasks` for URL construction
+- `static/js/tasks.js` - Task list page logic (sort, status/user/tag filters, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`; reads `APP_CONFIG.routes.tasks` for URL construction
+- `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component; supports local (static `<option>`) and remote (`src` attribute) data modes, keyboard navigation, debounced search, Bootstrap 5 dropdown styling
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
 ### Resource Files
@@ -756,7 +770,8 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `DELETE /api/tags/{id}` - Delete tag (admin only, 204 No Content)
 
 **REST API — Users** (requires login):
-- `GET /api/users` - List all users
+- `GET /api/users` - List all users (sorted A-Z)
+- `GET /api/users?q=ali` - Search users by name (case-insensitive substring)
 - `GET /api/users/{id}` - Get user by ID
 - `POST /api/users` - Create user (admin only, 201 Created)
 - `DELETE /api/users/{id}` - Delete user (admin only, 204 No Content)
