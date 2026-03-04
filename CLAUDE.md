@@ -633,7 +633,7 @@ The `<meta>` tags are set in `base.html`'s `<head>`. REST API (`/api/**`) is CSR
 <!-- base.html head fragment accepts optional cssFile -->
 <head th:fragment="head(title, cssFile)">
     <link rel="stylesheet" th:href="@{/css/base.css}">
-    <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
+    <link th:if="${cssFile != null}" rel="stylesheet" th:href="@{${cssFile}}">
 </head>
 
 <!-- tasks.html passes a message key for the title -->
@@ -669,6 +669,10 @@ spring.h2.console.enabled=true
 # SQL logging (helpful for debugging)
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
+
+# Cache busting: content hash appended to static resource URLs
+spring.web.resources.chain.strategy.content.enabled=true
+spring.web.resources.chain.strategy.content.paths=/**
 ```
 
 `app.routes.*` properties are **not** listed here — their defaults live in `AppRoutesProperties.java` (the single source of truth). Only add them to `application.properties` when overriding the defaults.

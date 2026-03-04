@@ -16,7 +16,7 @@
     <link rel="stylesheet" th:href="@{/css/base.css}">
 
     <!-- Page-specific styles -->
-    <link th:if="${cssFile != null}" rel="stylesheet" th:href="${cssFile}">
+    <link th:if="${cssFile != null}" rel="stylesheet" th:href="@{${cssFile}}">
 
     <!-- CSRF meta tags — read by utils.js to inject the token into HTMX requests
          that bypass <form th:action> (toggle buttons, delete confirm button). -->
