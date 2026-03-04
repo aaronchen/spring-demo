@@ -1,7 +1,7 @@
 <!-- Reusable task card fragment - used by both full page and HTMX partial responses -->
 <div th:fragment="card" class="col" th:id="'task-card-' + ${task.id}"
      th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
-    <div class="card h-100 shadow-sm" th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
+    <div class="card card-clip h-100 shadow-sm" th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
              th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
@@ -28,7 +28,12 @@
             <p class="card-text mt-1 mb-0">
                 <small class="text-muted">
                     <span th:if="${task.user != null}" class="d-block">
-                        <i class="bi bi-person"></i> <span th:text="${task.user.name}">User</span>
+                        <i class="bi bi-person"></i>
+                        <a href="#" class="text-muted text-decoration-none user-link"
+                           th:data-user-id="${task.user.id}"
+                           th:data-user-name="${task.user.name}"
+                           onclick="setUserFilter(this.dataset.userId, this.dataset.userName); return false;"
+                           th:text="${task.user.name}">User</a>
                     </span>
                     <span class="d-block">
                         <i class="bi bi-calendar"></i>
@@ -37,9 +42,12 @@
                 </small>
             </p>
             <div th:if="${task.tags != null && !task.tags.isEmpty()}" class="mt-2">
-                <span th:each="tag : ${task.tags}" class="badge bg-secondary me-1">
+                <a th:each="tag : ${task.tags}" href="#"
+                   class="badge bg-secondary me-1 text-decoration-none text-white"
+                   th:data-tag-id="${tag.id}"
+                   onclick="toggleTagFilter(this.dataset.tagId); return false;">
                     <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
-                </span>
+                </a>
             </div>
         </div>
 

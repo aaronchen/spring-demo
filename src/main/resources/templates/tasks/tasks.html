@@ -38,27 +38,48 @@
                                 aria-label="Clear search">
                             <i class="bi bi-x-lg"></i>
                         </button>
-                        <input type="hidden" id="current-filter" value="all">
+                        <input type="hidden" id="current-status-filter" value="all">
                     </div>
                 </div>
 
                 <!-- Row 2: Filter + Sort + View Toggle -->
-                <div class="d-flex align-items-center gap-2 mb-4">
-                    <!-- Filter Buttons -->
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    <!-- User Filter Buttons -->
+                    <div class="btn-group" role="group" aria-label="User filter">
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-dark fw-bold"
+                                id="user-filter-all"
+                                onclick="clearUserFilter()">
+                            <i class="bi bi-people"></i> <span th:text="#{task.filter.user.all}">All Users</span>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-primary fw-bold active"
+                                id="user-filter-mine"
+                                th:data-user-id="${currentUser?.id}"
+                                th:data-user-name="${currentUser?.name}"
+                                onclick="setMyFilter()">
+                            <i class="bi bi-person"></i>
+                            <span id="user-filter-label" th:text="#{task.filter.user.mine}">Mine</span>
+                            <span id="user-filter-clear" class="d-none ms-1"
+                                  onclick="event.stopPropagation(); clearUserFilter();">&times;</span>
+                        </button>
+                    </div>
+
+                    <!-- Status Filter Buttons -->
                     <div class="btn-group" role="group" aria-label="Task filters">
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-dark active fw-bold"
-                                id="filter-all">
+                                id="status-filter-all">
                             <i class="bi bi-list-ul"></i> <span th:text="#{task.filter.all}">All</span>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-success fw-bold"
-                                id="filter-completed">
+                                id="status-filter-completed">
                             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.filter.completed}">Completed</span>
                         </button>
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-warning fw-bold"
-                                id="filter-incomplete">
+                                id="status-filter-incomplete">
                             <i class="bi bi-circle"></i> <span th:text="#{task.filter.pending}">Pending</span>
                         </button>
                     </div>
@@ -135,6 +156,29 @@
                         </ul>
                     </div>
 
+                    <!-- Tag Filter Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle"
+                                type="button"
+                                id="tagDropdown"
+                                data-bs-toggle="dropdown"
+                                data-bs-auto-close="outside"
+                                aria-expanded="false">
+                            <i class="bi bi-tags"></i> <span id="tag-filter-label" th:text="#{task.filter.tags}">Tags</span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="tagDropdown" style="max-height: 300px; overflow-y: auto;">
+                            <li th:each="tag : ${allTags}">
+                                <label class="dropdown-item d-flex align-items-center gap-2 mb-0">
+                                    <input type="checkbox" class="form-check-input tag-filter-checkbox mt-0"
+                                           th:data-tag-id="${tag.id}"
+                                           th:data-tag-name="${tag.name}"
+                                           onchange="onTagCheckboxChange(this)">
+                                    <span th:text="${tag.name}">Tag Name</span>
+                                </label>
+                            </li>
+                        </ul>
+                    </div>
+
                     <!-- View Toggle -->
                     <div class="btn-group ms-auto" role="group" aria-label="View toggle">
                         <button type="button"
@@ -153,6 +197,14 @@
                         </button>
                     </div>
 
+                </div>
+
+                <!-- Selected Tag Pills (hidden when empty, managed by JS) -->
+                <div id="tag-pills" class="d-none mb-3">
+                    <span id="tag-pills-container"></span>
+                    <a href="#" id="tag-clear-all" class="ms-2 small text-decoration-none"
+                       onclick="clearAllTags(); return false;"
+                       th:text="#{task.filter.tags.clearAll}">Clear all</a>
                 </div>
 
                 <!-- Task List Container (targeted by HTMX) -->

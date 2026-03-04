@@ -70,11 +70,21 @@
                         </div>
                         <div class="mb-1">
                             <span class="badge bg-success" th:text="#{role.admin}">Admin</span>
-                            <code th:text="#{login.hint.admin.email}">alice.johnson@example.com</code>
+                            <a href="#" class="text-decoration-none"
+                               th:data-email="#{login.hint.admin.email}"
+                               th:data-password="#{login.hint.password}"
+                               onclick="fillLogin(this); return false;">
+                                <code th:text="#{login.hint.admin.email}">alice.johnson@example.com</code>
+                            </a>
                         </div>
                         <div class="mb-1">
                             <span class="badge bg-secondary" th:text="#{role.user}">User</span>
-                            <code th:text="#{login.hint.user.email}">bob.smith@example.com</code>
+                            <a href="#" class="text-decoration-none"
+                               th:data-email="#{login.hint.user.email}"
+                               th:data-password="#{login.hint.password}"
+                               onclick="fillLogin(this); return false;">
+                                <code th:text="#{login.hint.user.email}">bob.smith@example.com</code>
+                            </a>
                         </div>
                         <div class="text-muted mt-1">
                             <span th:text="#{login.field.password}">Password</span>:
@@ -82,6 +92,12 @@
                             <span th:text="#{login.hint.forAll}">(for all accounts)</span>
                         </div>
                     </div>
+                    <script>
+                        function fillLogin(el) {
+                            document.getElementById('username').value = el.dataset.email;
+                            document.getElementById('password').value = el.dataset.password;
+                        }
+                    </script>
                 </div>
             </div>
         </div>

@@ -13,18 +13,24 @@ let activeSorts = [{field: 'createdAt', direction: 'desc'}];
 let currentPage = 0;
 let pageSize = parseInt(getCookie('pageSize') || '25');
 let currentView = 'cards';
+let currentUserId = null;
+let selectedTagIds = [];
 const TASKS_BASE = APP_CONFIG.routes.tasks;
 
 // Build the URL for the current state
 function buildUrl(page) {
     const params = new URLSearchParams();
     const search = document.getElementById('search-input').value;
-    const filter = document.getElementById('current-filter').value;
+    const statusFilter = document.getElementById('current-status-filter').value;
     if (search) params.set('search', search);
-    if (filter && filter !== 'all') params.set('filter', filter);
+    if (statusFilter && statusFilter !== 'all') params.set('statusFilter', statusFilter);
     activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
     params.set('size', pageSize);
     if (page > 0) params.set('page', page);
+    // Always include userId: actual ID for "Mine"/specific user, empty for "All Users".
+    // This ensures bookmarked URLs preserve the user filter choice.
+    params.set('userId', currentUserId || '');
+    if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
     if (currentView !== 'cards') params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
 }
@@ -135,11 +141,11 @@ function initFromUrl() {
     }
     syncPageSizeSelects();
 
-    // Filter
-    const filter = params.get('filter') || 'all';
-    document.getElementById('current-filter').value = filter;
-    document.querySelectorAll('[id^="filter-"]').forEach(btn => {
-        btn.classList.toggle('active', btn.id === 'filter-' + filter);
+    // Status filter
+    const statusFilter = params.get('statusFilter') || 'all';
+    document.getElementById('current-status-filter').value = statusFilter;
+    document.querySelectorAll('[id^="status-filter-"]').forEach(btn => {
+        btn.classList.toggle('active', btn.id === 'status-filter-' + statusFilter);
     });
 
     // Search
@@ -151,11 +157,157 @@ function initFromUrl() {
     currentView = params.get('view') || getCookie('view') || 'cards';
     renderViewToggle();
 
+    // User filter: explicit URL param wins; otherwise keep default (Mine)
+    if (params.has('userId')) {
+        currentUserId = params.get('userId') || null; // empty string → null (All Users)
+    }
+    renderUserFilter();
+
+    // Tag filter
+    const tagsParam = params.get('tags');
+    selectedTagIds = tagsParam ? tagsParam.split(',') : [];
+    renderTagFilter();
+
     // Render sort checkmarks and label
     renderSorts();
 }
 
+// ── User filter ──
+
+function setUserFilter(userId, userName) {
+    currentUserId = String(userId);
+    renderUserFilter(userName);
+    doSearch(true);
+}
+
+function setMyFilter() {
+    const btn = document.getElementById('user-filter-mine');
+    currentUserId = btn.dataset.userId;
+    renderUserFilter(null);
+    doSearch(true);
+}
+
+function clearUserFilter() {
+    currentUserId = null;
+    renderUserFilter(null);
+    doSearch(true);
+}
+
+function renderUserFilter(userName) {
+    const allBtn = document.getElementById('user-filter-all');
+    const mineBtn = document.getElementById('user-filter-mine');
+    if (!allBtn || !mineBtn) return;
+    const label = document.getElementById('user-filter-label');
+    const clearIcon = document.getElementById('user-filter-clear');
+    const defaultLabel = mineBtn.dataset.defaultLabel || label.textContent;
+
+    allBtn.classList.toggle('active', currentUserId === null);
+    mineBtn.classList.toggle('active', currentUserId !== null);
+
+    if (currentUserId === null) {
+        label.textContent = defaultLabel;
+        clearIcon.classList.add('d-none');
+    } else if (currentUserId === mineBtn.dataset.userId) {
+        label.textContent = defaultLabel;
+        clearIcon.classList.remove('d-none');
+    } else {
+        label.textContent = userName || 'User';
+        clearIcon.classList.remove('d-none');
+    }
+}
+
+// ── Tag filter ──
+
+function toggleTagFilter(tagId) {
+    tagId = String(tagId);
+    const idx = selectedTagIds.indexOf(tagId);
+    if (idx >= 0) {
+        selectedTagIds.splice(idx, 1);
+    } else {
+        selectedTagIds.push(tagId);
+    }
+    renderTagFilter();
+    doSearch(true);
+}
+
+function onTagCheckboxChange(checkbox) {
+    const tagId = String(checkbox.dataset.tagId);
+    if (checkbox.checked) {
+        if (!selectedTagIds.includes(tagId)) selectedTagIds.push(tagId);
+    } else {
+        selectedTagIds = selectedTagIds.filter(id => id !== tagId);
+    }
+    renderTagFilter();
+    doSearch(true);
+}
+
+function clearAllTags() {
+    selectedTagIds = [];
+    renderTagFilter();
+    doSearch(true);
+}
+
+function renderTagFilter() {
+    // Sync dropdown checkboxes
+    document.querySelectorAll('.tag-filter-checkbox').forEach(cb => {
+        cb.checked = selectedTagIds.includes(String(cb.dataset.tagId));
+    });
+
+    // Update dropdown button label
+    const label = document.getElementById('tag-filter-label');
+    if (label) {
+        const baseLabel = label.dataset.defaultLabel || label.textContent.replace(/ \(\d+\)$/, '');
+        if (!label.dataset.defaultLabel) label.dataset.defaultLabel = baseLabel;
+        label.textContent = selectedTagIds.length > 0
+            ? `${baseLabel} (${selectedTagIds.length})`
+            : baseLabel;
+    }
+
+    // Render pills
+    const pillsContainer = document.getElementById('tag-pills-container');
+    const pillsWrapper = document.getElementById('tag-pills');
+    if (!pillsContainer || !pillsWrapper) return;
+    pillsContainer.innerHTML = '';
+
+    if (selectedTagIds.length === 0) {
+        pillsWrapper.classList.add('d-none');
+        return;
+    }
+
+    pillsWrapper.classList.remove('d-none');
+    selectedTagIds.forEach(tagId => {
+        const cb = document.querySelector(`.tag-filter-checkbox[data-tag-id="${tagId}"]`);
+        const name = cb ? cb.dataset.tagName : `Tag ${tagId}`;
+        const pill = document.createElement('span');
+        pill.className = 'badge bg-primary me-1';
+        pill.innerHTML = `${name} <a href="#" class="text-white text-decoration-none ms-1" `
+            + `onclick="toggleTagFilter('${tagId}'); return false;">&times;</a>`;
+        pillsContainer.appendChild(pill);
+    });
+
+    // Show "Clear all" only when 2+ tags
+    const clearAll = document.getElementById('tag-clear-all');
+    if (clearAll) clearAll.classList.toggle('d-none', selectedTagIds.length < 2);
+
+    // Highlight active tags on cards/rows
+    highlightActiveTags();
+}
+
+function highlightActiveTags() {
+    document.querySelectorAll('#tasks-view a.badge[data-tag-id]').forEach(badge => {
+        badge.classList.toggle('tag-active', selectedTagIds.includes(String(badge.dataset.tagId)));
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Store default label and set initial user filter to "Mine"
+    const mineBtn = document.getElementById('user-filter-mine');
+    if (mineBtn) {
+        const label = document.getElementById('user-filter-label');
+        if (label) mineBtn.dataset.defaultLabel = label.textContent;
+        if (!currentUserId) currentUserId = mineBtn.dataset.userId;
+    }
+
     initFromUrl();
 
     // Debounced live search + clear button visibility
@@ -180,14 +332,14 @@ document.addEventListener('DOMContentLoaded', function() {
         doSearch(true);
     });
 
-    // Filter button click handlers
-    document.querySelectorAll('[id^="filter-"]').forEach(button => {
+    // Status filter button click handlers
+    document.querySelectorAll('[id^="status-filter-"]').forEach(button => {
         button.addEventListener('click', function() {
-            document.querySelectorAll('[id^="filter-"]').forEach(btn =>
+            document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
                 btn.classList.remove('active'));
             this.classList.add('active');
-            document.getElementById('current-filter').value =
-                this.id.replace('filter-', '');
+            document.getElementById('current-status-filter').value =
+                this.id.replace('status-filter-', '');
             doSearch(true);
         });
     });
@@ -197,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'tasks-view') {
             syncPageSizeSelects();
+            highlightActiveTags();
         }
         if (evt.detail.target && evt.detail.target.id === 'task-modal-content') {
             bootstrap.Modal.getOrCreateInstance(document.getElementById('task-modal')).show();
