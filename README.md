@@ -10,6 +10,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Role-Based Access** - Two roles: USER (standard) and ADMIN (elevated privileges)
 - **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
 - **Admin Panel** - Manage user roles at `/admin/users` (admin only)
+- **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
 
 ### Web Interface
@@ -22,8 +23,10 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
 - **Color-Coded Tasks** - Green = completed, yellow = pending throughout UI
 - **Dynamic Updates** - Toggle completion and delete without page reloads via HTMX
-- **User Assignment** - Assign tasks to users via dropdown (`@ManyToOne`)
+- **User Assignment** - Assign tasks to users via searchable select dropdown (`@ManyToOne`)
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
+- **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
+- **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
 
 ### REST API
 - **RESTful Endpoints** - Complete CRUD for tasks, tags, and users via JSON API
@@ -32,6 +35,13 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Role Restrictions** - Tag and user mutations (POST/DELETE) restricted to admins
 - **Search & Filter** - Query tasks by keyword and completion status
 - **Toggle Completion** - Quick PATCH endpoint (open to all authenticated users)
+
+### Audit Logging
+- **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
+- **Tracked Actions** - Task CRUD, user CRUD, tag CRUD, login success/failure, role changes, registration
+- **Field-Level Diffs** - Update events record before/after values for each changed field
+- **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with category buttons, text search, date range, and pagination
+- **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
 
 ### Error Handling
 - **Dual exception handlers** - `ApiExceptionHandler` returns JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
@@ -48,8 +58,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions and HX-Trigger events
 - Bootstrap 5.3 for styling
-- Split CSS: `base.css` (global) + `tasks.css` (page-specific)
-- Split JS: `utils.js` (global) + `tasks.js` (page-specific)
+- Reusable pagination fragment with custom DOM events
+- Split CSS: `base.css` (global) + page-specific (`tasks.css`, `audit.css`)
+- Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`)
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
@@ -78,6 +89,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 3. **Access the application**
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
+   - **Audit Log**: http://localhost:8080/admin/audit (admin only)
    - **REST API**: http://localhost:8080/api/tasks
    - **H2 Console**: http://localhost:8080/h2-console
 
@@ -213,21 +225,32 @@ Data is lost on restart (in-memory, by design).
 spring-demo/
 ├── src/main/
 │   ├── java/cc/desuka/demo/
+│   │   ├── audit/
+│   │   │   ├── AuditDetails.java            # Snapshot/diff/display-name utilities
+│   │   │   ├── AuditEvent.java              # Event class with action constants
+│   │   │   ├── AuditEventListener.java      # Persists AuditEvent → AuditLog
+│   │   │   ├── Auditable.java               # Interface for audit snapshots
+│   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + currentUser
 │   │   │   └── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   ├── controller/
+│   │   │   ├── admin/
+│   │   │   │   ├── AuditController.java     # Audit log page (admin only)
+│   │   │   │   └── UserManagementController.java # User role management (admin only)
 │   │   │   ├── api/
+│   │   │   │   ├── AuditApiController.java  # Audit REST API
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
-│   │   │   ├── AdminController.java         # Admin panel (user role management)
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with APP_CONFIG routes
 │   │   │   ├── HomeController.java          # Home page (GET /)
 │   │   │   ├── LoginController.java         # Login page (GET /login)
 │   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
-│   │   │   └── TaskController.java          # Task web UI (ownership-aware)
+│   │   │   ├── TagController.java           # Tag web UI
+│   │   │   ├── TaskController.java          # Task web UI (ownership-aware)
+│   │   │   └── UserController.java          # User web UI with search
 │   │   ├── dto/
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
 │   │   │   ├── TagResponse.java
@@ -244,59 +267,75 @@ spring-demo/
 │   │   │   ├── TaskMapper.java
 │   │   │   └── UserMapper.java
 │   │   ├── model/
+│   │   │   ├── AuditLog.java            # Audit log entity
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Role.java                # USER / ADMIN enum
 │   │   │   ├── Tag.java
 │   │   │   ├── Task.java                # Implements OwnedEntity
-│   │   │   ├── TaskFilter.java
+│   │   │   ├── TaskStatusFilter.java    # ALL / COMPLETED / PENDING enum
 │   │   │   └── User.java                # Auth fields: password, role
 │   │   ├── repository/
+│   │   │   ├── AuditLogRepository.java
+│   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
 │   │   │   ├── TaskSpecifications.java
 │   │   │   └── UserRepository.java
 │   │   ├── security/
+│   │   │   ├── AuthDialect.java             # Registers ${#auth} in Thymeleaf
+│   │   │   ├── AuthExpressions.java         # isOwner(), isAdmin(), canEdit()
 │   │   │   ├── CustomUserDetails.java       # UserDetails wrapper for User entity
 │   │   │   ├── CustomUserDetailsService.java # Loads user by email for Spring Security
-│   │   │   └── OwnershipGuard.java          # requireAccess() — owner or admin
+│   │   │   ├── OwnershipGuard.java          # requireAccess() — owner or admin
+│   │   │   └── SecurityUtils.java           # getCurrentPrincipal() for audit events
 │   │   ├── service/
+│   │   │   ├── AuditLogService.java     # Audit search + entity history
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
 │   │   │   └── UserService.java         # Includes updateRole(), findByEmail()
 │   │   ├── util/
-│   │   │   ├── AuthDialect.java         # Registers ${#auth} in Thymeleaf
-│   │   │   ├── AuthExpressions.java     # isOwner(), isAdmin(), canEdit()
 │   │   │   └── HtmxUtils.java
 │   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
 │       │   ├── css/
+│       │   │   ├── audit.css           # Audit page styles
 │       │   │   ├── base.css            # Global styles
 │       │   │   └── tasks.css           # Task page styles
 │       │   ├── js/
+│       │   │   ├── audit.js            # Audit page logic
 │       │   │   ├── utils.js            # Shared utilities (cookies, CSRF for HTMX)
 │       │   │   └── tasks.js            # Task list page logic
+│       │   ├── favicon.svg             # SVG favicon
 │       │   └── bootstrap-icons/
 │       ├── templates/
 │       │   ├── admin/
+│       │   │   ├── audit.html          # Audit log page (admin only)
+│       │   │   ├── audit-table.html    # Audit table fragment (HTMX partial)
 │       │   │   └── users.html          # User management (admin only)
 │       │   ├── error/
 │       │   │   ├── 403.html            # Access Denied page
 │       │   │   ├── 404.html            # Not Found page
 │       │   │   └── 500.html            # Server Error page
 │       │   ├── layouts/
-│       │   │   └── base.html           # Base layout + auth-aware navbar
+│       │   │   ├── base.html           # Base layout + auth-aware navbar
+│       │   │   └── pagination.html     # Reusable pagination fragment
+│       │   ├── tags/
+│       │   │   └── tags.html           # Tag list page
 │       │   ├── tasks/
 │       │   │   ├── tasks.html          # Task list page
 │       │   │   ├── task.html           # Full-page create/edit form
-│       │   │   ├── task-modal.html     # Modal create/edit (HTMX partial)
+│       │   │   ├── task-audit.html     # Shared audit history entries fragment
+│       │   │   ├── task-modal.html     # Modal create/edit with history panel
 │       │   │   ├── task-form.html      # Shared form fields fragment
 │       │   │   ├── task-cards.html     # Card grid fragment
 │       │   │   ├── task-card.html      # Single card fragment
 │       │   │   ├── task-table.html     # Table grid fragment
-│       │   │   ├── task-table-row.html # Single table row fragment
-│       │   │   └── task-pagination.html
+│       │   │   └── task-table-row.html # Single table row fragment
+│       │   ├── users/
+│       │   │   ├── users.html          # User list page with search
+│       │   │   └── user-table.html     # User table fragment (HTMX partial)
 │       │   ├── login.html              # Login page
 │       │   └── register.html           # Registration page
 │       ├── META-INF/
