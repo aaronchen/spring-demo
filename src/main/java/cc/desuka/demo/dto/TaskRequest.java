@@ -27,4 +27,7 @@ public class TaskRequest {
 
   // null = unassigned (task not assigned to any user)
   private Long userId;
+
+  // null on create, present on update (optimistic locking)
+  private Long version;
 }

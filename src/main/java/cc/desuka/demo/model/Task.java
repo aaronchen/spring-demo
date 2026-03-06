@@ -24,6 +24,9 @@ public class Task implements OwnedEntity, Auditable {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
+  @Version
+  private Long version;
+
   @NotBlank(message = "{task.title.notBlank}")
   @Size(min = 1, max = 100, message = "{task.title.size}")
   @Column(nullable = false)
@@ -88,6 +91,14 @@ public class Task implements OwnedEntity, Auditable {
 
   public void setId(Long id) {
     this.id = id;
+  }
+
+  public Long getVersion() {
+    return version;
+  }
+
+  public void setVersion(Long version) {
+    this.version = version;
   }
 
   public String getTitle() {

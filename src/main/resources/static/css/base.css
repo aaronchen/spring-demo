@@ -59,6 +59,30 @@ body {
 }
 
 
+/* Toast container — positioned below navbar, above modal backdrop (z-index 1050) */
+#toast-container {
+    z-index: 1090;
+    margin-top: 56px; /* navbar height */
+}
+
+#toast-container .toast {
+    font-size: 0.95rem;
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+    animation: toast-slide-in 0.3s ease-out;
+}
+
+#toast-container .toast-divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 0.5rem 0;
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes toast-slide-in {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
 /* HTMX Loading Indicator — hidden by default, shown on htmx-request */
 .htmx-indicator {
     opacity: 0;

@@ -76,7 +76,7 @@ Content-Type: application/json
 ### ============================================================
 
 ### Update own task (should succeed for owner or admin)
-### Change the ID to a task you own
+### Change the ID to a task you own; version must match current value (optimistic locking)
 PUT {{baseUrl}}/api/tasks/1
 Cookie: JSESSIONID={{sessionId}}
 Content-Type: application/json
@@ -84,7 +84,8 @@ Content-Type: application/json
 {
     "title": "Updated title",
     "description": "Updated description",
-    "tagIds": [2]
+    "tagIds": [2],
+    "version": 0
 }
 
 ### Update another user's task (403 for regular user, succeeds for admin)
@@ -94,7 +95,8 @@ Content-Type: application/json
 
 {
     "title": "Trying to update someone else's task",
-    "description": "Should fail for non-owner non-admin"
+    "description": "Should fail for non-owner non-admin",
+    "version": 0
 }
 
 ### Delete own task (should succeed for owner or admin)
@@ -207,6 +209,17 @@ Cookie: JSESSIONID={{sessionId}}
 ### Expects: { status: 404, error: "User not found with id: 99999" }
 GET {{baseUrl}}/api/users/99999
 Cookie: JSESSIONID={{sessionId}}
+
+### 409 — optimistic locking conflict (stale version)
+### Expects: { status: 409, error: "This record was modified..." }
+PUT {{baseUrl}}/api/tasks/1
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+    "title": "Stale update",
+    "version": 999
+}
 
 ### 400 — validation: missing required title
 ### Expects: { status: 400, errors: { title: "..." } }

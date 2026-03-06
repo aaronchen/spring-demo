@@ -382,9 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // After task saved: close modal and refresh grid
+    // After task saved: close modal, show toast, and refresh grid
     document.body.addEventListener('taskSaved', function() {
         bootstrap.Modal.getInstance(document.getElementById('task-modal')).hide();
+        showToast(APP_CONFIG.messages['toast.task.saved'], 'success');
         doSearch(false);
     });
 
@@ -397,8 +398,9 @@ document.addEventListener('DOMContentLoaded', function() {
         htmx.process(confirmBtn);
     });
 
-    // After task deleted: refresh grid
+    // After task deleted: show toast and refresh grid
     document.body.addEventListener('taskDeleted', function() {
+        showToast(APP_CONFIG.messages['toast.task.deleted'], 'success');
         doSearch(false);
     });
 

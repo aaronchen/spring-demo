@@ -27,10 +27,12 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
 - **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
 - **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
+- **Toast Notifications** - Success/error toasts for task save, delete, and conflict events (Bootstrap 5 toasts with slide-in animation)
 
 ### REST API
 - **RESTful Endpoints** - Complete CRUD for tasks, tags, and users via JSON API
 - **Data Validation** - Input validation with structured JSON error responses
+- **Optimistic Locking** - `@Version` on Task entity; stale updates return 409 Conflict
 - **Ownership Enforcement** - Task PUT/DELETE require owner or admin; POST auto-assigns to caller
 - **Role Restrictions** - Tag and user mutations (POST/DELETE) restricted to admins
 - **Search & Filter** - Query tasks by keyword and completion status
@@ -45,7 +47,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Error Handling
 - **Dual exception handlers** - `ApiExceptionHandler` returns JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
-- **Custom error pages** - 403 (Access Denied), 404 (Not Found), 500 (Server Error)
+- **Custom error pages** - 403 (Access Denied), 404 (Not Found), 409 (Conflict), 500 (Server Error)
 - **Structured API errors** - Consistent JSON with `timestamp`, `status`, `error` fields
 
 ### Technical Highlights
@@ -61,6 +63,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Reusable pagination fragment with custom DOM events
 - Split CSS: `base.css` (global) + page-specific (`tasks.css`, `audit.css`)
 - Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`)
+- Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
+- All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
@@ -156,7 +160,7 @@ All API endpoints require authentication. CSRF is disabled for `/api/**`, so you
 | GET | `/api/tasks` | Any user | List all tasks |
 | GET | `/api/tasks/{id}` | Any user | Get task by ID |
 | POST | `/api/tasks` | Any user | Create task (auto-assigned to caller) |
-| PUT | `/api/tasks/{id}` | Owner/Admin | Update task |
+| PUT | `/api/tasks/{id}` | Owner/Admin | Update task (requires `version` for optimistic locking) |
 | DELETE | `/api/tasks/{id}` | Owner/Admin | Delete task (204) |
 | PATCH | `/api/tasks/{id}/toggle` | Any user | Toggle completion |
 | GET | `/api/tasks/search?keyword=` | Any user | Search by title/description |
@@ -200,6 +204,7 @@ Content-Type: application/json
 - **description**: optional, max 500 characters
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
 - **userId**: optional (admin only); omit or send `null` to auto-assign to caller
+- **version**: required on update; must match current entity version (optimistic locking)
 
 #### Error Responses
 
@@ -208,6 +213,7 @@ Content-Type: application/json
 | 400 | Validation failure (field errors in `errors` object) |
 | 403 | Access denied (not owner/admin, or role restriction) |
 | 404 | Entity not found |
+| 409 | Optimistic locking conflict (stale version) |
 | 500 | Unexpected server error |
 
 ## Database Access
@@ -244,7 +250,7 @@ spring-demo/
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
-│   │   │   ├── FrontendConfigController.java # Serves /config.js with APP_CONFIG routes
+│   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
 │   │   │   ├── HomeController.java          # Home page (GET /)
 │   │   │   ├── LoginController.java         # Login page (GET /login)
 │   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
@@ -261,6 +267,7 @@ spring-demo/
 │   │   ├── exception/
 │   │   │   ├── ApiExceptionHandler.java     # JSON error responses for REST API
 │   │   │   ├── EntityNotFoundException.java # Custom 404 exception
+│   │   │   ├── StaleDataException.java      # Custom 409 exception (optimistic locking)
 │   │   │   └── WebExceptionHandler.java     # Thymeleaf error pages for web UI
 │   │   ├── mapper/
 │   │   │   ├── TagMapper.java           # MapStruct (impl generated at compile time)
@@ -317,6 +324,7 @@ spring-demo/
 │       │   ├── error/
 │       │   │   ├── 403.html            # Access Denied page
 │       │   │   ├── 404.html            # Not Found page
+│       │   │   ├── 409.html            # Conflict page (optimistic locking)
 │       │   │   └── 500.html            # Server Error page
 │       │   ├── layouts/
 │       │   │   ├── base.html           # Base layout + auth-aware navbar

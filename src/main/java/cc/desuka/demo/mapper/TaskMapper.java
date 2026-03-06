@@ -28,5 +28,6 @@ public interface TaskMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "tags", ignore = true)
     @Mapping(target = "user", ignore = true)
+    @Mapping(target = "version", ignore = true)
     Task toEntity(TaskRequest request);
 }

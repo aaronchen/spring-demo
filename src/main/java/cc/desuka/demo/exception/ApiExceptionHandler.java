@@ -45,6 +45,18 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(response);
     }
 
+    // 409 — optimistic locking conflict (stale version)
+    @ExceptionHandler(StaleDataException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(StaleDataException ex) {
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.CONFLICT.value());
+        response.put("error", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     // 404 — entity not found (Task, User, Tag, etc.)
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(EntityNotFoundException ex) {

@@ -66,7 +66,7 @@ public class TaskApiController {
     Task existing = taskService.getTaskById(id);
     ownershipGuard.requireAccess(existing, currentDetails);
     return taskMapper.toResponse(
-        taskService.updateTask(id, taskMapper.toEntity(request), request.getTagIds(), request.getUserId()));
+        taskService.updateTask(id, taskMapper.toEntity(request), request.getTagIds(), request.getUserId(), request.getVersion()));
   }
 
   // DELETE /api/tasks/5

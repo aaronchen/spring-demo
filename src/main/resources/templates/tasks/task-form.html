@@ -3,6 +3,8 @@
      mode='view' disables all fields for read-only display; the layout is otherwise identical. -->
 <th:block th:fragment="fields" xmlns:th="http://www.thymeleaf.org">
 
+    <input type="hidden" th:field="*{version}">
+
     <!-- Title Field -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold">

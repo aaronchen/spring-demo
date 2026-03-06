@@ -189,7 +189,7 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    taskService.updateTask(id, task, tagIds, userId);
+    taskService.updateTask(id, task, tagIds, userId, task.getVersion());
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }

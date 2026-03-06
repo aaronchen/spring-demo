@@ -35,6 +35,14 @@ public class WebExceptionHandler {
         throw ex;
     }
 
+    @ExceptionHandler(StaleDataException.class)
+    public ModelAndView handleConflict(StaleDataException ex) {
+        ModelAndView mav = new ModelAndView("error/409");
+        mav.setStatus(HttpStatus.CONFLICT);
+        mav.addObject("message", ex.getMessage());
+        return mav;
+    }
+
     @ExceptionHandler({EntityNotFoundException.class, NoResourceFoundException.class})
     public ModelAndView handleNotFound(Exception ex) {
         ModelAndView mav = new ModelAndView("error/404");

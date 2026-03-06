@@ -22,4 +22,6 @@ public class TaskResponse {
 
   // null when the task is unassigned
   private UserResponse user;
+
+  private Long version;
 }

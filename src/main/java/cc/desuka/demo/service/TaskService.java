@@ -3,6 +3,7 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
+import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
@@ -57,8 +58,11 @@ public class TaskService {
     return saved;
   }
 
-  public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long userId) {
+  public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long userId, Long expectedVersion) {
     Task task = getTaskById(id);
+    if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
+      throw new StaleDataException(Task.class, id);
+    }
     Map<String, Object> before = task.toAuditSnapshot();
 
     task.setTitle(taskDetails.getTitle());
