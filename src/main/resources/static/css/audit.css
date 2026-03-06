@@ -1,0 +1,16 @@
+/* Category button active states */
+.audit-category-btn.active {
+    --bs-btn-active-bg: var(--bs-secondary);
+    --bs-btn-active-border-color: var(--bs-secondary);
+    --bs-btn-active-color: #fff;
+    background-color: var(--bs-secondary) !important;
+    border-color: var(--bs-secondary) !important;
+    color: #fff !important;
+}
+
+/* Search clear button */
+.audit-search-clear-btn {
+    z-index: 5;
+    padding: 0.25rem 0.5rem;
+    text-decoration: none !important;
+}

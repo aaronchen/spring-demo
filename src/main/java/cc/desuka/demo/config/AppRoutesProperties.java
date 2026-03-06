@@ -18,6 +18,7 @@ public class AppRoutesProperties {
 
   private String tasks = "/tasks";
   private String api = "/api";
+  private String audit = "/admin/audit";
 
   public String getTasks() {
     return tasks;
@@ -33,5 +34,13 @@ public class AppRoutesProperties {
 
   public void setApi(String api) {
     this.api = api;
+  }
+
+  public String getAudit() {
+    return audit;
+  }
+
+  public void setAudit(String audit) {
+    this.audit = audit;
   }
 }

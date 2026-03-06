@@ -1,0 +1,35 @@
+<!-- Shared audit history entries fragment.
+     Reads ${auditHistory} (List<AuditLog>) from model context.
+     Used by task.html (full page) and task-modal.html (modal). -->
+<div th:fragment="entries" xmlns:th="http://www.thymeleaf.org">
+    <div th:each="entry, stat : ${auditHistory}" class="py-2 px-3" th:classappend="${!stat.first ? 'border-top' : ''}">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="badge me-2"
+                      th:classappend="${entry.action.contains('DELETE') ? 'bg-danger' :
+                                        (entry.action.contains('CREATE') ? 'bg-success' : 'bg-primary')}"
+                      th:text="${entry.action}">ACTION</span>
+                <small th:if="${entry.detailsMap != null}" class="text-muted">
+                    <span th:each="field, stat : ${entry.detailsMap}">
+                        <strong th:text="${field.key}">field</strong>:
+                        <th:block th:if="${field.value instanceof T(java.util.Map)}">
+                            <span class="text-decoration-line-through"
+                                  th:text="${field.value['old']}">old</span>
+                            &rarr;
+                            <span th:text="${field.value['new']}">new</span>
+                        </th:block>
+                        <span th:unless="${field.value instanceof T(java.util.Map)}"
+                              th:text="${field.value}">value</span>
+                        <span th:unless="${stat.last}">; </span>
+                    </span>
+                </small>
+                <small th:unless="${entry.detailsMap != null}" th:text="${entry.details}" class="text-muted">details</small>
+            </div>
+            <div class="text-end text-nowrap ms-2">
+                <small class="text-muted" th:text="${entry.principal}">user</small>
+                <br>
+                <small class="text-muted" th:text="${#temporals.format(entry.timestamp, 'yyyy-MM-dd HH:mm')}">date</small>
+            </div>
+        </div>
+    </div>
+</div>

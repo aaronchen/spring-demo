@@ -14,6 +14,11 @@
       "name": "app.routes.api",
       "type": "java.lang.String",
       "description": "Base URL/path for API calls exposed to frontend JS via /config.js."
+    },
+    {
+      "name": "app.routes.audit",
+      "type": "java.lang.String",
+      "description": "Base path for audit log page used in frontend JS via /config.js."
     }
   ]
 }

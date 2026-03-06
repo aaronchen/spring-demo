@@ -1,11 +1,13 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 // Inverse side of the @ManyToMany relationship — Task owns the join table.
@@ -13,7 +15,7 @@ import java.util.Objects;
 // No @JoinTable here: putting it on the inverse side would create a second (redundant) join table.
 @Entity
 @Table(name = "tags")
-public class Tag {
+public class Tag implements Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,6 +60,11 @@ public class Tag {
 
     public void setTasks(List<Task> tasks) {
         this.tasks = tasks;
+    }
+
+    @Override
+    public Map<String, Object> toAuditSnapshot() {
+        return Map.of("name", name);
     }
 
     // equals/hashCode on id only — same reason as always for JPA entities:

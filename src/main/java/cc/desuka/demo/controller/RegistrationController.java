@@ -1,9 +1,12 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.audit.AuditDetails;
+import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.dto.RegistrationRequest;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,10 +20,13 @@ public class RegistrationController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public RegistrationController(UserService userService, PasswordEncoder passwordEncoder) {
+    public RegistrationController(UserService userService, PasswordEncoder passwordEncoder,
+                                  ApplicationEventPublisher eventPublisher) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.eventPublisher = eventPublisher;
     }
 
     @GetMapping("/register")
@@ -53,7 +59,10 @@ public class RegistrationController {
                 registrationRequest.getEmail(),
                 passwordEncoder.encode(registrationRequest.getPassword())
         );
-        userService.createUser(user);
+        User saved = userService.createUser(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_REGISTERED, User.class, saved.getId(),
+                saved.getEmail(), AuditDetails.toJson(saved.toAuditSnapshot())));
 
         return "redirect:/login?registered";
     }

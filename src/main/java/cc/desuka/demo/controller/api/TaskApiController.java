@@ -7,7 +7,7 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TaskService;
-import cc.desuka.demo.util.AuthExpressions;
+import cc.desuka.demo.security.AuthExpressions;
 
 import jakarta.validation.Valid;
 

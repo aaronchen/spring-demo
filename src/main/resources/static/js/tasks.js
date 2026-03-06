@@ -52,6 +52,25 @@ function navigateToPage(page) {
     window.history.pushState({}, '', url);
 }
 
+// Toggle audit history panel in modal — expands modal to xl and shows/hides the panel
+function toggleTaskHistory() {
+    const panel = document.getElementById('task-history-panel');
+    const dialog = document.querySelector('#task-modal .modal-dialog');
+    const btn = document.getElementById('task-history-btn');
+    if (!panel) return;
+    const hidden = panel.classList.toggle('d-none');
+    dialog.classList.toggle('modal-xl', !hidden);
+    if (btn) btn.classList.toggle('active', !hidden);
+}
+
+// Per-page size change
+function onPageSizeChange(newSize) {
+    pageSize = parseInt(newSize);
+    setCookie('pageSize', pageSize);
+    currentPage = 0;
+    doSearch(false);
+}
+
 // Switch between card and table views
 function switchView(view) {
     currentView = view;
@@ -66,18 +85,6 @@ function renderViewToggle() {
     document.getElementById('view-table').classList.toggle('active', currentView === 'table');
 }
 
-// Per-page selector change — syncs all instances (top and bottom bars)
-function onPageSizeChange(newSize) {
-    pageSize = parseInt(newSize);
-    setCookie('pageSize', pageSize);
-    syncPageSizeSelects();
-    currentPage = 0;
-    doSearch(false);
-}
-
-function syncPageSizeSelects() {
-    document.querySelectorAll('.page-size-select').forEach(el => el.value = pageSize);
-}
 
 // Reset sort to default (newest first)
 function resetSort() {
@@ -139,7 +146,6 @@ function initFromUrl() {
         pageSize = parseInt(params.get('size'));
         setCookie('pageSize', pageSize);
     }
-    syncPageSizeSelects();
 
     // Status filter
     const statusFilter = params.get('statusFilter') || 'all';
@@ -320,6 +326,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initFromUrl();
 
+    // Pagination custom events (dispatched by layouts/pagination fragment)
+    const tasksView = document.getElementById('tasks-view');
+    tasksView.addEventListener('pagination:navigate', function(e) {
+        navigateToPage(e.detail.page);
+    });
+    tasksView.addEventListener('pagination:resize', function(e) {
+        onPageSizeChange(e.detail.size);
+    });
+
     // Debounced live search + clear button visibility
     const searchInput = document.getElementById('search-input');
     const searchClearBtn = document.getElementById('search-clear-btn');
@@ -358,10 +373,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // After HTMX loads form content into the modal, show it.
     document.addEventListener('htmx:afterSwap', function(evt) {
         if (evt.detail.target && evt.detail.target.id === 'tasks-view') {
-            syncPageSizeSelects();
             highlightActiveTags();
         }
         if (evt.detail.target && evt.detail.target.id === 'task-modal-content') {
+            // Reset modal to default size (history panel closed)
+            document.querySelector('#task-modal .modal-dialog').classList.remove('modal-xl');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('task-modal')).show();
         }
     });

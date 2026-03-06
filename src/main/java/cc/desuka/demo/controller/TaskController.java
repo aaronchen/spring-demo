@@ -4,6 +4,7 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.service.AuditLogService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.UserService;
@@ -22,6 +23,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.util.Collections;
 import java.util.List;
 
 @Controller
@@ -32,13 +34,16 @@ public class TaskController {
   private final TagService tagService;
   private final UserService userService;
   private final OwnershipGuard ownershipGuard;
+  private final AuditLogService auditLogService;
 
   public TaskController(TaskService taskService, TagService tagService,
-      UserService userService, OwnershipGuard ownershipGuard) {
+      UserService userService, OwnershipGuard ownershipGuard,
+      AuditLogService auditLogService) {
     this.taskService = taskService;
     this.tagService = tagService;
     this.userService = userService;
     this.ownershipGuard = ownershipGuard;
+    this.auditLogService = auditLogService;
   }
 
   // GET /tasks - Display task list (full page or HTMX fragment)
@@ -91,6 +96,8 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "view");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("auditHistory",
+        auditLogService.getEntityHistory(Task.class, id));
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -107,6 +114,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("auditHistory", Collections.emptyList());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -150,6 +158,8 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("auditHistory",
+        auditLogService.getEntityHistory(Task.class, id));
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }

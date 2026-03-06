@@ -26,7 +26,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/webjars/**", "/css/**", "/js/**",
-                                 "/bootstrap-icons/**", "/config.js").permitAll()
+                                 "/bootstrap-icons/**", "/config.js",
+                                 "/favicon.svg").permitAll()
                 .requestMatchers("/login", "/register").permitAll()
                 .requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
                 // API admin-only mutations — GET stays open to all authenticated users
@@ -34,6 +35,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/tags/**").hasRole(Role.ADMIN.name())
                 .requestMatchers(HttpMethod.POST, "/api/users").hasRole(Role.ADMIN.name())
                 .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole(Role.ADMIN.name())
+                .requestMatchers("/api/audit/**").hasRole(Role.ADMIN.name())
                 .anyRequest().authenticated()
             )
 

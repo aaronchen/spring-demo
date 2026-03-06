@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.admin.audit}, '/css/audit.css')}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <h1 class="display-5 mb-4" th:text="#{admin.audit.heading}">Audit Log</h1>
+
+        <!-- Filters row -->
+        <div class="row g-3 mb-4 align-items-end">
+
+            <!-- Search -->
+            <div class="col-md-4">
+                <div class="position-relative">
+                    <input type="text" id="audit-search-input"
+                           class="form-control form-control-sm"
+                           th:placeholder="#{admin.audit.search.placeholder}"
+                           placeholder="Search by user or details...">
+                    <button type="button" id="audit-search-clear-btn"
+                            class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted d-none audit-search-clear-btn"
+                            th:title="#{admin.audit.search.clear}"
+                            title="Clear search">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Category buttons -->
+            <div class="col-md-auto">
+                <div class="btn-group" role="group" aria-label="Category filter">
+                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn active"
+                            data-category="" th:text="#{admin.audit.filter.all}">All</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
+                            data-category="task" th:text="#{admin.audit.filter.task}">Task</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
+                            data-category="user" th:text="#{admin.audit.filter.user}">User</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
+                            data-category="tag" th:text="#{admin.audit.filter.tag}">Tag</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
+                            data-category="auth" th:text="#{admin.audit.filter.auth}">Auth</button>
+                </div>
+            </div>
+
+            <!-- Date range -->
+            <div class="col-md-auto d-flex align-items-center gap-2">
+                <label for="audit-date-from" class="form-label mb-0 text-nowrap"
+                       th:text="#{admin.audit.date.from}">From</label>
+                <input type="date" id="audit-date-from" class="form-control form-control-sm" style="width: auto;">
+                <label for="audit-date-to" class="form-label mb-0 text-nowrap"
+                       th:text="#{admin.audit.date.to}">To</label>
+                <input type="date" id="audit-date-to" class="form-control form-control-sm" style="width: auto;">
+            </div>
+        </div>
+
+        <!-- Audit table (HTMX target) -->
+        <div id="audit-view">
+            <div th:replace="~{admin/audit-table}"></div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+    <script th:src="@{/js/audit.js}"></script>
+</body>
+</html>

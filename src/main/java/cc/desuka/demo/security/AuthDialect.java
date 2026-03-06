@@ -1,7 +1,6 @@
-package cc.desuka.demo.util;
+package cc.desuka.demo.security;
 
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.security.CustomUserDetails;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

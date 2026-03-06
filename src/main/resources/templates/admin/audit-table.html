@@ -1,0 +1,67 @@
+<!-- Bare fragment file — whole content is the HTMX response for #audit-view -->
+<!-- Reads ${auditPage} (Page<AuditLog>) from model context -->
+
+<!-- Empty State -->
+<div th:if="${auditPage.isEmpty()}" class="alert alert-info text-center py-5"
+     xmlns:th="http://www.thymeleaf.org">
+    <h4 th:text="#{admin.audit.empty}">No audit entries found.</h4>
+</div>
+
+<th:block th:if="${!auditPage.isEmpty()}" xmlns:th="http://www.thymeleaf.org">
+
+    <div th:replace="~{layouts/pagination :: controlBar(${auditPage}, 'top', #{audit.pagination.label})}"></div>
+
+    <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th th:text="#{admin.audit.table.timestamp}">Timestamp</th>
+                    <th th:text="#{admin.audit.table.action}">Action</th>
+                    <th th:text="#{admin.audit.table.entity}">Entity</th>
+                    <th th:text="#{admin.audit.table.user}">User</th>
+                    <th th:text="#{admin.audit.table.details}">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="entry : ${auditPage.content}">
+                    <td class="text-nowrap">
+                        <small th:text="${#temporals.format(entry.timestamp, 'yyyy-MM-dd HH:mm:ss')}">2026-01-01 12:00:00</small>
+                    </td>
+                    <td>
+                        <span class="badge"
+                              th:classappend="${entry.action.contains('DELETE') ? 'bg-danger' :
+                                                (entry.action.contains('CREATE') or entry.action.contains('REGISTERED') ? 'bg-success' :
+                                                (entry.action.contains('FAILURE') ? 'bg-warning text-dark' :
+                                                (entry.action.contains('LOGIN') ? 'bg-info text-dark' : 'bg-primary')))}"
+                              th:text="${entry.action}">ACTION</span>
+                    </td>
+                    <td>
+                        <span th:if="${entry.entityType != null}"
+                              th:text="${entry.entityType + ' #' + entry.entityId}">Task #1</span>
+                    </td>
+                    <td th:text="${entry.principal}">user@example.com</td>
+                    <td>
+                        <small th:if="${entry.detailsMap != null}">
+                            <span th:each="field, stat : ${entry.detailsMap}">
+                                <strong th:text="${field.key}">field</strong>:
+                                <th:block th:if="${field.value instanceof T(java.util.Map)}">
+                                    <span class="text-decoration-line-through text-muted"
+                                          th:text="${field.value['old']}">old</span>
+                                    &rarr;
+                                    <span th:text="${field.value['new']}">new</span>
+                                </th:block>
+                                <span th:unless="${field.value instanceof T(java.util.Map)}"
+                                      th:text="${field.value}">value</span>
+                                <span th:unless="${stat.last}">; </span>
+                            </span>
+                        </small>
+                        <small th:unless="${entry.detailsMap != null}" th:text="${entry.details}">details</small>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:replace="~{layouts/pagination :: controlBar(${auditPage}, 'bottom', #{audit.pagination.label})}"></div>
+
+</th:block>

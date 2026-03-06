@@ -77,6 +77,23 @@ The application provides **two interfaces** for the same backend:
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
+- `model/AuditLog.java` - Audit log entity
+  - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
+  - `@Transient detailsMap` — parsed JSON details for template rendering; populated by `AuditLogService`
+  - `toAuditSnapshot()` — entities provide snapshot maps for audit diffing
+
+#### Audit Package
+- `audit/AuditEvent.java` - Event class published via `ApplicationEventPublisher`
+  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_DELETED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
+  - Fields: action, entityType, entityId, principal, details
+
+- `audit/AuditDetails.java` - Audit detail utilities
+  - `toJson(Map)` — serializes snapshot to JSON string
+  - `diff(Map before, Map after)` — computes field-level changes as `{ field: { old: ..., new: ... } }`
+  - `resolveDisplayNames(Map, MessageSource, Locale)` — maps raw field keys to human-readable names via `audit.field.{key}` message keys; falls back to raw key if no message found
+
+- `audit/AuditListener.java` - `@EventListener` that persists `AuditEvent` → `AuditLog`
+
 #### Repository Layer
 - `repository/TaskRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Task, Long>` and `JpaSpecificationExecutor<Task>`
@@ -108,6 +125,16 @@ The application provides **two interfaces** for the same backend:
   - `findAllByOrderByNameAsc()` — sorted user list for dropdowns and admin panel
   - `findByNameContainingIgnoreCaseOrderByNameAsc(String)` — server-side user search for remote searchable-select
   - `findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(String, String)` — user page search (name or email)
+
+- `repository/AuditLogRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
+  - `findByEntityTypeAndEntityIdOrderByTimestampDesc(String, Long)` — entity-specific audit history (used by task detail page)
+
+- `repository/AuditLogSpecifications.java` - JPA Specifications for dynamic audit queries
+  - `withCategory(String)` — maps category to action prefix LIKE pattern (`"AUTH"` → `LOGIN_%`)
+  - `withSearch(String)` — case-insensitive LIKE on principal and details
+  - `withFrom(Instant)` / `withTo(Instant)` — timestamp range
+  - `build(category, search, from, to)` — combines all specs
 
 #### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
@@ -158,8 +185,13 @@ The application provides **two interfaces** for the same backend:
   - `getAllUsers`, `getUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by `GET /api/users?q=` and `UserController`
   - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
-  - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `AdminController`
+  - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `UserManagementController`
   - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
+
+- `service/AuditLogService.java` - Audit log business logic
+  - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
+  - `getEntityHistory(entityType, entityId)` — entity-specific audit trail (used by task detail/modal)
+  - Both methods resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
 
 #### Controller Layer
 - `controller/api/TaskApiController.java` - Task REST API endpoints
@@ -195,10 +227,16 @@ The application provides **two interfaces** for the same backend:
   - Encodes password via `PasswordEncoder.encode()` before persisting
   - Redirects to `/login?registered` on success
 
-- `controller/AdminController.java` - Admin panel
+- `controller/admin/UserManagementController.java` - Admin user management
   - `@Controller` with `/admin` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
   - `GET /admin/users` — lists all users with role dropdown
   - `POST /admin/users/{id}/role` — changes a user's role via `UserService.updateRole()`
+
+- `controller/admin/AuditController.java` - Audit log page
+  - `@Controller` with `/admin/audit` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
+  - `GET /admin/audit` — paginated audit log with category, search, and date range filters
+  - Params: `category` (Task/User/Tag/Auth), `search` (principal/details text), `from`/`to` (LocalDate → Instant)
+  - HTMX requests → `"admin/audit-table"` (bare fragment); full requests → `"admin/audit"`
 
 - `controller/TagController.java` - Tag web UI
   - `@Controller` with `/tags` base path
@@ -223,7 +261,7 @@ The application provides **two interfaces** for the same backend:
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS route config)
   - `@RestController` producing `application/javascript`
-  - Reads `AppRoutesProperties` and emits `window.APP_CONFIG = { routes: { tasks, api } };`
+  - Reads `AppRoutesProperties` and emits `window.APP_CONFIG = { routes: { tasks, api, audit } };`
   - `escapeJs()` helper sanitizes property values before embedding in JS output
   - Loaded by the `scripts` fragment on every page; `APP_CONFIG` is available globally to all page scripts
 
@@ -244,12 +282,26 @@ The application provides **two interfaces** for the same backend:
   - Does NOT handle unassigned entities — callers should check `entity.getUser() == null` before calling if unassigned entities should be open
   - Used by both `TaskApiController` and `TaskController` (web)
 
+- `security/AuthExpressions.java` - Ownership and role check logic (shared between templates and Java)
+  - Exposed as `${#auth}` in Thymeleaf templates via `AuthDialect`
+  - Instance methods (template use): `isOwner(OwnedEntity)`, `isAdmin()`, `canEdit(OwnedEntity)` (admin OR owner)
+  - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)` — reused by `OwnershipGuard`
+  - Unassigned entities (`entity.getUser() == null`): `isOwner()` and `canEdit()` return false — business rules for unassigned entities belong in the controller/template, not here
+
+- `security/AuthDialect.java` - Thymeleaf `IExpressionObjectDialect` implementation
+  - Registers `${#auth}` expression object, built per-request from `SecurityContextHolder`
+  - Auto-discovered by Spring Boot; no manual configuration needed
+
+- `security/SecurityUtils.java` - Static utility for getting current principal
+  - `getCurrentPrincipal()` — returns username from `SecurityContextHolder` or `"system"` if unauthenticated
+  - Used by services when publishing audit events
+
 #### Configuration
 
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
-    - Public: `/login`, `/register`, static assets, `/h2-console/**`
+    - Public: `/login`, `/register`, static assets, `/favicon.svg`, `/h2-console/**`
     - Admin-only: `/admin/**`, `POST /api/tags`, `DELETE /api/tags/**`, `POST /api/users`, `DELETE /api/users/**`
     - Everything else: `authenticated()`
   - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
@@ -258,8 +310,8 @@ The application provides **two interfaces** for the same backend:
   - Headers: `X-Frame-Options: SAMEORIGIN` (for H2 console)
 
 - `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
-  - Fields: `tasks` (default `/tasks`), `api` (default `/api`)
-  - Single source of truth for the two base paths used by both Thymeleaf templates and frontend JS
+  - Fields: `tasks` (default `/tasks`), `api` (default `/api`), `audit` (default `/admin/audit`)
+  - Single source of truth for base paths used by both Thymeleaf templates and frontend JS
 
 - `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects shared attributes into every Thymeleaf model
   - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
@@ -275,23 +327,13 @@ The application provides **two interfaces** for the same backend:
   - All responses are JSON maps with `timestamp`, `status`, `error` fields
 
 - `exception/WebExceptionHandler.java` - `@ControllerAdvice` for Thymeleaf web controllers
-  - Handles: `EntityNotFoundException` → `error/404.html`, catch-all → `error/500.html`
+  - Handles: `EntityNotFoundException` and `NoResourceFoundException` → `error/404.html`, catch-all → `error/500.html`
   - `AccessDeniedException` is explicitly re-thrown so Spring Security's `ExceptionTranslationFilter` can handle it → `error/403.html` (without this, the catch-all `Exception` handler would swallow it as a 500)
 
 #### Utilities
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
-
-- `util/AuthExpressions.java` - Ownership and role check logic (shared between templates and Java)
-  - Exposed as `${#auth}` in Thymeleaf templates via `AuthDialect`
-  - Instance methods (template use): `isOwner(OwnedEntity)`, `isAdmin()`, `canEdit(OwnedEntity)` (admin OR owner)
-  - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)` — reused by `OwnershipGuard`
-  - Unassigned entities (`entity.getUser() == null`): `isOwner()` and `canEdit()` return false — business rules for unassigned entities belong in the controller/template, not here
-
-- `util/AuthDialect.java` - Thymeleaf `IExpressionObjectDialect` implementation
-  - Registers `${#auth}` expression object, built per-request from `SecurityContextHolder`
-  - Auto-discovered by Spring Boot; no manual configuration needed
 
 #### Bootstrap
 - `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**
@@ -306,15 +348,21 @@ The application provides **two interfaces** for the same backend:
 
 #### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
-  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS
+  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon
   - `navbar` - navigation bar with auth-aware elements:
     - Left nav links: Tasks, Tags, Users
     - Anonymous: shows Register link
     - Authenticated: user dropdown with name, email, role badge, logout button
-    - Admin: additional "Manage Users" link in dropdown
+    - Admin: additional "Manage Users" and "Audit Log" links in dropdown
     - Uses `sec:authorize` (Spring Security Thymeleaf dialect) and `${#auth}` for conditional rendering
   - `footer` - footer
   - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
+
+- `templates/layouts/pagination.html` - Reusable pagination control bar
+  - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
+  - Renders: result count, page navigation with ellipsis (±2 window), per-page selector (10/25/50/100)
+  - Dispatches custom DOM events (`pagination:navigate`, `pagination:resize`) instead of calling named JS functions
+  - `th:selected` on `<option>` elements auto-syncs per-page selector after HTMX swaps
 
 #### Task Views
 - `templates/tasks/tasks.html` - Main task list page
@@ -338,8 +386,9 @@ The application provides **two interfaces** for the same backend:
 - `templates/tasks/task-table-row.html` - Single table row fragment
   - `row` fragment — reads `${task}` from context
 
-- `templates/tasks/task-pagination.html` - Pagination control bar
-  - `controlBar(position)` fragment — top/bottom bars with page nav and page-size selector
+- `templates/tasks/task-audit.html` - Shared audit history entries fragment
+  - `entries` fragment — renders `${auditHistory}` (List<AuditLog>) with action badges and field diffs
+  - Used by both `task.html` (full page) and `task-modal.html` (split-panel modal)
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
   - `fields` fragment — title, description, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
@@ -355,6 +404,8 @@ The application provides **two interfaces** for the same backend:
 - `templates/tasks/task-modal.html` - HTMX modal content (bare file, no HTML wrapper)
   - Returned by controller as `"tasks/task-modal"` (whole file is the response)
   - Includes `task-form :: fields` inside its own `<form>` with `hx-post`
+  - Split-panel layout: form on left, audit history panel on right (toggled via History button)
+  - History button in modal-footer with entry count badge; toggles `d-none` on history panel and `modal-xl` on dialog
   - Swapped into `#task-modal-content` by HTMX
 
 #### Tag Views
@@ -392,13 +443,24 @@ The application provides **two interfaces** for the same backend:
   - Form submits `POST /admin/users/{id}/role` with selected role
   - Role badges: green for ADMIN, gray for USER
 
+- `templates/admin/audit.html` - Audit log page (admin only)
+  - Search input, category buttons (All/Task/User/Tag/Auth), date range pickers
+  - `#audit-view` div with HTMX-swappable content
+  - Loads `audit.js` and `audit.css`
+
+- `templates/admin/audit-table.html` - Audit table fragment (bare file, no HTML wrapper)
+  - HTMX response for audit page; contains empty state, top/bottom pagination bars, audit entries table
+
 ### Static Resources
 
+- `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator); `.card-clip` for overflow clipping on cards with colored headers; `.card-lift` opt-in hover lift effect (cards are static by default)
-- `static/css/tasks.css` - Task page styles (status/user/tag filter active states, table action button overrides, search clear button overlay, user link hover, tag badge active states)
+- `static/css/tasks.css` - Task page styles (status/user/tag filter active states, table action button overrides, search clear button overlay, user link hover, tag badge active states, split-panel history styles)
+- `static/css/audit.css` - Audit page styles (category button active states, search clear button)
 - `static/css/components/searchable-select-bootstrap5.css` - Standalone Bootstrap 5 theme for `<searchable-select>` (focus ring, connected corners, clear button, keyboard highlight)
 - `static/js/utils.js` - Shared browser utilities (`getCookie`, `setCookie`); CSRF token injection for HTMX requests via `htmx:configRequest` listener; loaded globally via base layout
-- `static/js/tasks.js` - Task list page logic (sort, status/user/tag filters, search, pagination, modal wiring, search clear button); loaded only by `tasks.html`; reads `APP_CONFIG.routes.tasks` for URL construction
+- `static/js/tasks.js` - Task list page logic (sort, status/user/tag filters, search, pagination, modal wiring, search clear button, history panel toggle); loaded only by `tasks.html`; listens for `pagination:navigate`/`pagination:resize` custom events
+- `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination, browser popstate); loaded only by `audit.html`; reads `APP_CONFIG.routes.audit`
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component; supports local (static `<option>`) and remote (`src` attribute) data modes, keyboard navigation, debounced search, Bootstrap 5 dropdown styling
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
@@ -417,11 +479,12 @@ The application provides **two interfaces** for the same backend:
     - `login.*` — Login page strings (`login.heading`, `login.field.*`, `login.error`, `login.loggedOut`)
     - `register.*` — Registration page strings (`register.heading`, `register.field.*`, `register.error.*`, `register.success`)
     - `admin.*` — Admin panel strings (`admin.users.heading`, `admin.users.table.*`, `admin.users.role.change`)
+    - `audit.*` — Audit feature strings (`audit.heading`, `audit.filter.*`, `audit.search.*`, `audit.date.*`, `audit.field.*`, `audit.history.*`, `audit.pagination.label`)
     - `role.*` — Role display names (`role.user`, `role.admin`)
     - `error.*` — Error page strings (`error.403.heading`, `error.403.message`)
 
 - `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom properties
-  - Provides descriptions and types for `app.routes.tasks` and `app.routes.api`
+  - Provides descriptions and types for `app.routes.tasks`, `app.routes.api`, and `app.routes.audit`
   - Enables autocomplete and documentation in IntelliJ / VS Code for `application.properties`
   - No runtime effect — purely a developer-experience file
 
@@ -473,12 +536,12 @@ The static fallback text inside the tag (e.g., `Title`) is shown in IDE preview 
 
 ```properties
 # messages.properties
-pagination.showing=Showing {0}–{1} of {2} tasks
+pagination.showing=Showing {0}–{1} of {2} {3}
 pagination.perPage={0} / page
 ```
 
 ```html
-<small th:text="#{pagination.showing(${start}, ${end}, ${total})}">Showing 1–25 of 300</small>
+<small th:text="#{pagination.showing(${start}, ${end}, ${total}, #{task.pagination.label})}">Showing 1–25 of 300 tasks</small>
 <option th:text="#{pagination.perPage(10)}">10 / page</option>
 ```
 
@@ -593,7 +656,7 @@ Route base paths are defined once in `application.properties` and flow to two co
 **JavaScript** — via `FrontendConfigController` which serves `/config.js`, loaded before all page scripts:
 ```js
 // In the browser after /config.js loads:
-window.APP_CONFIG = { routes: { tasks: '/tasks', api: '/api' } };
+window.APP_CONFIG = { routes: { tasks: '/tasks', api: '/api', audit: '/admin/audit' } };
 
 // Page scripts read it as a plain global:
 const TASKS_BASE = APP_CONFIG.routes.tasks;
@@ -786,6 +849,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management (admin only)
+- `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
 
 **REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - List all tasks
@@ -885,6 +949,16 @@ CREATE TABLE tasks (
 CREATE TABLE tags (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE audit_logs (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action      VARCHAR(255) NOT NULL,          -- e.g. TASK_CREATED, LOGIN_SUCCESS
+    entity_type VARCHAR(255),                   -- e.g. Task, User, Tag
+    entity_id   BIGINT,
+    principal   VARCHAR(255),                   -- username who performed the action
+    details     TEXT,                            -- JSON snapshot or diff
+    timestamp   TIMESTAMP
 );
 
 -- Join table for the @ManyToMany between Task and Tag.

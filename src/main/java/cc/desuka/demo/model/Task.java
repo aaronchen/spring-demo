@@ -1,16 +1,19 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "tasks")
-public class Task implements OwnedEntity {
+public class Task implements OwnedEntity, Auditable {
 
   public static final String FIELD_TITLE = "title";
   public static final String FIELD_DESCRIPTION = "description";
@@ -133,5 +136,16 @@ public class Task implements OwnedEntity {
 
   public void setUser(User user) {
     this.user = user;
+  }
+
+  @Override
+  public Map<String, Object> toAuditSnapshot() {
+    Map<String, Object> snapshot = new LinkedHashMap<>();
+    snapshot.put("title", title);
+    snapshot.put("description", description);
+    snapshot.put("completed", completed);
+    snapshot.put("user", user != null ? user.getName() : null);
+    snapshot.put("tags", tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
+    return snapshot;
   }
 }

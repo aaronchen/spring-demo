@@ -1,4 +1,4 @@
-package cc.desuka.demo.util;
+package cc.desuka.demo.security;
 
 import cc.desuka.demo.model.OwnedEntity;
 import cc.desuka.demo.model.Role;

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title}">Spring Workshop</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
     <!-- Bootstrap CSS via WebJars -->
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
@@ -79,6 +80,12 @@
                                 <a class="dropdown-item py-2" th:href="@{/admin/users}">
                                     <i class="bi bi-people me-2"></i>
                                     <span th:text="#{nav.admin.users}">Manage Users</span>
+                                </a>
+                            </li>
+                            <li sec:authorize="hasRole('ADMIN')">
+                                <a class="dropdown-item py-2" th:href="@{/admin/audit}">
+                                    <i class="bi bi-journal-text me-2"></i>
+                                    <span th:text="#{nav.admin.audit}">Audit Log</span>
                                 </a>
                             </li>
                             <li sec:authorize="hasRole('ADMIN')"><hr class="dropdown-divider my-1"></li>

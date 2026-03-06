@@ -19,10 +19,12 @@ public class FrontendConfigController {
       window.APP_CONFIG = {
         routes: {
           tasks: "%s",
-          api: "%s"
+          api: "%s",
+          audit: "%s"
         }
       };
-      """.formatted(escapeJs(appRoutes.getTasks()), escapeJs(appRoutes.getApi()));
+      """.formatted(escapeJs(appRoutes.getTasks()), escapeJs(appRoutes.getApi()),
+                    escapeJs(appRoutes.getAudit()));
   }
 
   private static String escapeJs(String value) {

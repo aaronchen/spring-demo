@@ -1,7 +1,6 @@
 package cc.desuka.demo.security;
 
 import cc.desuka.demo.model.OwnedEntity;
-import cc.desuka.demo.util.AuthExpressions;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 

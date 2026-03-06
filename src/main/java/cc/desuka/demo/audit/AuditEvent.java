@@ -1,0 +1,57 @@
+package cc.desuka.demo.audit;
+
+public class AuditEvent {
+
+    // Task actions
+    public static final String TASK_CREATED = "TASK_CREATED";
+    public static final String TASK_UPDATED = "TASK_UPDATED";
+    public static final String TASK_DELETED = "TASK_DELETED";
+
+    // User actions
+    public static final String USER_CREATED = "USER_CREATED";
+    public static final String USER_DELETED = "USER_DELETED";
+    public static final String USER_ROLE_CHANGED = "USER_ROLE_CHANGED";
+    public static final String USER_REGISTERED = "USER_REGISTERED";
+
+    // Tag actions
+    public static final String TAG_CREATED = "TAG_CREATED";
+    public static final String TAG_DELETED = "TAG_DELETED";
+
+    // Auth actions
+    public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
+    public static final String LOGIN_FAILURE = "LOGIN_FAILURE";
+
+    private final String action;
+    private final String entityType;
+    private final Long entityId;
+    private final String principal;
+    private final String details;
+
+    public AuditEvent(String action, Class<?> entityType, Long entityId, String principal, String details) {
+        this.action = action;
+        this.entityType = entityType != null ? entityType.getSimpleName() : null;
+        this.entityId = entityId;
+        this.principal = principal;
+        this.details = details;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public String getEntityType() {
+        return entityType;
+    }
+
+    public Long getEntityId() {
+        return entityId;
+    }
+
+    public String getPrincipal() {
+        return principal;
+    }
+
+    public String getDetails() {
+        return details;
+    }
+}

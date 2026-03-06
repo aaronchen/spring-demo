@@ -1,4 +1,4 @@
-package cc.desuka.demo.controller;
+package cc.desuka.demo.controller.admin;
 
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.service.UserService;
@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.*;
 
 @Controller
 @RequestMapping("/admin")
-public class AdminController {
+public class UserManagementController {
 
     private final UserService userService;
 
-    public AdminController(UserService userService) {
+    public UserManagementController(UserService userService) {
         this.userService = userService;
     }
 

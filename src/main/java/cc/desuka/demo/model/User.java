@@ -1,18 +1,21 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 // Inverse side of the @OneToMany relationship — Task owns the FK column (user_id).
 // mappedBy = "user" points to the field name in Task, not a column or table name.
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -114,6 +117,15 @@ public class User {
 
     public void setTasks(List<Task> tasks) {
         this.tasks = tasks;
+    }
+
+    @Override
+    public Map<String, Object> toAuditSnapshot() {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("name", name);
+        snapshot.put("email", email);
+        snapshot.put("role", role != null ? role.name() : null);
+        return snapshot;
     }
 
     // equals/hashCode use getId() (not field access) — Hibernate LAZY proxies

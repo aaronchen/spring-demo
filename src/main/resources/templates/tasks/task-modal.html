@@ -7,23 +7,48 @@
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<form th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
-      th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
-      hx-target="#task-modal-content"
-      hx-swap="innerHTML"
-      th:object="${task}"
-      method="post">
-    <div class="modal-body">
-        <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
+<div class="d-flex">
+    <!-- Left: form -->
+    <div style="flex: 1; min-width: 0;">
+        <form th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
+              th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
+              hx-target="#task-modal-content"
+              hx-swap="innerHTML"
+              th:object="${task}"
+              method="post">
+            <div class="modal-body">
+                <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
+            </div>
+            <div class="modal-footer">
+                <th:block th:if="${mode != 'create' && !auditHistory.isEmpty()}">
+                    <button type="button" id="task-history-btn"
+                            class="btn btn-outline-primary me-auto"
+                            onclick="toggleTaskHistory()">
+                        <i class="bi bi-clock-history"></i>
+                        <span th:text="#{audit.history.button(${auditHistory.size()})}">History (3)</span>
+                    </button>
+                </th:block>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
+                </button>
+                <button th:if="${mode != 'view'}" type="submit" class="btn btn-primary">
+                    <i th:class="${mode == 'edit'} ? 'bi bi-save' : 'bi bi-plus-circle'"></i>
+                    <span th:text="${mode == 'edit'} ? #{action.updateTask} : #{action.createTask}">Submit</span>
+                </button>
+            </div>
+        </form>
     </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
-        </button>
-        <!-- Submit button shown only in edit/create mode, not view mode -->
-        <button th:if="${mode != 'view'}" type="submit" class="btn btn-primary">
-            <i th:class="${mode == 'edit'} ? 'bi bi-save' : 'bi bi-plus-circle'"></i>
-            <span th:text="${mode == 'edit'} ? #{action.updateTask} : #{action.createTask}">Submit</span>
-        </button>
+    <!-- Right: audit history panel (hidden by default, shown via toggle) -->
+    <div th:if="${mode != 'create' && !auditHistory.isEmpty()}"
+         id="task-history-panel" class="task-history-panel d-none">
+        <div class="p-3 border-bottom bg-light">
+            <h6 class="mb-0">
+                <i class="bi bi-clock-history"></i>
+                <span th:text="#{audit.history.heading}">History</span>
+            </h6>
+        </div>
+        <div class="task-history-entries">
+            <th:block th:replace="~{tasks/task-audit :: entries}"></th:block>
+        </div>
     </div>
-</form>
+</div>

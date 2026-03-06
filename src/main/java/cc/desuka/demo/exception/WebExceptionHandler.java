@@ -5,6 +5,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Global exception handler for Thymeleaf web controllers.
@@ -34,8 +35,8 @@ public class WebExceptionHandler {
         throw ex;
     }
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ModelAndView handleNotFound(EntityNotFoundException ex) {
+    @ExceptionHandler({EntityNotFoundException.class, NoResourceFoundException.class})
+    public ModelAndView handleNotFound(Exception ex) {
         ModelAndView mav = new ModelAndView("error/404");
         mav.setStatus(HttpStatus.NOT_FOUND);
         mav.addObject("message", ex.getMessage());
