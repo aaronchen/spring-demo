@@ -35,6 +35,14 @@
 }
 #status-filter-incomplete.active { color: var(--theme-warning-text, #000) !important; }
 
+/* Overdue filter button: danger color when active */
+#overdue-filter {
+    --bs-btn-active-bg: var(--bs-danger, #dc3545);
+    --bs-btn-active-border-color: var(--bs-danger, #dc3545);
+    --bs-btn-active-color: #fff;
+}
+#overdue-filter.active { color: #fff !important; }
+
 /* User filter: grey for "All Users", blue for "Mine" / specific user */
 #user-filter-all {
     --bs-btn-active-bg: rgba(108, 117, 125, 0.35);
@@ -57,6 +65,8 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 
 /* Tag pills */
 #tag-pills .badge { font-size: 0.85rem; }
+
+/* Priority badges in form: equal width so Low/Medium/High align neatly */
 
 /* Task modal: audit history side panel — equal width with form */
 .task-history-panel {

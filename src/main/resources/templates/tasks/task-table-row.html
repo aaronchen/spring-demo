@@ -33,12 +33,39 @@
         </small>
     </td>
     <td style="white-space: nowrap;">
-        <span th:if="${task.completed}" class="badge bg-success">
+        <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
+           onclick="setPriorityFilter('HIGH'); return false;">
+            <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>
+        </a>
+        <a href="#" th:if="${task.priority.name() == 'MEDIUM'}" class="badge bg-warning text-dark text-decoration-none"
+           onclick="setPriorityFilter('MEDIUM'); return false;">
+            <i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span>
+        </a>
+        <a href="#" th:if="${task.priority.name() == 'LOW'}" class="badge bg-success text-decoration-none text-white"
+           onclick="setPriorityFilter('LOW'); return false;">
+            <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
+        </a>
+    </td>
+    <td style="white-space: nowrap;"
+        th:with="overdue=${!task.completed && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+        <a href="#" th:if="${task.completed}" class="badge bg-success text-decoration-none text-white"
+           onclick="setStatusFilter('completed'); return false;">
             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
-        </span>
-        <span th:if="${!task.completed}" class="badge bg-warning text-dark">
+        </a>
+        <a href="#" th:if="${!task.completed && overdue}" class="badge bg-danger text-decoration-none text-white"
+           onclick="setStatusFilter('overdue'); return false;">
+            <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
+        </a>
+        <a href="#" th:if="${!task.completed && !overdue}" class="badge bg-warning text-dark text-decoration-none"
+           onclick="setStatusFilter('incomplete'); return false;">
             <i class="bi bi-circle"></i> <span th:text="#{task.status.pending}">Pending</span>
-        </span>
+        </a>
+    </td>
+    <td style="white-space: nowrap;">
+        <th:block th:if="${task.dueDate != null}">
+            <small th:classappend="${!task.completed && task.dueDate.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-semibold' : 'text-muted'"
+                   th:text="${#temporals.format(task.dueDate, 'MMM dd, yyyy')}">Date</small>
+        </th:block>
     </td>
     <td style="white-space: nowrap;">
         <small class="text-muted" th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</small>

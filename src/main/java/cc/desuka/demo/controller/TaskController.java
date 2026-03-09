@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.CustomUserDetails;
@@ -51,6 +52,8 @@ public class TaskController {
   public String listTasks(
       @RequestParam(required = false, defaultValue = "") String search,
       @RequestParam(required = false, defaultValue = "all") TaskStatusFilter statusFilter,
+      @RequestParam(required = false, defaultValue = "false") boolean overdue,
+      @RequestParam(required = false) Priority priority,
       @RequestParam(required = false) Long userId,
       @RequestParam(required = false) List<Long> tags,
       @RequestParam(required = false) String view,
@@ -70,7 +73,7 @@ public class TaskController {
     if (!request.getParameterMap().containsKey("size")) {
       pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
     }
-    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, userId, tags, pageable);
+    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, userId, tags, pageable);
     model.addAttribute("taskPage", taskPage);
     model.addAttribute("allTags", tagService.getAllTags());
     model.addAttribute("view", resolvedView);

@@ -1,5 +1,6 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Setting;
 import cc.desuka.demo.config.Settings;
@@ -14,6 +15,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -530,6 +532,21 @@ public class DataLoader implements CommandLineRunner {
       if (i % 3 != 0) taskTags.add(priority.get(i % priority.size())); // ~67% get a priority
       if (i % 2 == 0) taskTags.add(type.get(i % type.size()));         // ~50% get a type
       tasks.get(i).setTags(taskTags);
+    }
+
+    // Assign priority and due dates.
+    // Priority distribution: ~20% HIGH, ~50% MEDIUM, ~30% LOW.
+    // Due dates: ~60% of tasks get a due date; spread from 10 days ago to 30 days from now.
+    for (int i = 0; i < tasks.size(); i++) {
+      if (i % 5 == 0) tasks.get(i).setPriority(Priority.HIGH);
+      else if (i % 5 < 3) tasks.get(i).setPriority(Priority.MEDIUM);
+      else tasks.get(i).setPriority(Priority.LOW);
+
+      if (i % 5 != 3) { // ~80% get a due date
+        // Spread due dates: from 10 days ago to 30 days from now
+        int daysOffset = -10 + (i % 41); // -10 to +30
+        tasks.get(i).setDueDate(LocalDate.now().plusDays(daysOffset));
+      }
     }
 
     // Assign users to tasks — ~80% assigned, every 5th task unassigned.

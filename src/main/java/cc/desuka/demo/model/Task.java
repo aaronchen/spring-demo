@@ -5,6 +5,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import org.hibernate.annotations.Formula;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -19,6 +23,9 @@ public class Task implements OwnedEntity, Auditable {
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_CREATED_AT = "createdAt";
   public static final String FIELD_COMPLETED = "completed";
+  public static final String FIELD_PRIORITY = "priority";
+  public static final String FIELD_PRIORITY_ORDER = "priorityOrder";
+  public static final String FIELD_DUE_DATE = "dueDate";
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,6 +43,19 @@ public class Task implements OwnedEntity, Auditable {
   private String description;
 
   private boolean completed = false;
+
+  @Enumerated(EnumType.STRING)
+  private Priority priority = Priority.MEDIUM;
+
+  // Virtual column for correct priority sorting (LOW=0, MEDIUM=1, HIGH=2).
+  // @Enumerated(STRING) sorts alphabetically (H→L→M) which is wrong.
+  // @Formula generates a CASE expression in the ORDER BY clause.
+  @Formula("CASE priority WHEN 'LOW' THEN 0 WHEN 'MEDIUM' THEN 1 WHEN 'HIGH' THEN 2 END")
+  private int priorityOrder;
+
+  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+  @Column(name = "due_date")
+  private LocalDate dueDate;
 
   @Column(name = "created_at")
   private LocalDateTime createdAt = LocalDateTime.now();
@@ -125,6 +145,22 @@ public class Task implements OwnedEntity, Auditable {
     this.completed = completed;
   }
 
+  public Priority getPriority() {
+    return priority;
+  }
+
+  public void setPriority(Priority priority) {
+    this.priority = priority;
+  }
+
+  public LocalDate getDueDate() {
+    return dueDate;
+  }
+
+  public void setDueDate(LocalDate dueDate) {
+    this.dueDate = dueDate;
+  }
+
   public LocalDateTime getCreatedAt() {
     return createdAt;
   }
@@ -155,6 +191,8 @@ public class Task implements OwnedEntity, Auditable {
     snapshot.put("title", title);
     snapshot.put("description", description);
     snapshot.put("completed", completed);
+    snapshot.put("priority", priority != null ? priority.name() : null);
+    snapshot.put("dueDate", dueDate != null ? dueDate.toString() : null);
     snapshot.put("user", user != null ? user.getName() : null);
     snapshot.put("tags", tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
     return snapshot;

@@ -1,5 +1,7 @@
 package cc.desuka.demo.dto;
 
+import cc.desuka.demo.model.Priority;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.Data;
@@ -16,6 +18,8 @@ public class TaskResponse {
   private String title;
   private String description;
   private boolean completed;
+  private Priority priority;
+  private LocalDate dueDate;
   private LocalDateTime createdAt;
   // Empty list when the task has no tags (never null in the response)
   private List<TagResponse> tags;

@@ -1,9 +1,12 @@
 package cc.desuka.demo.repository;
 
+import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
+
+import java.time.LocalDate;
 import java.util.List;
 
 public class TaskSpecifications {
@@ -39,6 +42,24 @@ public class TaskSpecifications {
     };
   }
 
+  public static Specification<Task> withOverdue(boolean overdue) {
+    return (root, query, cb) -> {
+      if (!overdue) return cb.conjunction();
+      return cb.and(
+          cb.isFalse(root.get(Task.FIELD_COMPLETED)),
+          cb.isNotNull(root.get(Task.FIELD_DUE_DATE)),
+          cb.lessThan(root.get(Task.FIELD_DUE_DATE), LocalDate.now())
+      );
+    };
+  }
+
+  public static Specification<Task> withPriority(Priority priority) {
+    return (root, query, cb) -> {
+      if (priority == null) return cb.conjunction();
+      return cb.equal(root.get(Task.FIELD_PRIORITY), priority);
+    };
+  }
+
   public static Specification<Task> withTagIds(List<Long> tagIds) {
     return (root, query, cb) -> {
       if (tagIds == null || tagIds.isEmpty()) return cb.conjunction();
@@ -48,8 +69,11 @@ public class TaskSpecifications {
   }
 
   public static Specification<Task> build(String keyword, TaskStatusFilter statusFilter,
+                                          boolean overdue, Priority priority,
                                           Long userId, List<Long> tagIds) {
     return Specification.where(withStatusFilter(statusFilter))
+        .and(withOverdue(overdue))
+        .and(withPriority(priority))
         .and(withKeyword(keyword))
         .and(withUserId(userId))
         .and(withTagIds(tagIds));

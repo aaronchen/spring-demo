@@ -36,6 +36,44 @@
         </div>
     </div>
 
+    <!-- Priority -->
+    <div class="mb-3">
+        <label class="form-label fw-bold" th:text="#{task.field.priority}">Priority</label>
+        <div class="d-flex gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{priority}" value="LOW" id="priority-low"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="priority-low">
+                    <span class="badge bg-success"><i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{priority}" value="MEDIUM" id="priority-medium"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="priority-medium">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{priority}" value="HIGH" id="priority-high"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="priority-high">
+                    <span class="badge bg-danger"><i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Due Date -->
+    <div class="mb-3">
+        <label for="dueDate" class="form-label fw-bold" th:text="#{task.field.dueDate}">Due Date</label>
+        <input type="date"
+               th:field="*{dueDate}"
+               class="form-control"
+               id="dueDate"
+               th:disabled="${mode == 'view'}">
+    </div>
+
     <!-- Assigned To: searchable dropdown (remote) in create/edit mode, disabled in view mode -->
     <div class="mb-3">
         <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>

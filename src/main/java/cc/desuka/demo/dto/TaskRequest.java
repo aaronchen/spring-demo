@@ -1,7 +1,9 @@
 package cc.desuka.demo.dto;
 
+import cc.desuka.demo.model.Priority;
 import jakarta.validation.constraints.*;
 import lombok.Data;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -21,6 +23,10 @@ public class TaskRequest {
 
   @Size(max = 500, message = "{task.description.size}")
   private String description;
+
+  private Priority priority;
+
+  private LocalDate dueDate;
 
   // null or empty = no tags (or remove all existing tags from this task)
   private List<Long> tagIds;

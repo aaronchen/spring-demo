@@ -524,6 +524,8 @@ CREATE TABLE tasks (
     title       VARCHAR(100) NOT NULL,
     description VARCHAR(500),
     completed   BOOLEAN DEFAULT FALSE,
+    priority    VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
+    due_date    DATE,                           -- nullable; overdue = incomplete + past due
     created_at  TIMESTAMP,
     user_id     BIGINT REFERENCES users(id)   -- nullable FK; @ManyToOne owning side
 );

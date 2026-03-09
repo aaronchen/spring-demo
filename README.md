@@ -18,8 +18,11 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
 - **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via cookie
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
-- **Filter Buttons** - All / Completed / Pending with color-coded active states
-- **Sortable Columns** - Sort by title, date, or description (ascending/descending)
+- **Filter Buttons** - All / Completed / Pending / Overdue with color-coded active states
+- **Priority Filter** - Dropdown filter for Low / Medium / High with color-coded button state
+- **Sortable Columns** - Sort by title, created date, priority, due date, or description (ascending/descending)
+- **Priority Badges** - Color-coded clickable badges (High=red, Medium=yellow, Low=green) with reception bar icons
+- **Due Dates** - Optional due date with overdue detection; overdue tasks highlighted in red
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
 - **Color-Coded Tasks** - Green = completed, yellow = pending throughout UI
@@ -140,7 +143,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 
 #### Creating a Task
 
-Click **New Task** — a modal opens. Fill in title (required, max 100 chars) and description (optional, max 500 chars), then click **Create Task**. Your current search/filter/sort state is preserved.
+Click **New Task** — a modal opens. Fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), and optional due date, then click **Create Task**. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
@@ -202,6 +205,8 @@ Content-Type: application/json
 {
   "title": "Write documentation",
   "description": "Document all API endpoints",
+  "priority": "HIGH",
+  "dueDate": "2026-03-15",
   "tagIds": [1, 3]
 }
 ```
@@ -209,6 +214,8 @@ Content-Type: application/json
 #### Validation Rules
 - **title**: required, 1–100 characters
 - **description**: optional, max 500 characters
+- **priority**: optional, one of `LOW`, `MEDIUM`, `HIGH` (defaults to `MEDIUM`)
+- **dueDate**: optional, ISO date format `yyyy-MM-dd`
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
 - **userId**: optional (admin only); omit or send `null` to auto-assign to caller
 - **version**: required on update; must match current entity version (optimistic locking)
@@ -286,6 +293,7 @@ spring-demo/
 │   │   ├── model/
 │   │   │   ├── AuditLog.java            # Audit log entity
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
+│   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
 │   │   │   ├── Role.java                # USER / ADMIN enum
 │   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
@@ -374,7 +382,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status and creation dates, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status, creation dates, priorities, and due dates, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 

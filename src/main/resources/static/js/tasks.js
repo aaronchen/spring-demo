@@ -5,6 +5,10 @@ const SORT_LABELS = {
     'title,desc':       'Title ↓',
     'createdAt,asc':    'Oldest First',
     'createdAt,desc':   'Newest First',
+    'priorityOrder,asc':  'Priority ↑',
+    'priorityOrder,desc': 'Priority ↓',
+    'dueDate,asc':      'Due Date ↑',
+    'dueDate,desc':     'Due Date ↓',
     'description,asc':  'Desc ↑',
     'description,desc': 'Desc ↓',
 };
@@ -22,8 +26,12 @@ function buildUrl(page) {
     const params = new URLSearchParams();
     const search = document.getElementById('search-input').value;
     const statusFilter = document.getElementById('current-status-filter').value;
+    const overdue = document.getElementById('current-overdue-filter').value;
     if (search) params.set('search', search);
     if (statusFilter && statusFilter !== 'all') params.set('statusFilter', statusFilter);
+    if (overdue === 'true') params.set('overdue', 'true');
+    const priority = document.getElementById('current-priority-filter').value;
+    if (priority) params.set('priority', priority);
     activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
     params.set('size', pageSize);
     if (page > 0) params.set('page', page);
@@ -154,6 +162,15 @@ function initFromUrl() {
         btn.classList.toggle('active', btn.id === 'status-filter-' + statusFilter);
     });
 
+    // Overdue filter
+    const overdue = params.get('overdue') === 'true';
+    document.getElementById('current-overdue-filter').value = overdue;
+    document.getElementById('overdue-filter').classList.toggle('active', overdue);
+
+    // Priority filter
+    document.getElementById('current-priority-filter').value = params.get('priority') || '';
+    renderPriorityButton();
+
     // Search
     document.getElementById('search-input').value = params.get('search') || '';
     const clearBtn = document.getElementById('search-clear-btn');
@@ -201,10 +218,16 @@ function setMyFilter() {
 }
 
 function clearUserFilter() {
+    // "All Users" button: always show all users
+    currentUserId = null;
+    renderUserFilter(null);
+    doSearch(true);
+}
+
+function resetUserFilter() {
+    // "×" on user label: go back to Mine
     const mineBtn = document.getElementById('user-filter-mine');
-    const myId = mineBtn?.dataset.userId;
-    // Clearing "Mine" → All Users; clearing another user → Mine
-    currentUserId = (currentUserId === myId) ? null : myId;
+    currentUserId = mineBtn?.dataset.userId;
     renderUserFilter(null);
     doSearch(true);
 }
@@ -230,6 +253,86 @@ function renderUserFilter(userName) {
         label.textContent = userName || 'User';
         clearIcon.classList.remove('d-none');
     }
+}
+
+// ── Status filter (clickable badges on cards/rows) ──
+
+function setStatusFilter(status) {
+    // status: 'completed', 'incomplete', or 'overdue'
+    if (status === 'overdue') {
+        document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
+            btn.classList.remove('active'));
+        document.getElementById('status-filter-incomplete').classList.add('active');
+        document.getElementById('current-status-filter').value = 'incomplete';
+        document.getElementById('current-overdue-filter').value = 'true';
+        document.getElementById('overdue-filter').classList.add('active');
+    } else {
+        document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
+            btn.classList.remove('active'));
+        document.getElementById('status-filter-' + status).classList.add('active');
+        document.getElementById('current-status-filter').value = status;
+        document.getElementById('current-overdue-filter').value = 'false';
+        document.getElementById('overdue-filter').classList.remove('active');
+    }
+    doSearch(true);
+}
+
+// ── Priority filter (clickable badges on cards/rows) ──
+
+const PRIORITY_CONFIG = {
+    HIGH:   { msgKey: 'task.priority.high',   css: 'bg-danger text-white',  icon: 'bi-reception-4' },
+    MEDIUM: { msgKey: 'task.priority.medium', css: 'bg-warning text-dark',  icon: 'bi-reception-2' },
+    LOW:    { msgKey: 'task.priority.low',    css: 'bg-success text-white', icon: 'bi-reception-1' },
+};
+
+function setPriorityFilter(priority) {
+    const current = document.getElementById('current-priority-filter').value;
+    // If clicking a badge on a card/row, toggle off if same priority; otherwise set it
+    if (priority && current === priority) {
+        document.getElementById('current-priority-filter').value = '';
+    } else {
+        document.getElementById('current-priority-filter').value = priority;
+    }
+    // Close the dropdown if open
+    const dd = document.getElementById('priorityDropdown');
+    if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
+    renderPriorityButton();
+    doSearch(true);
+}
+
+function renderPriorityButton() {
+    const priority = document.getElementById('current-priority-filter').value;
+    const label = document.getElementById('priority-filter-label');
+    const btn = document.getElementById('priorityDropdown');
+    const icon = btn.querySelector('i');
+    const baseLabel = APP_CONFIG.messages['task.field.priority'] || 'Priority';
+
+    // Update active item styling
+    document.querySelectorAll('.priority-filter-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.priority === priority);
+    });
+
+    // Reset button to default
+    btn.className = 'btn btn-outline-secondary dropdown-toggle';
+    icon.className = 'bi bi-reception-2';
+
+    if (priority && PRIORITY_CONFIG[priority]) {
+        const cfg = PRIORITY_CONFIG[priority];
+        label.textContent = APP_CONFIG.messages[cfg.msgKey] || priority;
+        icon.className = `bi ${cfg.icon}`;
+        // Apply priority color to button
+        const colorClass = cfg.css.includes('bg-danger') ? 'btn-danger'
+            : cfg.css.includes('bg-warning') ? 'btn-warning'
+            : 'btn-success';
+        btn.className = `btn ${colorClass} dropdown-toggle`;
+    } else {
+        label.textContent = baseLabel;
+    }
+}
+
+function updateFilterPillsVisibility() {
+    const wrapper = document.getElementById('filter-pills');
+    wrapper.classList.toggle('d-none', selectedTagIds.length === 0);
 }
 
 // ── Tag filter ──
@@ -279,18 +382,19 @@ function renderTagFilter() {
             : baseLabel;
     }
 
-    // Render pills
+    // Render tag pills
     const pillsContainer = document.getElementById('tag-pills-container');
-    const pillsWrapper = document.getElementById('tag-pills');
-    if (!pillsContainer || !pillsWrapper) return;
+    const clearAllLink = document.getElementById('tag-clear-all');
+    if (!pillsContainer) return;
     pillsContainer.innerHTML = '';
 
     if (selectedTagIds.length === 0) {
-        pillsWrapper.classList.add('d-none');
+        clearAllLink.classList.add('d-none');
+        updateFilterPillsVisibility();
         return;
     }
 
-    pillsWrapper.classList.remove('d-none');
+    clearAllLink.classList.remove('d-none');
     selectedTagIds.forEach(tagId => {
         const cb = document.querySelector(`.tag-filter-checkbox[data-tag-id="${tagId}"]`);
         const name = cb ? cb.dataset.tagName : `Tag ${tagId}`;
@@ -300,6 +404,7 @@ function renderTagFilter() {
             + `onclick="toggleTagFilter('${tagId}'); return false;">&times;</a>`;
         pillsContainer.appendChild(pill);
     });
+    updateFilterPillsVisibility();
 
     // Show "Clear all" only when 2+ tags
     const clearAll = document.getElementById('tag-clear-all');
@@ -365,8 +470,30 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
             document.getElementById('current-status-filter').value =
                 this.id.replace('status-filter-', '');
+            // Clear overdue when switching status filters
+            document.getElementById('current-overdue-filter').value = 'false';
+            document.getElementById('overdue-filter').classList.remove('active');
             doSearch(true);
         });
+    });
+
+    // Overdue filter button click handler
+    document.getElementById('overdue-filter').addEventListener('click', function() {
+        const isActive = this.classList.contains('active');
+        if (isActive) {
+            // Toggle off: clear overdue, stay on Pending
+            this.classList.remove('active');
+            document.getElementById('current-overdue-filter').value = 'false';
+        } else {
+            // Toggle on: set status to Pending + activate overdue
+            document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
+                btn.classList.remove('active'));
+            document.getElementById('status-filter-incomplete').classList.add('active');
+            document.getElementById('current-status-filter').value = 'incomplete';
+            this.classList.add('active');
+            document.getElementById('current-overdue-filter').value = 'true';
+        }
+        doSearch(true);
     });
 
     // After HTMX replaces the grid, re-sync the per-page selects in the new HTML.

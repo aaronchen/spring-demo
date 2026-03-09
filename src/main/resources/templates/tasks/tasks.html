@@ -61,7 +61,7 @@
                             <i class="bi bi-person"></i>
                             <span id="user-filter-label" th:text="#{task.filter.user.mine}">Mine</span>
                             <span id="user-filter-clear" class="d-none ms-1"
-                                  onclick="event.stopPropagation(); clearUserFilter();">&times;</span>
+                                  onclick="event.stopPropagation(); resetUserFilter();">&times;</span>
                         </button>
                     </div>
 
@@ -82,6 +82,55 @@
                                 id="status-filter-incomplete">
                             <i class="bi bi-circle"></i> <span th:text="#{task.filter.pending}">Pending</span>
                         </button>
+                        <button type="button"
+                                class="btn btn-outline-light border-secondary text-danger fw-bold"
+                                id="overdue-filter">
+                            <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
+                        </button>
+                    </div>
+                    <input type="hidden" id="current-overdue-filter" value="false">
+                    <input type="hidden" id="current-priority-filter" value="">
+
+                    <!-- Priority Filter Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle"
+                                type="button"
+                                id="priorityDropdown"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            <i class="bi bi-reception-2"></i> <span id="priority-filter-label" th:text="#{task.field.priority}">Priority</span>
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="priorityDropdown">
+                            <li>
+                                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="LOW"
+                                   onclick="setPriorityFilter('LOW')">
+                                    <span class="badge bg-success"><i class="bi bi-reception-1"></i></span>
+                                    <span th:text="#{task.priority.low}">Low</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="MEDIUM"
+                                   onclick="setPriorityFilter('MEDIUM')">
+                                    <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i></span>
+                                    <span th:text="#{task.priority.medium}">Medium</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="HIGH"
+                                   onclick="setPriorityFilter('HIGH')">
+                                    <span class="badge bg-danger"><i class="bi bi-reception-4"></i></span>
+                                    <span th:text="#{task.priority.high}">High</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority=""
+                                   onclick="setPriorityFilter('')">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                    <span th:text="#{task.filter.all}">All</span>
+                                </a>
+                            </li>
+                        </ul>
                     </div>
 
                     <!-- Sort Dropdown -->
@@ -126,6 +175,40 @@
                                    onclick="toggleSort('createdAt','desc'); return false;">
                                     <i class="bi bi-check-lg sort-check"></i>
                                     <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.createdAt.desc}">Newest First</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="priorityOrder" data-sort-dir="asc"
+                                   onclick="toggleSort('priorityOrder','asc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-down"></i> <span th:text="#{task.sort.priorityOrder.asc}">Priority (Low-High)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="priorityOrder" data-sort-dir="desc"
+                                   onclick="toggleSort('priorityOrder','desc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-up"></i> <span th:text="#{task.sort.priorityOrder.desc}">Priority (High-Low)</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="dueDate" data-sort-dir="asc"
+                                   onclick="toggleSort('dueDate','asc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-numeric-down"></i> <span th:text="#{task.sort.dueDate.asc}">Due Date (Earliest)</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                                   data-sort-field="dueDate" data-sort-dir="desc"
+                                   onclick="toggleSort('dueDate','desc'); return false;">
+                                    <i class="bi bi-check-lg sort-check"></i>
+                                    <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.dueDate.desc}">Due Date (Latest)</span>
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -199,10 +282,10 @@
 
                 </div>
 
-                <!-- Selected Tag Pills (hidden when empty, managed by JS) -->
-                <div id="tag-pills" class="d-none mb-3">
+                <!-- Active tag filter pills (hidden when empty, managed by JS) -->
+                <div id="filter-pills" class="d-none mb-3">
                     <span id="tag-pills-container"></span>
-                    <a href="#" id="tag-clear-all" class="ms-2 small text-decoration-none"
+                    <a href="#" id="tag-clear-all" class="d-none ms-2 small text-decoration-none"
                        onclick="clearAllTags(); return false;"
                        th:text="#{task.filter.tags.clearAll}">Clear all</a>
                 </div>

@@ -8,12 +8,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Model Layer
 - `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
-  - Fields: id, version, title, description, completed, createdAt, tags, user
+  - Fields: id, version, title, description, completed, priority, priorityOrder, dueDate, createdAt, tags, user
   - `@Version` on `version` field — JPA optimistic locking; Hibernate auto-increments on each update and throws `OptimisticLockException` on stale writes
+  - `priority` — `@Enumerated(EnumType.STRING)`, defaults to `MEDIUM`
+  - `priorityOrder` — `@Formula("CASE priority WHEN 'LOW' THEN 0 WHEN 'MEDIUM' THEN 1 WHEN 'HIGH' THEN 2 END")` virtual column for correct sort order (STRING enums sort alphabetically without this)
+  - `dueDate` — `LocalDate`, `@DateTimeFormat(iso = ISO.DATE)` for HTML5 `<input type="date">` binding
   - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — Task owns the FK column; user is optional (nullable)
   - Validation: `@NotBlank`, `@Size` constraints
   - Manual getters/setters (no Lombok on entities)
+
+- `model/Priority.java` - Enum for task priority levels: `LOW`, `MEDIUM`, `HIGH`
+  - Stored as string via `@Enumerated(EnumType.STRING)` on Task
 
 - `model/OwnedEntity.java` - Marker interface for entities that have an owner
   - Single method: `User getUser()` — returns owner or null if unassigned
@@ -64,8 +70,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
-  - `build(keyword, statusFilter, userId, tagIds)` - builds a combined search + status + user + tag specification
+  - `build(keyword, statusFilter, overdue, priority, userId, tagIds)` - builds a combined search + status + overdue + priority + user + tag specification
   - `withStatusFilter(TaskStatusFilter)` — filters by completion status (all/completed/pending)
+  - `withOverdue(boolean)` — filters to incomplete tasks with past due dates
+  - `withPriority(Priority)` — filters by priority level
   - `withUserId(Long)` — filters tasks by assigned user
   - `withTagIds(List<Long>)` — filters tasks having any of the given tags (OR logic, uses INNER JOIN + distinct)
 
@@ -97,12 +105,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (create and update operations)
-  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars), `tagIds` (optional `List<Long>`), `userId` (optional `Long`), `version` (null on create, required on update for optimistic locking)
+  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars), `priority` (optional `Priority`, defaults to MEDIUM), `dueDate` (optional `LocalDate`), `tagIds` (optional `List<Long>`), `userId` (optional `Long`), `version` (null on create, required on update for optimistic locking)
   - Validation annotations used by `@Valid` in the controller
   - Lombok `@Data` for getters/setters/equals/hashCode
 
 - `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
-  - Fields: `id`, `title`, `description`, `completed`, `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`
+  - Fields: `id`, `title`, `description`, `completed`, `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`
   - Lombok `@Data`
 
 - `dto/TagResponse.java` - Tag output DTO
@@ -142,7 +150,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Service Layer
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
-  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, userId, tagIds, pageable)`, `toggleComplete`
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `toggleComplete`
   - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
 
 - `service/UserService.java` - User business logic
@@ -311,6 +319,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
   - Each task gets 1–2 tags drawn from different dimensions for natural combos (e.g. "Work + Urgent")
   - ~80% of tasks are assigned to a user (every 5th task is unassigned)
+  - Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW
+  - Due dates: ~80% of tasks get a due date spread -10 to +30 days from today (creates a mix of overdue and upcoming)
 
 ## Thymeleaf Templates
 
@@ -334,7 +344,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Task Views
 - `templates/tasks/tasks.html` - Main task list page
-  - Live search (JS-debounced, 300ms), status filter buttons, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown, view toggle (cards/table)
+  - Live search (JS-debounced, 300ms), status filter buttons (All/Completed/Pending/Overdue), priority dropdown filter, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown (includes priority and due date), view toggle (cards/table)
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
   - Contains two shared modal shells loaded once per page:
     - `#task-modal` — create/edit form, content loaded via HTMX
@@ -347,7 +357,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task-audit.html` - Shared audit history entries fragment (used by both `task.html` and `task-modal.html`)
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — title, description, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
+  - `fields` fragment — title, description, priority radio buttons (with reception bar icons), due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 

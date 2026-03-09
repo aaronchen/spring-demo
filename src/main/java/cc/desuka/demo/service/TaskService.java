@@ -4,6 +4,7 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
+import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
@@ -68,6 +69,8 @@ public class TaskService {
     task.setTitle(taskDetails.getTitle());
     task.setDescription(taskDetails.getDescription());
     task.setCompleted(taskDetails.isCompleted());
+    task.setPriority(taskDetails.getPriority());
+    task.setDueDate(taskDetails.getDueDate());
     task.setTags(resolveTags(tagIds));
     task.setUser(resolveUser(userId));
     Task saved = taskRepository.save(task);
@@ -99,9 +102,10 @@ public class TaskService {
   }
 
   public Page<Task> searchAndFilterTasks(String keyword, TaskStatusFilter statusFilter,
+                                         boolean overdue, Priority priority,
                                          Long userId, List<Long> tagIds,
                                          Pageable pageable) {
-    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, userId, tagIds), pageable);
+    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, userId, tagIds), pageable);
   }
 
   public Task toggleComplete(Long id) {
