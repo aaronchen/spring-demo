@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title}">Spring Workshop</title>
+    <!-- Prepend site name to page title when it differs (e.g. "Tasks" → "Spring Workshop - Tasks") -->
+    <meta th:if="${settings != null and title != settings.siteName}" name="_siteName" th:content="${settings.siteName}">
+    <script>!function(){var m=document.querySelector('meta[name="_siteName"]');if(m)document.title=m.content+" - "+document.title}()</script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
     <!-- Bootstrap CSS via WebJars -->
@@ -15,6 +18,13 @@
 
     <!-- Base styles -->
     <link rel="stylesheet" th:href="@{/css/base.css}">
+
+    <!-- Theme overrides (activates when data-theme is set on <html>) -->
+    <link rel="stylesheet" th:href="@{/css/theme.css}">
+
+    <!-- Theme attribute set server-side via Settings -->
+    <meta th:if="${settings != null and settings.theme != null and !settings.theme.isEmpty()}" name="_theme" th:content="${settings.theme}">
+    <script>!function(){var m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
 
     <!-- Web Component themes -->
     <link rel="stylesheet" th:href="@{/css/components/searchable-select-bootstrap5.css}">
@@ -28,11 +38,12 @@
     <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
 </head>
 <body>
-    <!-- Navigation Fragment -->
-    <nav th:fragment="navbar" class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+    <!-- Navigation + Maintenance Banner Fragment -->
+    <th:block th:fragment="navbar">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="bi bi-hammer"></i> <span th:text="#{nav.brand}">Spring Workshop</span>
+                <i class="bi bi-hammer"></i> <span th:text="${settings?.siteName} ?: #{nav.brand}">Spring Workshop</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -52,8 +63,9 @@
                 </ul>
                 <!-- Right-aligned auth controls -->
                 <ul class="navbar-nav align-items-center">
-                    <!-- Register link — visible only when NOT logged in -->
-                    <li class="nav-item" sec:authorize="!isAuthenticated()">
+                    <!-- Register link — visible only when NOT logged in and registration is enabled -->
+                    <li class="nav-item" sec:authorize="!isAuthenticated()"
+                        th:if="${settings == null or settings.registrationEnabled}">
                         <a class="nav-link fw-semibold nav-link-bright" th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
                     </li>
                     <!-- User dropdown — visible only when logged in -->
@@ -88,6 +100,12 @@
                                     <span th:text="#{nav.admin.audit}">Audit Log</span>
                                 </a>
                             </li>
+                            <li sec:authorize="hasRole('ADMIN')">
+                                <a class="dropdown-item py-2" th:href="@{/admin/settings}">
+                                    <i class="bi bi-gear me-2"></i>
+                                    <span th:text="#{nav.admin.settings}">Settings</span>
+                                </a>
+                            </li>
                             <li sec:authorize="hasRole('ADMIN')"><hr class="dropdown-divider my-1"></li>
                             <!-- Sign out -->
                             <li>
@@ -105,10 +123,19 @@
         </div>
     </nav>
 
+    <!-- Maintenance Banner — included automatically with navbar -->
+    <div th:if="${settings != null and !settings.maintenanceBanner.isEmpty()}"
+         class="alert alert-warning alert-dismissible mb-0 rounded-0 text-center" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <span th:text="${settings.maintenanceBanner}">Maintenance notice</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    </th:block>
+
     <!-- Footer Fragment -->
     <footer th:fragment="footer" class="footer mt-auto py-3 bg-light">
         <div class="container text-center">
-            <span class="text-muted" th:text="#{footer.text}">Spring Workshop &copy; 2026 | Built with Spring Boot / Bootstrap / HTMX</span>
+            <span class="text-muted" th:text="#{footer.text(${settings?.siteName} ?: #{app.name})}">Spring Workshop &copy; 2026 | Built with Spring Boot / Bootstrap / HTMX</span>
         </div>
     </footer>
 

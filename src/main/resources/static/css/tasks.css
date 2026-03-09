@@ -19,21 +19,21 @@
     --bs-btn-active-color: inherit;
 }
 
-/* Status filter button (Completed): green pill when active */
+/* Status filter button (Completed): success color when active */
 #status-filter-completed {
-    --bs-btn-active-bg: #198754;
-    --bs-btn-active-border-color: #198754;
-    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--bs-success, #198754);
+    --bs-btn-active-border-color: var(--bs-success, #198754);
+    --bs-btn-active-color: var(--theme-success-text, #fff);
 }
-#status-filter-completed.active { color: #fff !important; }
+#status-filter-completed.active { color: var(--theme-success-text, #fff) !important; }
 
-/* Status filter button (Pending): yellow pill when active */
+/* Status filter button (Pending): warning color when active */
 #status-filter-incomplete {
-    --bs-btn-active-bg: #ffc107;
-    --bs-btn-active-border-color: #ffc107;
-    --bs-btn-active-color: #000;
+    --bs-btn-active-bg: var(--bs-warning, #ffc107);
+    --bs-btn-active-border-color: var(--bs-warning, #ffc107);
+    --bs-btn-active-color: var(--theme-warning-text, #000);
 }
-#status-filter-incomplete.active { color: #000 !important; }
+#status-filter-incomplete.active { color: var(--theme-warning-text, #000) !important; }
 
 /* User filter: grey for "All Users", blue for "Mine" / specific user */
 #user-filter-all {
@@ -42,18 +42,18 @@
     --bs-btn-active-color: inherit;
 }
 #user-filter-mine {
-    --bs-btn-active-bg: #0d6efd;
-    --bs-btn-active-border-color: #0d6efd;
-    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--bs-primary, #0d6efd);
+    --bs-btn-active-border-color: var(--bs-primary, #0d6efd);
+    --bs-btn-active-color: var(--theme-primary-text, #fff);
 }
-#user-filter-mine.active { color: #fff !important; }
+#user-filter-mine.active { color: var(--theme-primary-text, #fff) !important; }
 
 /* Clickable user names on cards/rows */
-a.user-link:hover { text-decoration: underline !important; color: #0d6efd !important; }
+a.user-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
 
 /* Clickable tag badges on cards/rows */
 a.badge:hover { opacity: 0.85; cursor: pointer; }
-a.badge.tag-active { background-color: #0d6efd !important; }
+a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 
 /* Tag pills */
 #tag-pills .badge { font-size: 0.85rem; }
@@ -75,6 +75,6 @@ a.badge.tag-active { background-color: #0d6efd !important; }
 .table .btn-group .btn-outline-warning,
 .table .btn-group .btn-outline-primary,
 .table .btn-group .btn-outline-danger {
-    --bs-btn-color: #6c757d;
-    --bs-btn-border-color: #6c757d;
+    --bs-btn-color: var(--theme-secondary, #6c757d);
+    --bs-btn-border-color: var(--theme-secondary, #6c757d);
 }

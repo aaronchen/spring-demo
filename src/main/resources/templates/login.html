@@ -58,7 +58,7 @@
                         </div>
                     </form>
 
-                    <p class="text-center mt-3 small">
+                    <p th:if="${settings == null or settings.registrationEnabled}" class="text-center mt-3 small">
                         <span th:text="#{login.registerLink}">Don't have an account?</span>
                         <a th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
                     </p>

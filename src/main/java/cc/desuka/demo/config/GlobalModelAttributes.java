@@ -2,6 +2,7 @@ package cc.desuka.demo.config;
 
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.service.SettingService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.ControllerAdvice;
@@ -11,9 +12,12 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 public class GlobalModelAttributes {
 
   private final AppRoutesProperties appRoutes;
+  private final SettingService settingService;
 
-  public GlobalModelAttributes(AppRoutesProperties appRoutes) {
+  public GlobalModelAttributes(AppRoutesProperties appRoutes,
+                                SettingService settingService) {
     this.appRoutes = appRoutes;
+    this.settingService = settingService;
   }
 
   @ModelAttribute("appRoutes")
@@ -32,5 +36,11 @@ public class GlobalModelAttributes {
       return details.getUser();
     }
     return null;
+  }
+
+  /** Exposes all settings as a typed object: ${settings.theme}, etc. */
+  @ModelAttribute("settings")
+  public Settings settings() {
+    return settingService.load();
   }
 }

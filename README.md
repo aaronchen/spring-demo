@@ -11,6 +11,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
 - **Admin Panel** - Manage user roles at `/admin/users` (admin only)
 - **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
+- **Admin Settings** - Configurable site name, registration toggle, maintenance banner, and theme picker at `/admin/settings`
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
 
 ### Web Interface
@@ -28,6 +29,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
 - **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
 - **Toast Notifications** - Success/error toasts for task save, delete, and conflict events (Bootstrap 5 toasts with slide-in animation)
+- **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
+- **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
+- **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
 
 ### REST API
 - **RESTful Endpoints** - Complete CRUD for tasks, tags, and users via JSON API
@@ -40,7 +44,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
-- **Tracked Actions** - Task CRUD, user CRUD, tag CRUD, login success/failure, role changes, registration
+- **Tracked Actions** - Task CRUD, user CRUD, tag CRUD, settings changes, login success/failure, role changes, registration
 - **Field-Level Diffs** - Update events record before/after values for each changed field
 - **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with category buttons, text search, date range, and pagination
 - **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
@@ -61,7 +65,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - HTMX 2.0 for dynamic interactions and HX-Trigger events
 - Bootstrap 5.3 for styling
 - Reusable pagination fragment with custom DOM events
-- Split CSS: `base.css` (global) + page-specific (`tasks.css`, `audit.css`)
+- Typed `Settings` POJO with `BeanWrapper` auto-mapping from DB key/value rows
+- CSS theme system with `[data-theme]` selectors and FOUC prevention
+- Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
 - Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`)
 - Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
 - All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
@@ -94,6 +100,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
+   - **Settings**: http://localhost:8080/admin/settings (admin only)
    - **REST API**: http://localhost:8080/api/tasks
    - **H2 Console**: http://localhost:8080/h2-console
 
@@ -239,11 +246,13 @@ spring-demo/
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
-│   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + currentUser
-│   │   │   └── SecurityConfig.java          # Spring Security filter chain, auth rules
+│   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
+│   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
+│   │   │   └── Settings.java               # Typed settings POJO with defaults
 │   │   ├── controller/
 │   │   │   ├── admin/
 │   │   │   │   ├── AuditController.java     # Audit log page (admin only)
+│   │   │   │   ├── SettingsController.java    # Admin settings page (theme, site name, etc.)
 │   │   │   │   └── UserManagementController.java # User role management (admin only)
 │   │   │   ├── api/
 │   │   │   │   ├── AuditApiController.java  # Audit REST API
@@ -277,6 +286,7 @@ spring-demo/
 │   │   │   ├── AuditLog.java            # Audit log entity
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Role.java                # USER / ADMIN enum
+│   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
 │   │   │   ├── Task.java                # Implements OwnedEntity
 │   │   │   ├── TaskStatusFilter.java    # ALL / COMPLETED / PENDING enum
@@ -284,6 +294,7 @@ spring-demo/
 │   │   ├── repository/
 │   │   │   ├── AuditLogRepository.java
 │   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
+│   │   │   ├── SettingRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
 │   │   │   ├── TaskSpecifications.java
@@ -297,6 +308,7 @@ spring-demo/
 │   │   │   └── SecurityUtils.java           # getCurrentPrincipal() for audit events
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
+│   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
 │   │   │   └── UserService.java         # Includes updateRole(), findByEmail()
@@ -309,7 +321,8 @@ spring-demo/
 │       │   ├── css/
 │       │   │   ├── audit.css           # Audit page styles
 │       │   │   ├── base.css            # Global styles
-│       │   │   └── tasks.css           # Task page styles
+│       │   │   ├── tasks.css           # Task page styles
+│       │   │   └── theme.css           # Theme overrides (Workshop, Indigo)
 │       │   ├── js/
 │       │   │   ├── audit.js            # Audit page logic
 │       │   │   ├── utils.js            # Shared utilities (cookies, CSRF for HTMX)
@@ -320,6 +333,7 @@ spring-demo/
 │       │   ├── admin/
 │       │   │   ├── audit.html          # Audit log page (admin only)
 │       │   │   ├── audit-table.html    # Audit table fragment (HTMX partial)
+│       │   │   ├── settings.html       # Admin settings page (admin only)
 │       │   │   └── users.html          # User management (admin only)
 │       │   ├── error/
 │       │   │   ├── 403.html            # Access Denied page
@@ -359,7 +373,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), and **300 tasks** with varied completion status and creation dates — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status and creation dates, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 

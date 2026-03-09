@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.admin.settings}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <h1 class="display-5 mb-4" th:text="#{admin.settings.heading}">Settings</h1>
+
+        <!-- General Settings -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3" th:text="#{admin.settings.general.heading}">General</h5>
+
+                <!-- Site Name -->
+                <div class="row align-items-center mb-3">
+                    <label for="setting-site-name" class="col-sm-3 col-form-label fw-semibold"
+                           th:text="#{admin.settings.siteName.label}">Site Name</label>
+                    <div class="col-sm-6">
+                        <input type="text" id="setting-site-name" class="form-control"
+                               th:value="${settings.siteName}"
+                               th:placeholder="#{admin.settings.siteName.placeholder}"
+                               maxlength="100">
+                    </div>
+                </div>
+
+                <!-- Registration Enabled -->
+                <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 col-form-label fw-semibold"
+                           th:text="#{admin.settings.registration.label}">Registration</label>
+                    <div class="col-sm-9">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch"
+                                   id="setting-registration"
+                                   th:checked="${settings.registrationEnabled}">
+                            <label class="form-check-label" for="setting-registration"
+                                   th:text="#{admin.settings.registration.description}">Allow new users to create accounts</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Maintenance Banner -->
+                <div class="row align-items-center mb-3">
+                    <label for="setting-maintenance" class="col-sm-3 col-form-label fw-semibold"
+                           th:text="#{admin.settings.maintenance.label}">Maintenance Banner</label>
+                    <div class="col-sm-6">
+                        <input type="text" id="setting-maintenance" class="form-control"
+                               th:value="${settings.maintenanceBanner}"
+                               th:placeholder="#{admin.settings.maintenance.placeholder}"
+                               maxlength="500">
+                    </div>
+                </div>
+
+                <!-- Save button -->
+                <div class="row">
+                    <div class="col-sm-9 offset-sm-3">
+                        <button type="button" class="btn btn-primary btn-sm"
+                                id="save-general-btn"
+                                th:text="#{admin.settings.save}">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Theme Picker -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title mb-1" th:text="#{admin.settings.theme.heading}">Theme</h5>
+                <p class="text-muted small mb-3" th:text="#{admin.settings.theme.description}">Choose a color scheme for the entire site.</p>
+
+                <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
+                    <div th:each="theme : ${themes}" class="col">
+                        <div class="card h-100 theme-card"
+                             th:classappend="${(theme.id == '' and settings.theme == null) or theme.id == settings.theme} ? 'border-primary shadow' : 'border'"
+                             style="cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;"
+                             hx-post="/admin/settings/theme"
+                             hx-swap="none"
+                             th:attr="hx-vals='{ &quot;theme&quot;: &quot;' + ${theme.id} + '&quot; }'">
+
+                            <!-- Color strip preview -->
+                            <div class="d-flex rounded-top overflow-hidden" style="height: 2.5rem;">
+                                <div th:each="color : ${theme.colors}"
+                                     th:style="'flex: 1; background:' + ${color}"></div>
+                            </div>
+
+                            <!-- Theme info -->
+                            <div class="card-body py-2 px-3 text-center">
+                                <div class="fw-semibold small"
+                                     th:text="#{'admin.settings.theme.' + (${theme.id.isEmpty() ? 'default' : theme.id}) + '.name'}">Theme</div>
+                                <div class="text-muted" style="font-size: 0.75rem;"
+                                     th:text="#{'admin.settings.theme.' + (${theme.id.isEmpty() ? 'default' : theme.id}) + '.description'}">Description</div>
+
+                                <!-- Active badge -->
+                                <span th:if="${(theme.id == '' and settings.theme == null) or theme.id == settings.theme}"
+                                      class="badge bg-primary mt-1">
+                                    <i class="bi bi-check-lg"></i>
+                                    <span th:text="#{admin.settings.theme.active}">Active</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script>
+        // Theme saved — apply live and update active state
+        document.body.addEventListener('themeSaved', function(e) {
+            var theme = e.detail.theme;
+            if (theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+            }
+            showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
+
+            document.querySelectorAll('.theme-card').forEach(function(card) {
+                var cardTheme = JSON.parse(card.getAttribute('hx-vals')).theme;
+                var isActive = cardTheme === (theme || '');
+                card.classList.toggle('border-primary', isActive);
+                card.classList.toggle('shadow', isActive);
+                card.classList.toggle('border', !isActive);
+                var badge = card.querySelector('.badge');
+                if (badge) badge.remove();
+                if (isActive) {
+                    var body = card.querySelector('.card-body');
+                    var span = document.createElement('span');
+                    span.className = 'badge bg-primary mt-1';
+                    span.innerHTML = '<i class="bi bi-check-lg"></i> ' + APP_CONFIG.messages['admin.settings.theme.active'];
+                    body.appendChild(span);
+                }
+            });
+        });
+
+        // General settings saved
+        document.body.addEventListener('settingsSaved', function() {
+            showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
+        });
+
+        // Save all general settings
+        document.getElementById('save-general-btn').addEventListener('click', function() {
+            htmx.ajax('POST', '/admin/settings/general', {
+                values: {
+                    siteName: document.getElementById('setting-site-name').value,
+                    registrationEnabled: document.getElementById('setting-registration').checked,
+                    maintenanceBanner: document.getElementById('setting-maintenance').value
+                },
+                swap: 'none'
+            });
+        });
+    </script>
+</body>
+</html>

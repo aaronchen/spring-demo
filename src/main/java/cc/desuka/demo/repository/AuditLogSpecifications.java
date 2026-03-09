@@ -14,8 +14,9 @@ public class AuditLogSpecifications {
                 case "TASK" -> "TASK_%";
                 case "USER" -> "USER_%";
                 case "TAG"  -> "TAG_%";
-                case "AUTH" -> "LOGIN_%";
-                default     -> null;
+                case "AUTH"    -> "LOGIN_%";
+                case "SETTING" -> "SETTING_%";
+                default        -> null;
             };
             if (prefix == null) return cb.conjunction();
             return cb.like(root.get("action"), prefix);

@@ -1,9 +1,12 @@
 package cc.desuka.demo;
 
 import cc.desuka.demo.model.Role;
+import cc.desuka.demo.model.Setting;
+import cc.desuka.demo.config.Settings;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.SettingRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
@@ -21,13 +24,16 @@ public class DataLoader implements CommandLineRunner {
   private final TaskRepository taskRepository;
   private final TagRepository tagRepository;
   private final UserRepository userRepository;
+  private final SettingRepository settingRepository;
   private final PasswordEncoder passwordEncoder;
 
   public DataLoader(TaskRepository taskRepository, TagRepository tagRepository,
-                    UserRepository userRepository, PasswordEncoder passwordEncoder) {
+                    UserRepository userRepository, SettingRepository settingRepository,
+                    PasswordEncoder passwordEncoder) {
     this.taskRepository = taskRepository;
     this.tagRepository = tagRepository;
     this.userRepository = userRepository;
+    this.settingRepository = settingRepository;
     this.passwordEncoder = passwordEncoder;
   }
 
@@ -536,9 +542,13 @@ public class DataLoader implements CommandLineRunner {
 
     taskRepository.saveAll(tasks);
 
+    // ── Settings ──────────────────────────────────────────────────────────
+    settingRepository.save(new Setting(Settings.KEY_THEME, "workshop"));
+
     System.out.println("Seed data loaded: " + userRepository.count() + " users, "
         + tagRepository.count() + " tags, "
-        + taskRepository.count() + " tasks.");
+        + taskRepository.count() + " tasks, "
+        + settingRepository.count() + " settings.");
   }
 
   private Task seedTask(String title, String description, boolean completed, int daysAgo) {

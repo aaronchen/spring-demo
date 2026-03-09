@@ -4,6 +4,7 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.dto.RegistrationRequest;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.service.SettingService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,16 +22,22 @@ public class RegistrationController {
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
+    private final SettingService settingService;
 
     public RegistrationController(UserService userService, PasswordEncoder passwordEncoder,
-                                  ApplicationEventPublisher eventPublisher) {
+                                  ApplicationEventPublisher eventPublisher,
+                                  SettingService settingService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
+        this.settingService = settingService;
     }
 
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {
+        if (!settingService.load().isRegistrationEnabled()) {
+            return "redirect:/login";
+        }
         model.addAttribute("registrationRequest", new RegistrationRequest());
         return "register";
     }
@@ -38,6 +45,10 @@ public class RegistrationController {
     @PostMapping("/register")
     public String register(@Valid @ModelAttribute RegistrationRequest registrationRequest,
                            BindingResult result) {
+        if (!settingService.load().isRegistrationEnabled()) {
+            return "redirect:/login";
+        }
+
         // Cross-field validation: passwords must match
         if (!registrationRequest.getPassword().equals(registrationRequest.getConfirmPassword())) {
             result.rejectValue("confirmPassword", "register.error.passwordMismatch",

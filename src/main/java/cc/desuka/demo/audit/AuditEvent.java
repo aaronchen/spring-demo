@@ -17,6 +17,9 @@ public class AuditEvent {
     public static final String TAG_CREATED = "TAG_CREATED";
     public static final String TAG_DELETED = "TAG_DELETED";
 
+    // Setting actions
+    public static final String SETTING_UPDATED = "SETTING_UPDATED";
+
     // Auth actions
     public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
     public static final String LOGIN_FAILURE = "LOGIN_FAILURE";

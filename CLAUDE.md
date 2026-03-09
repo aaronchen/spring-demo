@@ -235,6 +235,28 @@ public TaskWebController(TaskService taskService) {
 ```
 Not `@Autowired` field injection.
 
+### Site Settings Pattern
+
+Admin-managed settings stored in the `settings` table as key/value rows. The system has three layers:
+
+- **`Setting`** (entity in `model/`) — JPA entity for DB row (`setting_key` / `setting_value`)
+- **`Settings`** (typed POJO in `config/`) — single source of truth for all settings with defaults. DB keys must match field names exactly. `BeanWrapper` auto-maps DB rows to fields with type conversion (String → boolean, etc.)
+- **`SettingService.load()`** — reads all DB rows into a `Settings` object; missing keys keep field defaults
+
+`GlobalModelAttributes` exposes `${settings}` to all templates. To add a new setting:
+1. Add a field with its default in `Settings.java`
+2. Add a `KEY_*` constant whose value matches the field name
+3. Add `audit.field.<key>` to `messages.properties`
+
+### Theme System
+
+Custom color schemes activated via `data-theme` attribute on `<html>`. Without it, stock Bootstrap renders.
+
+- **`theme.css`** — palette tokens (`--theme-*`) per theme, mapped to Bootstrap `--bs-*` variables in shared `[data-theme]` rules
+- **`SettingsController`** — theme picker UI with color swatch cards; `ThemeOption` record holds preview colors (duplicated from CSS — unavoidable since CSS is client-side)
+- FOUC prevention: `<meta name="_theme">` + inline JS in `<head>` sets `data-theme` before CSS renders
+- Adding a new theme: (1) add `[data-theme="name"]` palette in `theme.css`, (2) add `ThemeOption` in `SettingsController.THEMES`, (3) add `admin.settings.theme.<name>.{name,description}` to `messages.properties`
+
 ### Security Authorization Patterns
 
 Security is enforced at **three layers** — any one can block access:
@@ -408,6 +430,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management (admin only)
 - `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
+- `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
 
 **REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - List all tasks
@@ -518,6 +541,12 @@ CREATE TABLE audit_logs (
     principal   VARCHAR(255),                   -- username who performed the action
     details     TEXT,                            -- JSON snapshot or diff
     timestamp   TIMESTAMP
+);
+
+CREATE TABLE settings (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    setting_key   VARCHAR(100) NOT NULL UNIQUE,    -- e.g. 'theme', 'siteName'
+    setting_value VARCHAR(500)                     -- nullable; null = use default
 );
 
 -- Join table for the @ManyToMany between Task and Tag.
