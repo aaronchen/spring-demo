@@ -6,7 +6,79 @@
     <div th:replace="~{layouts/base :: navbar}"></div>
 
     <main class="container flex-grow-1 mb-4">
-        <h1 class="display-5 mb-4" th:text="#{admin.users.heading}">User Management</h1>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-5 mb-0" th:text="#{admin.users.heading}">User Management</h1>
+            <button class="btn btn-primary" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#create-user-form"
+                    th:attr="aria-expanded=${showCreateForm != null and showCreateForm}">
+                <i class="bi bi-plus-lg me-1"></i>
+                <span th:text="#{admin.users.create}">New User</span>
+            </button>
+        </div>
+
+        <!-- Create User Form (collapsible) -->
+        <div class="collapse mb-4" id="create-user-form"
+             th:classappend="${showCreateForm != null and showCreateForm ? 'show' : ''}">
+            <div class="card shadow">
+                <div class="card-body">
+                    <h5 class="card-title mb-3" th:text="#{admin.users.create.heading}">Create New User</h5>
+                    <form th:action="@{/admin/users}" th:object="${adminUserRequest}" method="post">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" th:text="#{user.field.name}">Name</label>
+                                <input type="text" class="form-control"
+                                       th:field="*{name}"
+                                       th:placeholder="#{user.field.name.placeholder}"
+                                       th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                                     th:errors="*{name}">Name error</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" th:text="#{user.field.email}">Email</label>
+                                <input type="email" class="form-control"
+                                       th:field="*{email}"
+                                       th:placeholder="#{user.field.email.placeholder}"
+                                       th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
+                                     th:errors="*{email}">Email error</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" th:text="#{admin.users.field.password}">Password</label>
+                                <input type="password" class="form-control"
+                                       th:field="*{password}"
+                                       th:placeholder="#{admin.users.field.password.placeholder}"
+                                       th:classappend="${#fields.hasErrors('password') ? 'is-invalid' : ''}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('password')}"
+                                     th:errors="*{password}">Password error</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" th:text="#{user.table.column.role}">Role</label>
+                                <select class="form-select" th:field="*{role}">
+                                    <option th:each="r : ${roles}"
+                                            th:value="${r}"
+                                            th:text="${r.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary"
+                                    th:text="#{admin.users.create.submit}">Create User</button>
+                            <button type="button" class="btn btn-outline-secondary"
+                                    data-bs-toggle="collapse" data-bs-target="#create-user-form"
+                                    th:text="#{action.cancel}">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <th:block th:if="${userCreated}">
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    showToast(APP_CONFIG.messages['toast.admin.users.created'], 'success');
+                });
+            </script>
+        </th:block>
 
         <div class="card shadow overflow-hidden">
             <div class="table-responsive">

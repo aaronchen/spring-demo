@@ -9,7 +9,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Self-Registration** - New users can sign up; default role is USER
 - **Role-Based Access** - Two roles: USER (standard) and ADMIN (elevated privileges)
 - **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
-- **Admin Panel** - Manage user roles at `/admin/users` (admin only)
+- **Admin Panel** - Create users and manage roles at `/admin/users` (admin only)
 - **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
 - **Admin Settings** - Configurable site name, registration toggle, maintenance banner, and theme picker at `/admin/settings`
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
@@ -267,6 +267,7 @@ spring-demo/
 │   │   │   ├── TaskController.java          # Task web UI (ownership-aware)
 │   │   │   └── UserController.java          # User web UI with search
 │   │   ├── dto/
+│   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)

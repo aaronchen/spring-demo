@@ -122,6 +122,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Cross-field validation (password match) handled programmatically in `RegistrationController`
   - Lombok `@Data`
 
+- `dto/AdminUserRequest.java` - Admin user creation form DTO
+  - Fields: `name` (required, max 100), `email` (required, max 150, @Email), `password` (required, 8–72 chars), `role` (required, defaults to USER)
+  - Duplicate email check handled in `UserManagementController`
+  - Lombok `@Data`
+
 ### Mapper Layer
 - `mapper/TaskMapper.java` - MapStruct mapper interface
   - `@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})` — auto-discovers nested converters
@@ -188,7 +193,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/admin/UserManagementController.java` - Admin user management
   - `@Controller` with `/admin` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
-  - `GET /admin/users` — lists all users with role dropdown
+  - `GET /admin/users` — lists all users with role dropdown and collapsible create user form
+  - `POST /admin/users` — creates a new user; validates `AdminUserRequest`, checks duplicate email, encodes password; flash attribute `userCreated` triggers toast on redirect
   - `POST /admin/users/{id}/role` — changes a user's role via `UserService.updateRole()`
 
 - `controller/admin/AuditController.java` - Audit log page
@@ -315,7 +321,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - Left nav links: Tasks, Tags, Users
     - Anonymous: shows Register link
     - Authenticated: user dropdown with name, email, role badge, logout button
-    - Admin: additional "Manage Users" and "Audit Log" links in dropdown
+    - Admin: additional "User Management", "Audit Log", and "Settings" links in dropdown
     - Uses `sec:authorize` (Spring Security Thymeleaf dialect) and `${#auth}` for conditional rendering
   - `footer` - footer
   - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
@@ -358,7 +364,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/error/404.html` - Not Found page
 - `templates/error/409.html` - Conflict page (optimistic locking, rendered by `WebExceptionHandler`)
 - `templates/error/500.html` - Server Error page
-- `templates/admin/users.html` - Admin user management page
+- `templates/admin/users.html` - Admin user management page (collapsible create user form, role change table, toast on creation)
 - `templates/admin/audit.html` - Audit log page (admin only)
 - `templates/admin/audit-table.html` - Audit table fragment (HTMX partial)
 
