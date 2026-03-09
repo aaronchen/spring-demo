@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 
 @Configuration
 @EnableWebSecurity
@@ -37,6 +38,23 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole(Role.ADMIN.name())
                 .requestMatchers("/api/audit/**").hasRole(Role.ADMIN.name())
                 .anyRequest().authenticated()
+            )
+
+            // ── HTMX-aware auth entry point ────────────────────────────────
+            // When an unauthenticated HTMX request arrives (e.g. session expired
+            // on a background tab), respond with HX-Redirect so HTMX does a full
+            // page navigation to login instead of injecting the login page into
+            // a modal or partial target.
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    if ("true".equals(request.getHeader("HX-Request"))) {
+                        response.setHeader("HX-Redirect", request.getContextPath() + "/login");
+                        response.setStatus(200);
+                    } else {
+                        new LoginUrlAuthenticationEntryPoint("/login")
+                                .commence(request, response, authException);
+                    }
+                })
             )
 
             // ── Form login ───────────────────────────────────────────────────
