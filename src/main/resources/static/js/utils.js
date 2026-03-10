@@ -64,6 +64,109 @@ function showToast(message, type) {
     toast.show();
 }
 
+// ── Confirm dialog ──────────────────────────────────────────────────────────
+// showConfirm(options, onConfirm) — shows a Bootstrap modal confirmation dialog.
+// The modal shell is lazy-created on first use; content is updated per call from options.
+//
+// Options (only message is required):
+//   message      — body text (required)
+//   title        — header title (default: messages['action.confirm'] || 'Confirm')
+//   confirmText  — confirm button label (default: messages['action.confirm'] || 'Confirm')
+//   cancelText   — cancel button label (default: messages['action.cancel'] || 'Cancel')
+//   headerClass  — header CSS classes (default: 'bg-danger text-white')
+//   confirmClass — confirm button CSS classes (default: 'btn btn-danger')
+//   width        — modal width (default: '420px', via CSS custom property)
+//
+// HTMX integration: intercepts htmx:confirm so any element with hx-confirm gets
+// the styled modal. Use data-confirm-* attributes to pass options from HTML:
+//   <button hx-confirm="Delete this?" data-confirm-title="Delete"
+//           data-confirm-header-class="bg-warning text-dark">
+
+const CONFIRM_DEFAULTS = {
+    headerClass:  'bg-danger text-white',
+    confirmClass: 'btn btn-danger',
+};
+
+function showConfirm(options, onConfirm) {
+    const messages = window.APP_CONFIG ? APP_CONFIG.messages : {};
+    const title       = options.title || messages['action.confirm'] || 'Confirm';
+    const cancelText  = options.cancelText || messages['action.cancel'] || 'Cancel';
+    const confirmText = options.confirmText || messages['action.confirm'] || 'Confirm';
+    const headerClass  = options.headerClass || CONFIRM_DEFAULTS.headerClass;
+    const confirmClass = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
+    const width = options.width || '420px';
+
+    // Create a fresh modal each time — Bootstrap's backdrop cleanup doesn't
+    // handle nested modals well, so we destroy the entire element on hide.
+    const modal = document.createElement('div');
+    modal.id = 'confirm-modal';
+    modal.className = 'modal fade';
+    modal.tabIndex = -1;
+    modal.setAttribute('aria-hidden', 'true');
+    modal.style.setProperty('--confirm-width', width);
+    modal.innerHTML = `
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header border-0 ${headerClass}">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle"></i> ${title}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-0">${options.message}</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> ${cancelText}
+                    </button>
+                    <button type="button" class="${confirmClass} confirm-modal-btn">
+                        <i class="bi bi-check-circle"></i> ${confirmText}
+                    </button>
+                </div>
+            </div>
+        </div>`;
+
+    modal.querySelector('.confirm-modal-btn').addEventListener('click', function () {
+        bsModal.hide();
+        onConfirm();
+    });
+
+    modal.addEventListener('hidden.bs.modal', function () {
+        bsModal.dispose();
+        modal.remove();
+        // Restore body state if another modal is still open
+        if (document.querySelector('.modal.show')) {
+            document.body.classList.add('modal-open');
+            document.body.style.overflow = '';
+        }
+    });
+
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// HTMX integration: intercept hx-confirm and show styled modal.
+// Reads data-confirm-* attributes from the triggering element for per-element customization.
+document.addEventListener('htmx:confirm', function (evt) {
+    if (!evt.detail.question) return;
+    evt.preventDefault();
+    const el = evt.detail.elt;
+    showConfirm({
+        message:      evt.detail.question,
+        title:        el.dataset.confirmTitle,
+        confirmText:  el.dataset.confirmText,
+        cancelText:   el.dataset.confirmCancelText,
+        headerClass:  el.dataset.confirmHeaderClass,
+        confirmClass: el.dataset.confirmClass,
+        width:        el.dataset.confirmWidth,
+    }, function () {
+        evt.detail.issueRequest(true);
+    });
+});
+
 // ── CSRF header injection for HTMX ──────────────────────────────────────────
 // Spring Security requires a CSRF token on every state-changing request.
 // Thymeleaf auto-injects it into <form th:action> tags as a hidden input.

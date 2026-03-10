@@ -13,7 +13,8 @@ public class AuditLogSpecifications {
             String prefix = switch (category.toUpperCase()) {
                 case "TASK" -> "TASK_%";
                 case "USER" -> "USER_%";
-                case "TAG"  -> "TAG_%";
+                case "TAG"     -> "TAG_%";
+                case "COMMENT" -> "COMMENT_%";
                 case "AUTH"    -> "LOGIN_%";
                 case "SETTING" -> "SETTING_%";
                 default        -> null;

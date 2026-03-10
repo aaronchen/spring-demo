@@ -83,6 +83,20 @@ body {
     to   { transform: translateX(0);    opacity: 1; }
 }
 
+/* Confirm modal — floats above other modals (z-index 1055) and their backdrops (1050).
+   Its own backdrop also needs to sit above those layers. */
+#confirm-modal {
+    z-index: 1070;
+}
+
+#confirm-modal .modal-dialog {
+    max-width: var(--confirm-width, 420px);
+}
+
+#confirm-modal ~ .modal-backdrop:last-child {
+    z-index: 1065;
+}
+
 /* HTMX Loading Indicator — hidden by default, shown on htmx-request */
 .htmx-indicator {
     opacity: 0;

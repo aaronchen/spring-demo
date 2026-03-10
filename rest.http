@@ -186,6 +186,28 @@ Cookie: JSESSIONID={{sessionId}}
 
 
 ### ============================================================
+### Comments — nested under tasks (any authenticated user)
+### ============================================================
+
+### Get all comments for a task
+GET {{baseUrl}}/api/tasks/1/comments
+Cookie: JSESSIONID={{sessionId}}
+
+### Add a comment to a task
+POST {{baseUrl}}/api/tasks/1/comments
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+    "text": "This looks good, let's proceed."
+}
+
+### Delete a comment (owner or admin only)
+DELETE {{baseUrl}}/api/tasks/1/comments/1
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
 ### Error Handling
 ### ============================================================
 

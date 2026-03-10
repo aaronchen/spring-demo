@@ -1,11 +1,13 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.AuditLogService;
+import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.UserService;
@@ -34,15 +36,18 @@ public class TaskController {
   private final TaskService taskService;
   private final TagService tagService;
   private final UserService userService;
+  private final CommentService commentService;
   private final OwnershipGuard ownershipGuard;
   private final AuditLogService auditLogService;
 
   public TaskController(TaskService taskService, TagService tagService,
-      UserService userService, OwnershipGuard ownershipGuard,
+      UserService userService, CommentService commentService,
+      OwnershipGuard ownershipGuard,
       AuditLogService auditLogService) {
     this.taskService = taskService;
     this.tagService = tagService;
     this.userService = userService;
+    this.commentService = commentService;
     this.ownershipGuard = ownershipGuard;
     this.auditLogService = auditLogService;
   }
@@ -99,6 +104,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "view");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
     model.addAttribute("auditHistory",
         auditLogService.getEntityHistory(Task.class, id));
     if (HtmxUtils.isHtmxRequest(request)) {
@@ -117,6 +123,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("comments", Collections.emptyList());
     model.addAttribute("auditHistory", Collections.emptyList());
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
@@ -161,6 +168,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
+    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
     model.addAttribute("auditHistory",
         auditLogService.getEntityHistory(Task.class, id));
     if (HtmxUtils.isHtmxRequest(request)) {
@@ -199,9 +207,9 @@ public class TaskController {
     return new RedirectView("/tasks/" + id);
   }
 
-  // POST /tasks/{id}/delete - Delete task
+  // DELETE /tasks/{id} - Delete task
   // Owner or admin may delete. Unassigned tasks are open to any user.
-  @PostMapping("/{id}/delete")
+  @DeleteMapping("/{id}")
   public Object deleteTask(@PathVariable Long id,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
@@ -214,6 +222,41 @@ public class TaskController {
       return HtmxUtils.triggerEvent("taskDeleted");
     }
     return new RedirectView("/tasks");
+  }
+
+  // POST /tasks/{id}/comments - Add a comment to a task
+  // Any authenticated user may comment on any task.
+  @PostMapping("/{id}/comments")
+  public Object addComment(@PathVariable Long id,
+      @RequestParam String text,
+      @AuthenticationPrincipal CustomUserDetails currentDetails,
+      HttpServletRequest request, Model model) {
+    commentService.createComment(text, id, currentDetails.getUser().getId());
+    if (HtmxUtils.isHtmxRequest(request)) {
+      model.addAttribute("task", taskService.getTaskById(id));
+      model.addAttribute("comments", commentService.getCommentsByTaskId(id));
+      return "tasks/task-comments";
+    }
+    return new RedirectView("/tasks/" + id);
+  }
+
+  // DELETE /tasks/{id}/comments/{commentId} - Delete a comment
+  // Owner of the comment or admin may delete.
+  @DeleteMapping("/{id}/comments/{commentId}")
+  public Object deleteComment(@PathVariable Long id, @PathVariable Long commentId,
+      @AuthenticationPrincipal CustomUserDetails currentDetails,
+      HttpServletRequest request, Model model) {
+    Comment comment = commentService.getCommentById(commentId);
+    if (comment.getUser() != null) {
+      ownershipGuard.requireAccess(comment, currentDetails);
+    }
+    commentService.deleteComment(commentId);
+    if (HtmxUtils.isHtmxRequest(request)) {
+      model.addAttribute("task", taskService.getTaskById(id));
+      model.addAttribute("comments", commentService.getCommentsByTaskId(id));
+      return "tasks/task-comments";
+    }
+    return new RedirectView("/tasks/" + id);
   }
 
   // POST /tasks/{id}/toggle - Toggle completion

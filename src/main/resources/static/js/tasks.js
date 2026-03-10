@@ -60,15 +60,41 @@ function navigateToPage(page) {
     window.history.pushState({}, '', url);
 }
 
-// Toggle audit history panel in modal — expands modal to xl and shows/hides the panel
-function toggleTaskHistory() {
-    const panel = document.getElementById('task-history-panel');
+// Toggle side panel in modal — only one panel visible at a time (comments OR history).
+// Clicking the active panel's button hides it; clicking the other switches.
+function toggleTaskPanel(name) {
+    const panels = {
+        comments: { panel: 'task-comments-panel', btn: 'task-comments-btn' },
+        history:  { panel: 'task-history-panel',  btn: 'task-history-btn' }
+    };
+    const target = panels[name];
+    const other = panels[name === 'comments' ? 'history' : 'comments'];
+    if (!target) return;
+    const targetPanel = document.getElementById(target.panel);
+    const targetBtn = document.getElementById(target.btn);
+    if (!targetPanel) return;
+
+    const isVisible = !targetPanel.classList.contains('d-none');
+    // Hide the other panel first
+    const otherPanel = document.getElementById(other.panel);
+    const otherBtn = document.getElementById(other.btn);
+    if (otherPanel) otherPanel.classList.add('d-none');
+    if (otherBtn) otherBtn.classList.remove('active');
+
+    // Toggle the target panel
+    if (isVisible) {
+        targetPanel.classList.add('d-none');
+        if (targetBtn) targetBtn.classList.remove('active');
+    } else {
+        targetPanel.classList.remove('d-none');
+        if (targetBtn) targetBtn.classList.add('active');
+    }
+
+    // Resize modal
     const dialog = document.querySelector('#task-modal .modal-dialog');
-    const btn = document.getElementById('task-history-btn');
-    if (!panel) return;
-    const hidden = panel.classList.toggle('d-none');
-    dialog.classList.toggle('modal-xl', !hidden);
-    if (btn) btn.classList.toggle('active', !hidden);
+    if (!dialog) return;
+    const anyOpen = document.querySelector('.task-side-panel:not(.d-none)');
+    dialog.classList.toggle('modal-xl', !!anyOpen);
 }
 
 // Per-page size change
@@ -248,7 +274,7 @@ function renderUserFilter(userName) {
         clearIcon.classList.add('d-none');
     } else if (currentUserId === mineBtn.dataset.userId) {
         label.textContent = defaultLabel;
-        clearIcon.classList.remove('d-none');
+        clearIcon.classList.add('d-none');
     } else {
         label.textContent = userName || 'User';
         clearIcon.classList.remove('d-none');
@@ -521,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = e.relatedTarget;
         document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
         const confirmBtn = document.getElementById('delete-confirm-btn');
-        confirmBtn.setAttribute('hx-post', `${TASKS_BASE}/${btn.dataset.taskId}/delete`);
+        confirmBtn.setAttribute('hx-delete', `${TASKS_BASE}/${btn.dataset.taskId}`);
         htmx.process(confirmBtn);
     });
 
