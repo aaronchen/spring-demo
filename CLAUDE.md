@@ -186,8 +186,8 @@ document.getElementById('task-delete-modal').addEventListener('show.bs.modal', f
     const btn = e.relatedTarget; // the triggering delete button
     document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
     const confirmBtn = document.getElementById('delete-confirm-btn');
-    confirmBtn.setAttribute('hx-post', '/tasks/' + btn.dataset.taskId + '/delete');
-    htmx.process(confirmBtn); // re-process after dynamic hx-post assignment
+    confirmBtn.setAttribute('hx-delete', TASKS_BASE + '/' + btn.dataset.taskId);
+    htmx.process(confirmBtn); // re-process after dynamic hx-delete assignment
 });
 ```
 Delete buttons carry `data-task-id` and `data-task-title` attributes.
@@ -297,7 +297,54 @@ public interface OwnedEntity {
 }
 ```
 Unassigned-entity rules are business decisions — handled in controllers (skip `requireAccess()` when `getUser() == null`) and templates (`${#auth.canEdit(task) || task.user == null}`), not in the generic auth utilities.
-`Task implements OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
+`Task` and `Comment` implement `OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
+
+### HTMX Out-of-Band Swap Pattern
+
+For updating multiple areas of the page from a single HTMX response (e.g., refreshing comment counts after add/delete), use `hx-swap-oob`:
+
+**Template with dual usage** — fragment selector for page renders, whole-file return for HTMX responses:
+```html
+<th:block>
+    <!-- Primary swap target — selected by :: list -->
+    <div th:fragment="list" id="task-comments">
+        ...comment list...
+    </div>
+    <!-- OOB spans — only included when whole file is returned (HTMX response) -->
+    <span id="task-comments-btn-label" hx-swap-oob="true"
+          th:text="#{comment.button(${comments.size()})}">Comments (0)</span>
+</th:block>
+```
+
+- `th:replace="~{tasks/task-comments :: list}"` — returns only the fragment (page render)
+- Controller returns `"tasks/task-comments"` (no `::`) — returns fragment + OOB spans (HTMX response)
+
+This replaces JS-based count updates with server-driven updates. No client-side counting logic needed.
+
+### Confirm Dialog Pattern
+
+`showConfirm(options, onConfirm)` in `utils.js` — reusable styled Bootstrap modal replacing native `window.confirm()`. The modal is created fresh each call and destroyed on hide (avoids Bootstrap backdrop stacking issues with nested modals).
+
+**Options** (only `message` is required):
+```javascript
+showConfirm({
+    message: 'Do you want to delete this?',  // body text
+    title: 'Delete Item',                     // header title
+    confirmText: 'Delete',                    // confirm button label
+    cancelText: 'Cancel',                     // cancel button label
+    headerClass: 'bg-danger text-white',      // header CSS classes
+    confirmClass: 'btn btn-danger',           // confirm button CSS classes
+    width: '420px',                           // modal width
+}, () => { /* on confirm */ });
+```
+
+**HTMX integration** — automatically intercepts `htmx:confirm` events. Use `data-confirm-*` attributes for per-element customization:
+```html
+<button hx-delete="/tasks/1/comments/5"
+        hx-confirm="Do you want to delete this comment?"
+        data-confirm-title="Delete Comment"
+        data-confirm-text="Delete">
+```
 
 ### CSRF Token Pattern for HTMX
 
@@ -442,6 +489,11 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `GET /api/tasks/search?keyword=...` - Search by title/description
 - `GET /api/tasks/incomplete` - Get incomplete tasks only
 
+**REST API — Comments** (requires login; CSRF exempt):
+- `GET /api/tasks/{taskId}/comments` - List comments for a task
+- `POST /api/tasks/{taskId}/comments` - Add comment (201 Created; body: `{"text": "..."}`)
+- `DELETE /api/tasks/{taskId}/comments/{id}` - Delete comment (owner or admin, 204 No Content)
+
 **REST API — Tags** (requires login):
 - `GET /api/tags` - List all tags
 - `GET /api/tags/{id}` - Get tag by ID
@@ -551,6 +603,14 @@ CREATE TABLE settings (
     setting_value VARCHAR(500)                     -- nullable; null = use default
 );
 
+CREATE TABLE comments (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    text       VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP,
+    task_id    BIGINT NOT NULL REFERENCES tasks(id),  -- @ManyToOne; cascade delete via service
+    user_id    BIGINT NOT NULL REFERENCES users(id)   -- @ManyToOne; comment author
+);
+
 -- Join table for the @ManyToMany between Task and Tag.
 -- Task is the owning side (@JoinTable lives on Task); Tag is the inverse side (mappedBy = "tags").
 CREATE TABLE task_tags (
@@ -581,9 +641,7 @@ Always ask before committing. Never auto-commit.
 
 ## Future Enhancement Ideas
 
-- Add due dates and reminders
-- Support task priority levels
+- Add reminders for due dates
 - Implement dark mode toggle
 - Export tasks to CSV/PDF
-- Add task comments/notes
 - Implement recurring tasks

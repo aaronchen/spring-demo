@@ -1,5 +1,6 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Setting;
@@ -7,6 +8,7 @@ import cc.desuka.demo.config.Settings;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.SettingRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
@@ -26,15 +28,18 @@ public class DataLoader implements CommandLineRunner {
   private final TaskRepository taskRepository;
   private final TagRepository tagRepository;
   private final UserRepository userRepository;
+  private final CommentRepository commentRepository;
   private final SettingRepository settingRepository;
   private final PasswordEncoder passwordEncoder;
 
   public DataLoader(TaskRepository taskRepository, TagRepository tagRepository,
-                    UserRepository userRepository, SettingRepository settingRepository,
+                    UserRepository userRepository, CommentRepository commentRepository,
+                    SettingRepository settingRepository,
                     PasswordEncoder passwordEncoder) {
     this.taskRepository = taskRepository;
     this.tagRepository = tagRepository;
     this.userRepository = userRepository;
+    this.commentRepository = commentRepository;
     this.settingRepository = settingRepository;
     this.passwordEncoder = passwordEncoder;
   }
@@ -559,12 +564,48 @@ public class DataLoader implements CommandLineRunner {
 
     taskRepository.saveAll(tasks);
 
+    // ── Comments ──────────────────────────────────────────────────────────
+    // Seed sample comments on ~30% of tasks. Each gets 1–3 comments from random users.
+    String[] sampleComments = {
+        "Working on this now.",
+        "Need more details before proceeding.",
+        "This is blocked by another task.",
+        "Almost done, should be ready by tomorrow.",
+        "Let's discuss this in the next standup.",
+        "Updated the approach based on feedback.",
+        "Can someone review this?",
+        "Moved to next sprint.",
+        "This turned out to be more complex than expected.",
+        "Done! Ready for review.",
+        "Added unit tests for this.",
+        "Dependencies are now resolved.",
+        "Talked to the team about this — going ahead.",
+        "Lowered priority for now.",
+        "Good progress today.",
+    };
+    List<Comment> comments = new ArrayList<>();
+    for (int i = 0; i < tasks.size(); i++) {
+      if (i % 3 != 0) continue; // ~33% of tasks get comments
+      Task task = tasks.get(i);
+      int commentCount = 1 + (i % 3); // 1–3 comments per task
+      for (int c = 0; c < commentCount; c++) {
+        Comment comment = new Comment();
+        comment.setText(sampleComments[(i + c) % sampleComments.length]);
+        comment.setTask(task);
+        comment.setUser(users.get((i + c + 1) % users.size()));
+        comment.setCreatedAt(task.getCreatedAt().plusHours(c + 1));
+        comments.add(comment);
+      }
+    }
+    commentRepository.saveAll(comments);
+
     // ── Settings ──────────────────────────────────────────────────────────
     settingRepository.save(new Setting(Settings.KEY_THEME, "workshop"));
 
     System.out.println("Seed data loaded: " + userRepository.count() + " users, "
         + tagRepository.count() + " tags, "
         + taskRepository.count() + " tasks, "
+        + commentRepository.count() + " comments, "
         + settingRepository.count() + " settings.");
   }
 

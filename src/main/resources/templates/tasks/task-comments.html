@@ -1,0 +1,51 @@
+<!-- Shared comments fragment.
+     Reads ${task}, ${comments} (List<Comment>), and ${currentUser} from model context.
+
+     Two usage modes:
+     1. Fragment include (th:replace="~{tasks/task-comments :: list}") — returns only the list div.
+        Used by task.html (full page) and task-modal.html (modal) during initial page render.
+     2. Whole-file return (controller returns "tasks/task-comments") — returns the list div
+        PLUS out-of-band swap spans that update comment count labels elsewhere on the page.
+        Used by HTMX responses for comment add/delete. -->
+<th:block xmlns:th="http://www.thymeleaf.org">
+    <div th:fragment="list" id="task-comments">
+        <!-- Comment list -->
+        <div th:if="${comments != null && !comments.isEmpty()}">
+            <div th:each="comment : ${comments}" class="d-flex mb-3">
+                <div class="flex-shrink-0">
+                    <span class="badge bg-secondary rounded-circle p-2">
+                        <i class="bi bi-person-fill"></i>
+                    </span>
+                </div>
+                <div class="flex-grow-1 ms-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong class="small" th:text="${comment.user.name}">User</strong>
+                            <small class="text-muted ms-1"
+                                   th:text="${#temporals.format(comment.createdAt, 'MMM dd, yyyy HH:mm')}">Date</small>
+                        </div>
+                        <button th:if="${#auth.canEdit(comment)}"
+                                class="btn btn-sm btn-outline-danger border-0 py-0 px-1"
+                                th:attr="hx-delete=${appRoutes.tasks + '/' + task.id + '/comments/' + comment.id},hx-confirm=#{comment.delete.confirm},data-confirm-title=#{comment.delete.title},data-confirm-text=#{comment.delete.action}"
+                                hx-target="#task-comments"
+                                hx-swap="outerHTML"
+                                th:title="#{action.delete}">
+                            <i class="bi bi-x-lg small"></i>
+                        </button>
+                    </div>
+                    <p class="mb-0 small" th:text="${comment.text}">Comment text</p>
+                </div>
+            </div>
+        </div>
+        <p th:if="${comments == null || comments.isEmpty()}" class="text-muted small mb-0"
+           th:text="#{comment.empty}">No comments yet</p>
+    </div>
+    <!-- Out-of-band swaps: update comment count labels wherever they appear.
+         Only included when the whole file is rendered (HTMX response); excluded by :: list selector. -->
+    <span id="task-comments-btn-label" hx-swap-oob="true"
+          th:text="#{comment.button(${comments.size()})}">Comments (0)</span>
+    <span id="task-comments-panel-heading" hx-swap-oob="true"
+          th:text="#{comment.heading(${comments.size()})}">Comments (0)</span>
+    <span id="task-comments-heading" hx-swap-oob="true"
+          th:text="#{comment.heading(${comments.size()})}">Comments (0)</span>
+</th:block>

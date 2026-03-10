@@ -30,7 +30,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **User Assignment** - Assign tasks to users via searchable select dropdown (`@ManyToOne`)
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
 - **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
+- **Task Comments** - Any authenticated user can comment on any task; comment owners and admins can delete comments; visible in modal side panel and full-page view with real-time count updates via HTMX out-of-band swaps
 - **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
+- **Styled Confirm Dialog** - Bootstrap modal confirm dialog (`showConfirm`) replaces native browser `confirm()` for delete actions
 - **Toast Notifications** - Success/error toasts for task save, delete, and conflict events (Bootstrap 5 toasts with slide-in animation)
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
@@ -44,10 +46,11 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Role Restrictions** - Tag and user mutations (POST/DELETE) restricted to admins
 - **Search & Filter** - Query tasks by keyword and completion status
 - **Toggle Completion** - Quick PATCH endpoint (open to all authenticated users)
+- **Task Comments** - Nested comment endpoints under each task
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
-- **Tracked Actions** - Task CRUD, user CRUD, tag CRUD, settings changes, login success/failure, role changes, registration
+- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD, tag CRUD, settings changes, login success/failure, role changes, registration
 - **Field-Level Diffs** - Update events record before/after values for each changed field
 - **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with category buttons, text search, date range, and pagination
 - **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
@@ -65,7 +68,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Spring Data JPA with Specifications for dynamic filtering
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
-- HTMX 2.0 for dynamic interactions and HX-Trigger events
+- HTMX 2.0 for dynamic interactions, HX-Trigger events, and out-of-band swaps
 - Bootstrap 5.3 for styling
 - Reusable pagination fragment with custom DOM events
 - Typed `Settings` POJO with `BeanWrapper` auto-mapping from DB key/value rows
@@ -73,6 +76,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
 - Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`)
 - Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
+- Styled confirm dialog via `showConfirm()` in `utils.js` (Bootstrap 5 modal, replaces native `confirm()`)
 - All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
@@ -155,7 +159,7 @@ Click the toggle button (checkmark icon) on a card or row to flip its completion
 
 #### Deleting a Task
 
-Click the trash icon, confirm in the dialog.
+Click the trash icon, confirm in the styled dialog (Bootstrap modal, not native browser confirm).
 
 ### REST API
 
@@ -196,6 +200,14 @@ POST auto-assigns tasks to the caller. Admins can optionally specify `userId` in
 | POST | `/api/users` | Admin | Create user (201) |
 | DELETE | `/api/users/{id}` | Admin | Delete user; tasks auto-unassigned (204) |
 
+#### Comment Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/api/tasks/{taskId}/comments` | Any user | List comments for a task |
+| POST | `/api/tasks/{taskId}/comments` | Any user | Add a comment (body: `{"text": "..."}`) (201) |
+| DELETE | `/api/tasks/{taskId}/comments/{id}` | Comment owner/Admin | Delete comment (204) |
+
 #### Example: Create Task
 ```bash
 POST /api/tasks
@@ -219,6 +231,7 @@ Content-Type: application/json
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
 - **userId**: optional (admin only); omit or send `null` to auto-assign to caller
 - **version**: required on update; must match current entity version (optimistic locking)
+- **text** (comments): required, max 500 characters
 
 #### Error Responses
 
@@ -264,6 +277,7 @@ spring-demo/
 │   │   │   ├── api/
 │   │   │   │   ├── AuditApiController.java  # Audit REST API
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
+│   │   │   │   ├── CommentApiController.java # Comment REST API (nested under tasks)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
@@ -275,6 +289,7 @@ spring-demo/
 │   │   │   └── UserController.java          # User web UI with search
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
+│   │   │   ├── CommentResponse.java   # Comment API output DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)
@@ -287,11 +302,13 @@ spring-demo/
 │   │   │   ├── StaleDataException.java      # Custom 409 exception (optimistic locking)
 │   │   │   └── WebExceptionHandler.java     # Thymeleaf error pages for web UI
 │   │   ├── mapper/
-│   │   │   ├── TagMapper.java           # MapStruct (impl generated at compile time)
+│   │   │   ├── CommentMapper.java       # MapStruct (impl generated at compile time)
+│   │   │   ├── TagMapper.java
 │   │   │   ├── TaskMapper.java
 │   │   │   └── UserMapper.java
 │   │   ├── model/
 │   │   │   ├── AuditLog.java            # Audit log entity
+│   │   │   ├── Comment.java            # Comment entity (OwnedEntity)
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
 │   │   │   ├── Role.java                # USER / ADMIN enum
@@ -303,6 +320,7 @@ spring-demo/
 │   │   ├── repository/
 │   │   │   ├── AuditLogRepository.java
 │   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
+│   │   │   ├── CommentRepository.java
 │   │   │   ├── SettingRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
@@ -317,13 +335,14 @@ spring-demo/
 │   │   │   └── SecurityUtils.java           # getCurrentPrincipal() for audit events
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
+│   │   │   ├── CommentService.java      # Comment CRUD with audit events
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
 │   │   │   └── UserService.java         # Includes updateRole(), findByEmail()
 │   │   ├── util/
 │   │   │   └── HtmxUtils.java
-│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks
+│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
@@ -358,6 +377,7 @@ spring-demo/
 │       │   │   ├── tasks.html          # Task list page
 │       │   │   ├── task.html           # Full-page create/edit form
 │       │   │   ├── task-audit.html     # Shared audit history entries fragment
+│       │   │   ├── task-comments.html  # Shared comments fragment with OOB count swaps
 │       │   │   ├── task-modal.html     # Modal create/edit with history panel
 │       │   │   ├── task-form.html      # Shared form fields fragment
 │       │   │   ├── task-cards.html     # Card grid fragment
@@ -382,7 +402,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status, creation dates, priorities, and due dates, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status, creation dates, priorities, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 

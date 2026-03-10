@@ -21,9 +21,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `model/Priority.java` - Enum for task priority levels: `LOW`, `MEDIUM`, `HIGH`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Task
 
+- `model/Comment.java` - Comment entity; implements `OwnedEntity` and `Auditable`
+  - Fields: id, text, createdAt, task, user
+  - `text` — `@NotBlank`, `@Size(max = 500)`
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "task_id")` — owning side to Task
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
+  - Manual getters/setters (no Lombok on entities)
+
 - `model/OwnedEntity.java` - Marker interface for entities that have an owner
   - Single method: `User getUser()` — returns owner or null if unassigned
-  - Implemented by `Task`; enables generic ownership checks via `AuthExpressions` and `OwnershipGuard`
+  - Implemented by `Task` and `Comment`; enables generic ownership checks via `AuthExpressions` and `OwnershipGuard`
   - Future entities with ownership can implement this for automatic access control
 
 - `model/Role.java` - Enum with two values: `USER`, `ADMIN`
@@ -49,7 +56,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Audit Package
 - `audit/AuditEvent.java` - Event class published via `ApplicationEventPublisher`
-  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_DELETED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
+  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_DELETED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
   - Fields: action, entityType, entityId, principal, details
 
 - `audit/AuditDetails.java` - Audit detail utilities
@@ -93,12 +100,17 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `findByNameContainingIgnoreCaseOrderByNameAsc(String)` — server-side user search for remote searchable-select
   - `findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(String, String)` — user page search (name or email)
 
+- `repository/CommentRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<Comment, Long>`
+  - `findByTaskIdOrderByCreatedAtAsc(Long)` — chronological comment list; `@EntityGraph(attributePaths = {"user"})` to prevent N+1 on user names
+  - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `TaskService.deleteTask()` before removing the task
+
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
   - `findByEntityTypeAndEntityIdOrderByTimestampDesc(String, Long)` — entity-specific audit history (used by task detail page)
 
 - `repository/AuditLogSpecifications.java` - JPA Specifications for dynamic audit queries
-  - `withCategory(String)` — maps category to action prefix LIKE pattern (`"AUTH"` → `LOGIN_%`)
+  - `withCategory(String)` — maps category to action prefix LIKE pattern (`"AUTH"` → `LOGIN_%`, `"COMMENT"` → `COMMENT_%`)
   - `withSearch(String)` — case-insensitive LIKE on principal and details
   - `withFrom(Instant)` / `withTo(Instant)` — timestamp range
   - `build(category, search, from, to)` — combines all specs
@@ -130,6 +142,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Cross-field validation (password match) handled programmatically in `RegistrationController`
   - Lombok `@Data`
 
+- `dto/CommentResponse.java` - Comment output DTO
+  - Fields: `id`, `text`, `taskId`, `user` (`UserResponse`), `createdAt`
+  - Lombok `@Data`
+
 - `dto/AdminUserRequest.java` - Admin user creation form DTO
   - Fields: `name` (required, max 100), `email` (required, max 150, @Email), `password` (required, 8–72 chars), `role` (required, defaults to USER)
   - Duplicate email check handled in `UserManagementController`
@@ -145,12 +161,23 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `mapper/TagMapper.java` - MapStruct mapper for Tag ↔ TagResponse
 
+- `mapper/CommentMapper.java` - MapStruct mapper for Comment ↔ CommentResponse
+  - `@Mapping(source = "task.id", target = "taskId")` — flattens task association to ID
+  - `uses = {UserMapper.class}` — delegates nested user mapping
+
 - `mapper/UserMapper.java` - MapStruct mapper for User ↔ UserResponse / UserRequest
 
 ### Service Layer
+- `service/CommentService.java` - Comment business logic with audit event publishing
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event
+  - `getCommentById(id)` — single comment lookup
+  - `getCommentsByTaskId(taskId)` — chronological comment list for a task
+  - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event
+
 - `service/TaskService.java` - Business logic layer
   - Constructor injection (preferred Spring pattern)
   - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `toggleComplete`
+  - `deleteTask` — calls `commentRepository.deleteByTaskId()` before deleting the task to avoid FK constraint failure
   - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
 
 - `service/UserService.java` - User business logic
@@ -180,6 +207,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@RestController` with `/api/users` base path
   - `GET /api/users` — list all; `GET /api/users?q=ali` — search by name; `GET /api/users/{id}` — get by id; `POST /api/users` (201) — create; `DELETE /api/users/{id}` (204) — delete
   - **Security**: POST and DELETE restricted to admins via `SecurityConfig` URL matchers (no code changes needed here)
+
+- `controller/api/CommentApiController.java` - Comment REST API endpoints
+  - `@RestController` with `/api/tasks/{taskId}/comments` base path
+  - `GET /api/tasks/{taskId}/comments` — list comments for a task
+  - `POST /api/tasks/{taskId}/comments` (201) — create comment; auto-assigned to caller
+  - `DELETE /api/tasks/{taskId}/comments/{commentId}` (204) — delete comment; owner or admin only via `OwnershipGuard`
+  - Uses `CommentMapper` for DTO conversion
 
 - `controller/api/TagApiController.java` - Tag REST API endpoints
   - `@RestController` with `/api/tags` base path
@@ -227,10 +261,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `TagService`, `UserService`, and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
+  - Injects `TagService`, `UserService`, `CommentService`, and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
   - Task list defaults to current user's tasks on first visit; explicit empty `userId=` param means "All Users"
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
-  - **Security**: uses `OwnershipGuard` for edit/delete; new tasks default to current user (changeable via dropdown)
+  - `POST /{id}/comments` — add comment to task; returns `task-comments` template (whole file for hx-swap-oob comment count updates)
+  - `DELETE /{id}/comments/{commentId}` — delete comment (owner or admin); returns `task-comments` template
+  - Task delete changed from `@PostMapping("/{id}/delete")` to `@DeleteMapping("/{id}")`
+  - **Security**: uses `OwnershipGuard` for edit/delete/comment-delete; new tasks default to current user (changeable via dropdown)
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS runtime config)
   - `@RestController` producing `application/javascript`
@@ -354,6 +391,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context)
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
 - `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment)
+- `templates/tasks/task-comments.html` - Shared comments fragment with dual usage
+  - `:: list` fragment selector — returns comment list only (used by `task.html` and `task-modal.html` during page render)
+  - Whole-file return — includes comment list + `hx-swap-oob` spans for comment count updates (used by controller for HTMX add/delete responses)
+  - Delete buttons use `hx-delete` with `hx-confirm` and `data-confirm-*` attributes for styled Bootstrap confirmation dialog
 - `templates/tasks/task-audit.html` - Shared audit history entries fragment (used by both `task.html` and `task-modal.html`)
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
@@ -361,8 +402,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
-- `templates/tasks/task.html` - Full-page create/edit form
-- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel with history)
+- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode)
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute
 
 ### Tag, User, Auth, Admin, Error Views
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
@@ -381,12 +422,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ## Static Resources
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
-- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift
-- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, split-panel history)
+- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles
+- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
-- `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type)` for toast notifications; CSRF injection for HTMX; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring)
+- `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type)` for toast notifications; `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
+- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)

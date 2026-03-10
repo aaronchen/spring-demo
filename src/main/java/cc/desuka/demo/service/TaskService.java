@@ -9,6 +9,7 @@ import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.TaskSpecifications;
@@ -28,13 +29,16 @@ public class TaskService {
   private final TaskRepository taskRepository;
   private final TagRepository tagRepository;
   private final UserRepository userRepository;
+  private final CommentRepository commentRepository;
   private final ApplicationEventPublisher eventPublisher;
 
   public TaskService(TaskRepository taskRepository, TagRepository tagRepository,
-                     UserRepository userRepository, ApplicationEventPublisher eventPublisher) {
+                     UserRepository userRepository, CommentRepository commentRepository,
+                     ApplicationEventPublisher eventPublisher) {
     this.taskRepository = taskRepository;
     this.tagRepository = tagRepository;
     this.userRepository = userRepository;
+    this.commentRepository = commentRepository;
     this.eventPublisher = eventPublisher;
   }
 
@@ -84,6 +88,7 @@ public class TaskService {
   public void deleteTask(Long id) {
     Task task = getTaskById(id);
     String snapshot = AuditDetails.toJson(task.toAuditSnapshot());
+    commentRepository.deleteByTaskId(id);
     taskRepository.delete(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_DELETED, Task.class, id, SecurityUtils.getCurrentPrincipal(),

@@ -13,6 +13,10 @@ public class AuditEvent {
     public static final String USER_ROLE_CHANGED = "USER_ROLE_CHANGED";
     public static final String USER_REGISTERED = "USER_REGISTERED";
 
+    // Comment actions
+    public static final String COMMENT_CREATED = "COMMENT_CREATED";
+    public static final String COMMENT_DELETED = "COMMENT_DELETED";
+
     // Tag actions
     public static final String TAG_CREATED = "TAG_CREATED";
     public static final String TAG_DELETED = "TAG_DELETED";
