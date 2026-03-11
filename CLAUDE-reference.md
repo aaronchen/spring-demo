@@ -115,7 +115,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `repository/CommentRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Comment, Long>`
   - `findByTaskIdOrderByCreatedAtAsc(Long)` — chronological comment list; `@EntityGraph(attributePaths = {"user"})` to prevent N+1 on user names
-  - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `TaskService.deleteTask()` before removing the task
+  - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `CommentService.deleteByTaskId()` which is called by `TaskService.deleteTask()` before removing the task
 
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
@@ -221,7 +221,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - **Security**: injects `OwnershipGuard`; uses `@AuthenticationPrincipal CustomUserDetails` on POST, PUT, DELETE
   - POST: auto-assigns task to caller; admins can override via `request.getUserId()`
   - PUT/DELETE: calls `ownershipGuard.requireAccess()` — owner or admin only
-  - PATCH toggle: open to all authenticated users (matches web UI behavior)
+  - PATCH advance status: open to all authenticated users (matches web UI behavior)
 
 - `controller/api/UserApiController.java` - User REST API endpoints
   - `@RestController` with `/api/users` base path
@@ -375,6 +375,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
   - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
   - Each task gets 1–2 tags drawn from different dimensions for natural combos (e.g. "Work + Urgent")
+  - `seedTask` takes `TaskStatus` (OPEN, IN_PROGRESS, COMPLETED) instead of boolean `completed`
   - ~80% of tasks are assigned to a user (every 5th task is unassigned)
   - Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW
   - Due dates: ~80% of tasks get a due date spread -10 to +30 days from today (creates a mix of overdue and upcoming)
