@@ -15,7 +15,9 @@ public interface UserMapper {
 
     List<UserResponse> toResponseList(List<User> users);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tasks", ignore = true)
+    @Mapping(target = User.FIELD_ID, ignore = true)
+    @Mapping(target = User.FIELD_PASSWORD, ignore = true)
+    @Mapping(target = User.FIELD_ROLE, ignore = true)
+    @Mapping(target = User.FIELD_TASKS, ignore = true)
     User toEntity(UserRequest request);
 }

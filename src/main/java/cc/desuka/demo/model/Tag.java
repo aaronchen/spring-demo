@@ -19,6 +19,7 @@ public class Tag implements Auditable {
 
     public static final String FIELD_ID = "id";
     public static final String FIELD_NAME = "name";
+    public static final String FIELD_TASKS = "tasks";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

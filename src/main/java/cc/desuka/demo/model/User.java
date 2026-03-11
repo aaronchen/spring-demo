@@ -20,7 +20,9 @@ public class User implements Auditable {
     public static final String FIELD_ID = "id";
     public static final String FIELD_NAME = "name";
     public static final String FIELD_EMAIL = "email";
+    public static final String FIELD_PASSWORD = "password";
     public static final String FIELD_ROLE = "role";
+    public static final String FIELD_TASKS = "tasks";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -15,7 +15,7 @@ public interface TagMapper {
 
     List<TagResponse> toResponseList(List<Tag> tags);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "tasks", ignore = true)
+    @Mapping(target = Tag.FIELD_ID, ignore = true)
+    @Mapping(target = Tag.FIELD_TASKS, ignore = true)
     Tag toEntity(TagRequest request);
 }
