@@ -36,6 +36,34 @@
         </div>
     </div>
 
+    <!-- Status — shown in edit and view mode, hidden on create (new tasks default to OPEN) -->
+    <div class="mb-3" th:if="${mode != 'create'}">
+        <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
+        <div class="d-flex gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="OPEN" id="status-open"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-open">
+                    <span class="badge bg-secondary"><i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="IN_PROGRESS" id="status-in-progress"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-in-progress">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="COMPLETED" id="status-completed"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-completed">
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
     <!-- Priority -->
     <div class="mb-3">
         <label class="form-label fw-bold" th:text="#{task.field.priority}">Priority</label>
@@ -103,18 +131,6 @@
                        th:disabled="${mode == 'view'}">
                 <label class="form-check-label" th:for="'tag-' + ${tag.id}" th:text="${tag.name}">Tag</label>
             </div>
-        </div>
-    </div>
-
-    <!-- Completed Toggle — shown in edit and view mode, hidden on create -->
-    <div th:if="${mode != 'create'}">
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="completed"
-                   th:field="*{completed}"
-                   th:disabled="${mode == 'view'}">
-            <label class="form-check-label" for="completed">
-                <strong th:text="#{action.markAsCompleted}">Mark as completed</strong>
-            </label>
         </div>
     </div>
 

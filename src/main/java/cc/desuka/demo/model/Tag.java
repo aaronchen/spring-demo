@@ -17,6 +17,9 @@ import java.util.Objects;
 @Table(name = "tags")
 public class Tag implements Auditable {
 
+    public static final String FIELD_ID = "id";
+    public static final String FIELD_NAME = "name";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -64,7 +67,7 @@ public class Tag implements Auditable {
 
     @Override
     public Map<String, Object> toAuditSnapshot() {
-        return Map.of("name", name);
+        return Map.of(FIELD_NAME, name);
     }
 
     // equals/hashCode on id only — same reason as always for JPA entities:

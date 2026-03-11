@@ -9,6 +9,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -29,6 +30,11 @@ public class TagService {
     public Tag getTagById(Long id) {
         return tagRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Tag.class, id));
+    }
+
+    public List<Tag> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return new ArrayList<>();
+        return tagRepository.findAllById(ids);
     }
 
     public Tag createTag(Tag tag) {

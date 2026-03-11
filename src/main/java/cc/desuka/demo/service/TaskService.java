@@ -5,21 +5,17 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.Priority;
-import cc.desuka.demo.model.Tag;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.repository.CommentRepository;
-import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.TaskSpecifications;
-import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,18 +23,18 @@ import java.util.Map;
 public class TaskService {
 
   private final TaskRepository taskRepository;
-  private final TagRepository tagRepository;
-  private final UserRepository userRepository;
-  private final CommentRepository commentRepository;
+  private final TagService tagService;
+  private final UserService userService;
+  private final CommentService commentService;
   private final ApplicationEventPublisher eventPublisher;
 
-  public TaskService(TaskRepository taskRepository, TagRepository tagRepository,
-                     UserRepository userRepository, CommentRepository commentRepository,
+  public TaskService(TaskRepository taskRepository, TagService tagService,
+                     UserService userService, CommentService commentService,
                      ApplicationEventPublisher eventPublisher) {
     this.taskRepository = taskRepository;
-    this.tagRepository = tagRepository;
-    this.userRepository = userRepository;
-    this.commentRepository = commentRepository;
+    this.tagService = tagService;
+    this.userService = userService;
+    this.commentService = commentService;
     this.eventPublisher = eventPublisher;
   }
 
@@ -54,8 +50,8 @@ public class TaskService {
   // tagIds and userId come from the caller (API or web controller).
   // The mapper cannot do DB lookups, so that responsibility lives here.
   public Task createTask(Task task, List<Long> tagIds, Long userId) {
-    task.setTags(resolveTags(tagIds));
-    task.setUser(resolveUser(userId));
+    task.setTags(tagService.findAllByIds(tagIds));
+    task.setUser(userService.findUserById(userId));
     Task saved = taskRepository.save(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
@@ -72,11 +68,17 @@ public class TaskService {
 
     task.setTitle(taskDetails.getTitle());
     task.setDescription(taskDetails.getDescription());
-    task.setCompleted(taskDetails.isCompleted());
+    task.setStatus(taskDetails.getStatus());
     task.setPriority(taskDetails.getPriority());
     task.setDueDate(taskDetails.getDueDate());
-    task.setTags(resolveTags(tagIds));
-    task.setUser(resolveUser(userId));
+    task.setTags(tagService.findAllByIds(tagIds));
+    // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
+    User newUser = userService.findUserById(userId);
+    if (task.getStatus() == TaskStatus.IN_PROGRESS && newUser != null
+        && (task.getUser() == null || !task.getUser().getId().equals(newUser.getId()))) {
+      task.setStatus(TaskStatus.OPEN);
+    }
+    task.setUser(newUser);
 
     Task saved = taskRepository.save(task);
 
@@ -92,7 +94,7 @@ public class TaskService {
   public void deleteTask(Long id) {
     Task task = getTaskById(id);
     String snapshot = AuditDetails.toJson(task.toAuditSnapshot());
-    commentRepository.deleteByTaskId(id);
+    commentService.deleteByTaskId(id);
     taskRepository.delete(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_DELETED, Task.class, id, SecurityUtils.getCurrentPrincipal(),
@@ -100,7 +102,7 @@ public class TaskService {
   }
 
   public List<Task> getIncompleteTasks() {
-    return taskRepository.findByCompleted(false);
+    return taskRepository.findByStatusNot(TaskStatus.COMPLETED);
   }
 
   public List<Task> searchTasks(String keyword) {
@@ -117,31 +119,20 @@ public class TaskService {
     return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, userId, tagIds), pageable);
   }
 
-  public Task toggleComplete(Long id) {
+  // Advance status: OPEN → IN_PROGRESS → COMPLETED → OPEN
+  public Task advanceStatus(Long id) {
     Task task = getTaskById(id);
     Map<String, Object> before = task.toAuditSnapshot();
-    task.setCompleted(!task.isCompleted());
+    TaskStatus next = switch (task.getStatus()) {
+      case OPEN -> TaskStatus.IN_PROGRESS;
+      case IN_PROGRESS -> TaskStatus.COMPLETED;
+      case COMPLETED -> TaskStatus.OPEN;
+    };
+    task.setStatus(next);
     Task saved = taskRepository.save(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
     return saved;
-  }
-
-  // Resolves a list of tag IDs to Tag entities.
-  // null or empty input → empty list (all tags removed from the task).
-  // Unknown IDs are silently ignored by findAllById.
-  // This keeps the mapper pure (no DB access) and controllers thin (no lookups).
-  private List<Tag> resolveTags(List<Long> tagIds) {
-    if (tagIds == null || tagIds.isEmpty()) return new ArrayList<>();
-    return tagRepository.findAllById(tagIds);
-  }
-
-  // Resolves a user ID to a User entity.
-  // null input → null (task becomes unassigned).
-  // Unknown ID → null (silently ignored — same pattern as resolveTags).
-  private User resolveUser(Long userId) {
-    if (userId == null) return null;
-    return userRepository.findById(userId).orElse(null);
   }
 }

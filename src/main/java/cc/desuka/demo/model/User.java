@@ -17,6 +17,11 @@ import java.util.Objects;
 @Table(name = "users")
 public class User implements Auditable {
 
+    public static final String FIELD_ID = "id";
+    public static final String FIELD_NAME = "name";
+    public static final String FIELD_EMAIL = "email";
+    public static final String FIELD_ROLE = "role";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -122,9 +127,9 @@ public class User implements Auditable {
     @Override
     public Map<String, Object> toAuditSnapshot() {
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("name", name);
-        snapshot.put("email", email);
-        snapshot.put("role", role != null ? role.name() : null);
+        snapshot.put(FIELD_NAME, name);
+        snapshot.put(FIELD_EMAIL, email);
+        snapshot.put(FIELD_ROLE, role != null ? role.name() : null);
         return snapshot;
     }
 

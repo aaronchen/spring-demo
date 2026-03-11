@@ -4,7 +4,9 @@ import org.springframework.core.convert.converter.Converter;
 import org.springframework.stereotype.Component;
 
 public enum TaskStatusFilter {
-  ALL, COMPLETED, INCOMPLETE;
+  ALL, OPEN, IN_PROGRESS, COMPLETED;
+
+  public static final String DEFAULT = "ALL";
 
   public static TaskStatusFilter from(String value) {
     if (value == null) return ALL;
@@ -15,7 +17,7 @@ public enum TaskStatusFilter {
     }
   }
 
-  /** Auto-registered by Spring Boot — binds ?filter=completed → TaskStatusFilter.COMPLETED */
+  /** Auto-registered by Spring Boot — binds ?statusFilter=completed → TaskStatusFilter.COMPLETED */
   @Component
   public static class StringConverter implements Converter<String, TaskStatusFilter> {
     @Override

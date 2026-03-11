@@ -1,6 +1,7 @@
 package cc.desuka.demo.dto;
 
 import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.TaskStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,7 +18,7 @@ public class TaskResponse {
   private Long id;
   private String title;
   private String description;
-  private boolean completed;
+  private TaskStatus status;
   private Priority priority;
   private LocalDate dueDate;
   private LocalDateTime createdAt;

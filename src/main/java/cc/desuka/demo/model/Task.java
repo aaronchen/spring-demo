@@ -19,13 +19,17 @@ import java.util.Map;
 @Table(name = "tasks")
 public class Task implements OwnedEntity, Auditable {
 
+  public static final String FIELD_ID = "id";
+  public static final String FIELD_VERSION = "version";
   public static final String FIELD_TITLE = "title";
   public static final String FIELD_DESCRIPTION = "description";
-  public static final String FIELD_CREATED_AT = "createdAt";
-  public static final String FIELD_COMPLETED = "completed";
+  public static final String FIELD_STATUS = "status";
   public static final String FIELD_PRIORITY = "priority";
   public static final String FIELD_PRIORITY_ORDER = "priorityOrder";
   public static final String FIELD_DUE_DATE = "dueDate";
+  public static final String FIELD_CREATED_AT = "createdAt";
+  public static final String FIELD_TAGS = "tags";
+  public static final String FIELD_USER = "user";
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +46,8 @@ public class Task implements OwnedEntity, Auditable {
   @Size(max = 500, message = "{task.description.size}")
   private String description;
 
-  private boolean completed = false;
+  @Enumerated(EnumType.STRING)
+  private TaskStatus status = TaskStatus.OPEN;
 
   @Enumerated(EnumType.STRING)
   private Priority priority = Priority.MEDIUM;
@@ -137,12 +142,16 @@ public class Task implements OwnedEntity, Auditable {
     this.description = description;
   }
 
-  public boolean isCompleted() {
-    return completed;
+  public TaskStatus getStatus() {
+    return status;
   }
 
-  public void setCompleted(boolean completed) {
-    this.completed = completed;
+  public void setStatus(TaskStatus status) {
+    this.status = status;
+  }
+
+  public boolean isCompleted() {
+    return status == TaskStatus.COMPLETED;
   }
 
   public Priority getPriority() {
@@ -188,13 +197,13 @@ public class Task implements OwnedEntity, Auditable {
   @Override
   public Map<String, Object> toAuditSnapshot() {
     Map<String, Object> snapshot = new LinkedHashMap<>();
-    snapshot.put("title", title);
-    snapshot.put("description", description);
-    snapshot.put("completed", completed);
-    snapshot.put("priority", priority != null ? priority.name() : null);
-    snapshot.put("dueDate", dueDate != null ? dueDate.toString() : null);
-    snapshot.put("user", user != null ? user.getName() : null);
-    snapshot.put("tags", tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
+    snapshot.put(FIELD_TITLE, title);
+    snapshot.put(FIELD_DESCRIPTION, description);
+    snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
+    snapshot.put(FIELD_PRIORITY, priority != null ? priority.name() : null);
+    snapshot.put(FIELD_DUE_DATE, dueDate != null ? dueDate.toString() : null);
+    snapshot.put(FIELD_USER, user != null ? user.getName() : null);
+    snapshot.put(FIELD_TAGS, tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
     return snapshot;
   }
 }

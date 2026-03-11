@@ -575,7 +575,7 @@ CREATE TABLE tasks (
     version     BIGINT,                         -- @Version optimistic locking
     title       VARCHAR(100) NOT NULL,
     description VARCHAR(500),
-    completed   BOOLEAN DEFAULT FALSE,
+    status      VARCHAR(255) DEFAULT 'OPEN',   -- OPEN / IN_PROGRESS / COMPLETED (@Enumerated STRING)
     priority    VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
     due_date    DATE,                           -- nullable; overdue = incomplete + past due
     created_at  TIMESTAMP,

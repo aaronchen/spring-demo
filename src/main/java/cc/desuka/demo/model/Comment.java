@@ -14,6 +14,10 @@ import java.util.Objects;
 @Table(name = "comments")
 public class Comment implements OwnedEntity, Auditable {
 
+    public static final String FIELD_TEXT = "text";
+    public static final String FIELD_TASK = "task";
+    public static final String FIELD_USER = "user";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -85,9 +89,9 @@ public class Comment implements OwnedEntity, Auditable {
     @Override
     public Map<String, Object> toAuditSnapshot() {
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("text", text);
-        snapshot.put("task", task != null ? task.getTitle() : null);
-        snapshot.put("user", user != null ? user.getName() : null);
+        snapshot.put(FIELD_TEXT, text);
+        snapshot.put(FIELD_TASK, task != null ? task.getTitle() : null);
+        snapshot.put(FIELD_USER, user != null ? user.getName() : null);
         return snapshot;
     }
 

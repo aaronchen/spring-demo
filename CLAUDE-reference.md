@@ -8,8 +8,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Model Layer
 - `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
-  - Fields: id, version, title, description, completed, priority, priorityOrder, dueDate, createdAt, tags, user
+  - Fields: id, version, title, description, status, priority, priorityOrder, dueDate, createdAt, tags, user
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_CREATED_AT`, `FIELD_TAGS`, `FIELD_USER`) — used in mappers, specifications, and `toAuditSnapshot()`
   - `@Version` on `version` field — JPA optimistic locking; Hibernate auto-increments on each update and throws `OptimisticLockException` on stale writes
+  - `status` — `@Enumerated(EnumType.STRING)`, `TaskStatus` enum (OPEN, IN_PROGRESS, COMPLETED), defaults to `OPEN`
+  - `isCompleted()` — derived convenience method, returns `status == TaskStatus.COMPLETED` (no backing field)
   - `priority` — `@Enumerated(EnumType.STRING)`, defaults to `MEDIUM`
   - `priorityOrder` — `@Formula("CASE priority WHEN 'LOW' THEN 0 WHEN 'MEDIUM' THEN 1 WHEN 'HIGH' THEN 2 END")` virtual column for correct sort order (STRING enums sort alphabetically without this)
   - `dueDate` — `LocalDate`, `@DateTimeFormat(iso = ISO.DATE)` for HTML5 `<input type="date">` binding
@@ -18,11 +21,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Validation: `@NotBlank`, `@Size` constraints
   - Manual getters/setters (no Lombok on entities)
 
+- `model/TaskStatus.java` - Enum for task lifecycle states: `OPEN`, `IN_PROGRESS`, `COMPLETED`
+  - Stored as string via `@Enumerated(EnumType.STRING)` on Task
+  - Status advances cyclically: OPEN -> IN_PROGRESS -> COMPLETED -> OPEN
+
 - `model/Priority.java` - Enum for task priority levels: `LOW`, `MEDIUM`, `HIGH`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Task
 
 - `model/Comment.java` - Comment entity; implements `OwnedEntity` and `Auditable`
   - Fields: id, text, createdAt, task, user
+  - `FIELD_*` constants (`FIELD_TEXT`, `FIELD_TASK`, `FIELD_USER`)
   - `text` — `@NotBlank`, `@Size(max = 500)`
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "task_id")` — owning side to Task
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
@@ -39,11 +47,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `model/Tag.java` - Tag entity
   - Fields: id, name (unique, max 50 chars)
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_NAME`)
   - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 - `model/User.java` - User entity with authentication fields
   - Fields: id, name (max 100), email (max 150, unique), password (max 72, nullable), role (Role enum, defaults to USER)
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_NAME`, `FIELD_EMAIL`, `FIELD_ROLE`)
   - `password` — BCrypt hash; nullable for API-created users (who cannot log in)
   - `role` — `@Enumerated(EnumType.STRING)`, stored as "USER" or "ADMIN" in the database
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
@@ -51,6 +61,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `model/AuditLog.java` - Audit log entity
   - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
+  - `FIELD_*` constants (`FIELD_ACTION`, `FIELD_PRINCIPAL`, `FIELD_DETAILS`, `FIELD_TIMESTAMP`)
   - `@Transient detailsMap` — parsed JSON details for template rendering; populated by `AuditLogService`
   - `toAuditSnapshot()` — entities provide snapshot maps for audit diffing
 
@@ -70,23 +81,24 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `repository/TaskRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Task, Long>` and `JpaSpecificationExecutor<Task>`
   - Active query methods:
-    - `findByCompleted(boolean)` - used by `getIncompleteTasks()`
+    - `findByStatusNot(TaskStatus)` - used by `getIncompleteTasks()` (finds tasks where status is not COMPLETED)
     - `findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String, String)` - used by `searchTasks()`
     - `findByUser(User)` - used by `UserService.deleteUser()` to reassign tasks before deleting a user
   - `@EntityGraph(attributePaths = {"tags", "user"})` on the paginated query — loads both associations in one LEFT JOIN to prevent N+1
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
+  - Uses entity `FIELD_*` constants everywhere (e.g. `Task.FIELD_STATUS`, `User.FIELD_ID`, `Tag.FIELD_ID`)
   - `build(keyword, statusFilter, overdue, priority, userId, tagIds)` - builds a combined search + status + overdue + priority + user + tag specification
-  - `withStatusFilter(TaskStatusFilter)` — filters by completion status (all/completed/pending)
-  - `withOverdue(boolean)` — filters to incomplete tasks with past due dates
+  - `withStatusFilter(TaskStatusFilter)` — maps filter enum name directly to `TaskStatus` enum (ALL returns all; OPEN/IN_PROGRESS/COMPLETED filter by matching status)
+  - `withOverdue(boolean)` — filters to non-completed tasks with past due dates
   - `withPriority(Priority)` — filters by priority level
   - `withUserId(Long)` — filters tasks by assigned user
   - `withTagIds(List<Long>)` — filters tasks having any of the given tags (OR logic, uses INNER JOIN + distinct)
 
-- `model/TaskStatusFilter.java` - Enum for task status filtering (ALL, COMPLETED, PENDING)
+- `model/TaskStatusFilter.java` - Enum for task status filtering (ALL, OPEN, IN_PROGRESS, COMPLETED)
+  - `DEFAULT` constant (`"ALL"`) — for use in `@RequestParam` default value annotations
   - Inner `StringConverter` auto-converts URL params to enum values
-  - Previously named `TaskFilter`; renamed for clarity alongside user/tag filters
 
 - `repository/TagRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Tag, Long>`
@@ -122,7 +134,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Lombok `@Data` for getters/setters/equals/hashCode
 
 - `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
-  - Fields: `id`, `title`, `description`, `completed`, `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`
+  - Fields: `id`, `title`, `description`, `status` (`TaskStatus`), `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`
   - Lombok `@Data`
 
 - `dto/TagResponse.java` - Tag output DTO
@@ -156,7 +168,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})` — auto-discovers nested converters
   - `toResponse(Task)` — MapStruct auto-calls `TagMapper` and `UserMapper` for relationship fields
   - `toResponseList(List<Task>)` — generated automatically
-  - `toEntity(TaskRequest)` — `id`, `completed`, `createdAt`, `tags`, `user` explicitly ignored (service resolves relationships)
+  - `toEntity(TaskRequest)` — `id`, `status`, `createdAt`, `tags`, `user`, `version` explicitly ignored via `Task.FIELD_*` constants (service resolves relationships)
   - Implementation `TaskMapperImpl` generated into `target/generated-sources/` at compile time
 
 - `mapper/TagMapper.java` - MapStruct mapper for Tag ↔ TagResponse
@@ -169,23 +181,31 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Service Layer
 - `service/CommentService.java` - Comment business logic with audit event publishing
+  - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
   - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
+  - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event
 
 - `service/TaskService.java` - Business logic layer
-  - Constructor injection (preferred Spring pattern)
-  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `toggleComplete`
-  - `deleteTask` — calls `commentRepository.deleteByTaskId()` before deleting the task to avoid FK constraint failure
-  - `resolveUser(Long userId)` helper — returns null for null input, otherwise looks up user (silent no-op if ID not found)
+  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`
+  - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN (replaces `toggleComplete`)
+  - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
+  - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
 
 - `service/UserService.java` - User business logic
-  - `getAllUsers`, `getUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
+  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
+  - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by `GET /api/users?q=` and `UserController`
   - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
   - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `UserManagementController`
   - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
+
+- `service/TagService.java` - Tag business logic with audit event publishing
+  - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `createTag`, `deleteTag`
+  - `findAllByIds(ids)` — returns tags matching the given IDs; returns empty list for null/empty input; used by `TaskService` for tag resolution
 
 - `service/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
@@ -381,16 +401,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Task Views
 - `templates/tasks/tasks.html` - Main task list page
-  - Live search (JS-debounced, 300ms), status filter buttons (All/Completed/Pending/Overdue), priority dropdown filter, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown (includes priority and due date), view toggle (cards/table)
+  - Live search (JS-debounced, 300ms), status filter buttons (All/Open/In Progress/Completed/Overdue, all btn-sm), priority dropdown filter, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown (includes priority and due date), view toggle (cards/table)
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
   - Contains two shared modal shells loaded once per page:
     - `#task-modal` — create/edit form, content loaded via HTMX
     - `#task-delete-modal` — delete confirmation, populated via `show.bs.modal` JS event
 
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
-- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context)
+- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 3-state status badge and toggle button
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
-- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment)
+- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 3-state status badge and toggle button
 - `templates/tasks/task-comments.html` - Shared comments fragment with dual usage
   - `:: list` fragment selector — returns comment list only (used by `task.html` and `task-modal.html` during page render)
   - Whole-file return — includes comment list + `hx-swap-oob` spans for comment count updates (used by controller for HTMX add/delete responses)
@@ -398,14 +418,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task-audit.html` - Shared audit history entries fragment (used by both `task.html` and `task-modal.html`)
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — title, description, priority radio buttons (with reception bar icons), due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany), completed toggle (edit only)
+  - `fields` fragment — title, description, status radio buttons (3-state: Open/In Progress/Completed, shown on edit only, hidden on create since new tasks default to OPEN), priority radio buttons (with reception bar icons), due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
 - `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode)
 - `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute
 
-### Tag, User, Auth, Admin, Error Views
+### Home, Tag, User, Auth, Admin, Error Views
+- `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Task Lifecycle, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
 - `templates/users/users.html` - User list page (HTMX live search)
 - `templates/users/user-table.html` - User table fragment (bare file)
@@ -423,11 +444,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles
-- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels)
+- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels, active state styles for 3 status filter buttons)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type)` for toast notifications; `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`
+- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
@@ -438,9 +459,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Namespace conventions:
     - `action.*` — generic actions; `pagination.*` — pagination controls
     - `nav.*`, `footer.*`, `page.title.*` — layout strings
-    - `task.*` — Task feature; `tag.*` — Tag feature; `user.*` — User feature
+    - `task.*` — Task feature (includes `task.status.open`, `task.status.inProgress`, `task.status.completed`); `tag.*` — Tag feature; `user.*` — User feature
     - `login.*`, `register.*` — Auth pages
-    - `admin.*` — Admin panel; `audit.*` — Audit feature
+    - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
+    - `home.feature.*` — Home page feature cards (rest, security, ui, data, lifecycle, admin)
     - `role.*` — Role display names; `error.*` — Error pages; `toast.*` — Toast notifications
 
 - `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom `app.routes.*` properties

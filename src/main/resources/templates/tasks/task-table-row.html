@@ -7,8 +7,12 @@
 <tbody>
 <tr th:fragment="row"
     th:id="'task-row-' + ${task.id}"
-    th:classappend="${task.completed ? 'table-success' : ''}"
-    th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
+    th:classappend="${task.status.name() == 'COMPLETED' ? 'table-success' : ''}"
+    th:with="canEdit=${#auth.canEdit(task) || task.user == null},
+             isOpen=${task.status.name() == 'OPEN'},
+             isInProgress=${task.status.name() == 'IN_PROGRESS'},
+             isCompleted=${task.status.name() == 'COMPLETED'},
+             overdue=${!isCompleted && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
     <td>
         <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
            th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
@@ -46,24 +50,27 @@
             <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
         </a>
     </td>
-    <td style="white-space: nowrap;"
-        th:with="overdue=${!task.completed && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
-        <a href="#" th:if="${task.completed}" class="badge bg-success text-decoration-none text-white"
-           onclick="setStatusFilter('completed'); return false;">
+    <td style="white-space: nowrap;">
+        <a href="#" th:if="${isCompleted}" class="badge bg-success text-decoration-none text-white"
+           onclick="setStatusFilter('COMPLETED'); return false;">
             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
         </a>
-        <a href="#" th:if="${!task.completed && overdue}" class="badge bg-danger text-decoration-none text-white"
+        <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
            onclick="setStatusFilter('overdue'); return false;">
             <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
         </a>
-        <a href="#" th:if="${!task.completed && !overdue}" class="badge bg-warning text-dark text-decoration-none"
-           onclick="setStatusFilter('incomplete'); return false;">
-            <i class="bi bi-circle"></i> <span th:text="#{task.status.pending}">Pending</span>
+        <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-warning text-dark text-decoration-none"
+           onclick="setStatusFilter('IN_PROGRESS'); return false;">
+            <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
+        </a>
+        <a href="#" th:if="${isOpen && !overdue}" class="badge bg-secondary text-decoration-none text-white"
+           onclick="setStatusFilter('OPEN'); return false;">
+            <i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span>
         </a>
     </td>
     <td style="white-space: nowrap;">
         <th:block th:if="${task.dueDate != null}">
-            <small th:classappend="${!task.completed && task.dueDate.isBefore(T(java.time.LocalDate).now())} ? 'text-danger fw-semibold' : 'text-muted'"
+            <small th:classappend="${overdue} ? 'text-danger fw-semibold' : 'text-muted'"
                    th:text="${#temporals.format(task.dueDate, 'MMM dd, yyyy')}">Date</small>
         </th:block>
     </td>
@@ -76,11 +83,11 @@
     <td>
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
-            <button th:class="${task.completed ? 'btn btn-outline-warning' : 'btn btn-outline-success'}"
+            <button th:class="${isCompleted ? 'btn btn-outline-warning' : (isInProgress ? 'btn btn-outline-success' : 'btn btn-outline-primary')}"
                     th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
-                    th:title="${task.completed} ? #{action.toggle.markPending} : #{action.toggle.markComplete}">
-                <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
+                    th:title="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">
+                <i th:classappend="${isCompleted ? 'bi-arrow-counterclockwise' : (isInProgress ? 'bi-check2' : 'bi-play-fill')}"></i>
             </button>
             <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->
             <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"

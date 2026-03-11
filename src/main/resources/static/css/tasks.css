@@ -19,21 +19,29 @@
     --bs-btn-active-color: inherit;
 }
 
-/* Status filter button (Completed): success color when active */
-#status-filter-completed {
-    --bs-btn-active-bg: var(--bs-success, #198754);
-    --bs-btn-active-border-color: var(--bs-success, #198754);
-    --bs-btn-active-color: var(--theme-success-text, #fff);
+/* Status filter button (Open): secondary color when active */
+#status-filter-OPEN {
+    --bs-btn-active-bg: var(--bs-secondary, #6c757d);
+    --bs-btn-active-border-color: var(--bs-secondary, #6c757d);
+    --bs-btn-active-color: #fff;
 }
-#status-filter-completed.active { color: var(--theme-success-text, #fff) !important; }
+#status-filter-OPEN.active { color: #fff !important; }
 
-/* Status filter button (Pending): warning color when active */
-#status-filter-incomplete {
+/* Status filter button (In Progress): warning color when active */
+#status-filter-IN_PROGRESS {
     --bs-btn-active-bg: var(--bs-warning, #ffc107);
     --bs-btn-active-border-color: var(--bs-warning, #ffc107);
     --bs-btn-active-color: var(--theme-warning-text, #000);
 }
-#status-filter-incomplete.active { color: var(--theme-warning-text, #000) !important; }
+#status-filter-IN_PROGRESS.active { color: var(--theme-warning-text, #000) !important; }
+
+/* Status filter button (Completed): success color when active */
+#status-filter-COMPLETED {
+    --bs-btn-active-bg: var(--bs-success, #198754);
+    --bs-btn-active-border-color: var(--bs-success, #198754);
+    --bs-btn-active-color: var(--theme-success-text, #fff);
+}
+#status-filter-COMPLETED.active { color: var(--theme-success-text, #fff) !important; }
 
 /* Overdue filter button: danger color when active */
 #overdue-filter {

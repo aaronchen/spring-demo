@@ -37,10 +37,21 @@
             <div class="col-md-4">
                 <div class="card h-100 shadow-sm text-center p-3">
                     <div class="card-body">
+                        <i class="bi bi-shield-lock display-6 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title" th:text="#{home.feature.security.title}">Spring Security</h5>
+                        <p class="card-text text-muted" th:text="#{home.feature.security.body}">
+                            Form login, registration, role-based access, and ownership guards.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-3">
+                    <div class="card-body">
                         <i class="bi bi-window display-6 text-primary mb-3 d-block"></i>
-                        <h5 class="card-title" th:text="#{home.feature.ui.title}">Web UI</h5>
+                        <h5 class="card-title" th:text="#{home.feature.ui.title}">Dynamic UI</h5>
                         <p class="card-text text-muted" th:text="#{home.feature.ui.body}">
-                            Thymeleaf + HTMX for dynamic updates without page reloads.
+                            Thymeleaf + HTMX modals, out-of-band swaps, and a custom Web Component.
                         </p>
                     </div>
                 </div>
@@ -49,9 +60,31 @@
                 <div class="card h-100 shadow-sm text-center p-3">
                     <div class="card-body">
                         <i class="bi bi-database display-6 text-primary mb-3 d-block"></i>
-                        <h5 class="card-title" th:text="#{home.feature.data.title}">Spring Data JPA</h5>
+                        <h5 class="card-title" th:text="#{home.feature.data.title}">Data & Persistence</h5>
                         <p class="card-text text-muted" th:text="#{home.feature.data.body}">
-                            Specifications, pagination, and @ManyToMany / @ManyToOne relationships.
+                            JPA Specifications, pagination, @ManyToMany relationships, and optimistic locking.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-3">
+                    <div class="card-body">
+                        <i class="bi bi-arrow-repeat display-6 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title" th:text="#{home.feature.lifecycle.title}">Task Lifecycle</h5>
+                        <p class="card-text text-muted" th:text="#{home.feature.lifecycle.body}">
+                            Status workflow, priority and due dates, comments, and tag filtering.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm text-center p-3">
+                    <div class="card-body">
+                        <i class="bi bi-gear display-6 text-primary mb-3 d-block"></i>
+                        <h5 class="card-title" th:text="#{home.feature.admin.title}">Admin & Audit</h5>
+                        <p class="card-text text-muted" th:text="#{home.feature.admin.body}">
+                            User management, site settings, theme system, and event-driven audit trail.
                         </p>
                     </div>
                 </div>

@@ -1,8 +1,11 @@
 package cc.desuka.demo.repository;
 
 import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.TaskStatusFilter;
+import cc.desuka.demo.model.User;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -13,12 +16,9 @@ public class TaskSpecifications {
 
   public static Specification<Task> withStatusFilter(TaskStatusFilter statusFilter) {
     return (root, query, cb) -> {
-      if (statusFilter == TaskStatusFilter.COMPLETED) {
-        return cb.isTrue(root.get(Task.FIELD_COMPLETED));
-      } else if (statusFilter == TaskStatusFilter.INCOMPLETE) {
-        return cb.isFalse(root.get(Task.FIELD_COMPLETED));
-      }
-      return cb.conjunction();
+      if (statusFilter == TaskStatusFilter.ALL) return cb.conjunction();
+      TaskStatus status = TaskStatus.valueOf(statusFilter.name());
+      return cb.equal(root.get(Task.FIELD_STATUS), status);
     };
   }
 
@@ -38,7 +38,7 @@ public class TaskSpecifications {
   public static Specification<Task> withUserId(Long userId) {
     return (root, query, cb) -> {
       if (userId == null) return cb.conjunction();
-      return cb.equal(root.get("user").get("id"), userId);
+      return cb.equal(root.get(Task.FIELD_USER).get(User.FIELD_ID), userId);
     };
   }
 
@@ -46,7 +46,7 @@ public class TaskSpecifications {
     return (root, query, cb) -> {
       if (!overdue) return cb.conjunction();
       return cb.and(
-          cb.isFalse(root.get(Task.FIELD_COMPLETED)),
+          cb.notEqual(root.get(Task.FIELD_STATUS), TaskStatus.COMPLETED),
           cb.isNotNull(root.get(Task.FIELD_DUE_DATE)),
           cb.lessThan(root.get(Task.FIELD_DUE_DATE), LocalDate.now())
       );
@@ -64,7 +64,7 @@ public class TaskSpecifications {
     return (root, query, cb) -> {
       if (tagIds == null || tagIds.isEmpty()) return cb.conjunction();
       query.distinct(true);
-      return root.join("tags", JoinType.INNER).get("id").in(tagIds);
+      return root.join(Task.FIELD_TAGS, JoinType.INNER).get(Tag.FIELD_ID).in(tagIds);
     };
   }
 

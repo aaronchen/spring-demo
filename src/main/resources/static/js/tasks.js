@@ -28,7 +28,7 @@ function buildUrl(page) {
     const statusFilter = document.getElementById('current-status-filter').value;
     const overdue = document.getElementById('current-overdue-filter').value;
     if (search) params.set('search', search);
-    if (statusFilter && statusFilter !== 'all') params.set('statusFilter', statusFilter);
+    if (statusFilter && statusFilter !== 'ALL') params.set('statusFilter', statusFilter);
     if (overdue === 'true') params.set('overdue', 'true');
     const priority = document.getElementById('current-priority-filter').value;
     if (priority) params.set('priority', priority);
@@ -182,7 +182,7 @@ function initFromUrl() {
     }
 
     // Status filter
-    const statusFilter = params.get('statusFilter') || 'all';
+    const statusFilter = params.get('statusFilter') || 'ALL';
     document.getElementById('current-status-filter').value = statusFilter;
     document.querySelectorAll('[id^="status-filter-"]').forEach(btn => {
         btn.classList.toggle('active', btn.id === 'status-filter-' + statusFilter);
@@ -284,12 +284,12 @@ function renderUserFilter(userName) {
 // ── Status filter (clickable badges on cards/rows) ──
 
 function setStatusFilter(status) {
-    // status: 'completed', 'incomplete', or 'overdue'
+    // status: 'OPEN', 'IN_PROGRESS', 'COMPLETED', or 'overdue'
     if (status === 'overdue') {
         document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
             btn.classList.remove('active'));
-        document.getElementById('status-filter-incomplete').classList.add('active');
-        document.getElementById('current-status-filter').value = 'incomplete';
+        document.getElementById('status-filter-ALL').classList.add('active');
+        document.getElementById('current-status-filter').value = 'ALL';
         document.getElementById('current-overdue-filter').value = 'true';
         document.getElementById('overdue-filter').classList.add('active');
     } else {
@@ -339,7 +339,7 @@ function renderPriorityButton() {
     });
 
     // Reset button to default
-    btn.className = 'btn btn-outline-secondary dropdown-toggle';
+    btn.className = 'btn btn-sm btn-outline-secondary dropdown-toggle';
     icon.className = 'bi bi-reception-2';
 
     if (priority && PRIORITY_CONFIG[priority]) {
@@ -350,7 +350,7 @@ function renderPriorityButton() {
         const colorClass = cfg.css.includes('bg-danger') ? 'btn-danger'
             : cfg.css.includes('bg-warning') ? 'btn-warning'
             : 'btn-success';
-        btn.className = `btn ${colorClass} dropdown-toggle`;
+        btn.className = `btn btn-sm ${colorClass} dropdown-toggle`;
     } else {
         label.textContent = baseLabel;
     }
@@ -507,15 +507,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('overdue-filter').addEventListener('click', function() {
         const isActive = this.classList.contains('active');
         if (isActive) {
-            // Toggle off: clear overdue, stay on Pending
+            // Toggle off: clear overdue, keep current status filter
             this.classList.remove('active');
             document.getElementById('current-overdue-filter').value = 'false';
         } else {
-            // Toggle on: set status to Pending + activate overdue
+            // Toggle on: set status to All + activate overdue
             document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
                 btn.classList.remove('active'));
-            document.getElementById('status-filter-incomplete').classList.add('active');
-            document.getElementById('current-status-filter').value = 'incomplete';
+            document.getElementById('status-filter-ALL').classList.add('active');
+            document.getElementById('current-status-filter').value = 'ALL';
             this.classList.add('active');
             document.getElementById('current-overdue-filter').value = 'true';
         }

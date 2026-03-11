@@ -23,11 +23,11 @@ public interface TaskMapper {
 
     // tags is ignored here — the mapper can't do DB lookups.
     // TaskService.resolveTags() fetches Tag entities from tagIds and sets them on the task.
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "completed", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "tags", ignore = true)
-    @Mapping(target = "user", ignore = true)
-    @Mapping(target = "version", ignore = true)
+    @Mapping(target = Task.FIELD_ID, ignore = true)
+    @Mapping(target = Task.FIELD_STATUS, ignore = true)
+    @Mapping(target = Task.FIELD_CREATED_AT, ignore = true)
+    @Mapping(target = Task.FIELD_TAGS, ignore = true)
+    @Mapping(target = Task.FIELD_USER, ignore = true)
+    @Mapping(target = Task.FIELD_VERSION, ignore = true)
     Task toEntity(TaskRequest request);
 }

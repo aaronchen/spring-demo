@@ -10,6 +10,11 @@ import java.util.Map;
 @Table(name = "audit_logs")
 public class AuditLog {
 
+    public static final String FIELD_ACTION = "action";
+    public static final String FIELD_PRINCIPAL = "principal";
+    public static final String FIELD_DETAILS = "details";
+    public static final String FIELD_TIMESTAMP = "timestamp";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

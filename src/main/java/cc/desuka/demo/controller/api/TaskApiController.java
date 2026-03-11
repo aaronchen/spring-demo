@@ -93,9 +93,10 @@ public class TaskApiController {
   }
 
   // PATCH /api/tasks/5/toggle
+  // Advances status: OPEN → IN_PROGRESS → COMPLETED → OPEN.
   // Open to all authenticated users (matches web UI behavior).
   @PatchMapping("/{id}/toggle")
-  public TaskResponse toggleComplete(@PathVariable Long id) {
-    return taskMapper.toResponse(taskService.toggleComplete(id));
+  public TaskResponse advanceStatus(@PathVariable Long id) {
+    return taskMapper.toResponse(taskService.advanceStatus(id));
   }
 }

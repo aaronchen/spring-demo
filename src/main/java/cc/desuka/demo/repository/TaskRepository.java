@@ -1,5 +1,6 @@
 package cc.desuka.demo.repository;
 
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import org.springframework.data.domain.Page;
@@ -14,7 +15,7 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
-  List<Task> findByCompleted(boolean completed);
+  List<Task> findByStatusNot(TaskStatus status);
 
   List<Task> findByUser(User user);
 

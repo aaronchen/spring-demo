@@ -40,6 +40,11 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException(User.class, id));
     }
 
+    public User findUserById(Long id) {
+        if (id == null) return null;
+        return userRepository.findById(id).orElse(null);
+    }
+
     public List<User> searchUsers(String query) {
         if (query == null || query.isBlank()) return getAllUsers();
         return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(query, query);
@@ -63,7 +68,7 @@ public class UserService {
         User saved = userRepository.save(user);
         eventPublisher.publishEvent(new AuditEvent(
                 AuditEvent.USER_ROLE_CHANGED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(Map.of("name", saved.getName(), "role", role.name()))));
+                AuditDetails.toJson(Map.of(User.FIELD_NAME, saved.getName(), User.FIELD_ROLE, role.name()))));
         return saved;
     }
 

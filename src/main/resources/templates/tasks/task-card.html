@@ -1,30 +1,39 @@
 <!-- Reusable task card fragment - used by both full page and HTMX partial responses -->
 <div th:fragment="card" class="col" th:id="'task-card-' + ${task.id}"
-     th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
-    <div class="card card-clip card-lift h-100 shadow-sm" th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
+     th:with="canEdit=${#auth.canEdit(task) || task.user == null},
+              isOpen=${task.status.name() == 'OPEN'},
+              isInProgress=${task.status.name() == 'IN_PROGRESS'},
+              isCompleted=${task.status.name() == 'COMPLETED'},
+              overdue=${!isCompleted && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+    <div class="card card-clip card-lift h-100 shadow-sm"
+         th:classappend="${isCompleted ? 'border-success' : (isInProgress ? 'border-warning' : '')}">
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
-             th:classappend="${task.completed ? 'bg-success text-white' : 'bg-warning text-dark'}">
+             th:classappend="${isCompleted ? 'bg-success text-white' : (isInProgress ? 'bg-warning text-dark' : '')}">
             <h5 class="mb-0">
                 <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
                    th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="text-decoration-none"
-                   th:classappend="${task.completed ? 'text-white' : 'text-dark'}"
+                   th:classappend="${isCompleted ? 'text-white' : (isInProgress ? 'text-dark' : '')}"
                    th:text="${task.title}">Task Title</a>
             </h5>
-            <a href="#" th:if="${task.completed}" class="badge bg-light text-success text-decoration-none"
-               onclick="setStatusFilter('completed'); return false;">
+            <a href="#" th:if="${isCompleted}" class="badge bg-light text-success text-decoration-none"
+               onclick="setStatusFilter('COMPLETED'); return false;">
                 <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
             </a>
-            <a href="#" th:if="${!task.completed && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}" class="badge bg-danger text-decoration-none text-white"
+            <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
                onclick="setStatusFilter('overdue'); return false;">
                 <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
             </a>
-            <a href="#" th:if="${!task.completed && (task.dueDate == null || !task.dueDate.isBefore(T(java.time.LocalDate).now()))}" class="badge bg-light text-warning text-decoration-none"
-               onclick="setStatusFilter('incomplete'); return false;">
-                <i class="bi bi-circle"></i> <span th:text="#{task.status.pending}">Pending</span>
+            <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-light text-warning text-decoration-none"
+               onclick="setStatusFilter('IN_PROGRESS'); return false;">
+                <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
+            </a>
+            <a href="#" th:if="${isOpen && !overdue}" class="badge bg-light text-secondary text-decoration-none"
+               onclick="setStatusFilter('OPEN'); return false;">
+                <i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span>
             </a>
         </div>
 
@@ -46,7 +55,7 @@
                     <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
                 </a>
                 <span th:if="${task.dueDate != null}" class="badge"
-                      th:classappend="${!task.completed && task.dueDate.isBefore(T(java.time.LocalDate).now())} ? 'bg-danger' : 'bg-light text-dark'">
+                      th:classappend="${overdue} ? 'bg-danger' : 'bg-light text-dark'">
                     <i class="bi bi-calendar"></i> <span th:text="${#temporals.format(task.dueDate, 'MMM dd')}">Date</span>
                 </span>
             </div>
@@ -81,11 +90,11 @@
             <div class="d-flex gap-2">
                 <!-- Toggle Button (HTMX - swaps this card without page reload) -->
                 <button class="btn btn-sm flex-fill"
-                        th:classappend="${task.completed ? 'btn-outline-warning' : 'btn-outline-success'}"
+                        th:classappend="${isCompleted ? 'btn-outline-warning' : (isInProgress ? 'btn-outline-success' : 'btn-outline-primary')}"
                         th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=cards'},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">
-                    <i th:class="${task.completed ? 'bi bi-arrow-counterclockwise' : 'bi bi-check2'}"></i>
-                    <span th:text="${task.completed} ? #{action.toggle.undo} : #{action.toggle.complete}">Toggle</span>
+                    <i th:classappend="${isCompleted ? 'bi-arrow-counterclockwise' : (isInProgress ? 'bi-check2' : 'bi-play-fill')}"></i>
+                    <span th:text="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">Toggle</span>
                 </button>
 
                 <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->

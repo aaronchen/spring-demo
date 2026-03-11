@@ -18,15 +18,17 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
 - **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via cookie
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
-- **Filter Buttons** - All / Completed / Pending / Overdue with color-coded active states
+- **Filter Buttons** - All / Open / In Progress / Completed / Overdue with color-coded active states
 - **Priority Filter** - Dropdown filter for Low / Medium / High with color-coded button state
 - **Sortable Columns** - Sort by title, created date, priority, due date, or description (ascending/descending)
 - **Priority Badges** - Color-coded clickable badges (High=red, Medium=yellow, Low=green) with reception bar icons
 - **Due Dates** - Optional due date with overdue detection; overdue tasks highlighted in red
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
-- **Color-Coded Tasks** - Green = completed, yellow = pending throughout UI
-- **Dynamic Updates** - Toggle completion and delete without page reloads via HTMX
+- **Task Lifecycle** - Three-state status: OPEN → IN_PROGRESS → COMPLETED; toggle button advances through the cycle; status radio buttons in edit form
+- **Status-Aware Reassignment** - Reassigning an in-progress task resets its status to OPEN
+- **Color-Coded Tasks** - Green = completed, blue = in progress, yellow = open throughout UI
+- **Dynamic Updates** - Toggle status and delete without page reloads via HTMX
 - **User Assignment** - Assign tasks to users via searchable select dropdown (`@ManyToOne`)
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
 - **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
@@ -44,8 +46,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Optimistic Locking** - `@Version` on Task entity; stale updates return 409 Conflict
 - **Ownership Enforcement** - Task PUT/DELETE require owner or admin; POST auto-assigns to caller
 - **Role Restrictions** - Tag and user mutations (POST/DELETE) restricted to admins
-- **Search & Filter** - Query tasks by keyword and completion status
-- **Toggle Completion** - Quick PATCH endpoint (open to all authenticated users)
+- **Search & Filter** - Query tasks by keyword and status
+- **Toggle Status** - Quick PATCH endpoint advances task through OPEN → IN_PROGRESS → COMPLETED cycle
 - **Task Comments** - Nested comment endpoints under each task
 
 ### Audit Logging
@@ -66,6 +68,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Custom Thymeleaf dialect (`${#auth}`) for ownership/role checks in templates
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
+- Service-to-service composition (TaskService delegates to TagService/UserService/CommentService instead of direct repository access)
+- Entity `FIELD_*` constants for field names (no hardcoded strings in audit snapshots or specifications)
+- `get`/`find` naming convention: `getXxx()` throws `EntityNotFoundException`, `findXxx()` returns null
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions, HX-Trigger events, and out-of-band swaps
@@ -140,7 +145,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 #### Viewing Tasks
 
 - **Search** — type to filter tasks by title or description in real time
-- **Filter buttons** — All / Completed / Pending
+- **Filter buttons** — All / Open / In Progress / Completed / Overdue
 - **Sort dropdown** — sort by title, created date, or description
 - **View toggle** — switch between card grid and table view
 - **Page size** — choose 10 / 25 / 50 / 100 tasks per page
@@ -151,11 +156,11 @@ Click **New Task** — a modal opens. Fill in title (required, max 100 chars), d
 
 #### Editing a Task
 
-Click the title or the **Edit** button on any card or table row. The same modal opens pre-filled. In edit mode you can also toggle **Mark as completed**.
+Click the title or the **Edit** button on any card or table row. The same modal opens pre-filled. In edit mode you can set the status via radio buttons (Open / In Progress / Completed).
 
-#### Completing a Task
+#### Advancing Task Status
 
-Click the toggle button (checkmark icon) on a card or row to flip its completion status instantly.
+Click the toggle button on a card or row to advance the task through the lifecycle: OPEN → IN_PROGRESS → COMPLETED → OPEN.
 
 #### Deleting a Task
 
@@ -176,9 +181,9 @@ All API endpoints require authentication. CSRF is disabled for `/api/**`, so you
 | POST | `/api/tasks` | Any user | Create task (auto-assigned to caller) |
 | PUT | `/api/tasks/{id}` | Owner/Admin | Update task (requires `version` for optimistic locking) |
 | DELETE | `/api/tasks/{id}` | Owner/Admin | Delete task (204) |
-| PATCH | `/api/tasks/{id}/toggle` | Any user | Toggle completion |
+| PATCH | `/api/tasks/{id}/toggle` | Any user | Advance status (OPEN → IN_PROGRESS → COMPLETED) |
 | GET | `/api/tasks/search?keyword=` | Any user | Search by title/description |
-| GET | `/api/tasks/incomplete` | Any user | Get incomplete tasks only |
+| GET | `/api/tasks/incomplete` | Any user | Get non-completed tasks (OPEN and IN_PROGRESS) |
 
 POST auto-assigns tasks to the caller. Admins can optionally specify `userId` in the request body to assign the task to another user.
 
@@ -226,6 +231,7 @@ Content-Type: application/json
 #### Validation Rules
 - **title**: required, 1–100 characters
 - **description**: optional, max 500 characters
+- **status**: optional, one of `OPEN`, `IN_PROGRESS`, `COMPLETED` (defaults to `OPEN`)
 - **priority**: optional, one of `LOW`, `MEDIUM`, `HIGH` (defaults to `MEDIUM`)
 - **dueDate**: optional, ISO date format `yyyy-MM-dd`
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
@@ -281,7 +287,7 @@ spring-demo/
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
-│   │   │   ├── HomeController.java          # Home page (GET /)
+│   │   │   ├── HomeController.java          # Home page (GET /) with 6 feature cards
 │   │   │   ├── LoginController.java         # Login page (GET /login)
 │   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
 │   │   │   ├── TagController.java           # Tag web UI
@@ -315,7 +321,8 @@ spring-demo/
 │   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
 │   │   │   ├── Task.java                # Implements OwnedEntity
-│   │   │   ├── TaskStatusFilter.java    # ALL / COMPLETED / PENDING enum
+│   │   │   ├── TaskStatus.java          # OPEN / IN_PROGRESS / COMPLETED enum
+│   │   │   ├── TaskStatusFilter.java    # ALL / OPEN / IN_PROGRESS / COMPLETED / OVERDUE enum
 │   │   │   └── User.java                # Auth fields: password, role
 │   │   ├── repository/
 │   │   │   ├── AuditLogRepository.java
@@ -402,7 +409,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied completion status, creation dates, priorities, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied status (Open, In Progress, Completed), creation dates, priorities, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 

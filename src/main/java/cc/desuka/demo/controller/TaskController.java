@@ -56,7 +56,7 @@ public class TaskController {
   @GetMapping
   public String listTasks(
       @RequestParam(required = false, defaultValue = "") String search,
-      @RequestParam(required = false, defaultValue = "all") TaskStatusFilter statusFilter,
+      @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT) TaskStatusFilter statusFilter,
       @RequestParam(required = false, defaultValue = "false") boolean overdue,
       @RequestParam(required = false) Priority priority,
       @RequestParam(required = false) Long userId,
@@ -259,15 +259,15 @@ public class TaskController {
     return new RedirectView("/tasks/" + id);
   }
 
-  // POST /tasks/{id}/toggle - Toggle completion
-  // Available to all authenticated users — no ownership restriction on toggling.
+  // POST /tasks/{id}/toggle - Advance status (OPEN → IN_PROGRESS → COMPLETED → OPEN)
+  // Available to all authenticated users — no ownership restriction.
   @PostMapping("/{id}/toggle")
-  public String toggleComplete(
+  public String advanceStatus(
       @PathVariable Long id,
       @RequestParam(required = false, defaultValue = "cards") String view,
       HttpServletRequest request,
       Model model) {
-    Task task = taskService.toggleComplete(id);
+    Task task = taskService.advanceStatus(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
       model.addAttribute("task", task);
