@@ -1,4 +1,4 @@
-<!-- Reusable task card fragment - used by both full page and HTMX partial responses -->
+<!--/* Reusable task card fragment - used by both full page and HTMX partial responses */-->
 <div th:fragment="card" class="col" th:id="'task-card-' + ${task.id}"
      th:with="canEdit=${#auth.canEdit(task) || task.user == null},
               isOpen=${task.status.name() == 'OPEN'},
@@ -88,7 +88,7 @@
         <!-- Card Footer -->
         <div class="card-footer bg-transparent">
             <div class="d-flex gap-2">
-                <!-- Toggle Button (HTMX - swaps this card without page reload) -->
+                <!-- Toggle Button -->
                 <button class="btn btn-sm flex-fill"
                         th:classappend="${isCompleted ? 'btn-outline-warning' : (isInProgress ? 'btn-outline-success' : 'btn-outline-primary')}"
                         th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=cards'},hx-target='#task-card-' + ${task.id}"
@@ -97,7 +97,7 @@
                     <span th:text="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">Toggle</span>
                 </button>
 
-                <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->
+                <!-- View/Edit Button -->
                 <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
                    th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
@@ -107,7 +107,7 @@
                     <span th:text="${canEdit} ? #{action.editTask} : #{action.viewTask}">Edit</span>
                 </a>
 
-                <!-- Delete Button — owners only -->
+                <!-- Delete Button -->
                 <button th:if="${canEdit}" class="btn btn-sm btn-outline-danger flex-fill"
                         data-bs-toggle="modal"
                         data-bs-target="#task-delete-modal"

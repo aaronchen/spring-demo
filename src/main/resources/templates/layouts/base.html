@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title}">Spring Workshop</title>
-    <!-- Prepend site name to page title when it differs (e.g. "Tasks" → "Spring Workshop - Tasks") -->
+    <!--/* Prepend site name to page title when it differs (e.g. "Tasks" → "Spring Workshop - Tasks") */-->
     <meta th:if="${settings != null and title != settings.siteName}" name="_siteName" th:content="${settings.siteName}">
     <script>!function(){var m=document.querySelector('meta[name="_siteName"]');if(m)document.title=m.content+" - "+document.title}()</script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
@@ -22,7 +22,7 @@
     <!-- Theme overrides (activates when data-theme is set on <html>) -->
     <link rel="stylesheet" th:href="@{/css/theme.css}">
 
-    <!-- Theme attribute set server-side via Settings -->
+    <!--/* Theme attribute set server-side via Settings */-->
     <meta th:if="${settings != null and settings.theme != null and !settings.theme.isEmpty()}" name="_theme" th:content="${settings.theme}">
     <script>!function(){var m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
 
@@ -32,8 +32,8 @@
     <!-- Page-specific styles -->
     <link th:if="${cssFile != null}" rel="stylesheet" th:href="@{${cssFile}}">
 
-    <!-- CSRF meta tags — read by utils.js to inject the token into HTMX requests
-         that bypass <form th:action> (toggle buttons, delete confirm button). -->
+    <!--/* CSRF meta tags — read by utils.js to inject the token into HTMX requests
+         that bypass <form th:action> (toggle buttons, delete confirm button). */-->
     <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
     <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
 </head>
@@ -63,12 +63,12 @@
                 </ul>
                 <!-- Right-aligned auth controls -->
                 <ul class="navbar-nav align-items-center">
-                    <!-- Register link — visible only when NOT logged in and registration is enabled -->
+                    <!--/* Register link — visible only when NOT logged in and registration is enabled */-->
                     <li class="nav-item" sec:authorize="!isAuthenticated()"
                         th:if="${settings == null or settings.registrationEnabled}">
                         <a class="nav-link fw-semibold nav-link-bright" th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
                     </li>
-                    <!-- User dropdown — visible only when logged in -->
+                    <!--/* User dropdown — visible only when logged in */-->
                     <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
                         <a class="nav-link dropdown-toggle text-white" href="#" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
@@ -123,7 +123,7 @@
         </div>
     </nav>
 
-    <!-- Maintenance Banner — included automatically with navbar -->
+    <!--/* Maintenance Banner — included automatically with navbar */-->
     <div th:if="${settings != null and !settings.maintenanceBanner.isEmpty()}"
          class="alert alert-warning alert-dismissible mb-0 rounded-0 text-center" role="alert">
         <i class="bi bi-exclamation-triangle me-1"></i>

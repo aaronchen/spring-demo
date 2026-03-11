@@ -1,11 +1,11 @@
-<!-- Shared form fields fragment — included by task.html (full page) and task-modal.html (HTMX modal).
+<!--/* Shared form fields fragment — included by task.html (full page) and task-modal.html (HTMX modal).
      th:object must be set on the enclosing <form> in the including template.
-     mode='view' disables all fields for read-only display; the layout is otherwise identical. -->
+     mode='view' disables all fields for read-only display; the layout is otherwise identical. */-->
 <th:block th:fragment="fields" xmlns:th="http://www.thymeleaf.org">
 
     <input type="hidden" th:field="*{version}">
 
-    <!-- Title Field -->
+    <!-- Title -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold">
             <span th:text="#{task.field.title}">Title</span>
@@ -22,7 +22,7 @@
         </div>
     </div>
 
-    <!-- Description Field -->
+    <!-- Description -->
     <div class="mb-3">
         <label for="description" class="form-label fw-bold" th:text="#{task.field.description}">Description</label>
         <textarea th:field="*{description}"
@@ -36,7 +36,7 @@
         </div>
     </div>
 
-    <!-- Status — shown in edit and view mode, hidden on create (new tasks default to OPEN) -->
+    <!-- Status -->
     <div class="mb-3" th:if="${mode != 'create'}">
         <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
         <div class="d-flex gap-3">
@@ -102,7 +102,7 @@
                th:disabled="${mode == 'view'}">
     </div>
 
-    <!-- Assigned To: searchable dropdown (remote) in create/edit mode, disabled in view mode -->
+    <!-- Assigned To -->
     <div class="mb-3">
         <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
         <searchable-select name="userId" id="userId"
@@ -117,8 +117,7 @@
         </searchable-select>
     </div>
 
-    <!-- Tag Checkboxes -->
-    <!-- tags list is added to the model by the web controller for all form pages -->
+    <!-- Tags -->
     <div class="mb-3" th:if="${tags != null}">
         <label class="form-label fw-bold" th:text="#{task.field.tags}">Tags</label>
         <div class="d-flex flex-wrap gap-2">

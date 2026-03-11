@@ -2,7 +2,7 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <body>
 
-<!-- Row fragment: a single <tr> for use in task-table.html tbody and HTMX toggle swap -->
+<!--/* Row fragment: a single <tr> for use in task-table.html tbody and HTMX toggle swap */-->
 <table>
 <tbody>
 <tr th:fragment="row"
@@ -89,7 +89,7 @@
                     th:title="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">
                 <i th:classappend="${isCompleted ? 'bi-arrow-counterclockwise' : (isInProgress ? 'bi-check2' : 'bi-play-fill')}"></i>
             </button>
-            <!-- View/Edit Button — owners open in edit mode, non-owners in view mode -->
+            <!-- View/Edit Button -->
             <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
                th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                hx-target="#task-modal-content"
@@ -98,7 +98,7 @@
                th:title="${canEdit} ? #{action.editTask} : #{action.viewTask}">
                 <i th:class="${canEdit} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
             </a>
-            <!-- Delete Button — owners only -->
+            <!-- Delete Button -->
             <button th:if="${canEdit}" class="btn btn-outline-danger"
                     data-bs-toggle="modal"
                     data-bs-target="#task-delete-modal"

@@ -1,4 +1,4 @@
-<!-- Shared comments fragment.
+<!--/* Shared comments fragment.
      Reads ${task}, ${comments} (List<Comment>), and ${currentUser} from model context.
 
      Two usage modes:
@@ -6,7 +6,7 @@
         Used by task.html (full page) and task-modal.html (modal) during initial page render.
      2. Whole-file return (controller returns "tasks/task-comments") — returns the list div
         PLUS out-of-band swap spans that update comment count labels elsewhere on the page.
-        Used by HTMX responses for comment add/delete. -->
+        Used by HTMX responses for comment add/delete. */-->
 <th:block xmlns:th="http://www.thymeleaf.org">
     <div th:fragment="list" id="task-comments">
         <!-- Comment list -->
@@ -40,8 +40,8 @@
         <p th:if="${comments == null || comments.isEmpty()}" class="text-muted small mb-0"
            th:text="#{comment.empty}">No comments yet</p>
     </div>
-    <!-- Out-of-band swaps: update comment count labels wherever they appear.
-         Only included when the whole file is rendered (HTMX response); excluded by :: list selector. -->
+    <!--/* Out-of-band swaps: update comment count labels wherever they appear.
+         Only included when the whole file is rendered (HTMX response); excluded by :: list selector. */-->
     <span id="task-comments-btn-label" hx-swap-oob="true"
           th:text="#{comment.button(${comments.size()})}">Comments (0)</span>
     <span id="task-comments-panel-heading" hx-swap-oob="true"

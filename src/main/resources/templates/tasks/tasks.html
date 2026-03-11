@@ -285,7 +285,7 @@
                     </div>
                 </div>
 
-                <!-- Active tag filter pills (hidden when empty, managed by JS) -->
+                <!-- Active tag filter pills -->
                 <div id="filter-pills" class="d-none mb-3">
                     <span id="tag-pills-container"></span>
                     <a href="#" id="tag-clear-all" class="d-none ms-2 small text-decoration-none"
@@ -293,7 +293,7 @@
                        th:text="#{task.filter.tags.clearAll}">Clear all</a>
                 </div>
 
-                <!-- Task List Container (targeted by HTMX) -->
+                <!-- Task List Container -->
                 <div id="tasks-view">
                     <th:block th:if="${view == 'table'}">
                         <div th:replace="~{tasks/task-table :: grid}"></div>
@@ -306,16 +306,16 @@
         </div>
     </main>
 
-    <!-- Shared New/Edit Task Modal (content loaded by HTMX) -->
+    <!-- Task Modal -->
     <div class="modal fade" id="task-modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" id="task-modal-content">
-                <!-- Populated by hx-get on New Task and Edit buttons -->
+                <!-- Populated by HTMX -->
             </div>
         </div>
     </div>
 
-    <!-- Shared Delete Confirmation Modal -->
+    <!-- Delete Confirmation Modal -->
     <div class="modal fade" id="task-delete-modal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

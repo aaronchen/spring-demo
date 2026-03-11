@@ -1,4 +1,4 @@
-<!-- Reusable pagination control bar fragment.
+<!--/* Reusable pagination control bar fragment.
      Parameters:
        page     — a Spring Data Page<?> object
        position — 'top' or 'bottom' (controls margin direction)
@@ -6,7 +6,7 @@
      Dispatches custom DOM events instead of calling named JS functions:
        pagination:navigate — detail.page = zero-based page index
        pagination:resize   — detail.size = new page size
--->
+*/-->
 <div th:fragment="controlBar(page, position, label)"
      class="d-flex align-items-center"
      th:classappend="${position == 'top' ? 'mb-3' : 'mt-2'}"

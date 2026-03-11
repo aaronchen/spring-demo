@@ -31,12 +31,12 @@
                         <span th:text="#{register.success}">Account created! Please sign in.</span>
                     </div>
 
-                    <!-- th:action causes Thymeleaf to inject the _csrf hidden input automatically -->
+                    <!--/* th:action causes Thymeleaf to inject the _csrf hidden input automatically */-->
                     <form th:action="@{/login}" method="post">
                         <div class="mb-3">
                             <label for="username" class="form-label fw-bold"
                                    th:text="#{login.field.email}">Email</label>
-                            <!-- name="username" is Spring Security's default parameter name -->
+                            <!--/* name="username" is Spring Security's default parameter name */-->
                             <input type="email" id="username" name="username"
                                    class="form-control"
                                    th:placeholder="#{user.field.email.placeholder}"

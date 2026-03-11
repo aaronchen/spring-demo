@@ -75,6 +75,27 @@ Controller returns `"tasks/task-card :: card"`.
 ```
 Use this pattern because controller return strings cannot use `${}` expressions in fragment parameters.
 
+### Template Comment Convention
+
+Two types of HTML comments serve different purposes:
+
+**Regular comments (`<!-- -->`)** — structural landmarks visible in browser DevTools. Use for short section/component labels that help navigate the DOM:
+```html
+<!-- Navigation -->
+<!-- Card Header -->
+<!-- Footer -->
+<!-- Empty State -->
+```
+
+**Parser comments (`<!--/* */-->`)** — developer documentation stripped by Thymeleaf before rendering. Use for implementation notes, usage instructions, and explanations:
+```html
+<!--/* Shared fragment. Reads ${task} from model context.
+     Two usage modes: ... */-->
+<!--/* th:action causes Thymeleaf to inject the _csrf hidden input automatically */-->
+```
+
+**Rule of thumb:** if it's a 1–4 word label for a section, keep it regular so it shows in DevTools. If it explains *why* or *how*, make it a parser comment so it doesn't bloat the response.
+
 ### Message Source Pattern
 
 All user-facing UI strings are externalized to `messages.properties`. Reference them in Thymeleaf with `#{key}`:
