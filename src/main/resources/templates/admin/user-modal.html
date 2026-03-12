@@ -1,0 +1,73 @@
+<!--/* Bare fragment — loaded into user modal via HTMX.
+     Shared by create and edit; ${isEdit} controls which fields are shown.
+     The data-method + JS approach avoids the HTMX null-attribute problem with th:attr. */-->
+<div xmlns:th="http://www.thymeleaf.org">
+    <div class="modal-header">
+        <h5 class="modal-title">
+            <i th:class="${isEdit} ? 'bi bi-pencil-square' : 'bi bi-person-plus'"></i>
+            <span th:text="${isEdit} ? #{admin.users.edit.heading} : #{admin.users.create.heading}">User</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <form id="user-form" th:object="${adminUserRequest}"
+          hx-target="#user-modal-content" hx-swap="innerHTML"
+          th:attr="data-action=${isEdit} ? @{/admin/users/{id}(id=${userId})} : @{/admin/users},
+                   data-method=${isEdit} ? 'put' : 'post'">
+        <div class="modal-body">
+            <input type="hidden" th:field="*{id}">
+            <div class="mb-3">
+                <label class="form-label fw-bold form-label-required" th:text="#{user.field.name}">Name</label>
+                <input type="text" class="form-control"
+                       th:field="*{name}"
+                       th:placeholder="#{user.field.name.placeholder}"
+                       th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                     th:errors="*{name}">Name error</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold form-label-required" th:text="#{user.field.email}">Email</label>
+                <input type="email" class="form-control"
+                       th:field="*{email}"
+                       th:placeholder="#{user.field.email.placeholder}"
+                       th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
+                     th:errors="*{email}">Email error</div>
+            </div>
+            <!--/* Password: required for create, hidden for edit */-->
+            <div class="mb-3" th:if="${!isEdit}">
+                <label class="form-label fw-bold form-label-required" th:text="#{admin.users.field.password}">Password</label>
+                <input type="password" class="form-control"
+                       th:field="*{password}"
+                       th:placeholder="#{admin.users.field.password.placeholder}"
+                       th:classappend="${#fields.hasErrors('password') ? 'is-invalid' : ''}">
+                <div class="invalid-feedback" th:if="${#fields.hasErrors('password')}"
+                     th:errors="*{password}">Password error</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold" th:text="#{user.table.column.role}">Role</label>
+                <select class="form-select" th:field="*{role}">
+                    <option th:each="r : ${roles}"
+                            th:value="${r}"
+                            th:text="${r.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"
+                    th:text="#{action.cancel}">Cancel</button>
+            <button type="submit" class="btn btn-primary"
+                    th:text="${isEdit} ? #{admin.users.edit.submit} : #{admin.users.create.submit}">Save</button>
+        </div>
+    </form>
+    <script>
+        (function() {
+            const form = document.getElementById('user-form');
+            const method = form.dataset.method;
+            const action = form.dataset.action;
+            form.setAttribute(`hx-${method}`, action);
+            form.removeAttribute('data-action');
+            form.removeAttribute('data-method');
+            htmx.process(form);
+        })();
+    </script>
+</div>

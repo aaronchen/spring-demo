@@ -111,7 +111,7 @@
     <script>
         // Theme saved — apply live and update active state
         document.body.addEventListener('themeSaved', function(e) {
-            var theme = e.detail.theme;
+            const theme = e.detail.theme;
             if (theme) {
                 document.documentElement.setAttribute('data-theme', theme);
             } else {
@@ -120,18 +120,18 @@
             showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
 
             document.querySelectorAll('.theme-card').forEach(function(card) {
-                var cardTheme = JSON.parse(card.getAttribute('hx-vals')).theme;
-                var isActive = cardTheme === (theme || '');
+                const cardTheme = JSON.parse(card.getAttribute('hx-vals')).theme;
+                const isActive = cardTheme === (theme || '');
                 card.classList.toggle('border-primary', isActive);
                 card.classList.toggle('shadow', isActive);
                 card.classList.toggle('border', !isActive);
-                var badge = card.querySelector('.badge');
+                const badge = card.querySelector('.badge');
                 if (badge) badge.remove();
                 if (isActive) {
-                    var body = card.querySelector('.card-body');
-                    var span = document.createElement('span');
+                    const body = card.querySelector('.card-body');
+                    const span = document.createElement('span');
                     span.className = 'badge bg-primary mt-1';
-                    span.innerHTML = '<i class="bi bi-check-lg"></i> ' + APP_CONFIG.messages['admin.settings.theme.active'];
+                    span.innerHTML = `<i class="bi bi-check-lg"></i> ${APP_CONFIG.messages['admin.settings.theme.active']}`;
                     body.appendChild(span);
                 }
             });

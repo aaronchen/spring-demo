@@ -7,7 +7,7 @@
     <title th:text="${title}">Spring Workshop</title>
     <!--/* Prepend site name to page title when it differs (e.g. "Tasks" → "Spring Workshop - Tasks") */-->
     <meta th:if="${settings != null and title != settings.siteName}" name="_siteName" th:content="${settings.siteName}">
-    <script>!function(){var m=document.querySelector('meta[name="_siteName"]');if(m)document.title=m.content+" - "+document.title}()</script>
+    <script>!function(){const m=document.querySelector('meta[name="_siteName"]');if(m)document.title=`${m.content} - ${document.title}`}()</script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
     <!-- Bootstrap CSS via WebJars -->
@@ -24,7 +24,7 @@
 
     <!--/* Theme attribute set server-side via Settings */-->
     <meta th:if="${settings != null and settings.theme != null and !settings.theme.isEmpty()}" name="_theme" th:content="${settings.theme}">
-    <script>!function(){var m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
+    <script>!function(){const m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
 
     <!-- Web Component themes -->
     <link rel="stylesheet" th:href="@{/css/components/searchable-select-bootstrap5.css}">
@@ -92,6 +92,12 @@
                                 <a class="dropdown-item py-2" th:href="@{/admin/users}">
                                     <i class="bi bi-people me-2"></i>
                                     <span th:text="#{nav.admin.users}">User Management</span>
+                                </a>
+                            </li>
+                            <li sec:authorize="hasRole('ADMIN')">
+                                <a class="dropdown-item py-2" th:href="@{/admin/tags}">
+                                    <i class="bi bi-tags me-2"></i>
+                                    <span th:text="#{nav.admin.tags}">Tag Management</span>
                                 </a>
                             </li>
                             <li sec:authorize="hasRole('ADMIN')">

@@ -256,6 +256,37 @@ public TaskWebController(TaskService taskService) {
 ```
 Not `@Autowired` field injection.
 
+### `@Unique` Validation Pattern
+
+Generic class-level annotation for field uniqueness, used on DTOs (not entities):
+```java
+@Unique(entity = User.class, field = User.FIELD_EMAIL, message = "{user.email.unique}")
+public class AdminUserRequest {
+    private Long id;  // null on create, set on edit — used to exclude self
+    // ...
+}
+```
+- Lives on DTOs only — Spring MVC `@Valid` has full Spring DI for the `EntityManager`
+- Entities use `@Column(unique = true)` for DB-level enforcement instead
+- `@Repeatable` — supports multiple unique fields on one DTO
+- `idField` defaults to `"id"` — validator reads it from the validated object to exclude self on update
+
+### Global String Trimming
+
+`GlobalBindingConfig` (`@ControllerAdvice`) registers `StringTrimmerEditor(true)` — trims all form-bound strings and converts blank to null:
+- Applies to `@ModelAttribute`, `@RequestParam`, `@PathVariable`
+- Does NOT apply to `@RequestBody` (JSON)
+- `@NotBlank` catches null values naturally — no manual trim calls needed
+
+### User Enable/Disable Pattern
+
+Users can be disabled instead of deleted when they have completed tasks or comments:
+- `User.enabled` field (default true); disabled users can't log in (`CustomUserDetails.isEnabled()`)
+- Disabled users hidden from assignment dropdowns and public user lists (`searchEnabledUsers()`)
+- `UserService.canDelete(id)` — true only if no completed tasks and no comments
+- Disabling unassigns open/in-progress tasks (resets to OPEN)
+- Admin user management shows delete vs disable confirmation based on `canDelete` result
+
 ### Site Settings Pattern
 
 Admin-managed settings stored in the `settings` table as key/value rows. The system has three layers:
@@ -496,7 +527,8 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
-- `http://localhost:8080/admin/users` - User management (admin only)
+- `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)
+- `http://localhost:8080/admin/tags` - Tag management: create/delete with task counts (admin only)
 - `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
 - `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
 
@@ -584,11 +616,12 @@ return "tasks/task-card :: card(${task})";  // wrong
 
 ```sql
 CREATE TABLE users (
-    id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id       BIGINT AUTO_INCREMENT PRIMARY KEY,
     name     VARCHAR(100) NOT NULL,
     email    VARCHAR(150) NOT NULL UNIQUE,
     password VARCHAR(72),                       -- BCrypt hash; nullable for API-created users
-    role     VARCHAR(255) NOT NULL DEFAULT 'USER' -- 'USER' or 'ADMIN' (@Enumerated STRING)
+    role     VARCHAR(255) NOT NULL DEFAULT 'USER', -- 'USER' or 'ADMIN' (@Enumerated STRING)
+    enabled  BOOLEAN NOT NULL DEFAULT TRUE      -- disabled users cannot log in
 );
 
 CREATE TABLE tasks (

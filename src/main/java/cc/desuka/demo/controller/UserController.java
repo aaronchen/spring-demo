@@ -23,7 +23,7 @@ public class UserController {
     public String listUsers(
             @RequestParam(required = false, defaultValue = "") String search,
             Model model, HttpServletRequest request) {
-        model.addAttribute("users", userService.searchUsers(search));
+        model.addAttribute("users", userService.searchEnabledUsers(search));
         model.addAttribute("search", search);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "users/user-table";

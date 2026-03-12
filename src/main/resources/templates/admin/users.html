@@ -8,119 +8,156 @@
     <main class="container flex-grow-1 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="display-5 mb-0" th:text="#{admin.users.heading}">User Management</h1>
-            <button class="btn btn-primary" type="button"
-                    data-bs-toggle="collapse" data-bs-target="#create-user-form"
-                    th:attr="aria-expanded=${showCreateForm != null and showCreateForm}">
-                <i class="bi bi-plus-lg me-1"></i>
-                <span th:text="#{admin.users.create}">New User</span>
+            <button class="btn btn-primary"
+                    hx-get="/admin/users/new" hx-target="#user-modal-content" hx-swap="innerHTML">
+                <i class="bi bi-plus-circle"></i> <span th:text="#{admin.users.create}">New User</span>
             </button>
         </div>
 
-        <!-- Create User Form -->
-        <div class="collapse mb-4" id="create-user-form"
-             th:classappend="${showCreateForm != null and showCreateForm ? 'show' : ''}">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h5 class="card-title mb-3" th:text="#{admin.users.create.heading}">Create New User</h5>
-                    <form th:action="@{/admin/users}" th:object="${adminUserRequest}" method="post">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label" th:text="#{user.field.name}">Name</label>
-                                <input type="text" class="form-control"
-                                       th:field="*{name}"
-                                       th:placeholder="#{user.field.name.placeholder}"
-                                       th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}">
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
-                                     th:errors="*{name}">Name error</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" th:text="#{user.field.email}">Email</label>
-                                <input type="email" class="form-control"
-                                       th:field="*{email}"
-                                       th:placeholder="#{user.field.email.placeholder}"
-                                       th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}">
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
-                                     th:errors="*{email}">Email error</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" th:text="#{admin.users.field.password}">Password</label>
-                                <input type="password" class="form-control"
-                                       th:field="*{password}"
-                                       th:placeholder="#{admin.users.field.password.placeholder}"
-                                       th:classappend="${#fields.hasErrors('password') ? 'is-invalid' : ''}">
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('password')}"
-                                     th:errors="*{password}">Password error</div>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label" th:text="#{user.table.column.role}">Role</label>
-                                <select class="form-select" th:field="*{role}">
-                                    <option th:each="r : ${roles}"
-                                            th:value="${r}"
-                                            th:text="${r.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mt-3 d-flex gap-2">
-                            <button type="submit" class="btn btn-primary"
-                                    th:text="#{admin.users.create.submit}">Create User</button>
-                            <button type="button" class="btn btn-outline-secondary"
-                                    data-bs-toggle="collapse" data-bs-target="#create-user-form"
-                                    th:text="#{action.cancel}">Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+        <div class="mb-3">
+            <input type="search" class="form-control"
+                   id="admin-user-search"
+                   th:placeholder="#{user.search.placeholder}"
+                   hx-get="/admin/users"
+                   hx-target="#user-table-content"
+                   hx-swap="outerHTML"
+                   hx-trigger="input changed delay:300ms, search"
+                   name="search">
         </div>
 
-        <th:block th:if="${userCreated}">
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    showToast(APP_CONFIG.messages['toast.admin.users.created'], 'success');
-                });
-            </script>
-        </th:block>
-
-        <div class="card shadow overflow-hidden">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th th:text="#{admin.users.table.name}">Name</th>
-                            <th th:text="#{admin.users.table.email}">Email</th>
-                            <th th:text="#{admin.users.table.role}">Role</th>
-                            <th th:text="#{admin.users.table.actions}">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr th:each="user : ${users}">
-                            <td th:text="${user.name}">Name</td>
-                            <td th:text="${user.email}">email@example.com</td>
-                            <td>
-                                <span class="badge"
-                                      th:classappend="${user.role.name() == 'ADMIN' ? 'bg-success' : 'bg-secondary'}"
-                                      th:text="${user.role.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</span>
-                            </td>
-                            <td>
-                                <form th:action="@{/admin/users/{id}/role(id=${user.id})}" method="post"
-                                      class="d-flex align-items-center gap-2">
-                                    <select name="role" class="form-select form-select-sm" style="width: auto;">
-                                        <option th:each="r : ${roles}"
-                                                th:value="${r}"
-                                                th:text="${r.name() == 'ADMIN'} ? #{role.admin} : #{role.user}"
-                                                th:selected="${r == user.role}">Role</option>
-                                    </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-primary"
-                                            th:text="#{admin.users.role.change}">Change</button>
-                                </form>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <div th:replace="~{admin/user-table}"></div>
     </main>
+
+    <!-- User Create/Edit Modal -->
+    <div class="modal fade" id="user-modal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" id="user-modal-content">
+            </div>
+        </div>
+    </div>
 
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script th:inline="javascript">
+        (function() {
+            const userModal = document.getElementById('user-modal');
+            let bsModal = null;
+
+            // Show modal when content is loaded via HTMX
+            document.body.addEventListener('htmx:afterSwap', function(e) {
+                if (e.detail.target.id === 'user-modal-content') {
+                    if (!bsModal) bsModal = new bootstrap.Modal(userModal);
+                    bsModal.show();
+                }
+            });
+
+            function refreshTable() {
+                const search = document.getElementById('admin-user-search').value;
+                const url = '/admin/users' + (search ? `?search=${encodeURIComponent(search)}` : '');
+                htmx.ajax('GET', url, {target: '#user-table-content', swap: 'outerHTML'});
+            }
+
+            // Refresh table and close modal on save
+            document.body.addEventListener('userSaved', function() {
+                if (bsModal) bsModal.hide();
+                showToast(APP_CONFIG.messages['toast.admin.users.saved'], 'success');
+                refreshTable();
+            });
+
+            // Password reset event
+            document.body.addEventListener('passwordReset', function() {
+                showToast(APP_CONFIG.messages['toast.admin.users.passwordReset'], 'success');
+            });
+
+            // Reset password button handler
+            document.body.addEventListener('click', function(e) {
+                const btn = e.target.closest('.user-reset-pw-btn');
+                if (!btn) return;
+
+                const userId = btn.dataset.userId;
+                const userName = btn.dataset.userName;
+                const inputId = 'reset-pw-input';
+                const errorId = 'reset-pw-error';
+                const msg = APP_CONFIG.messages;
+
+                showConfirm({
+                    title: msg['admin.users.resetPassword.title'].replace('{0}', userName),
+                    message: `<div>
+                        <label class="form-label fw-bold form-label-required">${msg['admin.users.resetPassword.label']}</label>
+                        <input type="password" id="${inputId}" class="form-control"
+                               placeholder="${msg['admin.users.field.password.placeholder']}">
+                        <div id="${errorId}" class="text-danger small mt-1" style="display:none"></div>
+                    </div>`,
+                    confirmText: msg['admin.users.resetPassword.submit'],
+                    headerClass: 'bg-danger text-white',
+                    confirmClass: 'btn btn-danger'
+                }, function() {
+                    const pw = document.getElementById(inputId).value;
+                    if (pw.length < 8 || pw.length > 72) {
+                        const errEl = document.getElementById(errorId);
+                        errEl.textContent = msg['user.password.size'];
+                        errEl.style.display = '';
+                        return false;
+                    }
+                    htmx.ajax('POST', `/admin/users/${userId}/reset-password`,
+                        {swap: 'none', values: {password: pw}});
+                });
+            });
+
+            // Remove/Disable/Delete button handler — fetches user info to decide action
+            document.body.addEventListener('click', function(e) {
+                const btn = e.target.closest('.user-remove-btn');
+                if (!btn) return;
+
+                const userId = btn.dataset.userId;
+                const userName = btn.dataset.userName;
+
+                fetch(`/admin/users/${userId}/info`)
+                    .then(r => r.json())
+                    .then(function(info) {
+                        const msg = APP_CONFIG.messages;
+                        if (info.canDelete) {
+                            // User has no completed tasks or comments — offer delete
+                            let confirmMsg = msg['admin.users.delete.confirm'];
+                            if (info.assignedTasks > 0) {
+                                confirmMsg += ` ${msg['admin.users.delete.taskWarning'].replace('{0}', info.assignedTasks)}`;
+                            }
+                            showConfirm({
+                                message: confirmMsg,
+                                title: msg['admin.users.delete.title'].replace('{0}', userName),
+                                confirmText: msg['action.delete'],
+                                headerClass: 'bg-danger text-white',
+                                confirmClass: 'btn btn-danger'
+                            }, function() {
+                                htmx.ajax('DELETE', `/admin/users/${userId}`, {swap: 'none'});
+                            });
+                        } else {
+                            // User has history — offer disable
+                            const parts = [];
+                            if (info.completedTasks > 0) {
+                                parts.push(msg['admin.users.disable.completedTasks'].replace('{0}', info.completedTasks));
+                            }
+                            if (info.comments > 0) {
+                                parts.push(msg['admin.users.disable.comments'].replace('{0}', info.comments));
+                            }
+                            let disableMsg = msg['admin.users.disable.confirm'].replace('{0}', parts.join(', '));
+                            if (info.assignedTasks > 0) {
+                                disableMsg += ` ${msg['admin.users.disable.taskWarning'].replace('{0}', info.assignedTasks)}`;
+                            }
+                            showConfirm({
+                                message: disableMsg,
+                                title: msg['admin.users.disable.title'].replace('{0}', userName),
+                                confirmText: msg['admin.users.action.disable'],
+                                headerClass: 'bg-warning',
+                                confirmClass: 'btn btn-warning'
+                            }, function() {
+                                htmx.ajax('POST', `/admin/users/${userId}/disable`, {swap: 'none'});
+                            });
+                        }
+                    });
+            });
+        })();
+    </script>
 </body>
 </html>

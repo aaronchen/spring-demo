@@ -27,7 +27,7 @@ public class UserApiController {
     // GET /api/users?q=ali
     @GetMapping
     public List<UserResponse> getAllUsers(@RequestParam(required = false) String q) {
-        return userMapper.toResponseList(userService.searchUsers(q));
+        return userMapper.toResponseList(userService.searchEnabledUsers(q));
     }
 
     // GET /api/users/{id}

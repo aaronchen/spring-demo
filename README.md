@@ -9,7 +9,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Self-Registration** - New users can sign up; default role is USER
 - **Role-Based Access** - Two roles: USER (standard) and ADMIN (elevated privileges)
 - **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
-- **Admin Panel** - Create users and manage roles at `/admin/users` (admin only)
+- **Admin Panel** - Modal-based user management (create/edit/delete/disable/enable) at `/admin/users`; tag management at `/admin/tags` (admin only)
 - **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
 - **Admin Settings** - Configurable site name, registration toggle, maintenance banner, and theme picker at `/admin/settings`
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
@@ -52,7 +52,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
-- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD, tag CRUD, settings changes, login success/failure, role changes, registration
+- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, login success/failure, role changes, registration
 - **Field-Level Diffs** - Update events record before/after values for each changed field
 - **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with category buttons, text search, date range, and pagination
 - **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
@@ -69,6 +69,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
 - Service-to-service composition (TaskService delegates to TagService/UserService/CommentService instead of direct repository access)
+- Generic `@Unique` validation annotation — class-level, `@Repeatable`, uses `EntityManager` JPQL for uniqueness checks with self-exclusion on edit
+- Global string trimming via `GlobalBindingConfig` (`StringTrimmerEditor`) — trims all form fields, converts blank to null
+- User enable/disable pattern — disabled users can't log in and are hidden from assignment dropdowns; users with completed tasks or comments can only be disabled (not deleted)
 - Entity `FIELD_*` constants for field names (no hardcoded strings in audit snapshots or specifications)
 - `get`/`find` naming convention: `getXxx()` throws `EntityNotFoundException`, `findXxx()` returns null
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
@@ -111,6 +114,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 3. **Access the application**
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
+   - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
    - **Settings**: http://localhost:8080/admin/settings (admin only)
    - **REST API**: http://localhost:8080/api/tasks
@@ -136,7 +140,7 @@ Navigate to http://localhost:8080/login. Enter your email and password, or click
 
 **Roles:**
 - **USER** — can create tasks (defaults to self, can assign to others), edit/delete own and unassigned tasks, view all tasks
-- **ADMIN** — full access to all tasks, can manage users and tags, can assign tasks to any user
+- **ADMIN** — full access to all tasks, can manage users (create/edit/delete/disable/enable) and tags, can assign tasks to any user
 
 ### Web Interface
 
@@ -272,6 +276,7 @@ spring-demo/
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
+│   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   │   └── Settings.java               # Typed settings POJO with defaults
@@ -279,7 +284,8 @@ spring-demo/
 │   │   │   ├── admin/
 │   │   │   │   ├── AuditController.java     # Audit log page (admin only)
 │   │   │   │   ├── SettingsController.java    # Admin settings page (theme, site name, etc.)
-│   │   │   │   └── UserManagementController.java # User role management (admin only)
+│   │   │   │   ├── TagManagementController.java # Tag CRUD (admin only)
+│   │   │   │   └── UserManagementController.java # User management with modal UI (admin only)
 │   │   │   ├── api/
 │   │   │   │   ├── AuditApiController.java  # Audit REST API
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
@@ -347,6 +353,9 @@ spring-demo/
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
 │   │   │   └── UserService.java         # Includes updateRole(), findByEmail()
+│   │   ├── validation/
+│   │   │   ├── Unique.java              # Generic @Unique annotation (class-level, @Repeatable)
+│   │   │   └── UniqueValidator.java     # EntityManager-based uniqueness check
 │   │   ├── util/
 │   │   │   └── HtmxUtils.java
 │   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments
@@ -369,7 +378,11 @@ spring-demo/
 │       │   │   ├── audit.html          # Audit log page (admin only)
 │       │   │   ├── audit-table.html    # Audit table fragment (HTMX partial)
 │       │   │   ├── settings.html       # Admin settings page (admin only)
-│       │   │   └── users.html          # User management (admin only)
+│       │   │   ├── tags.html           # Tag management page (admin only)
+│       │   │   ├── tag-table.html      # Tag table with inline create form
+│       │   │   ├── users.html          # User management with modal UI (admin only)
+│       │   │   ├── user-table.html     # User table fragment (HTMX partial)
+│       │   │   └── user-modal.html     # User create/edit modal form
 │       │   ├── error/
 │       │   │   ├── 403.html            # Access Denied page
 │       │   │   ├── 404.html            # Not Found page

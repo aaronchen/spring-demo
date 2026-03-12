@@ -4,16 +4,21 @@ import cc.desuka.demo.dto.AdminUserRequest;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.HtmxUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Controller
-@RequestMapping("/admin")
+@RequestMapping("/admin/users")
 public class UserManagementController {
 
     private final UserService userService;
@@ -24,29 +29,53 @@ public class UserManagementController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    @GetMapping("/users")
-    public String listUsers(Model model) {
-        if (!model.containsAttribute("adminUserRequest")) {
-            model.addAttribute("adminUserRequest", new AdminUserRequest());
+    @GetMapping
+    public String listUsers(@RequestParam(required = false) String search,
+                            Model model, HttpServletRequest request) {
+        populateModel(model, search);
+        if (HtmxUtils.isHtmxRequest(request)) {
+            return "admin/user-table";
         }
-        model.addAttribute("users", userService.getAllUsers());
-        model.addAttribute("roles", Role.values());
         return "admin/users";
     }
 
-    @PostMapping("/users")
-    public String createUser(@Valid @ModelAttribute AdminUserRequest adminUserRequest,
-                             BindingResult result, Model model,
-                             RedirectAttributes redirectAttributes) {
-        if (userService.findByEmail(adminUserRequest.getEmail()).isPresent()) {
-            result.rejectValue("email", "admin.users.error.emailExists");
+    @GetMapping("/new")
+    public String newUserForm(Model model) {
+        model.addAttribute("adminUserRequest", new AdminUserRequest());
+        model.addAttribute("roles", Role.values());
+        model.addAttribute("isEdit", false);
+        return "admin/user-modal";
+    }
+
+    @GetMapping("/{id}/edit")
+    public String editUserForm(@PathVariable Long id, Model model) {
+        User user = userService.getUserById(id);
+        AdminUserRequest request = new AdminUserRequest();
+        request.setId(id);
+        request.setName(user.getName());
+        request.setEmail(user.getEmail());
+        request.setRole(user.getRole());
+        model.addAttribute("adminUserRequest", request);
+        model.addAttribute("userId", id);
+        model.addAttribute("roles", Role.values());
+        model.addAttribute("isEdit", true);
+        return "admin/user-modal";
+    }
+
+    @PostMapping
+    public Object createUser(@Valid @ModelAttribute AdminUserRequest adminUserRequest,
+                             BindingResult result, Model model) {
+        String pw = adminUserRequest.getPassword();
+        if (pw == null) {
+            result.rejectValue("password", "user.password.notBlank");
+        } else if (pw.length() < 8 || pw.length() > 72) {
+            result.rejectValue("password", "user.password.size");
         }
 
         if (result.hasErrors()) {
-            model.addAttribute("users", userService.getAllUsers());
             model.addAttribute("roles", Role.values());
-            model.addAttribute("showCreateForm", true);
-            return "admin/users";
+            model.addAttribute("isEdit", false);
+            return "admin/user-modal";
         }
 
         User user = new User(
@@ -56,13 +85,72 @@ public class UserManagementController {
                 adminUserRequest.getRole()
         );
         userService.createUser(user);
-        redirectAttributes.addFlashAttribute("userCreated", true);
-        return "redirect:/admin/users";
+        return HtmxUtils.triggerEvent("userSaved");
     }
 
-    @PostMapping("/users/{id}/role")
-    public String changeRole(@PathVariable Long id, @RequestParam Role role) {
-        userService.updateRole(id, role);
-        return "redirect:/admin/users";
+    @PutMapping("/{id}")
+    public Object updateUser(@PathVariable Long id,
+                             @Valid @ModelAttribute AdminUserRequest adminUserRequest,
+                             BindingResult result, Model model) {
+        if (result.hasErrors()) {
+            model.addAttribute("userId", id);
+            model.addAttribute("roles", Role.values());
+            model.addAttribute("isEdit", true);
+            return "admin/user-modal";
+        }
+
+        userService.updateUser(id, adminUserRequest.getName(),
+                adminUserRequest.getEmail(), adminUserRequest.getRole());
+        return HtmxUtils.triggerEvent("userSaved");
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseBody
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return HtmxUtils.triggerEvent("userSaved");
+    }
+
+    @PostMapping("/{id}/disable")
+    @ResponseBody
+    public ResponseEntity<Void> disableUser(@PathVariable Long id) {
+        userService.disableUser(id);
+        return HtmxUtils.triggerEvent("userSaved");
+    }
+
+    @PostMapping("/{id}/enable")
+    @ResponseBody
+    public ResponseEntity<Void> enableUser(@PathVariable Long id) {
+        userService.enableUser(id);
+        return HtmxUtils.triggerEvent("userSaved");
+    }
+
+    @PostMapping("/{id}/reset-password")
+    @ResponseBody
+    public ResponseEntity<Void> resetPassword(@PathVariable Long id,
+                                              @RequestParam String password) {
+        if (password.length() < 8 || password.length() > 72) {
+            return ResponseEntity.badRequest().build();
+        }
+        userService.resetPassword(id, passwordEncoder.encode(password));
+        return HtmxUtils.triggerEvent("passwordReset");
+    }
+
+    @GetMapping("/{id}/info")
+    @ResponseBody
+    public Map<String, Object> getUserInfo(@PathVariable Long id) {
+        User user = userService.getUserById(id);
+        Map<String, Object> info = new LinkedHashMap<>();
+        info.put("name", user.getName());
+        info.put("canDelete", userService.canDelete(id));
+        info.put("completedTasks", userService.countCompletedTasks(id));
+        info.put("comments", userService.countComments(id));
+        info.put("assignedTasks", userService.countAssignedTasks(id));
+        return info;
+    }
+
+    private void populateModel(Model model, String search) {
+        model.addAttribute("users", userService.searchUsers(search));
+        model.addAttribute("roles", Role.values());
     }
 }

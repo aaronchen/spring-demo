@@ -45,9 +45,9 @@ public class SettingsController {
     public ResponseEntity<Void> saveGeneral(@RequestParam(defaultValue = "") String siteName,
                                             @RequestParam(defaultValue = "false") boolean registrationEnabled,
                                             @RequestParam(defaultValue = "") String maintenanceBanner) {
-        settingService.updateValue(Settings.KEY_SITE_NAME, siteName.isBlank() ? null : siteName.trim());
+        settingService.updateValue(Settings.KEY_SITE_NAME, siteName);
         settingService.updateValue(Settings.KEY_REGISTRATION_ENABLED, String.valueOf(registrationEnabled));
-        settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, maintenanceBanner.isBlank() ? null : maintenanceBanner.trim());
+        settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, maintenanceBanner);
 
         return ResponseEntity.ok()
                 .header("HX-Trigger", "settingsSaved")

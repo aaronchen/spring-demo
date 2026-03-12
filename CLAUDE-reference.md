@@ -52,10 +52,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 - `model/User.java` - User entity with authentication fields
-  - Fields: id, name (max 100), email (max 150, unique), password (max 72, nullable), role (Role enum, defaults to USER)
-  - `FIELD_*` constants (`FIELD_ID`, `FIELD_NAME`, `FIELD_EMAIL`, `FIELD_ROLE`)
+  - Fields: id, name (max 100), email (max 150, unique), password (max 72, nullable), role (Role enum, defaults to USER), enabled (boolean, defaults to true)
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_NAME`, `FIELD_EMAIL`, `FIELD_ROLE`, `FIELD_ENABLED`)
   - `password` — BCrypt hash; nullable for API-created users (who cannot log in)
   - `role` — `@Enumerated(EnumType.STRING)`, stored as "USER" or "ADMIN" in the database
+  - `enabled` — disabled users cannot log in and are hidden from assignment dropdowns
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
@@ -67,7 +68,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Audit Package
 - `audit/AuditEvent.java` - Event class published via `ApplicationEventPublisher`
-  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_DELETED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
+  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_UPDATED`, `USER_DELETED`, `USER_DISABLED`, `USER_ENABLED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
   - Fields: action, entityType, entityId, principal, details
 
 - `audit/AuditDetails.java` - Audit detail utilities
@@ -107,15 +108,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `repository/UserRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<User, Long>`
-  - `findByEmail(String)` — used by `CustomUserDetailsService` for login and `RegistrationController` for duplicate checks
-  - `findAllByOrderByNameAsc()` — sorted user list for dropdowns and admin panel
+  - `findByEmail(String)` — used by `CustomUserDetailsService` for login and `@Unique` validator for duplicate checks
+  - `findAllByOrderByNameAsc()` — sorted user list for admin panel (includes disabled users)
   - `findByNameContainingIgnoreCaseOrderByNameAsc(String)` — server-side user search for remote searchable-select
   - `findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(String, String)` — user page search (name or email)
+  - `findByEnabledTrueOrderByNameAsc()` — enabled users only (for assignment dropdowns and public user lists)
+  - `findByEnabledTrueAndNameContaining...` — enabled user search (name or email, case-insensitive)
 
 - `repository/CommentRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Comment, Long>`
   - `findByTaskIdOrderByCreatedAtAsc(Long)` — chronological comment list; `@EntityGraph(attributePaths = {"user"})` to prevent N+1 on user names
   - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `CommentService.deleteByTaskId()` which is called by `TaskService.deleteTask()` before removing the task
+  - `countByUserId(Long)` — count comments by user; used by `UserService.canDelete()` to determine if user can be hard-deleted
 
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
@@ -141,8 +145,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `id`, `name`
   - Lombok `@Data`
 
-- `dto/UserRequest.java` - User input DTO
+- `dto/UserRequest.java` - User input DTO (REST API)
   - Fields: `name` (required, max 100), `email` (required, max 150)
+  - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
+  - Lombok `@Data`
+
+- `dto/TagRequest.java` - Tag input DTO (admin tag management form)
+  - Fields: `id` (null on create, set on edit), `name` (required, max 50)
+  - `@Unique(entity = Tag.class, field = Tag.FIELD_NAME)` — class-level uniqueness validation
   - Lombok `@Data`
 
 - `dto/UserResponse.java` - User output DTO
@@ -151,6 +161,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `dto/RegistrationRequest.java` - Registration form DTO
   - Fields: `name` (required, max 100), `email` (required, max 150), `password` (required, 8–72 chars), `confirmPassword` (required)
+  - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation (replaces manual duplicate email check)
   - Cross-field validation (password match) handled programmatically in `RegistrationController`
   - Lombok `@Data`
 
@@ -158,9 +169,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `id`, `text`, `taskId`, `user` (`UserResponse`), `createdAt`
   - Lombok `@Data`
 
-- `dto/AdminUserRequest.java` - Admin user creation form DTO
-  - Fields: `name` (required, max 100), `email` (required, max 150, @Email), `password` (required, 8–72 chars), `role` (required, defaults to USER)
-  - Duplicate email check handled in `UserManagementController`
+- `dto/AdminUserRequest.java` - Admin user create/edit form DTO
+  - Fields: `id` (null on create, set on edit — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email), `password` (no bean validation — controller validates manually: required on create, ignored on edit), `role` (required, defaults to USER)
+  - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
   - Lombok `@Data`
 
 ### Mapper Layer
@@ -196,16 +207,24 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
 
 - `service/UserService.java` - User business logic
-  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `createUser`, `updateRole`, `deleteUser`
+  - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
+  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
   - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
-  - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by `GET /api/users?q=` and `UserController`
-  - `findByEmail(String)` — returns `Optional<User>`; used by registration duplicate check and `CustomUserDetailsService`
-  - `updateRole(Long userId, Role role)` — loads user, sets role, saves; called by `UserManagementController`
-  - `deleteUser` first reassigns all that user's tasks to null (via `taskRepository.findByUser`), then deletes — prevents FK constraint failure
+  - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by admin user management
+  - `getEnabledUsers()` / `searchEnabledUsers(query)` — only enabled users; used by public user list, API, and assignment dropdowns (hides disabled users)
+  - `findByEmail(String)` — returns `Optional<User>`; used by `CustomUserDetailsService`
+  - `updateUser(userId, name, email, role)` — updates user fields; publishes `USER_UPDATED` audit event
+  - `updateRole(Long userId, Role role)` — loads user, sets role, saves; publishes `USER_ROLE_CHANGED` audit event
+  - `canDelete(userId)` — true if user has no completed tasks and no comments (safe to hard-delete)
+  - `disableUser(userId)` — sets `enabled = false`, unassigns open/in-progress tasks (resets to OPEN); publishes `USER_DISABLED`
+  - `enableUser(userId)` — sets `enabled = true`; publishes `USER_ENABLED`
+  - `deleteUser` — unassigns all tasks (via `unassignTasks()` helper), then deletes user; prevents FK constraint failure
+  - `unassignTasks(user)` — private helper; sets user to null on all user's tasks, resets non-completed tasks to OPEN
 
 - `service/TagService.java` - Tag business logic with audit event publishing
-  - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `createTag`, `deleteTag`
+  - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `countTasksByTagId`, `createTag`, `deleteTag`
   - `findAllByIds(ids)` — returns tags matching the given IDs; returns empty list for null/empty input; used by `TaskService` for tag resolution
+  - `countTasksByTagId(tagId)` — uses ORM relationship traversal (`getTagById(tagId).getTasks().size()`) instead of custom repository query
 
 - `service/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
@@ -249,15 +268,28 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/RegistrationController.java` - User self-registration
   - `GET /register` — serves registration form with empty `RegistrationRequest`
-  - `POST /register` — validates form, checks password match, checks email uniqueness, creates user with `Role.USER`
+  - `POST /register` — validates form (email uniqueness via `@Unique` on DTO), checks password match, creates user with `Role.USER`
   - Encodes password via `PasswordEncoder.encode()` before persisting
   - Redirects to `/login?registered` on success
 
-- `controller/admin/UserManagementController.java` - Admin user management
-  - `@Controller` with `/admin` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
-  - `GET /admin/users` — lists all users with role dropdown and collapsible create user form
-  - `POST /admin/users` — creates a new user; validates `AdminUserRequest`, checks duplicate email, encodes password; flash attribute `userCreated` triggers toast on redirect
-  - `POST /admin/users/{id}/role` — changes a user's role via `UserService.updateRole()`
+- `controller/admin/TagManagementController.java` - Admin tag management
+  - `@Controller` with `/admin/tags` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
+  - `GET /admin/tags` — lists all tags with task counts
+  - `POST /admin/tags` — creates tag via `@Valid @ModelAttribute TagRequest`; HTMX-aware (returns fragment or full page)
+  - `DELETE /admin/tags/{id}` — deletes tag; triggers `tagDeleted` HX-Trigger event
+  - `populateModel()` — adds tags list and task counts map to model
+
+- `controller/admin/UserManagementController.java` - Admin user management (modal-based)
+  - `@Controller` with `/admin/users` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
+  - `GET /admin/users` — lists all users (HTMX-aware: returns `user-table` fragment or full `users` page)
+  - `GET /admin/users/new` — returns empty modal form for creating a user
+  - `GET /admin/users/{id}/edit` — returns pre-filled modal form for editing a user
+  - `POST /admin/users` — creates user; `Object` return type (view name on validation error, `ResponseEntity` on success); password validated manually (required on create)
+  - `PUT /admin/users/{id}` — updates user name, email, role; triggers `userSaved` event
+  - `DELETE /admin/users/{id}` — deletes user (only if `canDelete`); triggers `userSaved` event
+  - `POST /admin/users/{id}/disable` — disables user; triggers `userSaved` event
+  - `POST /admin/users/{id}/enable` — enables user; triggers `userSaved` event
+  - `GET /admin/users/{id}/info` — returns JSON with `name`, `canDelete`, `completedTasks`, `comments`, `assignedTasks` (used by JS confirmation dialog)
 
 - `controller/admin/AuditController.java` - Audit log page
   - `@Controller` with `/admin/audit` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
@@ -302,7 +334,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Wraps the `User` entity; exposes it via `getUser()` for controllers and templates
   - `getUsername()` returns `user.getEmail()` (email is the login identifier)
   - `getAuthorities()` returns single authority: `ROLE_USER` or `ROLE_ADMIN`
-  - Account status methods all return `true` (no expiry/lock features yet)
+  - `isEnabled()` returns `user.isEnabled()` — disabled users cannot log in
+  - Other account status methods return `true` (no expiry/lock features yet)
 
 - `security/CustomUserDetailsService.java` - Implements Spring Security's `UserDetailsService`
   - `loadUserByUsername(String email)` — looks up user via `UserRepository.findByEmail()`
@@ -328,7 +361,25 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getCurrentPrincipal()` — returns username from `SecurityContextHolder` or `"system"` if unauthenticated
   - Used by services when publishing audit events
 
+### Validation
+- `validation/Unique.java` - Generic class-level validation annotation for field uniqueness
+  - `@Constraint(validatedBy = UniqueValidator.class)`, `@Target(ElementType.TYPE)`, `@Repeatable(Unique.List.class)`
+  - Attributes: `entity` (JPA entity class), `field` (field to check), `idField` (defaults to `"id"` — reads from validated object to exclude self on update)
+  - Lives on DTOs only (not entities) — Spring MVC `@Valid` has full Spring DI; Hibernate validation does not
+
+- `validation/UniqueValidator.java` - `ConstraintValidator<Unique, Object>` implementation
+  - Constructor injection: `EntityManager` (Spring DI — only works with Spring MVC `@Valid`, not Hibernate pre-insert validation)
+  - Uses `BeanWrapper` to read field value and optional ID from the validated object
+  - JPQL query: `SELECT COUNT(e) FROM Entity e WHERE LOWER(e.field) = LOWER(:value)` (case-insensitive)
+  - If ID is present and non-null (edit), adds `AND e.id != :excludeId` to exclude self
+  - Binds error to specific field via `addPropertyNode(field)` for per-field error display
+
 ### Configuration
+- `config/GlobalBindingConfig.java` - `@ControllerAdvice` for global form string trimming
+  - `@InitBinder` registers `StringTrimmerEditor(true)` — trims all form-bound strings, converts blank to null
+  - Applies to `@ModelAttribute`, `@RequestParam`, `@PathVariable` — NOT `@RequestBody` (JSON)
+  - Eliminates manual `.trim()` calls across all controllers; `@NotBlank` catches null values
+
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
@@ -389,7 +440,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - Left nav links: Tasks, Tags, Users
     - Anonymous: shows Register link
     - Authenticated: user dropdown with name, email, role badge, logout button
-    - Admin: additional "User Management", "Audit Log", and "Settings" links in dropdown
+    - Admin: additional "User Management", "Tag Management", "Audit Log", and "Settings" links in dropdown
     - Uses `sec:authorize` (Spring Security Thymeleaf dialect) and `${#auth}` for conditional rendering
   - `footer` - footer
   - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
@@ -437,7 +488,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/error/404.html` - Not Found page
 - `templates/error/409.html` - Conflict page (optimistic locking, rendered by `WebExceptionHandler`)
 - `templates/error/500.html` - Server Error page
-- `templates/admin/users.html` - Admin user management page (collapsible create user form, role change table, toast on creation)
+- `templates/admin/tags.html` - Admin tag management page (full page: heading + includes tag-table fragment; JS listens for `tagDeleted` event)
+- `templates/admin/tag-table.html` - Tag management table fragment (bare file: inline create form + tag table with name, task counts, delete button; `hx-confirm` with styled confirmation)
+- `templates/admin/users.html` - Admin user management page (modal shell for create/edit; JS: `htmx:afterSwap` shows modal, `userSaved` refreshes table, delete/disable confirmation via `showConfirm`)
+- `templates/admin/user-table.html` - User table fragment (bare file: status column with Active/Disabled badges, edit/enable/remove buttons, disabled rows with `table-secondary`)
+- `templates/admin/user-modal.html` - User create/edit modal form (shared for both; hidden `id` field, password field on create only; uses `data-method`/`data-action` with inline JS for dynamic `hx-post`/`hx-put`)
 - `templates/admin/audit.html` - Audit log page (admin only)
 - `templates/admin/audit-table.html` - Audit table fragment (HTMX partial)
 
@@ -471,3 +526,4 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `resources/ValidationMessages.properties` - Bean Validation error messages
   - Used by Hibernate Validator; reference with `{key}` syntax in constraint annotations
   - `{min}`, `{max}` placeholders interpolated from annotation attributes
+  - Includes `validation.unique` (default), `tag.name.unique`, `user.email.unique` for `@Unique` validator

@@ -9,7 +9,11 @@ public class AuditEvent {
 
     // User actions
     public static final String USER_CREATED = "USER_CREATED";
+    public static final String USER_UPDATED = "USER_UPDATED";
     public static final String USER_DELETED = "USER_DELETED";
+    public static final String USER_DISABLED = "USER_DISABLED";
+    public static final String USER_ENABLED = "USER_ENABLED";
+    public static final String USER_PASSWORD_RESET = "USER_PASSWORD_RESET";
     public static final String USER_ROLE_CHANGED = "USER_ROLE_CHANGED";
     public static final String USER_REGISTERED = "USER_REGISTERED";
 

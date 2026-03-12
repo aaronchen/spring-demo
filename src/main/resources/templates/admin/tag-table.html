@@ -1,0 +1,74 @@
+<!--/* Bare fragment — returned by HTMX after create/delete.
+     Also included from admin/tags.html via th:replace. */-->
+<div id="tag-management-content" xmlns:th="http://www.thymeleaf.org">
+    <!-- Create Tag Form -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form th:object="${tagRequest}" hx-post="/admin/tags" hx-target="#tag-management-content" hx-swap="outerHTML"
+                  class="row g-2 align-items-end">
+                <div class="col">
+                    <label class="form-label fw-bold form-label-required" th:text="#{tag.field.name}">Name</label>
+                    <input type="text" class="form-control" name="name"
+                           th:placeholder="#{tag.field.name.placeholder}"
+                           th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}"
+                           th:value="${tagName}">
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                         th:errors="*{name}">Error</div>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> <span th:text="#{admin.tags.create}">Add Tag</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <th:block th:if="${tagCreated}">
+        <script>
+            showToast(APP_CONFIG.messages['toast.admin.tags.created'], 'success');
+        </script>
+    </th:block>
+
+    <!-- Tag Table -->
+    <div class="card shadow overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th th:text="#{admin.tags.table.name}">Name</th>
+                        <th th:text="#{admin.tags.table.tasks}">Tasks</th>
+                        <th th:text="#{admin.tags.table.actions}">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="tag : ${tags}">
+                        <td>
+                            <a th:href="@{/tasks(tags=${tag.id}, userId='')}"
+                               class="badge bg-primary text-decoration-none"
+                               th:text="${tag.name}">Tag</a>
+                        </td>
+                        <td>
+                            <span th:text="${taskCounts[tag.id]}">0</span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger"
+                                    th:attr="hx-delete=@{/admin/tags/{id}(id=${tag.id})},
+                                             hx-confirm=#{admin.tags.delete.confirm(${tag.name}, ${taskCounts[tag.id]})},
+                                             data-confirm-title=#{admin.tags.delete.title},
+                                             data-confirm-text=#{action.delete},
+                                             data-confirm-header-class='bg-danger text-white',
+                                             data-confirm-btn-class='btn btn-danger'"
+                                    hx-swap="none">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(tags)}">
+                        <td colspan="3" class="text-center text-muted py-4" th:text="#{tag.empty}">No tags found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

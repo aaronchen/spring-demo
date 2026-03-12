@@ -27,6 +27,12 @@ body {
     transition: all 0.2s ease-in-out;
 }
 
+/* Required field indicator */
+.form-label-required::after {
+    content: " *";
+    color: var(--bs-danger);
+}
+
 /* Form validation styling improvements */
 .is-invalid {
     border-color: #dc3545 !important;

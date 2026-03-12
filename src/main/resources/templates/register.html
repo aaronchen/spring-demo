@@ -16,7 +16,7 @@
                     <form th:action="@{/register}" th:object="${registrationRequest}" method="post">
                         <!-- Name -->
                         <div class="mb-3">
-                            <label for="name" class="form-label fw-bold"
+                            <label for="name" class="form-label fw-bold form-label-required"
                                    th:text="#{register.field.name}">Full Name</label>
                             <input type="text" id="name" th:field="*{name}"
                                    class="form-control" th:classappend="${#fields.hasErrors('name')} ? 'is-invalid'"
@@ -29,7 +29,7 @@
 
                         <!-- Email -->
                         <div class="mb-3">
-                            <label for="email" class="form-label fw-bold"
+                            <label for="email" class="form-label fw-bold form-label-required"
                                    th:text="#{login.field.email}">Email</label>
                             <input type="email" id="email" th:field="*{email}"
                                    class="form-control" th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
@@ -42,7 +42,7 @@
 
                         <!-- Password -->
                         <div class="mb-3">
-                            <label for="password" class="form-label fw-bold"
+                            <label for="password" class="form-label fw-bold form-label-required"
                                    th:text="#{login.field.password}">Password</label>
                             <input type="password" id="password" th:field="*{password}"
                                    class="form-control" th:classappend="${#fields.hasErrors('password')} ? 'is-invalid'"
@@ -55,7 +55,7 @@
 
                         <!-- Confirm Password -->
                         <div class="mb-4">
-                            <label for="confirmPassword" class="form-label fw-bold"
+                            <label for="confirmPassword" class="form-label fw-bold form-label-required"
                                    th:text="#{register.field.confirmPassword}">Confirm Password</label>
                             <input type="password" id="confirmPassword" th:field="*{confirmPassword}"
                                    class="form-control" th:classappend="${#fields.hasErrors('confirmPassword')} ? 'is-invalid'"

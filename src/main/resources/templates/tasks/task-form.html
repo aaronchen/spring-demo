@@ -7,10 +7,9 @@
 
     <!-- Title -->
     <div class="mb-3">
-        <label for="title" class="form-label fw-bold">
-            <span th:text="#{task.field.title}">Title</span>
-            <span class="text-danger" th:if="${mode != 'view'}">*</span>
-        </label>
+        <label for="title" class="form-label fw-bold"
+               th:classappend="${mode != 'view'} ? 'form-label-required'"
+               th:text="#{task.field.title}">Title</label>
         <input type="text"
                th:field="*{title}"
                class="form-control"

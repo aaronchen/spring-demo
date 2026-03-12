@@ -22,6 +22,7 @@ public class User implements Auditable {
     public static final String FIELD_EMAIL = "email";
     public static final String FIELD_PASSWORD = "password";
     public static final String FIELD_ROLE = "role";
+    public static final String FIELD_ENABLED = "enabled";
     public static final String FIELD_TASKS = "tasks";
 
     @Id
@@ -50,6 +51,9 @@ public class User implements Auditable {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
+
+    @Column(nullable = false)
+    private boolean enabled = true;
 
     // LAZY: don't load all tasks for this user unless explicitly requested.
     // No cascade: deleting a user does NOT cascade-delete their tasks.
@@ -118,6 +122,14 @@ public class User implements Auditable {
         this.role = role;
     }
 
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
     public List<Task> getTasks() {
         return tasks;
     }
@@ -132,6 +144,7 @@ public class User implements Auditable {
         snapshot.put(FIELD_NAME, name);
         snapshot.put(FIELD_EMAIL, email);
         snapshot.put(FIELD_ROLE, role != null ? role.name() : null);
+        snapshot.put(FIELD_ENABLED, enabled);
         return snapshot;
     }
 

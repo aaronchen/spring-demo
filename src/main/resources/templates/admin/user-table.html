@@ -1,0 +1,69 @@
+<!--/* Bare fragment — returned by HTMX after user operations.
+     Also included from admin/users.html via th:replace. */-->
+<div id="user-table-content" xmlns:th="http://www.thymeleaf.org">
+    <div class="card shadow overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th th:text="#{admin.users.table.name}">Name</th>
+                        <th th:text="#{admin.users.table.email}">Email</th>
+                        <th th:text="#{admin.users.table.role}">Role</th>
+                        <th th:text="#{admin.users.table.status}">Status</th>
+                        <th th:text="#{admin.users.table.actions}">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="user : ${users}" th:classappend="${!user.enabled ? 'table-secondary' : ''}">
+                        <td th:text="${user.name}">Name</td>
+                        <td th:text="${user.email}">email@example.com</td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${user.role.name() == 'ADMIN' ? 'bg-success' : 'bg-secondary'}"
+                                  th:text="${user.role.name() == 'ADMIN'} ? #{role.admin} : #{role.user}">Role</span>
+                        </td>
+                        <td>
+                            <span th:if="${user.enabled}" class="badge bg-success"
+                                  th:text="#{admin.users.status.active}">Active</span>
+                            <span th:unless="${user.enabled}" class="badge bg-danger"
+                                  th:text="#{admin.users.status.disabled}">Disabled</span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-outline-primary"
+                                        th:attr="hx-get=@{/admin/users/{id}/edit(id=${user.id})}"
+                                        hx-target="#user-modal-content" hx-swap="innerHTML"
+                                        th:title="#{action.edit}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger user-reset-pw-btn"
+                                        th:attr="data-user-id=${user.id}, data-user-name=${user.name}"
+                                        th:title="#{admin.users.action.resetPassword}">
+                                    <i class="bi bi-key"></i>
+                                </button>
+                                <!--/* Enable button for disabled users */-->
+                                <button th:if="${!user.enabled}" class="btn btn-sm btn-outline-success"
+                                        th:attr="hx-post=@{/admin/users/{id}/enable(id=${user.id})}"
+                                        hx-swap="none"
+                                        th:title="#{admin.users.action.enable}">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                                <!--/* Disable/Delete buttons for enabled users */-->
+                                <th:block th:if="${user.enabled}">
+                                    <button class="btn btn-sm btn-outline-warning user-remove-btn"
+                                            th:attr="data-user-id=${user.id}, data-user-name=${user.name}"
+                                            th:title="#{admin.users.action.remove}">
+                                        <i class="bi bi-person-slash"></i>
+                                    </button>
+                                </th:block>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(users)}">
+                        <td colspan="5" class="text-center text-muted py-4" th:text="#{user.empty}">No users found.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

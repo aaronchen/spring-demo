@@ -1,11 +1,14 @@
 package cc.desuka.demo.dto;
 
+import cc.desuka.demo.model.User;
+import cc.desuka.demo.validation.Unique;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
+@Unique(entity = User.class, field = User.FIELD_EMAIL, message = "{user.email.unique}")
 public class RegistrationRequest {
 
     @NotBlank(message = "{user.name.notBlank}")

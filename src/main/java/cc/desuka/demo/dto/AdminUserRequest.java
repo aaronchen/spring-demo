@@ -1,6 +1,8 @@
 package cc.desuka.demo.dto;
 
 import cc.desuka.demo.model.Role;
+import cc.desuka.demo.model.User;
+import cc.desuka.demo.validation.Unique;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,7 +10,11 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
+@Unique(entity = User.class, field = User.FIELD_EMAIL, message = "{user.email.unique}")
 public class AdminUserRequest {
+
+    // Null on create, set on edit — used by @Unique to exclude self
+    private Long id;
 
     @NotBlank(message = "{user.name.notBlank}")
     @Size(max = 100, message = "{user.name.size}")
@@ -19,8 +25,8 @@ public class AdminUserRequest {
     @Email(message = "{user.email.invalid}")
     private String email;
 
-    @NotBlank(message = "{user.password.notBlank}")
-    @Size(min = 8, max = 72, message = "{user.password.size}")
+    // No bean validation — password is required for create but optional for edit.
+    // Controller validates manually for both cases.
     private String password;
 
     @NotNull

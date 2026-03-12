@@ -426,8 +426,7 @@ function renderTagFilter() {
         const name = cb ? cb.dataset.tagName : `Tag ${tagId}`;
         const pill = document.createElement('span');
         pill.className = 'badge bg-primary me-1';
-        pill.innerHTML = `${name} <a href="#" class="text-white text-decoration-none ms-1" `
-            + `onclick="toggleTagFilter('${tagId}'); return false;">&times;</a>`;
+        pill.innerHTML = `${name} <a href="#" class="text-white text-decoration-none ms-1" onclick="toggleTagFilter('${tagId}'); return false;">&times;</a>`;
         pillsContainer.appendChild(pill);
     });
     updateFilterPillsVisibility();

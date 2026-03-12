@@ -4,7 +4,9 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
@@ -22,12 +24,15 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
+    private final CommentRepository commentRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(UserRepository userRepository, TaskRepository taskRepository,
+                       CommentRepository commentRepository,
                        ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskRepository = taskRepository;
+        this.commentRepository = commentRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -50,6 +55,15 @@ public class UserService {
         return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(query, query);
     }
 
+    public List<User> getEnabledUsers() {
+        return userRepository.findByEnabledTrueOrderByNameAsc();
+    }
+
+    public List<User> searchEnabledUsers(String query) {
+        if (query == null || query.isBlank()) return getEnabledUsers();
+        return userRepository.findByEnabledTrueAndNameContainingIgnoreCaseOrEnabledTrueAndEmailContainingIgnoreCaseOrderByNameAsc(query, query);
+    }
+
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
     }
@@ -60,6 +74,69 @@ public class UserService {
                 AuditEvent.USER_CREATED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
                 AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
+    }
+
+    public User updateUser(Long userId, String name, String email, Role role) {
+        User user = getUserById(userId);
+        user.setName(name);
+        user.setEmail(email);
+        user.setRole(role);
+        User saved = userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_UPDATED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
+                AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    public long countCompletedTasks(Long userId) {
+        User user = getUserById(userId);
+        return taskRepository.findByUser(user).stream()
+                .filter(t -> t.getStatus() == TaskStatus.COMPLETED)
+                .count();
+    }
+
+    public long countComments(Long userId) {
+        return commentRepository.countByUserId(userId);
+    }
+
+    public long countAssignedTasks(Long userId) {
+        User user = getUserById(userId);
+        return taskRepository.findByUser(user).size();
+    }
+
+    public boolean canDelete(Long userId) {
+        return countCompletedTasks(userId) == 0 && countComments(userId) == 0;
+    }
+
+    public User disableUser(Long userId) {
+        User user = getUserById(userId);
+        user.setEnabled(false);
+        // Unassign open/in-progress tasks and reset to OPEN
+        unassignTasks(user);
+        User saved = userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_DISABLED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
+                AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    public User enableUser(Long userId) {
+        User user = getUserById(userId);
+        user.setEnabled(true);
+        User saved = userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_ENABLED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
+                AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    public void resetPassword(Long userId, String encodedPassword) {
+        User user = getUserById(userId);
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_PASSWORD_RESET, User.class, userId, SecurityUtils.getCurrentPrincipal(),
+                AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
     }
 
     public User updateRole(Long userId, Role role) {
@@ -76,15 +153,22 @@ public class UserService {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
         // Unassign all tasks before deleting — prevents FK constraint violation.
-        // The @OneToMany collection is LAZY, so we query via TaskRepository instead.
-        List<Task> tasks = taskRepository.findByUser(user);
-        for (Task task : tasks) {
-            task.setUser(null);
-        }
-        taskRepository.saveAll(tasks);
+        unassignTasks(user);
         userRepository.delete(user);
         eventPublisher.publishEvent(new AuditEvent(
                 AuditEvent.USER_DELETED, User.class, id, SecurityUtils.getCurrentPrincipal(),
                 snapshot));
+    }
+
+    private void unassignTasks(User user) {
+        List<Task> tasks = taskRepository.findByUser(user);
+        for (Task task : tasks) {
+            task.setUser(null);
+            // Reset non-completed tasks to OPEN — new owner hasn't started work
+            if (task.getStatus() != TaskStatus.COMPLETED) {
+                task.setStatus(TaskStatus.OPEN);
+            }
+        }
+        taskRepository.saveAll(tasks);
     }
 }

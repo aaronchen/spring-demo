@@ -184,7 +184,7 @@ class SearchableSelect extends HTMLElement {
     _showStatus(message) {
         this._menu.innerHTML = '';
         const li = document.createElement('li');
-        li.innerHTML = '<span class="dropdown-item text-muted">' + message + '</span>';
+        li.innerHTML = `<span class="dropdown-item text-muted">${message}</span>`;
         this._menu.appendChild(li);
     }
 
@@ -336,7 +336,7 @@ class SearchableSelect extends HTMLElement {
             if (!this._isOpen) return;
             const inputH = this._input.offsetHeight;
             const menuH = this._menu.offsetHeight;
-            this._wrapper.style.setProperty('--ss-ring-height', (inputH + menuH - 1) + 'px');
+            this._wrapper.style.setProperty('--ss-ring-height', `${inputH + menuH - 1}px`);
         });
     }
 

@@ -37,6 +37,10 @@ public class TagService {
         return tagRepository.findAllById(ids);
     }
 
+    public int countTasksByTagId(Long tagId) {
+        return getTagById(tagId).getTasks().size();
+    }
+
     public Tag createTag(Tag tag) {
         Tag saved = tagRepository.save(tag);
         eventPublisher.publishEvent(new AuditEvent(

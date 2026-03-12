@@ -55,12 +55,6 @@ public class RegistrationController {
                     "Passwords do not match.");
         }
 
-        // Duplicate email check
-        if (userService.findByEmail(registrationRequest.getEmail()).isPresent()) {
-            result.rejectValue("email", "register.error.emailExists",
-                    "An account with this email already exists.");
-        }
-
         if (result.hasErrors()) {
             return "register";
         }

@@ -1,7 +1,7 @@
 // Shared browser utilities
 
 function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
     return match ? match[1] : null;
 }
 
@@ -40,15 +40,15 @@ function showToast(message, type) {
     toastEl.setAttribute('role', 'alert');
     toastEl.setAttribute('aria-live', 'assertive');
     toastEl.setAttribute('aria-atomic', 'true');
-    toastEl.innerHTML =
-        '<div class="d-flex align-items-center">' +
-            '<div class="toast-icon fs-4 px-3">' +
-                '<i class="bi ' + icon + '"></i>' +
-            '</div>' +
-            '<div class="toast-divider"></div>' +
-            '<div class="toast-body flex-grow-1">' + message + '</div>' +
-            '<button type="button" class="btn-close btn-close-white me-3 flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>' +
-        '</div>';
+    toastEl.innerHTML = `
+        <div class="d-flex align-items-center">
+            <div class="toast-icon fs-4 px-3">
+                <i class="bi ${icon}"></i>
+            </div>
+            <div class="toast-divider"></div>
+            <div class="toast-body flex-grow-1">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-3 flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>`;
 
     container.appendChild(toastEl);
 
@@ -66,16 +66,19 @@ function showToast(message, type) {
 
 // ── Confirm dialog ──────────────────────────────────────────────────────────
 // showConfirm(options, onConfirm) — shows a Bootstrap modal confirmation dialog.
-// The modal shell is lazy-created on first use; content is updated per call from options.
+// A fresh modal is created each call and destroyed on hide (avoids Bootstrap
+// backdrop stacking issues with nested modals).
 //
-// Options (only message is required):
-//   message      — body text (required)
-//   title        — header title (default: messages['action.confirm'] || 'Confirm')
-//   confirmText  — confirm button label (default: messages['action.confirm'] || 'Confirm')
-//   cancelText   — cancel button label (default: messages['action.cancel'] || 'Cancel')
+// Options (message is required):
+//   message      — modal body content; accepts plain text or HTML (required)
+//   title        — header title (default: APP_CONFIG 'action.confirm' || 'Confirm')
+//   confirmText  — confirm button label (default: APP_CONFIG 'action.confirm' || 'Confirm')
+//   cancelText   — cancel button label (default: APP_CONFIG 'action.cancel' || 'Cancel')
 //   headerClass  — header CSS classes (default: 'bg-danger text-white')
 //   confirmClass — confirm button CSS classes (default: 'btn btn-danger')
 //   width        — modal width (default: '420px', via CSS custom property)
+//
+// onConfirm callback: return false to keep the modal open (e.g. for input validation).
 //
 // HTMX integration: intercepts htmx:confirm so any element with hx-confirm gets
 // the styled modal. Use data-confirm-* attributes to pass options from HTML:
@@ -88,10 +91,10 @@ const CONFIRM_DEFAULTS = {
 };
 
 function showConfirm(options, onConfirm) {
-    const messages = window.APP_CONFIG ? APP_CONFIG.messages : {};
-    const title       = options.title || messages['action.confirm'] || 'Confirm';
-    const cancelText  = options.cancelText || messages['action.cancel'] || 'Cancel';
-    const confirmText = options.confirmText || messages['action.confirm'] || 'Confirm';
+    const defaults = window.APP_CONFIG ? APP_CONFIG.messages : {};
+    const title       = options.title || defaults['action.confirm'] || 'Confirm';
+    const cancelText  = options.cancelText || defaults['action.cancel'] || 'Cancel';
+    const confirmText = options.confirmText || defaults['action.confirm'] || 'Confirm';
     const headerClass  = options.headerClass || CONFIRM_DEFAULTS.headerClass;
     const confirmClass = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
     const width = options.width || '420px';
@@ -115,7 +118,7 @@ function showConfirm(options, onConfirm) {
                             data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <p class="mb-0">${options.message}</p>
+                    ${options.message}
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -129,8 +132,8 @@ function showConfirm(options, onConfirm) {
         </div>`;
 
     modal.querySelector('.confirm-modal-btn').addEventListener('click', function () {
+        if (onConfirm() === false) return; // return false to keep modal open
         bsModal.hide();
-        onConfirm();
     });
 
     modal.addEventListener('hidden.bs.modal', function () {
