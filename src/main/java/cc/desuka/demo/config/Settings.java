@@ -25,8 +25,11 @@ public class Settings {
     public static final String KEY_SITE_NAME = "siteName";
     public static final String KEY_REGISTRATION_ENABLED = "registrationEnabled";
     public static final String KEY_MAINTENANCE_BANNER = "maintenanceBanner";
+    public static final String THEME_DEFAULT = "default";
+    public static final String THEME_WORKSHOP = "workshop";
+    public static final String THEME_INDIGO = "indigo";
 
-    private String theme = "";
+    private String theme = THEME_DEFAULT;
     private String siteName = "Spring Workshop";
     private boolean registrationEnabled = true;
     private String maintenanceBanner = "";

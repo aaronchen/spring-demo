@@ -231,6 +231,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getEntityHistory(entityType, entityId)` — entity-specific audit trail (used by task detail/modal)
   - Both methods resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
 
+- `service/SettingService.java` - Setting persistence with audit event publishing
+  - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
+  - `updateValue(key, value)` — upserts a setting row; publishes `AuditEvent` with before/after diff
+  - Used by `GlobalModelAttributes` (load) and `SettingsController` (update)
+
 ### Controller Layer
 - `controller/api/TaskApiController.java` - Task REST API endpoints
   - `@RestController` with `/api/tasks` base path
@@ -290,6 +295,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `POST /admin/users/{id}/disable` — disables user; triggers `userSaved` event
   - `POST /admin/users/{id}/enable` — enables user; triggers `userSaved` event
   - `GET /admin/users/{id}/info` — returns JSON with `name`, `canDelete`, `completedTasks`, `comments`, `assignedTasks` (used by JS confirmation dialog)
+
+- `controller/admin/SettingsController.java` - Admin settings page (theme, site name, registration, maintenance banner)
+  - `@Controller` with `/admin/settings` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
+  - `ThemeOption` record — holds theme id and preview swatch colors
+  - `THEMES` list — single source of truth for valid themes; used for both rendering and validation
+  - `GET /admin/settings` — settings page with theme picker
+  - `POST /admin/settings/general` — saves site name, registration toggle, maintenance banner; triggers `settingsSaved` event
+  - `POST /admin/settings/theme` — validates theme against `THEMES` list (400 if invalid), saves; triggers `themeSaved` event with theme id
 
 - `controller/admin/AuditController.java` - Audit log page
   - `@Controller` with `/admin/audit` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
@@ -397,8 +410,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects shared attributes into every Thymeleaf model
   - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
+  - `@ModelAttribute("settings")` — loads `Settings` POJO via `SettingService.load()` on every request
   - `@ModelAttribute("currentUser")` — resolves authenticated `User` from `SecurityContextHolder`; null for anonymous
   - Used by HTMX attributes (`th:attr="hx-get=${appRoutes.tasks + ...}"`) where `@{}` URL syntax cannot be used
+
+- `config/Settings.java` - Typed POJO for site-wide settings with defaults (not a JPA entity)
+  - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name)
+  - `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` — theme id constants
+  - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`)
 
 ### Exception Handling
 - `exception/EntityNotFoundException.java` - Custom unchecked exception for missing entities
@@ -493,6 +512,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/admin/users.html` - Admin user management page (modal shell for create/edit; JS: `htmx:afterSwap` shows modal, `userSaved` refreshes table, delete/disable confirmation via `showConfirm`)
 - `templates/admin/user-table.html` - User table fragment (bare file: status column with Active/Disabled badges, edit/enable/remove buttons, disabled rows with `table-secondary`)
 - `templates/admin/user-modal.html` - User create/edit modal form (shared for both; hidden `id` field, password field on create only; uses `data-method`/`data-action` with inline JS for dynamic `hx-post`/`hx-put`)
+- `templates/admin/settings.html` - Admin settings page (general settings form + theme picker grid)
+  - General settings: site name input, registration toggle, maintenance banner input; saved via `htmx.ajax()` POST
+  - Theme picker: color swatch cards with `hx-post`; JS `themeSaved` listener applies theme live and updates active state
 - `templates/admin/audit.html` - Audit log page (admin only)
 - `templates/admin/audit-table.html` - Audit table fragment (HTMX partial)
 
@@ -502,6 +524,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles
 - `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels, active state styles for 3 status filter buttons)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
+- `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type)` for toast notifications; `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`

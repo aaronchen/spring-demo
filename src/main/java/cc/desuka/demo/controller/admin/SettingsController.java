@@ -26,11 +26,11 @@ public class SettingsController {
     public record ThemeOption(String id, List<String> colors) {}
 
     private static final List<ThemeOption> THEMES = List.of(
-            new ThemeOption("",
+            new ThemeOption(Settings.THEME_DEFAULT,
                     List.of("#0d6efd", "#198754", "#ffc107", "#dc3545")),
-            new ThemeOption("workshop",
+            new ThemeOption(Settings.THEME_WORKSHOP,
                     List.of("#4fb5ee", "#4db17f", "#e6a740", "#f44336")),
-            new ThemeOption("indigo",
+            new ThemeOption(Settings.THEME_INDIGO,
                     List.of("#6366f1", "#14b8a6", "#f59e0b", "#f43f5e"))
     );
 
@@ -56,14 +56,16 @@ public class SettingsController {
 
     @PostMapping("/theme")
     @ResponseBody
-    public ResponseEntity<Void> setTheme(@RequestParam(defaultValue = "") String theme) {
-        String value = theme.isBlank() ? null : theme;
-        settingService.updateValue(Settings.KEY_THEME, value);
+    public ResponseEntity<Void> setTheme(@RequestParam(defaultValue = Settings.THEME_DEFAULT) String theme) {
+        if (THEMES.stream().noneMatch(t -> t.id().equals(theme))) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        settingService.updateValue(Settings.KEY_THEME, theme);
 
         return ResponseEntity.ok()
                 .header("HX-Trigger",
-                        "{\"themeSaved\": {\"theme\": " +
-                        (value != null ? "\"" + value + "\"" : "null") + "}}")
+                        "{\"themeSaved\": {\"theme\": \"" + theme + "\"}}")
                 .build();
     }
 }

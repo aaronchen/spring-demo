@@ -72,7 +72,7 @@
                 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 g-3">
                     <div th:each="theme : ${themes}" class="col">
                         <div class="card h-100 theme-card"
-                             th:classappend="${(theme.id == '' and settings.theme == null) or theme.id == settings.theme} ? 'border-primary shadow' : 'border'"
+                             th:classappend="${theme.id == settings.theme} ? 'border-primary shadow' : 'border'"
                              style="cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;"
                              hx-post="/admin/settings/theme"
                              hx-swap="none"
@@ -87,12 +87,12 @@
                             <!-- Theme info -->
                             <div class="card-body py-2 px-3 text-center">
                                 <div class="fw-semibold small"
-                                     th:text="#{'admin.settings.theme.' + (${theme.id.isEmpty() ? 'default' : theme.id}) + '.name'}">Theme</div>
+                                     th:text="#{'admin.settings.theme.' + ${theme.id} + '.name'}">Theme</div>
                                 <div class="text-muted" style="font-size: 0.75rem;"
-                                     th:text="#{'admin.settings.theme.' + (${theme.id.isEmpty() ? 'default' : theme.id}) + '.description'}">Description</div>
+                                     th:text="#{'admin.settings.theme.' + ${theme.id} + '.description'}">Description</div>
 
                                 <!-- Active badge -->
-                                <span th:if="${(theme.id == '' and settings.theme == null) or theme.id == settings.theme}"
+                                <span th:if="${theme.id == settings.theme}"
                                       class="badge bg-primary mt-1">
                                     <i class="bi bi-check-lg"></i>
                                     <span th:text="#{admin.settings.theme.active}">Active</span>
@@ -112,16 +112,16 @@
         // Theme saved — apply live and update active state
         document.body.addEventListener('themeSaved', function(e) {
             const theme = e.detail.theme;
-            if (theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-            } else {
+            if (theme === 'default') {
                 document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', theme);
             }
             showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
 
             document.querySelectorAll('.theme-card').forEach(function(card) {
                 const cardTheme = JSON.parse(card.getAttribute('hx-vals')).theme;
-                const isActive = cardTheme === (theme || '');
+                const isActive = cardTheme === theme;
                 card.classList.toggle('border-primary', isActive);
                 card.classList.toggle('shadow', isActive);
                 card.classList.toggle('border', !isActive);

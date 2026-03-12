@@ -601,7 +601,7 @@ public class DataLoader implements CommandLineRunner {
     commentRepository.saveAll(comments);
 
     // ── Settings ──────────────────────────────────────────────────────────
-    settingRepository.save(new Setting(Settings.KEY_THEME, "workshop"));
+    settingRepository.save(new Setting(Settings.KEY_THEME, Settings.THEME_WORKSHOP));
 
     System.out.println("Seed data loaded: " + userRepository.count() + " users, "
         + tagRepository.count() + " tags, "

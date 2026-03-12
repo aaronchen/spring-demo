@@ -23,7 +23,7 @@
     <link rel="stylesheet" th:href="@{/css/theme.css}">
 
     <!--/* Theme attribute set server-side via Settings */-->
-    <meta th:if="${settings != null and settings.theme != null and !settings.theme.isEmpty()}" name="_theme" th:content="${settings.theme}">
+    <meta th:if="${settings != null and settings.theme != 'default'}" name="_theme" th:content="${settings.theme}">
     <script>!function(){const m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
 
     <!-- Web Component themes -->

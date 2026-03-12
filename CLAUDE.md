@@ -304,10 +304,11 @@ Admin-managed settings stored in the `settings` table as key/value rows. The sys
 
 Custom color schemes activated via `data-theme` attribute on `<html>`. Without it, stock Bootstrap renders.
 
+- **`Settings.java`** — `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` constants; default theme stored as `"default"` (not null)
 - **`theme.css`** — palette tokens (`--theme-*`) per theme, mapped to Bootstrap `--bs-*` variables in shared `[data-theme]` rules
-- **`SettingsController`** — theme picker UI with color swatch cards; `ThemeOption` record holds preview colors (duplicated from CSS — unavoidable since CSS is client-side)
+- **`SettingsController`** — theme picker UI with color swatch cards; `ThemeOption` record holds preview colors (duplicated from CSS — unavoidable since CSS is client-side); validates theme against known `THEMES` list
 - FOUC prevention: `<meta name="_theme">` + inline JS in `<head>` sets `data-theme` before CSS renders
-- Adding a new theme: (1) add `[data-theme="name"]` palette in `theme.css`, (2) add `ThemeOption` in `SettingsController.THEMES`, (3) add `admin.settings.theme.<name>.{name,description}` to `messages.properties`
+- Adding a new theme: (1) add `THEME_*` constant in `Settings.java`, (2) add `[data-theme="name"]` palette in `theme.css`, (3) add `ThemeOption` in `SettingsController.THEMES`, (4) add `admin.settings.theme.<name>.{name,description}` to `messages.properties`
 
 ### Security Authorization Patterns
 
