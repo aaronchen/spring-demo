@@ -7,6 +7,16 @@
     </h5>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
+<!--/* Stale data banner — shown when another user modifies this task while modal is open */-->
+<div th:if="${mode != 'create'}" id="modal-stale-banner"
+     class="alert alert-info d-none m-2 mb-0 d-flex align-items-center" role="alert">
+    <div>
+        <i class="bi bi-arrow-repeat me-1"></i>
+        <small th:text="#{task.stale.detail}">This task was modified by another user.</small>
+    </div>
+    <a href="#" id="modal-stale-refresh" class="alert-link ms-auto"
+       th:text="#{task.stale.refresh}">Refresh</a>
+</div>
 <div class="d-flex">
     <!-- Left Panel: Form -->
     <div style="flex: 1; min-width: 0;">
@@ -93,3 +103,34 @@
         <span th:text="${mode == 'edit'} ? #{action.updateTask} : #{action.createTask}">Submit</span>
     </button>
 </div>
+<script th:if="${mode != 'create'}" th:inline="javascript">
+    (function() {
+        const taskId = /*[[${task.id}]]*/ 0;
+        const refreshUrl = /*[[${mode == 'edit' ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}]]*/ '';
+        const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
+        const banner = document.getElementById('modal-stale-banner');
+        const refreshLink = document.getElementById('modal-stale-refresh');
+        if (!window.stompClient || !banner) return;
+
+        const sub = { ref: null };
+        window.stompClient.onConnect(function(client) {
+            sub.ref = client.subscribe('/topic/tasks', function(message) {
+                const data = JSON.parse(message.body);
+                if (currentUserId && String(data.userId) === currentUserId) return;
+                if (data.taskId !== taskId) return;
+                banner.classList.remove('d-none');
+            });
+        });
+
+        refreshLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            htmx.ajax('GET', refreshUrl,
+                {target: '#task-modal-content', swap: 'innerHTML'});
+        });
+
+        // Unsubscribe when modal closes to avoid duplicate subscriptions
+        document.getElementById('task-modal')?.addEventListener('hidden.bs.modal', function() {
+            if (sub.ref) sub.ref.unsubscribe();
+        }, { once: true });
+    })();
+</script>

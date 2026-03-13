@@ -17,7 +17,7 @@ let activeSorts = [{field: 'createdAt', direction: 'desc'}];
 let currentPage = 0;
 let pageSize = parseInt(getCookie('pageSize') || '25');
 let currentView = 'cards';
-let currentUserId = null;
+let selectedUserId = null;
 let selectedTagIds = [];
 const TASKS_BASE = APP_CONFIG.routes.tasks;
 
@@ -37,7 +37,7 @@ function buildUrl(page) {
     if (page > 0) params.set('page', page);
     // Always include userId: actual ID for "Mine"/specific user, empty for "All Users".
     // This ensures bookmarked URLs preserve the user filter choice.
-    params.set('userId', currentUserId || '');
+    params.set('userId', selectedUserId || '');
     if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
     if (currentView !== 'cards') params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
@@ -208,11 +208,11 @@ function initFromUrl() {
 
     // User filter: explicit URL param wins; otherwise keep default (Mine)
     if (params.has('userId')) {
-        currentUserId = params.get('userId') || null; // empty string → null (All Users)
+        selectedUserId = params.get('userId') || null; // empty string → null (All Users)
     }
     // If filtering by another user, read their name from the data attribute
     const mineId = document.getElementById('user-filter-mine')?.dataset.userId;
-    if (currentUserId && currentUserId !== mineId) {
+    if (selectedUserId && selectedUserId !== mineId) {
         const filterUserName = document.getElementById('user-filter-mine')?.dataset.filterUserName;
         renderUserFilter(filterUserName || null);
     } else {
@@ -231,21 +231,21 @@ function initFromUrl() {
 // ── User filter ──
 
 function setUserFilter(userId, userName) {
-    currentUserId = String(userId);
+    selectedUserId = String(userId);
     renderUserFilter(userName);
     doSearch(true);
 }
 
 function setMyFilter() {
     const btn = document.getElementById('user-filter-mine');
-    currentUserId = btn.dataset.userId;
+    selectedUserId = btn.dataset.userId;
     renderUserFilter(null);
     doSearch(true);
 }
 
 function clearUserFilter() {
     // "All Users" button: always show all users
-    currentUserId = null;
+    selectedUserId = null;
     renderUserFilter(null);
     doSearch(true);
 }
@@ -253,7 +253,7 @@ function clearUserFilter() {
 function resetUserFilter() {
     // "×" on user label: go back to Mine
     const mineBtn = document.getElementById('user-filter-mine');
-    currentUserId = mineBtn?.dataset.userId;
+    selectedUserId = mineBtn?.dataset.userId;
     renderUserFilter(null);
     doSearch(true);
 }
@@ -266,13 +266,13 @@ function renderUserFilter(userName) {
     const clearIcon = document.getElementById('user-filter-clear');
     const defaultLabel = mineBtn.dataset.defaultLabel || label.textContent;
 
-    allBtn.classList.toggle('active', currentUserId === null);
-    mineBtn.classList.toggle('active', currentUserId !== null);
+    allBtn.classList.toggle('active', selectedUserId === null);
+    mineBtn.classList.toggle('active', selectedUserId !== null);
 
-    if (currentUserId === null) {
+    if (selectedUserId === null) {
         label.textContent = defaultLabel;
         clearIcon.classList.add('d-none');
-    } else if (currentUserId === mineBtn.dataset.userId) {
+    } else if (selectedUserId === mineBtn.dataset.userId) {
         label.textContent = defaultLabel;
         clearIcon.classList.add('d-none');
     } else {
@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mineBtn) {
         const label = document.getElementById('user-filter-label');
         if (label) mineBtn.dataset.defaultLabel = label.textContent;
-        if (!currentUserId) currentUserId = mineBtn.dataset.userId;
+        if (!selectedUserId) selectedUserId = mineBtn.dataset.userId;
     }
 
     initFromUrl();
@@ -561,4 +561,26 @@ document.addEventListener('DOMContentLoaded', function() {
         initFromUrl();
         doSearch(false);
     });
+
+    // ── Live task updates via WebSocket ──────────────────────────────────
+    const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
+    const staleBanner = document.getElementById('stale-banner');
+    const staleRefresh = document.getElementById('stale-banner-refresh');
+
+    if (window.stompClient && staleBanner) {
+        window.stompClient.onConnect(function(client) {
+            client.subscribe('/topic/tasks', function(message) {
+                const data = JSON.parse(message.body);
+                // Ignore own actions
+                if (currentUserId && String(data.userId) === currentUserId) return;
+                staleBanner.classList.remove('d-none');
+            });
+        });
+
+        staleRefresh.addEventListener('click', function(e) {
+            e.preventDefault();
+            staleBanner.classList.add('d-none');
+            doSearch(false);
+        });
+    }
 });

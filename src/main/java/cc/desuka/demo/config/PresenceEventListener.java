@@ -1,5 +1,6 @@
 package cc.desuka.demo.config;
 
+import cc.desuka.demo.dto.PresenceResponse;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.PresenceService;
@@ -11,12 +12,9 @@ import org.springframework.web.socket.messaging.SessionConnectEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
 import java.security.Principal;
-import java.util.List;
 
 @Component
 public class PresenceEventListener {
-
-    private record PresencePayload(List<String> users, int count) {}
 
     private final PresenceService presenceService;
     private final SimpMessagingTemplate messagingTemplate;
@@ -47,7 +45,7 @@ public class PresenceEventListener {
     }
 
     private void broadcastPresence() {
-        PresencePayload payload = new PresencePayload(
+        PresenceResponse payload = new PresenceResponse(
                 presenceService.getOnlineUsers(),
                 presenceService.getOnlineCount()
         );

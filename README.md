@@ -39,6 +39,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Online Presence** - Real-time online user count and list in navbar via WebSocket + STOMP
 - **Notification Bell** - Real-time push notifications with unread badge, dropdown list, mark-as-read, and mark-all-as-read
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
+- **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles

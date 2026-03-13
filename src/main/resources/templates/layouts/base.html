@@ -36,6 +36,8 @@
          that bypass <form th:action> (toggle buttons, delete confirm button). */-->
     <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
     <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
+    <!--/* Current user ID — used by JS to ignore self-triggered WebSocket events */-->
+    <meta name="_userId" th:content="${currentUser?.id}">
 </head>
 <body>
     <!-- Navigation + Maintenance Banner Fragment -->
@@ -206,14 +208,13 @@
         <script th:src="@{/js/utils.js}"></script>
         <!-- Reusable Web Components -->
         <script th:src="@{/js/components/searchable-select.js}"></script>
-        <!-- STOMP.js client via WebJars -->
-        <script th:src="@{/webjars/stomp__stompjs/7.1.1/bundles/stomp.umd.min.js}"></script>
-        <!-- Shared WebSocket client (must load before presence/notifications) -->
-        <script th:src="@{/js/websocket.js}"></script>
-        <!-- Online presence -->
-        <script th:src="@{/js/presence.js}"></script>
-        <!-- Notifications -->
-        <script th:src="@{/js/notifications.js}"></script>
+        <!--/* WebSocket scripts — only load for authenticated users */-->
+        <th:block sec:authorize="isAuthenticated()">
+            <script th:src="@{/webjars/stomp__stompjs/7.1.1/bundles/stomp.umd.min.js}"></script>
+            <script th:src="@{/js/websocket.js}"></script>
+            <script th:src="@{/js/presence.js}"></script>
+            <script th:src="@{/js/notifications.js}"></script>
+        </th:block>
     </div>
 </body>
 </html>

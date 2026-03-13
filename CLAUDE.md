@@ -408,6 +408,13 @@ Real-time features use Spring WebSocket with STOMP protocol:
 - **`PresenceService`** — `ConcurrentHashMap` tracks online users by WebSocket session
 - **`PresenceEventListener`** — listens for `SessionConnectEvent`/`SessionDisconnectEvent`, broadcasts presence changes to `/topic/presence`
 - **`NotificationService.create()`** — saves to DB first, then pushes to user via `SimpMessagingTemplate.convertAndSendToUser(email, "/queue/notifications", payload)`
+- **`TaskService.broadcastTaskChange()`** — broadcasts `TaskChangeEvent` to `/topic/tasks` on create/update/delete/toggle; clients show stale-data banner
+
+**Live task update banner** — when another user modifies a task, viewers see an info banner with a "Refresh" link:
+- Task list page: subscribes to `/topic/tasks`, shows banner for any task change, "Refresh" re-runs current filters via `doSearch()`
+- Task detail page: subscribes to `/topic/tasks`, filters by specific task ID, "Refresh" reloads page
+- Task modal: subscribes on open, unsubscribes on close, "Refresh" re-fetches modal content via HTMX
+- Self-filtering: `<meta name="_userId">` exposes current user ID; own changes are ignored
 
 **Client-side connection** (`websocket.js`):
 ```javascript
@@ -424,6 +431,8 @@ document.dispatchEvent(new CustomEvent('notification:received', { detail: data }
 ```
 
 `window.notificationHelpers` exposes `getIcon()`, `formatTime()`, `escapeHtml()`, `fire()` for the notifications page to reuse.
+
+**WebSocket payload convention:** payloads shared by multiple classes (e.g., `PresenceResponse` used by both REST API and WebSocket broadcast) go in `dto/`. Single-producer payloads also go in `dto/` as records (e.g., `TaskChangeEvent`). Naming: `*Response` for data returned to clients, `*Event` for push-only broadcasts.
 
 ### SecurityUtils Pattern
 
