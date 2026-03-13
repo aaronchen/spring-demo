@@ -1,6 +1,7 @@
 package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
+import cc.desuka.demo.dto.TaskChangeEvent;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
@@ -17,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +27,8 @@ import java.util.Map;
 @Service
 public class TaskService {
 
+
+
   private final TaskRepository taskRepository;
   private final TagService tagService;
   private final UserService userService;
@@ -32,12 +36,14 @@ public class TaskService {
   private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
   private final MessageSource messageSource;
+  private final SimpMessagingTemplate messagingTemplate;
 
   public TaskService(TaskRepository taskRepository, TagService tagService,
                      UserService userService, CommentService commentService,
                      NotificationService notificationService,
                      ApplicationEventPublisher eventPublisher,
-                     MessageSource messageSource) {
+                     MessageSource messageSource,
+                     SimpMessagingTemplate messagingTemplate) {
     this.taskRepository = taskRepository;
     this.tagService = tagService;
     this.userService = userService;
@@ -45,6 +51,7 @@ public class TaskService {
     this.notificationService = notificationService;
     this.eventPublisher = eventPublisher;
     this.messageSource = messageSource;
+    this.messagingTemplate = messagingTemplate;
   }
 
   public List<Task> getAllTasks() {
@@ -66,6 +73,7 @@ public class TaskService {
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(saved.toAuditSnapshot())));
     notifyAssignment(saved, SecurityUtils.getCurrentUser());
+    broadcastTaskChange("created", saved.getId());
     return saved;
   }
 
@@ -106,6 +114,7 @@ public class TaskService {
     if (assignmentChanged) {
       notifyAssignment(saved, SecurityUtils.getCurrentUser());
     }
+    broadcastTaskChange("updated", saved.getId());
     return saved;
   }
 
@@ -117,6 +126,7 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_DELETED, Task.class, id, SecurityUtils.getCurrentPrincipal(),
         snapshot));
+    broadcastTaskChange("deleted", id);
   }
 
   public List<Task> getIncompleteTasks() {
@@ -151,7 +161,15 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
+    broadcastTaskChange("updated", saved.getId());
     return saved;
+  }
+
+  private void broadcastTaskChange(String action, Long taskId) {
+    User current = SecurityUtils.getCurrentUser();
+    long actorId = current != null ? current.getId() : 0L;
+    messagingTemplate.convertAndSend("/topic/tasks",
+        new TaskChangeEvent(action, taskId, actorId));
   }
 
   private void notifyAssignment(Task task, User actor) {

@@ -195,6 +195,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `id`, `type` (String), `message`, `link`, `read`, `createdAt` (`LocalDateTime`), `actorName`
   - Lombok `@Data`
 
+- `dto/TaskChangeEvent.java` - Record for WebSocket task change broadcast payload
+  - Fields: `action` (String), `taskId` (long), `userId` (long)
+  - Used by `TaskService` to broadcast to `/topic/tasks` on create/update/delete/advanceStatus
+
+- `dto/PresenceResponse.java` - Record for presence data
+  - Fields: `users` (`List<String>`), `count` (int)
+  - Used by both `PresenceApiController` (REST response) and `PresenceEventListener` (WebSocket broadcast to `/topic/presence`)
+
 - `dto/AdminUserRequest.java` - Admin user create/edit form DTO
   - Fields: `id` (null on create, set on edit — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email), `password` (no bean validation — controller validates manually: required on create, ignored on edit), `role` (required, defaults to USER)
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
@@ -233,12 +241,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event
 
 - `service/TaskService.java` - Business logic layer
-  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
+  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher`, `SimpMessagingTemplate` (uses service layer instead of direct repository access for tags, users, and comments)
   - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`
   - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN (replaces `toggleComplete`)
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
   - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
   - `notifyAssignment()` — private helper; sends TASK_ASSIGNED notification when task is assigned to a different user (skips self-assignment); uses `SecurityUtils.getCurrentUser()` for actor resolution
+  - `broadcastTaskChange(action, taskId)` — private helper; broadcasts `TaskChangeEvent` to `/topic/tasks` via `SimpMessagingTemplate`; called on create, update, delete, and advanceStatus
 
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
@@ -316,7 +325,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/api/PresenceApiController.java` - Presence REST API
   - `@RestController`
-  - `GET /api/presence` — returns `{ users: [...], count: N }`; needed because `SessionConnectEvent` fires before client subscription completes
+  - `GET /api/presence` — returns `PresenceResponse` record (`{ users: [...], count: N }`); needed because `SessionConnectEvent` fires before client subscription completes
 
 - `controller/api/NotificationApiController.java` - Notification REST API endpoints
   - `@RestController` with `/api/notifications` base path
@@ -475,7 +484,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - On connect: resolves user name via `SecurityUtils.getUserFrom(principal)`, registers with `PresenceService`
   - On disconnect: removes session from `PresenceService`
   - Broadcasts updated presence payload (`{ users: [...], count: N }`) to `/topic/presence` after each event
-  - `PresencePayload` — private record for the broadcast message
+  - Uses shared `PresenceResponse` DTO for the broadcast message (replaced private `PresencePayload` record)
 
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
@@ -538,7 +547,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
-  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon
+  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering)
+  - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (`stomp.umd.min.js`, `websocket.js`, `presence.js`, `notifications.js`) — prevents connection attempts for anonymous users
   - `navbar` - navigation bar with auth-aware elements:
     - Left nav links: Tasks, Tags, Users
     - Anonymous: shows Register link
@@ -560,6 +570,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/tasks.html` - Main task list page
   - Live search (JS-debounced, 300ms), status filter buttons (All/Open/In Progress/Completed/Overdue, all btn-sm), priority dropdown filter, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown (includes priority and due date), view toggle (cards/table)
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
+  - Stale-data banner (`#stale-data-banner`) — hidden by default; shown by JS when a WebSocket task change event is received from another user; click refreshes the task list
   - Contains two shared modal shells loaded once per page:
     - `#task-modal` — create/edit form, content loaded via HTMX
     - `#task-delete-modal` — delete confirmation, populated via `show.bs.modal` JS event
@@ -579,8 +590,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
-- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode)
-- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute
+- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode); stale-data banner shown via WebSocket when another user modifies the same task
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner shown via WebSocket when another user modifies the same task
 
 ### Notification Views
 - `templates/notifications.html` - Full notifications page
@@ -633,7 +644,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Manages navbar badge count and dropdown notification list
   - Exposes `window.notificationHelpers` for the full notifications page to reuse rendering logic
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`
+- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)

@@ -11,6 +11,17 @@
         <div class="row justify-content-center">
             <div class="col-lg-8 col-md-10"
                  th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
+                <!-- Stale data banner -->
+                <div th:if="${mode != 'create'}" id="stale-banner"
+                     class="alert alert-info d-none mb-3 d-flex align-items-center" role="alert">
+                    <div>
+                        <i class="bi bi-arrow-repeat me-1"></i>
+                        <span th:text="#{task.stale.detail}">This task was modified by another user.</span>
+                    </div>
+                    <a href="#" id="stale-banner-refresh" class="alert-link ms-auto"
+                       th:text="#{task.stale.refresh}">Refresh</a>
+                </div>
+
                 <!-- Page Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1 class="display-5"
@@ -113,5 +124,30 @@
 
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script th:if="${mode != 'create'}" th:inline="javascript">
+        (function() {
+            const taskId = /*[[${task.id}]]*/ 0;
+            const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
+            const staleBanner = document.getElementById('stale-banner');
+            const staleRefresh = document.getElementById('stale-banner-refresh');
+
+            if (!window.stompClient || !staleBanner) return;
+
+            window.stompClient.onConnect(function(client) {
+                client.subscribe('/topic/tasks', function(message) {
+                    const data = JSON.parse(message.body);
+                    if (currentUserId && String(data.userId) === currentUserId) return;
+                    if (data.taskId !== taskId) return;
+                    staleBanner.classList.remove('d-none');
+                });
+            });
+
+            staleRefresh.addEventListener('click', function(e) {
+                e.preventDefault();
+                location.reload();
+            });
+        })();
+    </script>
 </body>
 </html>
