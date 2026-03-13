@@ -11,6 +11,7 @@
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
 - **Frontend**: Bootstrap 5.3.3 + HTMX 2.0.4
+- **Real-Time**: WebSocket + STOMP (via STOMP.js 7.1)
 
 ## Architecture
 
@@ -399,6 +400,41 @@ showConfirm({
         data-confirm-text="Delete">
 ```
 
+### WebSocket + STOMP Pattern
+
+Real-time features use Spring WebSocket with STOMP protocol:
+
+- **`WebSocketConfig`** — `/ws` endpoint with SockJS fallback; simple broker on `/topic` (broadcast) and `/queue` (user-specific)
+- **`PresenceService`** — `ConcurrentHashMap` tracks online users by WebSocket session
+- **`PresenceEventListener`** — listens for `SessionConnectEvent`/`SessionDisconnectEvent`, broadcasts presence changes to `/topic/presence`
+- **`NotificationService.create()`** — saves to DB first, then pushes to user via `SimpMessagingTemplate.convertAndSendToUser(email, "/queue/notifications", payload)`
+
+**Client-side connection** (`websocket.js`):
+```javascript
+// Shared connection — multiple scripts register callbacks before connect
+window.stompClient = { onConnect: function(cb) { callbacks.push(cb); } };
+// After STOMP connects, each callback receives the client for subscribing
+```
+
+**Notification event bus** (`notifications.js`) — custom DOM events decouple producers from consumers:
+```javascript
+// Events: notification:received, notification:read, notification:allRead, notification:cleared
+// Three consumers: badge, dropdown, notifications page — all listen independently
+document.dispatchEvent(new CustomEvent('notification:received', { detail: data }));
+```
+
+`window.notificationHelpers` exposes `getIcon()`, `formatTime()`, `escapeHtml()`, `fire()` for the notifications page to reuse.
+
+### SecurityUtils Pattern
+
+Central utility for resolving the current user from `SecurityContextHolder`:
+```java
+SecurityUtils.getCurrentUser()        // → User entity or null
+SecurityUtils.getCurrentUserDetails() // → CustomUserDetails or null
+SecurityUtils.getUserFrom(principal)  // → User entity from Principal (for WebSocket events)
+```
+All other classes (`GlobalModelAttributes`, `AuthDialect`, `PresenceEventListener`, services) delegate here instead of duplicating resolution logic.
+
 ### CSRF Token Pattern for HTMX
 
 Thymeleaf auto-injects CSRF into `<form th:action>` tags. For standalone HTMX buttons (not inside a form), `utils.js` reads `<meta>` tags and adds the token header:
@@ -483,6 +519,8 @@ Key dependencies:
 - `lombok` - Boilerplate reduction (not used on entities)
 - `mapstruct` (1.6.3) - Compile-time DTO mapping code generation
   - `mapstruct-processor` in `annotationProcessorPaths` (after Lombok — order matters)
+- `spring-boot-starter-websocket` - WebSocket + STOMP support
+- `stomp-websocket` (WebJar 2.3.4) - STOMP.js client library
 
 ## Development Workflow
 
@@ -532,6 +570,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/admin/tags` - Tag management: create/delete with task counts (admin only)
 - `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
 - `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
+- `http://localhost:8080/notifications` - Notification inbox (paginated, mark-read, clear-all)
 
 **REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - List all tasks
@@ -560,6 +599,21 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `GET /api/users/{id}` - Get user by ID
 - `POST /api/users` - Create user (admin only, 201 Created)
 - `DELETE /api/users/{id}` - Delete user (admin only, 204 No Content)
+
+**REST API — Notifications** (requires login; CSRF exempt):
+- `GET /api/notifications` - Paginated list (default: page=0, size=10)
+- `GET /api/notifications/unread-count` - Unread badge count (`{"count": n}`)
+- `PATCH /api/notifications/{id}/read` - Mark one as read (204 No Content)
+- `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
+- `DELETE /api/notifications` - Clear all notifications (204 No Content)
+
+**REST API — Presence** (no authentication required):
+- `GET /api/presence` - Online users (`{"users": [...], "count": n}`)
+
+**WebSocket** (STOMP over SockJS):
+- Endpoint: `ws://localhost:8080/ws`
+- Subscribe: `/user/queue/notifications` — real-time notification push
+- Subscribe: `/topic/presence` — online user list broadcast
 
 **Dev Tools:**
 - `http://localhost:8080/h2-console` - H2 database console
@@ -656,6 +710,17 @@ CREATE TABLE settings (
     id            BIGINT AUTO_INCREMENT PRIMARY KEY,
     setting_key   VARCHAR(100) NOT NULL UNIQUE,    -- e.g. 'theme', 'siteName'
     setting_value VARCHAR(500)                     -- nullable; null = use default
+);
+
+CREATE TABLE notifications (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),  -- recipient
+    actor_id   BIGINT REFERENCES users(id),           -- who triggered it (nullable for system)
+    type       VARCHAR(255) NOT NULL,                 -- TASK_ASSIGNED / COMMENT_ADDED / TASK_OVERDUE / SYSTEM
+    message    VARCHAR(500) NOT NULL,
+    link       VARCHAR(500),                          -- e.g. /tasks/5
+    is_read    BOOLEAN NOT NULL DEFAULT FALSE,        -- 'read' is SQL reserved word
+    created_at TIMESTAMP
 );
 
 CREATE TABLE comments (

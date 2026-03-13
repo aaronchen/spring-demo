@@ -4,6 +4,7 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
+import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.Task;
@@ -13,10 +14,12 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.TaskSpecifications;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -26,16 +29,22 @@ public class TaskService {
   private final TagService tagService;
   private final UserService userService;
   private final CommentService commentService;
+  private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
+  private final MessageSource messageSource;
 
   public TaskService(TaskRepository taskRepository, TagService tagService,
                      UserService userService, CommentService commentService,
-                     ApplicationEventPublisher eventPublisher) {
+                     NotificationService notificationService,
+                     ApplicationEventPublisher eventPublisher,
+                     MessageSource messageSource) {
     this.taskRepository = taskRepository;
     this.tagService = tagService;
     this.userService = userService;
     this.commentService = commentService;
+    this.notificationService = notificationService;
     this.eventPublisher = eventPublisher;
+    this.messageSource = messageSource;
   }
 
   public List<Task> getAllTasks() {
@@ -56,6 +65,7 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(saved.toAuditSnapshot())));
+    notifyAssignment(saved, SecurityUtils.getCurrentUser());
     return saved;
   }
 
@@ -65,6 +75,7 @@ public class TaskService {
       throw new StaleDataException(Task.class, id);
     }
     Map<String, Object> before = task.toAuditSnapshot();
+    User previousUser = task.getUser();
 
     task.setTitle(taskDetails.getTitle());
     task.setDescription(taskDetails.getDescription());
@@ -87,6 +98,13 @@ public class TaskService {
       eventPublisher.publishEvent(new AuditEvent(
           AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
           AuditDetails.toJson(changes)));
+    }
+
+    // Notify if assignment changed to a different user
+    boolean assignmentChanged = newUser != null
+        && (previousUser == null || !previousUser.getId().equals(newUser.getId()));
+    if (assignmentChanged) {
+      notifyAssignment(saved, SecurityUtils.getCurrentUser());
     }
     return saved;
   }
@@ -134,5 +152,17 @@ public class TaskService {
         AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
     return saved;
+  }
+
+  private void notifyAssignment(Task task, User actor) {
+    User assignee = task.getUser();
+    // Don't notify if assigning to self or unassigned
+    if (assignee == null || (actor != null && actor.getId().equals(assignee.getId()))) {
+      return;
+    }
+    String message = messageSource.getMessage("notification.task.assigned",
+        new Object[]{actor != null ? actor.getName() : "System", task.getTitle()}, Locale.getDefault());
+    notificationService.create(assignee, actor, NotificationType.TASK_ASSIGNED,
+        message, "/tasks/" + task.getId() + "/edit");
   }
 }

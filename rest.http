@@ -208,6 +208,39 @@ Cookie: JSESSIONID={{sessionId}}
 
 
 ### ============================================================
+### Notifications (any authenticated user)
+### ============================================================
+
+### Get unread notification count
+GET {{baseUrl}}/api/notifications/unread-count
+Cookie: JSESSIONID={{sessionId}}
+
+### Get paginated notifications (newest first)
+GET {{baseUrl}}/api/notifications?page=0&size=10
+Cookie: JSESSIONID={{sessionId}}
+
+### Mark a single notification as read
+PATCH {{baseUrl}}/api/notifications/1/read
+Cookie: JSESSIONID={{sessionId}}
+
+### Mark all notifications as read
+PATCH {{baseUrl}}/api/notifications/read-all
+Cookie: JSESSIONID={{sessionId}}
+
+### Clear all notifications
+DELETE {{baseUrl}}/api/notifications
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
+### Presence (no authentication required)
+### ============================================================
+
+### Get online users
+GET {{baseUrl}}/api/presence
+
+
+### ============================================================
 ### Error Handling
 ### ============================================================
 

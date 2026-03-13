@@ -86,6 +86,9 @@ public class SecurityConfig {
                 // REST API clients don't use browser cookies/forms, so CSRF
                 // doesn't apply. Web UI forms keep CSRF protection via Thymeleaf.
                 .ignoringRequestMatchers("/api/**")
+                // WebSocket handshake is a GET upgrade — CSRF tokens aren't sent.
+                // The connection is already authenticated via the session cookie.
+                .ignoringRequestMatchers("/ws")
             )
 
             // ── Headers ──────────────────────────────────────────────────────

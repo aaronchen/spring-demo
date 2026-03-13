@@ -21,8 +21,9 @@ const TOAST_ICONS = {
     info:    'bi-info-circle-fill',
 };
 
-function showToast(message, type) {
+function showToast(message, type, options) {
     type = type || 'info';
+    options = options || {};
     const autohide = type === 'success' || type === 'info';
     const icon = TOAST_ICONS[type] || TOAST_ICONS.info;
 
@@ -37,6 +38,9 @@ function showToast(message, type) {
 
     const toastEl = document.createElement('div');
     toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+    if (options.href) {
+        toastEl.style.cursor = 'pointer';
+    }
     toastEl.setAttribute('role', 'alert');
     toastEl.setAttribute('aria-live', 'assertive');
     toastEl.setAttribute('aria-atomic', 'true');
@@ -49,6 +53,13 @@ function showToast(message, type) {
             <div class="toast-body flex-grow-1">${message}</div>
             <button type="button" class="btn-close btn-close-white me-3 flex-shrink-0" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>`;
+
+    if (options.href) {
+        toastEl.addEventListener('click', function (e) {
+            if (e.target.closest('.btn-close')) return;
+            window.location.href = options.href;
+        });
+    }
 
     container.appendChild(toastEl);
 

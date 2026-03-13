@@ -60,6 +60,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
+- `model/Notification.java` - Notification entity
+  - Fields: id, user (recipient), actor, type, message, link, read, createdAt
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_USER`, `FIELD_ACTOR`, `FIELD_TYPE`, `FIELD_MESSAGE`, `FIELD_LINK`, `FIELD_READ`, `FIELD_CREATED_AT`)
+  - `@ManyToOne(fetch = LAZY)` to User for both `user` (recipient, non-null) and `actor` (nullable)
+  - `type` — `@Enumerated(EnumType.STRING)`, `NotificationType` enum
+  - `read` — `@Column(name = "is_read")` to avoid SQL reserved word conflict
+  - Convenience constructor: `Notification(user, actor, type, message, link)` — sets `read = false` and `createdAt = now()`
+  - Manual getters/setters (no Lombok on entities)
+
+- `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `TASK_OVERDUE`, `SYSTEM`
+  - Stored as string via `@Enumerated(EnumType.STRING)` on Notification
+
 - `model/AuditLog.java` - Audit log entity
   - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
   - `FIELD_*` constants (`FIELD_ACTION`, `FIELD_PRINCIPAL`, `FIELD_DETAILS`, `FIELD_TIMESTAMP`)
@@ -121,6 +133,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `CommentService.deleteByTaskId()` which is called by `TaskService.deleteTask()` before removing the task
   - `countByUserId(Long)` — count comments by user; used by `UserService.canDelete()` to determine if user can be hard-deleted
 
+- `repository/NotificationRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<Notification, Long>`
+  - `countByUserIdAndReadFalse(Long)` — unread count for badge
+  - `findTop10ByUserIdOrderByCreatedAtDesc(Long)` — recent notifications for dropdown
+  - `findByUserIdOrderByCreatedAtDesc(Long, Pageable)` — paginated list for full page
+  - `findByIdAndUserId(Long, Long)` — ownership-scoped single lookup
+  - `markAllAsReadByUserId(Long)` — `@Modifying` `@Query` bulk UPDATE (no derived method convention for bulk updates)
+  - `deleteByUserId(Long)` — clear all for a user
+  - `deleteByCreatedAtBefore(LocalDateTime)` — purge old notifications
+
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
   - `findByEntityTypeAndEntityIdOrderByTimestampDesc(String, Long)` — entity-specific audit history (used by task detail page)
@@ -169,6 +191,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `id`, `text`, `taskId`, `user` (`UserResponse`), `createdAt`
   - Lombok `@Data`
 
+- `dto/NotificationResponse.java` - Notification output DTO
+  - Fields: `id`, `type` (String), `message`, `link`, `read`, `createdAt` (`LocalDateTime`), `actorName`
+  - Lombok `@Data`
+
 - `dto/AdminUserRequest.java` - Admin user create/edit form DTO
   - Fields: `id` (null on create, set on edit — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email), `password` (no bean validation — controller validates manually: required on create, ignored on edit), `role` (required, defaults to USER)
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
@@ -188,23 +214,31 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Mapping(source = "task.id", target = "taskId")` — flattens task association to ID
   - `uses = {UserMapper.class}` — delegates nested user mapping
 
+- `mapper/NotificationMapper.java` - MapStruct mapper for Notification ↔ NotificationResponse
+  - `@Mapper(componentModel = "spring")`
+  - `@Mapping(source = "actor.name", target = "actorName")` — flattens actor association to name string
+  - `toResponse(Notification)`, `toResponseList(List<Notification>)`
+
 - `mapper/UserMapper.java` - MapStruct mapper for User ↔ UserResponse / UserRequest
+  - `toEntity(UserRequest)` — `id`, `password`, `role`, `enabled`, `tasks` explicitly ignored via `User.FIELD_*` constants
 
 ### Service Layer
 - `service/CommentService.java` - Comment business logic with audit event publishing
   - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
-  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event
+  - Constructor injection includes `NotificationService` and `MessageSource` for COMMENT_ADDED notifications
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner (skips self-notification)
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event
 
 - `service/TaskService.java` - Business logic layer
-  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
+  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
   - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`
   - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN (replaces `toggleComplete`)
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
   - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
+  - `notifyAssignment()` — private helper; sends TASK_ASSIGNED notification when task is assigned to a different user (skips self-assignment); uses `SecurityUtils.getCurrentUser()` for actor resolution
 
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
@@ -230,6 +264,22 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
   - `getEntityHistory(entityType, entityId)` — entity-specific audit trail (used by task detail/modal)
   - Both methods resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
+
+- `service/NotificationService.java` - Notification business logic with WebSocket push
+  - Constructor injection: `NotificationRepository`, `NotificationMapper`, `SimpMessagingTemplate`
+  - `create(recipient, actor, type, message, link)` — `@Transactional`; saves to DB then pushes to recipient via `convertAndSendToUser(email, "/queue/notifications", payload)`
+  - `getUnreadCount(userId)` — count of unread notifications for badge
+  - `getRecentForUser(userId)` — top 10 most recent (for dropdown)
+  - `findAllForUser(userId, pageable)` — paginated list (for full page)
+  - `markAsRead(id, userId)` — marks single notification as read (ownership-scoped)
+  - `markAllAsRead(userId)` — bulk mark all as read
+  - `clearAll(userId)` — deletes all notifications for user
+  - `purgeOld()` — `@Scheduled(cron = "0 0 3 * * *")` deletes notifications older than 30 days
+
+- `service/PresenceService.java` - Online user tracking
+  - `ConcurrentHashMap<String, String>` mapping WebSocket session IDs to user names
+  - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names
+  - `userConnected(sessionId, userName)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
 
 - `service/SettingService.java` - Setting persistence with audit event publishing
   - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
@@ -263,6 +313,24 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@RestController` with `/api/tags` base path
   - `GET /api/tags` — list all; `GET /api/tags/{id}` — get by id; `POST /api/tags` (201) — create; `DELETE /api/tags/{id}` (204) — delete (join table rows cleaned up by Hibernate; tasks are not deleted)
   - **Security**: POST and DELETE restricted to admins via `SecurityConfig` URL matchers (no code changes needed here)
+
+- `controller/api/PresenceApiController.java` - Presence REST API
+  - `@RestController`
+  - `GET /api/presence` — returns `{ users: [...], count: N }`; needed because `SessionConnectEvent` fires before client subscription completes
+
+- `controller/api/NotificationApiController.java` - Notification REST API endpoints
+  - `@RestController` with `/api/notifications` base path
+  - `GET /api/notifications/unread-count` — returns `{ count: N }`
+  - `GET /api/notifications?page=0&size=10` — paginated notification list
+  - `PATCH /api/notifications/{id}/read` — mark single as read (204)
+  - `PATCH /api/notifications/read-all` — mark all as read (204)
+  - `DELETE /api/notifications` — clear all (204)
+  - All endpoints scoped to current user via `@AuthenticationPrincipal`
+
+- `controller/NotificationController.java` - Notifications web page
+  - `@Controller` with `/notifications` base path
+  - `GET /notifications` — paginated notification list page (default 25 per page)
+  - Uses `@AuthenticationPrincipal` to scope to current user
 
 - `controller/HomeController.java` - Home page
   - `@Controller` — single `GET /` mapping, returns `"home"` template
@@ -370,9 +438,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Registers `${#auth}` expression object, built per-request from `SecurityContextHolder`
   - Auto-discovered by Spring Boot; no manual configuration needed
 
-- `security/SecurityUtils.java` - Static utility for getting current principal
-  - `getCurrentPrincipal()` — returns username from `SecurityContextHolder` or `"system"` if unauthenticated
-  - Used by services when publishing audit events
+- `security/SecurityUtils.java` - Central utility for resolving the current authenticated user
+  - `getCurrentPrincipal()` — returns username from `SecurityContextHolder` or `"system"` if unauthenticated; used by services for audit events
+  - `getCurrentUser()` — returns the `User` entity from `SecurityContextHolder`, or null if unauthenticated
+  - `getCurrentUserDetails()` — returns `CustomUserDetails` from `SecurityContextHolder`, or null
+  - `getUserFrom(Principal)` — extracts `User` from an arbitrary `Principal` (e.g., WebSocket session events); returns null if not a `CustomUserDetails`
+  - All user-resolution logic centralized here — controllers, services, template dialects, and WebSocket listeners delegate to these methods
 
 ### Validation
 - `validation/Unique.java` - Generic class-level validation annotation for field uniqueness
@@ -393,6 +464,19 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Applies to `@ModelAttribute`, `@RequestParam`, `@PathVariable` — NOT `@RequestBody` (JSON)
   - Eliminates manual `.trim()` calls across all controllers; `@NotBlank` catches null values
 
+- `config/WebSocketConfig.java` - WebSocket/STOMP configuration
+  - `@EnableWebSocketMessageBroker`
+  - Simple broker on `/topic` (broadcast) and `/queue` (user-specific)
+  - Application destination prefix: `/app`
+  - STOMP endpoint: `/ws` (no SockJS fallback — modern browsers only)
+
+- `config/PresenceEventListener.java` - WebSocket session lifecycle listener
+  - `@EventListener` for `SessionConnectEvent` and `SessionDisconnectEvent`
+  - On connect: resolves user name via `SecurityUtils.getUserFrom(principal)`, registers with `PresenceService`
+  - On disconnect: removes session from `PresenceService`
+  - Broadcasts updated presence payload (`{ users: [...], count: N }`) to `/topic/presence` after each event
+  - `PresencePayload` — private record for the broadcast message
+
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
@@ -401,7 +485,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - Everything else: `authenticated()`
   - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
   - Logout: `POST /logout` → `/login?logout`, invalidates session, deletes JSESSIONID
-  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/h2-console/**`
+  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**`, `/h2-console/**`, and `/ws` (WebSocket endpoint)
   - Headers: `X-Frame-Options: SAMEORIGIN` (for H2 console)
 
 - `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
@@ -462,7 +546,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - Admin: additional "User Management", "Tag Management", "Audit Log", and "Settings" links in dropdown
     - Uses `sec:authorize` (Spring Security Thymeleaf dialect) and `${#auth}` for conditional rendering
   - `footer` - footer
-  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` (in that order — `APP_CONFIG` must be set before page scripts run)
+  - Notification bell dropdown in navbar (unread count badge, recent notifications list, mark-all-read and view-all links)
+  - Online users indicator in navbar (count badge + dropdown list)
+  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + `stomp.umd.min.js` + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; STOMP client before feature scripts)
 
 - `templates/layouts/pagination.html` - Reusable pagination control bar
   - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
@@ -496,6 +582,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode)
 - `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute
 
+### Notification Views
+- `templates/notifications.html` - Full notifications page
+  - List-group items with action link icons, read/unread styling
+  - Pagination support
+  - Clear all button
+  - Listens to custom DOM events (`notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`) for real-time updates
+
 ### Home, Tag, User, Auth, Admin, Error Views
 - `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Task Lifecycle, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
@@ -526,7 +619,20 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
-- `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type)` for toast notifications; `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
+- `static/js/websocket.js` - Shared STOMP WebSocket client
+  - Creates a single `StompJs.Client` connection to `/ws`
+  - Exposes `window.stompClient.onConnect(callback)` — feature scripts register subscriptions via this; handles late registration (calls callback immediately if already connected)
+  - Single connection shared by all features (presence, notifications)
+- `static/js/presence.js` - Online presence indicator
+  - Uses `window.stompClient.onConnect()` to subscribe to `/topic/presence`
+  - Fetches `GET /api/presence` after subscribing for initial state (connect event fires before subscription)
+  - Updates online count badge and user list dropdown in navbar
+- `static/js/notifications.js` - Notification bell and event bus
+  - Subscribes to `/user/queue/notifications` via shared STOMP client for real-time push
+  - Custom DOM events decouple producers from consumers: `notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`
+  - Manages navbar badge count and dropdown notification list
+  - Exposes `window.notificationHelpers` for the full notifications page to reuse rendering logic
+- `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
@@ -542,6 +648,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
     - `home.feature.*` — Home page feature cards (rest, security, ui, data, lifecycle, admin)
+    - `notification.*` — Notification feature (includes `notification.task.assigned`, `notification.comment.added`, `notification.time.*` for relative timestamps)
     - `role.*` — Role display names; `error.*` — Error pages; `toast.*` — Toast notifications
 
 - `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom `app.routes.*` properties

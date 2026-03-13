@@ -35,7 +35,10 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Task Comments** - Any authenticated user can comment on any task; comment owners and admins can delete comments; visible in modal side panel and full-page view with real-time count updates via HTMX out-of-band swaps
 - **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
 - **Styled Confirm Dialog** - Bootstrap modal confirm dialog (`showConfirm`) replaces native browser `confirm()` for delete actions
-- **Toast Notifications** - Success/error toasts for task save, delete, and conflict events (Bootstrap 5 toasts with slide-in animation)
+- **Toast Notifications** - Success/error toasts for task save, delete, and conflict events; clickable toasts for notification links (Bootstrap 5 toasts with slide-in animation)
+- **Online Presence** - Real-time online user count and list in navbar via WebSocket + STOMP
+- **Notification Bell** - Real-time push notifications with unread badge, dropdown list, mark-as-read, and mark-all-as-read
+- **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
@@ -49,6 +52,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Search & Filter** - Query tasks by keyword and status
 - **Toggle Status** - Quick PATCH endpoint advances task through OPEN → IN_PROGRESS → COMPLETED cycle
 - **Task Comments** - Nested comment endpoints under each task
+- **Notifications** - Unread count, paginated list, mark read, mark all read, clear all
+- **Presence** - Online user count and list
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
@@ -82,7 +87,14 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Typed `Settings` POJO with `BeanWrapper` auto-mapping from DB key/value rows
 - CSS theme system with `[data-theme]` selectors and FOUC prevention
 - Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
-- Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`)
+- WebSocket + STOMP via `spring-boot-starter-websocket` and STOMP.js 7.1
+- Shared STOMP client (`websocket.js`) with `onConnect(callback)` pattern for feature scripts
+- Client-side event bus via `CustomEvent` — decouples notification producers (WebSocket, dropdown, page) from consumers (badge, dropdown list, page list)
+- Online presence tracking with `ConcurrentHashMap` (multi-tab safe); broadcast via `/topic/presence`
+- Notification persistence with DB-first pattern (save then push) — offline users see notifications on login
+- Auto-purge of old notifications via `@Scheduled` cron (30 days)
+- Central user-resolution helpers in `SecurityUtils` (replaces duplicated patterns across services, dialects, and listeners)
+- Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`) + WebSocket (`websocket.js`, `presence.js`, `notifications.js`)
 - Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
 - Styled confirm dialog via `showConfirm()` in `utils.js` (Bootstrap 5 modal, replaces native `confirm()`)
 - All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
@@ -217,6 +229,22 @@ POST auto-assigns tasks to the caller. Admins can optionally specify `userId` in
 | POST | `/api/tasks/{taskId}/comments` | Any user | Add a comment (body: `{"text": "..."}`) (201) |
 | DELETE | `/api/tasks/{taskId}/comments/{id}` | Comment owner/Admin | Delete comment (204) |
 
+#### Notification Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/api/notifications/unread-count` | Any user | Get unread count (`{"count": N}`) |
+| GET | `/api/notifications?page=0&size=10` | Any user | Paginated notification list |
+| PATCH | `/api/notifications/{id}/read` | Any user | Mark single notification as read (204) |
+| PATCH | `/api/notifications/read-all` | Any user | Mark all as read (204) |
+| DELETE | `/api/notifications` | Any user | Clear all notifications (204) |
+
+#### Presence Endpoint
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/api/presence` | Any user | Online users and count |
+
 #### Example: Create Task
 ```bash
 POST /api/tasks
@@ -278,8 +306,10 @@ spring-demo/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
 │   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
+│   │   │   ├── PresenceEventListener.java   # WebSocket connect/disconnect → presence broadcast
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
-│   │   │   └── Settings.java               # Typed settings POJO with defaults
+│   │   │   ├── Settings.java               # Typed settings POJO with defaults
+│   │   │   └── WebSocketConfig.java         # STOMP broker (/topic, /queue), endpoint /ws
 │   │   ├── controller/
 │   │   │   ├── admin/
 │   │   │   │   ├── AuditController.java     # Audit log page (admin only)
@@ -288,12 +318,15 @@ spring-demo/
 │   │   │   │   └── UserManagementController.java # User management with modal UI (admin only)
 │   │   │   ├── api/
 │   │   │   │   ├── AuditApiController.java  # Audit REST API
-│   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── CommentApiController.java # Comment REST API (nested under tasks)
+│   │   │   │   ├── NotificationApiController.java # Notification REST API
+│   │   │   │   ├── PresenceApiController.java # GET /api/presence (online users)
+│   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
-│   │   │   ├── HomeController.java          # Home page (GET /) with 6 feature cards
+│   │   │   ├── HomeController.java          # Home page (GET /)
+│   │   │   ├── NotificationController.java  # Notifications page (GET /notifications)
 │   │   │   ├── LoginController.java         # Login page (GET /login)
 │   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
 │   │   │   ├── TagController.java           # Tag web UI
@@ -302,6 +335,7 @@ spring-demo/
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
+│   │   │   ├── NotificationResponse.java # Notification API output DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)
@@ -315,12 +349,15 @@ spring-demo/
 │   │   │   └── WebExceptionHandler.java     # Thymeleaf error pages for web UI
 │   │   ├── mapper/
 │   │   │   ├── CommentMapper.java       # MapStruct (impl generated at compile time)
+│   │   │   ├── NotificationMapper.java  # MapStruct: actor.name → actorName
 │   │   │   ├── TagMapper.java
 │   │   │   ├── TaskMapper.java
 │   │   │   └── UserMapper.java
 │   │   ├── model/
 │   │   │   ├── AuditLog.java            # Audit log entity
 │   │   │   ├── Comment.java            # Comment entity (OwnedEntity)
+│   │   │   ├── Notification.java       # Notification entity (@ManyToOne to User)
+│   │   │   ├── NotificationType.java   # TASK_ASSIGNED, COMMENT_ADDED, TASK_OVERDUE, SYSTEM
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
 │   │   │   ├── Role.java                # USER / ADMIN enum
@@ -334,6 +371,7 @@ spring-demo/
 │   │   │   ├── AuditLogRepository.java
 │   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
 │   │   │   ├── CommentRepository.java
+│   │   │   ├── NotificationRepository.java
 │   │   │   ├── SettingRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
@@ -345,10 +383,12 @@ spring-demo/
 │   │   │   ├── CustomUserDetails.java       # UserDetails wrapper for User entity
 │   │   │   ├── CustomUserDetailsService.java # Loads user by email for Spring Security
 │   │   │   ├── OwnershipGuard.java          # requireAccess() — owner or admin
-│   │   │   └── SecurityUtils.java           # getCurrentPrincipal() for audit events
+│   │   │   └── SecurityUtils.java           # Central user-resolution helpers
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
 │   │   │   ├── CommentService.java      # Comment CRUD with audit events
+│   │   │   ├── NotificationService.java # Create, mark read, clear, purge (@Scheduled)
+│   │   │   ├── PresenceService.java     # Online user tracking (ConcurrentHashMap)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
