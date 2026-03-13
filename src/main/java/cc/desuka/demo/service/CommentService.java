@@ -4,15 +4,18 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Comment;
+import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class CommentService {
@@ -20,14 +23,19 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserService userService;
+    private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
+    private final MessageSource messageSource;
 
     public CommentService(CommentRepository commentRepository, TaskRepository taskRepository,
-                          UserService userService, ApplicationEventPublisher eventPublisher) {
+                          UserService userService, NotificationService notificationService,
+                          ApplicationEventPublisher eventPublisher, MessageSource messageSource) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userService = userService;
+        this.notificationService = notificationService;
         this.eventPublisher = eventPublisher;
+        this.messageSource = messageSource;
     }
 
     public Comment getCommentById(Long id) {
@@ -58,6 +66,15 @@ public class CommentService {
                 AuditEvent.COMMENT_CREATED, Comment.class, saved.getId(),
                 SecurityUtils.getCurrentPrincipal(),
                 AuditDetails.toJson(saved.toAuditSnapshot())));
+
+        // Notify task owner about new comment (unless commenter is the owner)
+        User taskOwner = task.getUser();
+        if (taskOwner != null && !taskOwner.getId().equals(userId)) {
+            String message = messageSource.getMessage("notification.comment.added",
+                    new Object[]{user.getName(), task.getTitle()}, Locale.getDefault());
+            notificationService.create(taskOwner, user, NotificationType.COMMENT_ADDED,
+                    message, "/tasks/" + taskId + "/edit");
+        }
         return saved;
     }
 

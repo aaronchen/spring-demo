@@ -2,6 +2,7 @@ package cc.desuka.demo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 
@@ -10,6 +11,7 @@ import java.sql.SQLException;
 import org.springframework.boot.CommandLineRunner;
 
 @SpringBootApplication
+@EnableScheduling
 public class DemoApplication {
 
 	public static void main(String[] args) {

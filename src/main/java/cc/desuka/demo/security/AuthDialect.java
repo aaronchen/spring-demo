@@ -1,8 +1,5 @@
 package cc.desuka.demo.security;
 
-import cc.desuka.demo.model.User;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.IExpressionContext;
 import org.thymeleaf.dialect.AbstractDialect;
@@ -37,7 +34,7 @@ public class AuthDialect extends AbstractDialect implements IExpressionObjectDia
 
     /**
      * Factory that creates a fresh {@link AuthExpressions} per template rendering,
-     * populated with the current user from {@link SecurityContextHolder}.
+     * populated with the current user from {@link SecurityUtils}.
      */
     private static class AuthExpressionFactory implements IExpressionObjectFactory {
 
@@ -53,22 +50,13 @@ public class AuthDialect extends AbstractDialect implements IExpressionObjectDia
             if (!EXPRESSION_OBJECT_NAME.equals(expressionObjectName)) {
                 return null;
             }
-            return new AuthExpressions(resolveCurrentUser());
+            return new AuthExpressions(SecurityUtils.getCurrentUser());
         }
 
         @Override
         public boolean isCacheable(String expressionObjectName) {
             // User changes per-request; do not cache across renders.
             return false;
-        }
-
-        private User resolveCurrentUser() {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null && auth.isAuthenticated()
-                    && auth.getPrincipal() instanceof CustomUserDetails details) {
-                return details.getUser();
-            }
-            return null;
         }
     }
 }
