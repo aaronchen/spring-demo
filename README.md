@@ -40,6 +40,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notification Bell** - Real-time push notifications with unread badge, dropdown list, mark-as-read, and mark-all-as-read
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
+- **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
@@ -335,9 +336,12 @@ spring-demo/
 │   │   │   └── UserController.java          # User web UI with search
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
+│   │   │   ├── CommentChangeEvent.java # WebSocket comment change broadcast
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
 │   │   │   ├── NotificationResponse.java # Notification API output DTO
+│   │   │   ├── PresenceResponse.java  # Presence data (REST + WebSocket)
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
+│   │   │   ├── TaskChangeEvent.java   # WebSocket task change broadcast
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)
 │   │   │   ├── TaskResponse.java        # API output DTO
@@ -387,7 +391,7 @@ spring-demo/
 │   │   │   └── SecurityUtils.java           # Central user-resolution helpers
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
-│   │   │   ├── CommentService.java      # Comment CRUD with audit events
+│   │   │   ├── CommentService.java      # Comment CRUD with audit events + WebSocket broadcast
 │   │   │   ├── NotificationService.java # Create, mark read, clear, purge (@Scheduled)
 │   │   │   ├── PresenceService.java     # Online user tracking (ConcurrentHashMap)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
