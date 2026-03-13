@@ -224,6 +224,14 @@ public class TaskController {
     return new RedirectView("/tasks");
   }
 
+  // GET /tasks/{id}/comments - Fetch comment list fragment (HTMX live refresh)
+  @GetMapping("/{id}/comments")
+  public String getComments(@PathVariable Long id, Model model) {
+    model.addAttribute("task", taskService.getTaskById(id));
+    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
+    return "tasks/task-comments";
+  }
+
   // POST /tasks/{id}/comments - Add a comment to a task
   // Any authenticated user may comment on any task.
   @PostMapping("/{id}/comments")

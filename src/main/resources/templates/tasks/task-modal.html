@@ -17,9 +17,9 @@
     <a href="#" id="modal-stale-refresh" class="alert-link ms-auto"
        th:text="#{task.stale.refresh}">Refresh</a>
 </div>
-<div class="d-flex">
+<div class="d-flex task-panels">
     <!-- Left Panel: Form -->
-    <div style="flex: 1; min-width: 0;">
+    <div style="flex: 1; min-width: 0; overflow-y: auto;">
         <form id="task-form"
               th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
               th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
@@ -45,9 +45,10 @@
             </div>
             <div class="task-side-panel-body p-3">
                 <th:block th:replace="~{tasks/task-comments :: list}"></th:block>
-                <!-- Add Comment Form -->
-                <form class="mt-3"
-                      th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
+            </div>
+            <!-- Add Comment Form (pinned below scrollable list) -->
+            <div class="p-3 border-top">
+                <form th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
                       hx-target="#task-comments"
                       hx-swap="outerHTML"
                       hx-on::after-request="if(event.detail.successful) this.reset()">
@@ -112,14 +113,22 @@
         const refreshLink = document.getElementById('modal-stale-refresh');
         if (!window.stompClient || !banner) return;
 
-        const sub = { ref: null };
+        const subs = [];
         window.stompClient.onConnect(function(client) {
-            sub.ref = client.subscribe('/topic/tasks', function(message) {
+            subs.push(client.subscribe('/topic/tasks', function(message) {
                 const data = JSON.parse(message.body);
                 if (currentUserId && String(data.userId) === currentUserId) return;
                 if (data.taskId !== taskId) return;
                 banner.classList.remove('d-none');
-            });
+            }));
+
+            // Live comment updates
+            subs.push(client.subscribe(`/topic/tasks/${taskId}/comments`, function(message) {
+                const data = JSON.parse(message.body);
+                if (currentUserId && String(data.userId) === currentUserId) return;
+                htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/comments`,
+                    {target: '#task-comments', swap: 'outerHTML'});
+            }));
         });
 
         refreshLink.addEventListener('click', function(e) {
@@ -130,7 +139,7 @@
 
         // Unsubscribe when modal closes to avoid duplicate subscriptions
         document.getElementById('task-modal')?.addEventListener('hidden.bs.modal', function() {
-            if (sub.ref) sub.ref.unsubscribe();
+            subs.forEach(function(s) { s.unsubscribe(); });
         }, { once: true });
     })();
 </script>

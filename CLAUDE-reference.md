@@ -199,6 +199,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `action` (String), `taskId` (long), `userId` (long)
   - Used by `TaskService` to broadcast to `/topic/tasks` on create/update/delete/advanceStatus
 
+- `dto/CommentChangeEvent.java` - Record for WebSocket comment change broadcast payload
+  - Fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long)
+  - Used by `CommentService` to broadcast to `/topic/tasks/{taskId}/comments` on create/delete
+
 - `dto/PresenceResponse.java` - Record for presence data
   - Fields: `users` (`List<String>`), `count` (int)
   - Used by both `PresenceApiController` (REST response) and `PresenceEventListener` (WebSocket broadcast to `/topic/presence`)
@@ -231,14 +235,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `toEntity(UserRequest)` — `id`, `password`, `role`, `enabled`, `tasks` explicitly ignored via `User.FIELD_*` constants
 
 ### Service Layer
-- `service/CommentService.java` - Comment business logic with audit event publishing
+- `service/CommentService.java` - Comment business logic with audit event publishing and WebSocket broadcast
   - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
-  - Constructor injection includes `NotificationService` and `MessageSource` for COMMENT_ADDED notifications
-  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner (skips self-notification)
+  - Constructor injection includes `NotificationService`, `MessageSource`, and `SimpMessagingTemplate` for COMMENT_ADDED notifications and live updates
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner (skips self-notification), broadcasts `CommentChangeEvent`
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
-  - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event
+  - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event, broadcasts `CommentChangeEvent`
+  - `broadcastCommentChange(action, taskId, commentId)` — private helper; broadcasts `CommentChangeEvent` to `/topic/tasks/{taskId}/comments` via `SimpMessagingTemplate`
 
 - `service/TaskService.java` - Business logic layer
   - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher`, `SimpMessagingTemplate` (uses service layer instead of direct repository access for tags, users, and comments)
@@ -406,6 +411,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Injects `TagService`, `UserService`, `CommentService`, and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
   - Task list defaults to current user's tasks on first visit; explicit empty `userId=` param means "All Users"
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
+  - `GET /{id}/comments` — fetch comment list fragment (HTMX live refresh via WebSocket)
   - `POST /{id}/comments` — add comment to task; returns `task-comments` template (whole file for hx-swap-oob comment count updates)
   - `DELETE /{id}/comments/{commentId}` — delete comment (owner or admin); returns `task-comments` template
   - Task delete changed from `@PostMapping("/{id}/delete")` to `@DeleteMapping("/{id}")`
@@ -590,8 +596,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
-- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode); stale-data banner shown via WebSocket when another user modifies the same task
-- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner shown via WebSocket when another user modifies the same task
+- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode); stale-data banner via WebSocket when another user modifies the same task; live comment auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live comment auto-refresh via WebSocket; comment input pinned below scrollable list; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
 
 ### Notification Views
 - `templates/notifications.html` - Full notifications page
@@ -626,7 +632,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles
-- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels, active state styles for 3 status filter buttons)
+- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, active state styles for 3 status filter buttons)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`

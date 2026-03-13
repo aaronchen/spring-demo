@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.dto.CommentChangeEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.NotificationType;
@@ -12,6 +13,7 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -26,16 +28,19 @@ public class CommentService {
     private final NotificationService notificationService;
     private final ApplicationEventPublisher eventPublisher;
     private final MessageSource messageSource;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public CommentService(CommentRepository commentRepository, TaskRepository taskRepository,
                           UserService userService, NotificationService notificationService,
-                          ApplicationEventPublisher eventPublisher, MessageSource messageSource) {
+                          ApplicationEventPublisher eventPublisher, MessageSource messageSource,
+                          SimpMessagingTemplate messagingTemplate) {
         this.commentRepository = commentRepository;
         this.taskRepository = taskRepository;
         this.userService = userService;
         this.notificationService = notificationService;
         this.eventPublisher = eventPublisher;
         this.messageSource = messageSource;
+        this.messagingTemplate = messagingTemplate;
     }
 
     public Comment getCommentById(Long id) {
@@ -75,16 +80,27 @@ public class CommentService {
             notificationService.create(taskOwner, user, NotificationType.COMMENT_ADDED,
                     message, "/tasks/" + taskId + "/edit");
         }
+        broadcastCommentChange("created", taskId, saved.getId());
         return saved;
     }
 
     public void deleteComment(Long id) {
         Comment comment = getCommentById(id);
+        Long taskId = comment.getTask().getId();
         String snapshot = AuditDetails.toJson(comment.toAuditSnapshot());
         commentRepository.delete(comment);
         eventPublisher.publishEvent(new AuditEvent(
                 AuditEvent.COMMENT_DELETED, Comment.class, id,
                 SecurityUtils.getCurrentPrincipal(),
                 snapshot));
+        broadcastCommentChange("deleted", taskId, id);
+    }
+
+    private void broadcastCommentChange(String action, Long taskId, Long commentId) {
+        User current = SecurityUtils.getCurrentUser();
+        long actorId = current != null ? current.getId() : 0L;
+        messagingTemplate.convertAndSend(
+                "/topic/tasks/" + taskId + "/comments",
+                new CommentChangeEvent(action, taskId, commentId, actorId));
     }
 }
