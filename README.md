@@ -41,6 +41,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
+- **Real-Time Dashboard** - Personal stats (open/in-progress/completed/overdue), system overview, recent tasks, and activity feed; auto-refreshes via WebSocket on task and presence changes
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
@@ -128,6 +129,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 3. **Access the application**
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
+   - **Dashboard**: http://localhost:8080/dashboard (personal stats + real-time updates)
    - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
    - **Settings**: http://localhost:8080/admin/settings (admin only)
@@ -326,6 +328,7 @@ spring-demo/
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
+│   │   │   ├── DashboardController.java      # Dashboard page + HTMX stats fragment
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
 │   │   │   ├── HomeController.java          # Home page (GET /)
 │   │   │   ├── NotificationController.java  # Notifications page (GET /notifications)
@@ -336,6 +339,7 @@ spring-demo/
 │   │   │   └── UserController.java          # User web UI with search
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
+│   │   │   ├── DashboardStats.java     # Dashboard data carrier record
 │   │   │   ├── CommentChangeEvent.java # WebSocket comment change broadcast
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
 │   │   │   ├── NotificationResponse.java # Notification API output DTO
@@ -392,6 +396,7 @@ spring-demo/
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
 │   │   │   ├── CommentService.java      # Comment CRUD with audit events + WebSocket broadcast
+│   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
 │   │   │   ├── NotificationService.java # Create, mark read, clear, purge (@Scheduled)
 │   │   │   ├── PresenceService.java     # Online user tracking (ConcurrentHashMap)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
@@ -419,6 +424,9 @@ spring-demo/
 │       │   ├── favicon.svg             # SVG favicon
 │       │   └── bootstrap-icons/
 │       ├── templates/
+│       │   ├── dashboard/
+│       │   │   ├── dashboard.html        # Dashboard page with WebSocket subscriptions
+│       │   │   └── dashboard-stats.html  # Stats fragment (bare, HTMX-refreshable)
 │       │   ├── admin/
 │       │   │   ├── audit.html          # Audit log page (admin only)
 │       │   │   ├── audit-table.html    # Audit table fragment (HTMX partial)
@@ -452,7 +460,9 @@ spring-demo/
 │       │   ├── users/
 │       │   │   ├── users.html          # User list page with search
 │       │   │   └── user-table.html     # User table fragment (HTMX partial)
+│       │   ├── home.html               # Home page (project showcase)
 │       │   ├── login.html              # Login page
+│       │   ├── notifications.html      # Notification inbox page
 │       │   └── register.html           # Registration page
 │       ├── META-INF/
 │       │   └── additional-spring-configuration-metadata.json

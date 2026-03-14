@@ -9,7 +9,7 @@
     <!-- Main Content -->
     <main class="container flex-grow-1">
         <div class="row justify-content-center">
-            <div class="col-lg-8 col-md-10"
+            <div class="col-lg-8 col-md-10 position-relative"
                  th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
                 <!-- Stale data banner -->
                 <div th:if="${mode != 'create'}" id="stale-banner"
@@ -23,18 +23,13 @@
                 </div>
 
                 <!-- Page Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h1 class="display-5"
-                        th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{task.create.heading})">
-                        Task Form
-                    </h1>
-                    <a th:href="@{/tasks}" class="btn btn-outline-secondary">
-                        <i class="bi bi-arrow-left"></i> <span th:text="#{action.backToList}">Back to List</span>
-                    </a>
-                </div>
+                <h1 class="display-5 mb-4"
+                    th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{task.create.heading})">
+                    Task Form
+                </h1>
 
                 <!-- Form Card -->
-                <div class="card shadow">
+                <div class="card shadow position-relative">
                     <div class="card-body p-4">
                         <form th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
                               th:object="${task}"
@@ -62,18 +57,21 @@
                             </div>
                         </form>
                     </div>
-                </div>
-
-                <!-- Help Text -->
-                <div th:if="${mode != 'view'}" class="alert alert-light mt-4" role="alert">
-                    <h6 class="alert-heading">
-                        <i class="bi bi-info-circle"></i> <span th:text="#{task.form.tips.heading}">Tips:</span>
-                    </h6>
-                    <ul class="mb-0">
-                        <li th:text="#{task.form.tips.title}">Use clear, actionable titles for better task organization</li>
-                        <li th:text="#{task.form.tips.description}">Add descriptions to provide context and track progress</li>
-                        <li th:if="${mode == 'edit'}" th:text="#{task.form.tips.completion}">Toggle completion status to mark tasks as done</li>
-                    </ul>
+                    <!-- Tips (create/edit only) — positioned to the right of the card -->
+                    <div th:if="${mode != 'view'}" class="task-tips d-none d-xl-block">
+                        <div class="card shadow-sm small">
+                            <div class="card-body text-muted">
+                                <h6 class="card-title text-muted">
+                                    <i class="bi bi-info-circle"></i> <span th:text="#{task.form.tips.heading}">Tips:</span>
+                                </h6>
+                                <ul class="ps-3 mb-0">
+                                    <li th:text="#{task.form.tips.title}">Use clear, actionable titles for better task organization</li>
+                                    <li class="mt-1" th:text="#{task.form.tips.description}">Add descriptions to provide context and track progress</li>
+                                    <li class="mt-1" th:if="${mode == 'edit'}" th:text="#{task.form.tips.completion}">Toggle completion status to mark tasks as done</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Comments -->

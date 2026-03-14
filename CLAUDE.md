@@ -573,6 +573,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tasks` - Task list (cards or table view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/dashboard` - Personal dashboard (real-time stats, recent tasks, activity feed)
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)

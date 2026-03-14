@@ -36,6 +36,10 @@ public class AuditLogService {
         return page;
     }
 
+    public List<AuditLog> getRecentByActions(List<String> actions) {
+        return auditLogRepository.findTop10ByActionInOrderByTimestampDesc(actions);
+    }
+
     public List<AuditLog> getEntityHistory(Class<?> entityType, Long entityId) {
         List<AuditLog> entries = auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc(
                 entityType.getSimpleName(), entityId);

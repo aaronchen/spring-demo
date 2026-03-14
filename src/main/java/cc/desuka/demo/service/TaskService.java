@@ -1,14 +1,14 @@
 package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
-import cc.desuka.demo.dto.TaskChangeEvent;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.dto.TaskChangeEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
-import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
@@ -38,7 +38,8 @@ public class TaskService {
   private final MessageSource messageSource;
   private final SimpMessagingTemplate messagingTemplate;
 
-  public TaskService(TaskRepository taskRepository, TagService tagService,
+  public TaskService(TaskRepository taskRepository, 
+                     TagService tagService,
                      UserService userService, CommentService commentService,
                      NotificationService notificationService,
                      ApplicationEventPublisher eventPublisher,
@@ -145,6 +146,36 @@ public class TaskService {
                                          Long userId, List<Long> tagIds,
                                          Pageable pageable) {
     return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, userId, tagIds), pageable);
+  }
+
+  public long countByUserAndStatus(User user, TaskStatus status) {
+    return taskRepository.countByUserAndStatus(user, status);
+  }
+
+  public long countByUserOverdue(User user) {
+    return taskRepository.countByUserAndDueDateBeforeAndStatusNot(user, java.time.LocalDate.now(), TaskStatus.COMPLETED);
+  }
+
+  public long countByStatus(TaskStatus status) {
+    return taskRepository.countByStatus(status);
+  }
+
+  public long countOverdue() {
+    return taskRepository.countByDueDateBeforeAndStatusNot(java.time.LocalDate.now(), TaskStatus.COMPLETED);
+  }
+
+  public long countAll() {
+    return taskRepository.count();
+  }
+
+  public List<Task> getRecentTasksByUser(User user) {
+    return taskRepository.findTop5ByUserOrderByCreatedAtDesc(user);
+  }
+
+  public Map<Long, String> getTitlesByIds(List<Long> ids) {
+    if (ids.isEmpty()) return Map.of();
+    return taskRepository.findAllById(ids).stream()
+        .collect(java.util.stream.Collectors.toMap(Task::getId, Task::getTitle));
   }
 
   // Advance status: OPEN → IN_PROGRESS → COMPLETED → OPEN

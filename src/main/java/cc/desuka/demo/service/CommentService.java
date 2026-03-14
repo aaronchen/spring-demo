@@ -52,6 +52,10 @@ public class CommentService {
         return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
     }
 
+    public long countByUserId(Long userId) {
+        return commentRepository.countByUserId(userId);
+    }
+
     public void deleteByTaskId(Long taskId) {
         commentRepository.deleteByTaskId(taskId);
     }
@@ -72,13 +76,19 @@ public class CommentService {
                 SecurityUtils.getCurrentPrincipal(),
                 AuditDetails.toJson(saved.toAuditSnapshot())));
 
-        // Notify task owner about new comment (unless commenter is the owner)
+        // Notify task owner and previous commenters (excluding the commenter themselves)
+        String message = messageSource.getMessage("notification.comment.added",
+                new Object[]{user.getName(), task.getTitle()}, Locale.getDefault());
+        String link = "/tasks/" + taskId;
+
         User taskOwner = task.getUser();
         if (taskOwner != null && !taskOwner.getId().equals(userId)) {
-            String message = messageSource.getMessage("notification.comment.added",
-                    new Object[]{user.getName(), task.getTitle()}, Locale.getDefault());
-            notificationService.create(taskOwner, user, NotificationType.COMMENT_ADDED,
-                    message, "/tasks/" + taskId + "/edit");
+            notificationService.create(taskOwner, user, NotificationType.COMMENT_ADDED, message, link);
+        }
+        Long ownerId = taskOwner != null ? taskOwner.getId() : null;
+        for (User commenter : commentRepository.findDistinctUsersByTaskId(taskId)) {
+            if (commenter.getId().equals(userId) || commenter.getId().equals(ownerId)) continue;
+            notificationService.create(commenter, user, NotificationType.COMMENT_ADDED, message, link);
         }
         broadcastCommentChange("created", taskId, saved.getId());
         return saved;

@@ -22,12 +22,14 @@ public class FrontendConfigController {
         routes: {
           tasks: "%s",
           api: "%s",
-          audit: "%s"
+          audit: "%s",
+          dashboard: "%s"
         },
         messages: %s
       };
       """.formatted(escapeJs(appRoutes.getTasks()), escapeJs(appRoutes.getApi()),
-                    escapeJs(appRoutes.getAudit()), buildMessagesJson());
+                    escapeJs(appRoutes.getAudit()), escapeJs(appRoutes.getDashboard()),
+                    buildMessagesJson());
   }
 
   // NOTE: Uses JVM default locale, not the browser's Accept-Language. Fine while

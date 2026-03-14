@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.dashboard}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <!-- Navigation -->
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <!-- Dashboard -->
+    <main class="container flex-grow-1">
+        <!-- Welcome Banner -->
+        <div class="row align-items-center mb-4 mt-3">
+            <div class="col">
+                <h2 th:text="#{dashboard.welcome(${currentUser?.name})}">Welcome back, Alice</h2>
+            </div>
+            <div class="col-auto d-flex gap-2">
+                <a th:href="@{/tasks/new}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i>
+                    <span th:text="#{dashboard.action.newTask}">New Task</span>
+                </a>
+                <a th:href="@{/tasks}" class="btn btn-outline-primary">
+                    <i class="bi bi-list-check"></i>
+                    <span th:text="#{dashboard.action.myTasks}">My Tasks</span>
+                </a>
+            </div>
+        </div>
+
+        <th:block th:if="${stats != null}">
+            <div th:replace="~{dashboard/dashboard-stats}"></div>
+        </th:block>
+    </main>
+
+    <!-- Footer -->
+    <div th:replace="~{layouts/base :: footer}"></div>
+
+    <!-- Scripts -->
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script>
+        (function() {
+            const statsContainer = document.getElementById('dashboard-stats');
+
+            if (!window.stompClient || !statsContainer) return;
+
+            function refreshStats() {
+                htmx.ajax('GET', `${APP_CONFIG.routes.dashboard}/stats`,
+                    {target: '#dashboard-stats', swap: 'outerHTML'});
+            }
+
+            window.stompClient.onConnect(function(client) {
+                client.subscribe('/topic/tasks', function() {
+                    refreshStats();
+                });
+
+                client.subscribe('/topic/presence', function() {
+                    refreshStats();
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

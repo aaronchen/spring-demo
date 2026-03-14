@@ -207,6 +207,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `users` (`List<String>`), `count` (int)
   - Used by both `PresenceApiController` (REST response) and `PresenceEventListener` (WebSocket broadcast to `/topic/presence`)
 
+- `dto/DashboardStats.java` - Record carrying all dashboard data
+  - Personal stats: `myOpen`, `myInProgress`, `myCompleted`, `myOverdue`, `myTotal`
+  - System stats: `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
+  - Lists: `myRecentTasks` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
+  - Immutable record — built by `DashboardService.buildStats()`
+
 - `dto/AdminUserRequest.java` - Admin user create/edit form DTO
   - Fields: `id` (null on create, set on edit — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email), `password` (no bean validation — controller validates manually: required on create, ignored on edit), `role` (required, defaults to USER)
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
@@ -238,7 +244,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/CommentService.java` - Comment business logic with audit event publishing and WebSocket broadcast
   - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
   - Constructor injection includes `NotificationService`, `MessageSource`, and `SimpMessagingTemplate` for COMMENT_ADDED notifications and live updates
-  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner (skips self-notification), broadcasts `CommentChangeEvent`
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner and previous commenters (skips self-notification, deduplicates owner), broadcasts `CommentChangeEvent`
+  - `countByUserId(userId)` — count of comments by a user (used by `UserService.canDelete()`)
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
@@ -247,7 +254,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/TaskService.java` - Business logic layer
   - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher`, `SimpMessagingTemplate` (uses service layer instead of direct repository access for tags, users, and comments)
-  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`
+  - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`, `countByUserAndStatus`, `countByUserOverdue`, `countByStatus`, `countOverdue`, `countAll`, `getRecentTasksByUser`, `getTitlesByIds`
   - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN (replaces `toggleComplete`)
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
   - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
@@ -277,7 +284,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
   - `getEntityHistory(entityType, entityId)` — entity-specific audit trail (used by task detail/modal)
-  - Both methods resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
+  - `getRecentByActions(List<String>)` — top 10 entries filtered by action type (used by dashboard activity feed)
+  - `searchAuditLogs` and `getEntityHistory` resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
 
 - `service/NotificationService.java` - Notification business logic with WebSocket push
   - Constructor injection: `NotificationRepository`, `NotificationMapper`, `SimpMessagingTemplate`
@@ -299,6 +307,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
   - `updateValue(key, value)` — upserts a setting row; publishes `AuditEvent` with before/after diff
   - Used by `GlobalModelAttributes` (load) and `SettingsController` (update)
+
+- `service/DashboardService.java` - Orchestrates dashboard data via owning services
+  - Constructor injection: `TaskService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
+  - `buildStats(User)` — returns `DashboardStats` record with personal counts, system-wide counts, recent tasks, and recent activity with resolved task titles
+  - Filters activity to `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED` actions only
 
 ### Controller Layer
 - `controller/api/TaskApiController.java` - Task REST API endpoints
@@ -401,6 +414,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `GET /users` — lists all users sorted A-Z in a table with HTMX live search (name/email)
   - User names link to `/tasks?userId={id}` to show that user's tasks
   - HTMX requests return `users/user-table` fragment; full requests return `users/users`
+
+- `controller/DashboardController.java` - Dashboard page and HTMX stats fragment
+  - `GET /dashboard` — full dashboard page; builds stats via `DashboardService.buildStats()` and returns `dashboard/dashboard`
+  - `GET /dashboard/stats` — returns `dashboard/dashboard-stats` bare fragment for HTMX refresh; used by WebSocket-triggered client-side refresh
 
 - `controller/TaskController.java` - Task web UI endpoints
   - `@Controller` with `/tasks` base path
@@ -606,8 +623,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Clear all button
   - Listens to custom DOM events (`notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`) for real-time updates
 
+### Dashboard Views
+- `templates/dashboard/dashboard.html` - Dashboard page with welcome banner, quick action buttons, and `th:replace` of `dashboard-stats.html`; subscribes to `/topic/tasks` and `/topic/presence` via WebSocket; refreshes stats fragment via `htmx.ajax()` on any task or presence change (no self-filtering — dashboard should reflect own actions from other tabs)
+- `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); contains My Tasks stats (5 cards), System Overview (4 cards), My Recent Tasks list, and Recent Activity feed with action badges and resolved task titles; returned whole-file for HTMX refresh or via `th:replace` for full page
+
 ### Home, Tag, User, Auth, Admin, Error Views
-- `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Task Lifecycle, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
+- `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Real-Time, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
 - `templates/users/users.html` - User list page (HTMX live search)
 - `templates/users/user-table.html` - User table fragment (bare file)

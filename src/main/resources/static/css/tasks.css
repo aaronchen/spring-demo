@@ -97,6 +97,15 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     min-height: 0;
 }
 
+/* Task full page: tips panel positioned to the right of the centered card */
+.task-tips {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    width: 280px;
+    margin-left: 1.5rem;
+}
+
 /* Table action buttons: uniform secondary border/icon in default state,
    colored fill on hover (Bootstrap's native hover vars handle the rest) */
 .table .btn-group .btn-outline-success,

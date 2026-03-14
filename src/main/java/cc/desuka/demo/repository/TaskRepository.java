@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -20,6 +21,16 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
   List<Task> findByUser(User user);
 
   List<Task> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
+
+  long countByUserAndStatus(User user, TaskStatus status);
+
+  long countByUserAndDueDateBeforeAndStatusNot(User user, LocalDate date, TaskStatus status);
+
+  long countByStatus(TaskStatus status);
+
+  long countByDueDateBeforeAndStatusNot(LocalDate date, TaskStatus status);
+
+  List<Task> findTop5ByUserOrderByCreatedAtDesc(User user);
 
   // @EntityGraph solves the N+1 query problem for paginated task lists.
   //

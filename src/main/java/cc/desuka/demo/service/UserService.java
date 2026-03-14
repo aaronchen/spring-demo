@@ -19,6 +19,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+// Uses TaskRepository and CommentRepository directly (not TaskService/CommentService)
+// to break circular dependency: TaskService → UserService → TaskService.
 @Service
 public class UserService {
 
@@ -90,9 +92,7 @@ public class UserService {
 
     public long countCompletedTasks(Long userId) {
         User user = getUserById(userId);
-        return taskRepository.findByUser(user).stream()
-                .filter(t -> t.getStatus() == TaskStatus.COMPLETED)
-                .count();
+        return taskRepository.countByUserAndStatus(user, TaskStatus.COMPLETED);
     }
 
     public long countComments(Long userId) {
@@ -149,17 +149,6 @@ public class UserService {
         return saved;
     }
 
-    public void deleteUser(Long id) {
-        User user = getUserById(id);
-        String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
-        // Unassign all tasks before deleting — prevents FK constraint violation.
-        unassignTasks(user);
-        userRepository.delete(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_DELETED, User.class, id, SecurityUtils.getCurrentPrincipal(),
-                snapshot));
-    }
-
     private void unassignTasks(User user) {
         List<Task> tasks = taskRepository.findByUser(user);
         for (Task task : tasks) {
@@ -170,5 +159,16 @@ public class UserService {
             }
         }
         taskRepository.saveAll(tasks);
+    }
+
+    public void deleteUser(Long id) {
+        User user = getUserById(id);
+        String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
+        // Unassign all tasks before deleting — prevents FK constraint violation.
+        unassignTasks(user);
+        userRepository.delete(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.USER_DELETED, User.class, id, SecurityUtils.getCurrentPrincipal(),
+                snapshot));
     }
 }
