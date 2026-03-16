@@ -3,7 +3,6 @@ package cc.desuka.demo.controller;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.DashboardService;
-import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

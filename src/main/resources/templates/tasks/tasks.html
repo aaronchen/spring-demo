@@ -22,12 +22,19 @@
                 <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h1 class="display-4" th:text="#{task.list.heading}">Tasks</h1>
-                    <button class="btn btn-primary btn-lg"
-                            th:attr="hx-get=${appRoutes.tasks + '/new'}"
-                            hx-target="#task-modal-content"
-                            hx-swap="innerHTML">
-                        <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button id="export-btn" class="btn btn-outline-secondary btn-lg"
+                                onclick="exportTasks()"
+                                th:title="#{task.export.tooltip}">
+                            <i class="bi bi-filetype-csv"></i> <span th:text="#{task.export}">Export</span>
+                        </button>
+                        <button class="btn btn-primary btn-lg"
+                                th:attr="hx-get=${appRoutes.tasks + '/new'}"
+                                hx-target="#task-modal-content"
+                                hx-swap="innerHTML">
+                            <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Row 1: Search -->
@@ -57,15 +64,17 @@
                     <div class="btn-group btn-group-sm" role="group" aria-label="User filter">
                         <button type="button"
                                 class="btn btn-outline-light border-secondary text-dark fw-bold"
+                                th:classappend="${selectedUserId == null ? 'active' : ''}"
                                 id="user-filter-all"
                                 onclick="clearUserFilter()">
                             <i class="bi bi-people"></i> <span th:text="#{task.filter.user.all}">All Users</span>
                         </button>
                         <button type="button"
-                                class="btn btn-outline-light border-secondary text-primary fw-bold active"
+                                class="btn btn-outline-light border-secondary text-primary fw-bold"
+                                th:classappend="${selectedUserId != null ? 'active' : ''}"
                                 id="user-filter-mine"
-                                th:data-user-id="${currentUser?.id}"
-                                th:data-user-name="${currentUser?.name}"
+                                th:data-current-user-id="${currentUser?.id}"
+                                th:data-current-user-name="${currentUser?.name}"
                                 th:data-filter-user-name="${filterUserName}"
                                 onclick="setMyFilter()">
                             <i class="bi bi-person"></i>
@@ -280,6 +289,7 @@
                     <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="View toggle">
                         <button type="button"
                                 class="btn btn-outline-secondary"
+                                th:classappend="${view != 'table' ? 'active' : ''}"
                                 id="view-cards"
                                 th:title="#{task.view.cards}"
                                 onclick="switchView('cards')">
@@ -287,6 +297,7 @@
                         </button>
                         <button type="button"
                                 class="btn btn-outline-secondary"
+                                th:classappend="${view == 'table' ? 'active' : ''}"
                                 id="view-table"
                                 th:title="#{task.view.table}"
                                 onclick="switchView('table')">

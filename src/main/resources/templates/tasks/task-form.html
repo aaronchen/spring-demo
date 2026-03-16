@@ -103,8 +103,8 @@
 
     <!-- Assigned To -->
     <div class="mb-3">
-        <label for="userId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <searchable-select name="userId" id="userId"
+        <label for="assigneeId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
+        <searchable-select name="assigneeId" id="assigneeId"
                            src="/api/users" value-field="id" text-field="name"
                            th:placeholder="#{task.field.user.placeholder}"
                            th:disabled="${mode == 'view'}">

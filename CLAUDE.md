@@ -301,6 +301,27 @@ Admin-managed settings stored in the `settings` table as key/value rows. The sys
 2. Add a `KEY_*` constant whose value matches the field name
 3. Add `audit.field.<key>` to `messages.properties`
 
+### User Preferences Pattern
+
+Per-user preferences stored in the `user_preferences` table as key/value rows. Mirrors the Site Settings pattern:
+
+- **`UserPreference`** (entity in `model/`) — JPA entity for DB row (`pref_key` / `pref_value`), unique per user+key
+- **`UserPreferences`** (typed POJO in `config/`) — defaults for all preferences. `BeanWrapper` auto-maps DB rows to fields
+- **`UserPreferenceService.load(userId)`** — reads all rows for a user into a `UserPreferences` object; missing keys keep defaults
+
+`GlobalModelAttributes` exposes `${userPreferences}` to all templates. Current preferences:
+- `taskView` — `"cards"` (default) or `"table"` — default view mode for task list
+- `defaultUserFilter` — `"mine"` (default) or `"all"` — default user filter on task list
+
+### Profile Controller Pattern
+
+Three controllers handle User-related concerns:
+- **`UserController`** (`/users`) — public user list, visible to all authenticated users
+- **`ProfileController`** (`/profile`) — self-service: edit name/email, change password, manage preferences
+- **`UserManagementController`** (`/admin/users`) — admin: create/edit/delete/disable/enable users
+
+`ProfileRequest` DTO uses `@Unique` validation (same as admin user forms) with a hidden `id` field for self-exclusion on update.
+
 ### Theme System
 
 Custom color schemes activated via `data-theme` attribute on `<html>`. Without it, stock Bootstrap renders.
@@ -454,6 +475,26 @@ document.body.addEventListener('htmx:configRequest', function(e) {
 ```
 The `<meta>` tags are set in `base.html`'s `<head>`. REST API (`/api/**`) is CSRF-exempt.
 
+### Audit Event Categories
+
+`AuditEvent.CATEGORIES` is the single source of truth for audit filter categories. Every event constant must be prefixed with one of these categories (e.g., `TASK_CREATED`, `AUTH_SUCCESS`, `PROFILE_UPDATED`).
+
+- **`AuditLogSpecifications.withCategory()`** — derives `LIKE` prefix from `CATEGORIES` list (no hardcoded switch)
+- **`AuditController`** — passes `CATEGORIES` to model
+- **`audit.html`** — generates filter buttons dynamically via `th:each`
+
+To add a new audit category: add the prefix to `CATEGORIES`, define event constants with that prefix, add `admin.audit.filter.<name>` message key. Filter and UI update automatically.
+
+### CSV Export Pattern
+
+`CsvWriter` utility in `util/` — generic CSV writer that takes headers, a list of any type, and a row mapper lambda:
+```java
+CsvWriter.write(response, "tasks.csv", headers, tasks, task -> new String[]{...});
+```
+Handles escaping (commas, quotes, newlines), sets `Content-Type` and `Content-Disposition` headers. Reusable for any entity export.
+
+The task export endpoint (`GET /tasks/export`) accepts the same filter params as the task list, uses `Pageable.unpaged(sort)` to bypass pagination, and delegates to the same `searchAndFilterTasks` service method.
+
 ### CSS Organization
 
 - **`base.css`** — styles used on every page; included by `base.html`
@@ -573,6 +614,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tasks` - Task list (cards or table view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
 - `http://localhost:8080/dashboard` - Personal dashboard (real-time stats, recent tasks, activity feed)
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
@@ -581,6 +623,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
 - `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
 - `http://localhost:8080/notifications` - Notification inbox (paginated, mark-read, clear-all)
+- `http://localhost:8080/profile` - User profile: edit name/email, change password, preferences
 
 **REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - List all tasks
@@ -739,6 +782,14 @@ CREATE TABLE comments (
     created_at TIMESTAMP,
     task_id    BIGINT NOT NULL REFERENCES tasks(id),  -- @ManyToOne; cascade delete via service
     user_id    BIGINT NOT NULL REFERENCES users(id)   -- @ManyToOne; comment author
+);
+
+CREATE TABLE user_preferences (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    pref_key   VARCHAR(100) NOT NULL,
+    pref_value VARCHAR(500),
+    UNIQUE (user_id, pref_key)
 );
 
 -- Join table for the @ManyToMany between Task and Tag.

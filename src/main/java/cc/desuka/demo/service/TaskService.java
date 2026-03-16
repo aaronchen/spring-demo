@@ -64,11 +64,11 @@ public class TaskService {
         .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
   }
 
-  // tagIds and userId come from the caller (API or web controller).
+  // tagIds and assigneeId come from the caller (API or web controller).
   // The mapper cannot do DB lookups, so that responsibility lives here.
-  public Task createTask(Task task, List<Long> tagIds, Long userId) {
+  public Task createTask(Task task, List<Long> tagIds, Long assigneeId) {
     task.setTags(tagService.findAllByIds(tagIds));
-    task.setUser(userService.findUserById(userId));
+    task.setUser(userService.findUserById(assigneeId));
     Task saved = taskRepository.save(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
@@ -78,7 +78,7 @@ public class TaskService {
     return saved;
   }
 
-  public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long userId, Long expectedVersion) {
+  public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long assigneeId, Long expectedVersion) {
     Task task = getTaskById(id);
     if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
       throw new StaleDataException(Task.class, id);
@@ -93,7 +93,7 @@ public class TaskService {
     task.setDueDate(taskDetails.getDueDate());
     task.setTags(tagService.findAllByIds(tagIds));
     // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
-    User newUser = userService.findUserById(userId);
+    User newUser = userService.findUserById(assigneeId);
     if (task.getStatus() == TaskStatus.IN_PROGRESS && newUser != null
         && (task.getUser() == null || !task.getUser().getId().equals(newUser.getId()))) {
       task.setStatus(TaskStatus.OPEN);
@@ -143,9 +143,9 @@ public class TaskService {
 
   public Page<Task> searchAndFilterTasks(String keyword, TaskStatusFilter statusFilter,
                                          boolean overdue, Priority priority,
-                                         Long userId, List<Long> tagIds,
+                                         Long selectedUserId, List<Long> tagIds,
                                          Pageable pageable) {
-    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, userId, tagIds), pageable);
+    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, selectedUserId, tagIds), pageable);
   }
 
   public long countByUserAndStatus(User user, TaskStatus status) {

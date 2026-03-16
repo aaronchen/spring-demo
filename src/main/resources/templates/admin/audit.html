@@ -6,7 +6,7 @@
     <div th:replace="~{layouts/base :: navbar}"></div>
 
     <main class="container flex-grow-1 mb-4">
-        <h1 class="display-5 mb-4" th:text="#{admin.audit.heading}">Audit Log</h1>
+        <h1 class="display-4 mb-4" th:text="#{admin.audit.heading}">Audit Log</h1>
 
         <!-- Filters row -->
         <div class="row g-3 mb-4 align-items-end">
@@ -32,18 +32,10 @@
                 <div class="btn-group" role="group" aria-label="Category filter">
                     <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn active"
                             data-category="" th:text="#{admin.audit.filter.all}">All</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="task" th:text="#{admin.audit.filter.task}">Task</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="user" th:text="#{admin.audit.filter.user}">User</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="tag" th:text="#{admin.audit.filter.tag}">Tag</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="comment" th:text="#{admin.audit.filter.comment}">Comment</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="auth" th:text="#{admin.audit.filter.auth}">Auth</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            data-category="setting" th:text="#{admin.audit.filter.setting}">Setting</button>
+                    <button th:each="cat : ${categories}" type="button"
+                            class="btn btn-outline-secondary btn-sm audit-category-btn"
+                            th:data-category="${cat.toLowerCase()}"
+                            th:text="#{${'admin.audit.filter.' + cat.toLowerCase()}}">Category</button>
                 </div>
             </div>
 

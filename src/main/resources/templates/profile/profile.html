@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.profile}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <h1 class="display-4 mb-4" th:text="#{profile.heading}">Profile</h1>
+
+        <div class="row g-4">
+            <!-- Left column: Account + Password -->
+            <div class="col-lg-7">
+                <!-- Account Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-person-circle"></i>
+                            <span th:text="#{profile.account.heading}">Account</span>
+                        </h5>
+
+                        <!--/* Success toast triggered by flash attribute */-->
+                        <div th:if="${profileSaved}" class="d-none" data-toast="profile-saved"></div>
+
+                        <form th:action="@{/profile}" method="post" th:object="${profileRequest}">
+                            <input type="hidden" th:field="*{id}">
+                            <div class="mb-3">
+                                <label for="profile-name" class="form-label form-label-required"
+                                       th:text="#{profile.field.name}">Name</label>
+                                <input type="text" id="profile-name" class="form-control"
+                                       th:field="*{name}"
+                                       th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}"
+                                       maxlength="100">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                                     th:errors="*{name}">Error</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="profile-email" class="form-label form-label-required"
+                                       th:text="#{profile.field.email}">Email</label>
+                                <input type="email" id="profile-email" class="form-control"
+                                       th:field="*{email}"
+                                       th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}"
+                                       maxlength="150">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
+                                     th:errors="*{email}">Error</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary"
+                                    th:text="#{admin.settings.save}">Save</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Change Password Card -->
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-key"></i>
+                            <span th:text="#{profile.password.heading}">Change Password</span>
+                        </h5>
+
+                        <!--/* Success toast triggered by flash attribute */-->
+                        <div th:if="${passwordChanged}" class="d-none" data-toast="password-changed"></div>
+
+                        <form th:action="@{/profile/password}" method="post" th:object="${changePasswordRequest}">
+                            <div class="mb-3">
+                                <label for="current-password" class="form-label form-label-required"
+                                       th:text="#{profile.password.current}">Current Password</label>
+                                <input type="password" id="current-password" class="form-control"
+                                       th:field="*{currentPassword}"
+                                       th:classappend="${#fields.hasErrors('currentPassword') ? 'is-invalid' : ''}"
+                                       th:placeholder="#{profile.password.current.placeholder}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('currentPassword')}"
+                                     th:errors="*{currentPassword}">Error</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="new-password" class="form-label form-label-required"
+                                       th:text="#{profile.password.new}">New Password</label>
+                                <input type="password" id="new-password" class="form-control"
+                                       th:field="*{newPassword}"
+                                       th:classappend="${#fields.hasErrors('newPassword') ? 'is-invalid' : ''}"
+                                       th:placeholder="#{profile.password.new.placeholder}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('newPassword')}"
+                                     th:errors="*{newPassword}">Error</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="confirm-password" class="form-label form-label-required"
+                                       th:text="#{profile.password.confirm}">Confirm New Password</label>
+                                <input type="password" id="confirm-password" class="form-control"
+                                       th:field="*{confirmPassword}"
+                                       th:classappend="${#fields.hasErrors('confirmPassword') ? 'is-invalid' : ''}"
+                                       th:placeholder="#{profile.password.confirm.placeholder}">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('confirmPassword')}"
+                                     th:errors="*{confirmPassword}">Error</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-warning"
+                                    th:text="#{profile.password.submit}">Change Password</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column: Preferences -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-sliders"></i>
+                            <span th:text="#{profile.preferences.heading}">Preferences</span>
+                        </h5>
+
+                        <!--/* Success toast triggered by flash attribute */-->
+                        <div th:if="${preferencesSaved}" class="d-none" data-toast="preferences-saved"></div>
+
+                        <form th:action="@{/profile/preferences}" method="post">
+                            <!-- Task View Mode -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"
+                                       th:text="#{profile.preferences.taskView}">Default Task View</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="taskView" id="pref-view-cards" value="cards"
+                                               th:checked="${userPreferences.taskView == 'cards'}">
+                                        <label class="form-check-label" for="pref-view-cards">
+                                            <i class="bi bi-grid me-1"></i>
+                                            <span th:text="#{profile.preferences.taskView.cards}">Cards</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="taskView" id="pref-view-table" value="table"
+                                               th:checked="${userPreferences.taskView == 'table'}">
+                                        <label class="form-check-label" for="pref-view-table">
+                                            <i class="bi bi-table me-1"></i>
+                                            <span th:text="#{profile.preferences.taskView.table}">Table</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Default User Filter -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"
+                                       th:text="#{profile.preferences.defaultUserFilter}">Default Task Filter</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="defaultUserFilter" id="pref-filter-mine" value="mine"
+                                               th:checked="${userPreferences.defaultUserFilter == 'mine'}">
+                                        <label class="form-check-label" for="pref-filter-mine">
+                                            <i class="bi bi-person me-1"></i>
+                                            <span th:text="#{profile.preferences.defaultUserFilter.mine}">My Tasks</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="defaultUserFilter" id="pref-filter-all" value="all"
+                                               th:checked="${userPreferences.defaultUserFilter == 'all'}">
+                                        <label class="form-check-label" for="pref-filter-all">
+                                            <i class="bi bi-people me-1"></i>
+                                            <span th:text="#{profile.preferences.defaultUserFilter.all}">All Tasks</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary"
+                                    th:text="#{admin.settings.save}">Save</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script>
+        (function() {
+            // Show toast notifications for flash attributes
+            const toasts = {
+                'profile-saved': 'toast.profile.saved',
+                'password-changed': 'toast.profile.passwordChanged',
+                'preferences-saved': 'toast.profile.preferencesSaved'
+            };
+            Object.entries(toasts).forEach(function([attr, key]) {
+                if (document.querySelector(`[data-toast="${attr}"]`)) {
+                    showToast(APP_CONFIG.messages[key], 'success');
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

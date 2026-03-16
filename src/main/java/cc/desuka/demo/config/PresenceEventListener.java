@@ -32,9 +32,10 @@ public class PresenceEventListener {
         String sessionId = accessor.getSessionId();
         if (principal != null && sessionId != null) {
             User user = SecurityUtils.getUserFrom(principal);
-            String userName = user != null ? user.getName() : principal.getName();
-            presenceService.userConnected(sessionId, userName);
-            broadcastPresence();
+            if (user != null) {
+                presenceService.userConnected(sessionId, user.getId());
+                broadcastPresence();
+            }
         }
     }
 

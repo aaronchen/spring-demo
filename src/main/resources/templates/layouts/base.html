@@ -141,6 +141,14 @@
                                 <small class="text-muted" th:text="${#authentication.principal.user.email}">email@example.com</small>
                             </li>
                             <li><hr class="dropdown-divider my-1"></li>
+                            <!-- Profile link -->
+                            <li>
+                                <a class="dropdown-item py-2" th:href="@{/profile}">
+                                    <i class="bi bi-person-gear me-2"></i>
+                                    <span th:text="#{nav.profile}">Profile</span>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
                             <!-- Admin links -->
                             <li sec:authorize="hasRole('ADMIN')">
                                 <a class="dropdown-item py-2" th:href="@{/admin/users}">
