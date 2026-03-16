@@ -35,12 +35,31 @@ function buildUrl(page) {
     activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
     params.set('size', pageSize);
     if (page > 0) params.set('page', page);
-    // Always include userId: actual ID for "Mine"/specific user, empty for "All Users".
+    // Always include selectedUserId: actual ID for "Mine"/specific user, empty for "All Users".
     // This ensures bookmarked URLs preserve the user filter choice.
-    params.set('userId', selectedUserId || '');
+    params.set('selectedUserId', selectedUserId || '');
     if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
     if (currentView !== 'cards') params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
+}
+
+// Export current filtered tasks as CSV
+function exportTasks() {
+    const params = new URLSearchParams();
+    const search = document.getElementById('search-input').value;
+    const statusFilter = document.getElementById('current-status-filter').value;
+    const overdueVal = document.getElementById('current-overdue-filter').value;
+    if (search) params.set('search', search);
+    if (statusFilter && statusFilter !== 'ALL') params.set('statusFilter', statusFilter);
+    if (overdueVal === 'true') params.set('overdue', 'true');
+    const priority = document.getElementById('current-priority-filter').value;
+    if (priority) params.set('priority', priority);
+    if (selectedUserId) params.set('selectedUserId', selectedUserId);
+    if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
+    if (activeSorts.length > 0) {
+        params.set('sort', `${activeSorts[0].field},${activeSorts[0].direction}`);
+    }
+    window.location.href = `${TASKS_BASE}/export?${params.toString()}`;
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
@@ -108,7 +127,6 @@ function onPageSizeChange(newSize) {
 // Switch between card and table views
 function switchView(view) {
     currentView = view;
-    setCookie('view', view);
     renderViewToggle();
     doSearch(false);
 }
@@ -202,17 +220,18 @@ function initFromUrl() {
     const clearBtn = document.getElementById('search-clear-btn');
     if (clearBtn) clearBtn.classList.toggle('d-none', !params.get('search'));
 
-    // View: URL takes precedence; fall back to cookie (mirrors server-side logic)
-    currentView = params.get('view') || getCookie('view') || 'cards';
+    // View: URL param takes precedence; otherwise read from server-rendered active state
+    currentView = params.get('view')
+        || (document.getElementById('view-table')?.classList.contains('active') ? 'table' : 'cards');
     renderViewToggle();
 
-    // User filter: explicit URL param wins; otherwise keep default (Mine)
-    if (params.has('userId')) {
-        selectedUserId = params.get('userId') || null; // empty string → null (All Users)
+    // User filter: explicit URL param wins; otherwise keep default from server
+    if (params.has('selectedUserId')) {
+        selectedUserId = params.get('selectedUserId') || null; // empty string → null (All Users)
     }
     // If filtering by another user, read their name from the data attribute
-    const mineId = document.getElementById('user-filter-mine')?.dataset.userId;
-    if (selectedUserId && selectedUserId !== mineId) {
+    const currentUsrId = document.getElementById('user-filter-mine')?.dataset.currentUserId;
+    if (selectedUserId && selectedUserId !== currentUsrId) {
         const filterUserName = document.getElementById('user-filter-mine')?.dataset.filterUserName;
         renderUserFilter(filterUserName || null);
     } else {
@@ -230,15 +249,15 @@ function initFromUrl() {
 
 // ── User filter ──
 
-function setUserFilter(userId, userName) {
-    selectedUserId = String(userId);
+function setUserFilter(id, userName) {
+    selectedUserId = String(id);
     renderUserFilter(userName);
     doSearch(true);
 }
 
 function setMyFilter() {
     const btn = document.getElementById('user-filter-mine');
-    selectedUserId = btn.dataset.userId;
+    selectedUserId = btn.dataset.currentUserId;
     renderUserFilter(null);
     doSearch(true);
 }
@@ -253,7 +272,7 @@ function clearUserFilter() {
 function resetUserFilter() {
     // "×" on user label: go back to Mine
     const mineBtn = document.getElementById('user-filter-mine');
-    selectedUserId = mineBtn?.dataset.userId;
+    selectedUserId = mineBtn?.dataset.currentUserId;
     renderUserFilter(null);
     doSearch(true);
 }
@@ -272,7 +291,7 @@ function renderUserFilter(userName) {
     if (selectedUserId === null) {
         label.textContent = defaultLabel;
         clearIcon.classList.add('d-none');
-    } else if (selectedUserId === mineBtn.dataset.userId) {
+    } else if (selectedUserId === mineBtn.dataset.currentUserId) {
         label.textContent = defaultLabel;
         clearIcon.classList.add('d-none');
     } else {
@@ -446,12 +465,14 @@ function highlightActiveTags() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Store default label and set initial user filter to "Mine"
+    // Store default label and read initial user filter from server-rendered active state
     const mineBtn = document.getElementById('user-filter-mine');
     if (mineBtn) {
         const label = document.getElementById('user-filter-label');
         if (label) mineBtn.dataset.defaultLabel = label.textContent;
-        if (!selectedUserId) selectedUserId = mineBtn.dataset.userId;
+        if (!selectedUserId && mineBtn.classList.contains('active')) {
+            selectedUserId = mineBtn.dataset.currentUserId;
+        }
     }
 
     initFromUrl();

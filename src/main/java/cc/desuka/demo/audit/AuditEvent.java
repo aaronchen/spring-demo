@@ -1,13 +1,21 @@
 package cc.desuka.demo.audit;
 
+import java.util.List;
+
 public class AuditEvent {
+
+    // Audit categories — single source of truth for filter UI and query logic.
+    // Each event constant must be prefixed with one of these categories.
+    public static final List<String> CATEGORIES = List.of(
+        "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH", "SETTING"
+    );
 
     // Task actions
     public static final String TASK_CREATED = "TASK_CREATED";
     public static final String TASK_UPDATED = "TASK_UPDATED";
     public static final String TASK_DELETED = "TASK_DELETED";
 
-    // User actions
+    // User actions (admin)
     public static final String USER_CREATED = "USER_CREATED";
     public static final String USER_UPDATED = "USER_UPDATED";
     public static final String USER_DELETED = "USER_DELETED";
@@ -16,6 +24,10 @@ public class AuditEvent {
     public static final String USER_PASSWORD_RESET = "USER_PASSWORD_RESET";
     public static final String USER_ROLE_CHANGED = "USER_ROLE_CHANGED";
     public static final String USER_REGISTERED = "USER_REGISTERED";
+
+    // Profile actions (self-service)
+    public static final String PROFILE_UPDATED = "PROFILE_UPDATED";
+    public static final String PROFILE_PASSWORD_CHANGED = "PROFILE_PASSWORD_CHANGED";
 
     // Comment actions
     public static final String COMMENT_CREATED = "COMMENT_CREATED";
@@ -29,8 +41,8 @@ public class AuditEvent {
     public static final String SETTING_UPDATED = "SETTING_UPDATED";
 
     // Auth actions
-    public static final String LOGIN_SUCCESS = "LOGIN_SUCCESS";
-    public static final String LOGIN_FAILURE = "LOGIN_FAILURE";
+    public static final String AUTH_SUCCESS = "AUTH_SUCCESS";
+    public static final String AUTH_FAILURE = "AUTH_FAILURE";
 
     private final String action;
     private final String entityType;

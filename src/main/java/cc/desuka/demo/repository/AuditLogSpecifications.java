@@ -1,5 +1,6 @@
 package cc.desuka.demo.repository;
 
+import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.model.AuditLog;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -10,17 +11,9 @@ public class AuditLogSpecifications {
     public static Specification<AuditLog> withCategory(String category) {
         return (root, query, cb) -> {
             if (category == null || category.isBlank()) return cb.conjunction();
-            String prefix = switch (category.toUpperCase()) {
-                case "TASK" -> "TASK_%";
-                case "USER" -> "USER_%";
-                case "TAG"     -> "TAG_%";
-                case "COMMENT" -> "COMMENT_%";
-                case "AUTH"    -> "LOGIN_%";
-                case "SETTING" -> "SETTING_%";
-                default        -> null;
-            };
-            if (prefix == null) return cb.conjunction();
-            return cb.like(root.get(AuditLog.FIELD_ACTION), prefix);
+            String upper = category.toUpperCase();
+            if (!AuditEvent.CATEGORIES.contains(upper)) return cb.conjunction();
+            return cb.like(root.get(AuditLog.FIELD_ACTION), upper + "_%");
         };
     }
 

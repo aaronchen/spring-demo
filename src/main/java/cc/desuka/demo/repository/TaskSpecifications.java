@@ -70,12 +70,12 @@ public class TaskSpecifications {
 
   public static Specification<Task> build(String keyword, TaskStatusFilter statusFilter,
                                           boolean overdue, Priority priority,
-                                          Long userId, List<Long> tagIds) {
+                                          Long selectedUserId, List<Long> tagIds) {
     return Specification.where(withStatusFilter(statusFilter))
         .and(withOverdue(overdue))
         .and(withPriority(priority))
         .and(withKeyword(keyword))
-        .and(withUserId(userId))
+        .and(withUserId(selectedUserId))
         .and(withTagIds(tagIds));
   }
 }

@@ -90,6 +90,33 @@ public class UserService {
         return saved;
     }
 
+    public User updateProfile(Long userId, String name, String email) {
+        User user = getUserById(userId);
+        Map<String, Object> before = user.toAuditSnapshot();
+        user.setName(name);
+        user.setEmail(email);
+        User saved = userRepository.save(user);
+        Map<String, Object> after = saved.toAuditSnapshot();
+        Map<String, Object> diff = AuditDetails.diff(before, after);
+        if (!diff.isEmpty()) {
+            eventPublisher.publishEvent(new AuditEvent(
+                    AuditEvent.PROFILE_UPDATED, User.class, saved.getId(),
+                    SecurityUtils.getCurrentPrincipal(),
+                    AuditDetails.toJson(diff)));
+        }
+        return saved;
+    }
+
+    public void changePassword(Long userId, String encodedPassword) {
+        User user = getUserById(userId);
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+        eventPublisher.publishEvent(new AuditEvent(
+                AuditEvent.PROFILE_PASSWORD_CHANGED, User.class, userId,
+                SecurityUtils.getCurrentPrincipal(),
+                AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
+    }
+
     public long countCompletedTasks(Long userId) {
         User user = getUserById(userId);
         return taskRepository.countByUserAndStatus(user, TaskStatus.COMPLETED);

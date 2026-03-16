@@ -50,12 +50,12 @@ public class TaskApiController {
   @ResponseStatus(HttpStatus.CREATED)
   public TaskResponse createTask(@Valid @RequestBody TaskRequest request,
       @AuthenticationPrincipal CustomUserDetails currentDetails) {
-    Long userId = currentDetails.getUser().getId();
+    Long assigneeId = currentDetails.getUser().getId();
     if (request.getUserId() != null && AuthExpressions.isAdmin(currentDetails.getUser())) {
-      userId = request.getUserId();
+      assigneeId = request.getUserId();
     }
     return taskMapper.toResponse(
-        taskService.createTask(taskMapper.toEntity(request), request.getTagIds(), userId));
+        taskService.createTask(taskMapper.toEntity(request), request.getTagIds(), assigneeId));
   }
 
   // PUT /api/tasks/5

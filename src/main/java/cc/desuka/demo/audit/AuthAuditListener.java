@@ -21,7 +21,7 @@ public class AuthAuditListener {
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         String principal = event.getAuthentication().getName();
         eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.LOGIN_SUCCESS, null, null, principal, null));
+                AuditEvent.AUTH_SUCCESS, null, null, principal, null));
     }
 
     @EventListener
@@ -29,7 +29,7 @@ public class AuthAuditListener {
         String principal = event.getAuthentication().getName();
         String reason = event.getException().getMessage();
         eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.LOGIN_FAILURE, null, null, principal,
+                AuditEvent.AUTH_FAILURE, null, null, principal,
                 AuditDetails.toJson(Map.of("reason", reason))));
     }
 }

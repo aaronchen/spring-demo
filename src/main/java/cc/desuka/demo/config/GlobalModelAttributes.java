@@ -3,6 +3,7 @@ package cc.desuka.demo.config;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.SettingService;
+import cc.desuka.demo.service.UserPreferenceService;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
@@ -11,11 +12,14 @@ public class GlobalModelAttributes {
 
   private final AppRoutesProperties appRoutes;
   private final SettingService settingService;
+  private final UserPreferenceService userPreferenceService;
 
   public GlobalModelAttributes(AppRoutesProperties appRoutes,
-                                SettingService settingService) {
+                                SettingService settingService,
+                                UserPreferenceService userPreferenceService) {
     this.appRoutes = appRoutes;
     this.settingService = settingService;
+    this.userPreferenceService = userPreferenceService;
   }
 
   @ModelAttribute("appRoutes")
@@ -35,5 +39,15 @@ public class GlobalModelAttributes {
   @ModelAttribute("settings")
   public Settings settings() {
     return settingService.load();
+  }
+
+  /** Exposes per-user preferences: ${userPreferences.taskView}, etc. Returns defaults when not logged in. */
+  @ModelAttribute("userPreferences")
+  public UserPreferences userPreferences() {
+    User user = SecurityUtils.getCurrentUser();
+    if (user == null) {
+      return new UserPreferences();
+    }
+    return userPreferenceService.load(user.getId());
   }
 }

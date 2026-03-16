@@ -12,11 +12,13 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Admin Panel** - Modal-based user management (create/edit/delete/disable/enable) at `/admin/users`; tag management at `/admin/tags` (admin only)
 - **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
 - **Admin Settings** - Configurable site name, registration toggle, maintenance banner, and theme picker at `/admin/settings`
+- **User Profile** - Self-service account management at `/profile`: edit name/email, change password, and configure preferences (task view mode, default user filter)
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
 
 ### Web Interface
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
-- **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via cookie
+- **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via user preferences (logged-in) or cookie (fallback)
+- **CSV Export** - Download filtered tasks as CSV; respects all active filters (search, status, priority, tags, user, overdue)
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
 - **Filter Buttons** - All / Open / In Progress / Completed / Overdue with color-coded active states
 - **Priority Filter** - Dropdown filter for Low / Medium / High with color-coded button state
@@ -60,9 +62,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
-- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, login success/failure, role changes, registration
+- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, auth success/failure, role changes, registration, profile changes
 - **Field-Level Diffs** - Update events record before/after values for each changed field
-- **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with category buttons, text search, date range, and pagination
+- **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with dynamically generated category buttons (from `AuditEvent.CATEGORIES`), text search, date range, and pagination
 - **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
 
 ### Error Handling
@@ -88,12 +90,13 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Bootstrap 5.3 for styling
 - Reusable pagination fragment with custom DOM events
 - Typed `Settings` POJO with `BeanWrapper` auto-mapping from DB key/value rows
+- Per-user preferences (`UserPreferences` POJO + `user_preferences` table) mirroring the Settings pattern
 - CSS theme system with `[data-theme]` selectors and FOUC prevention
 - Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
 - WebSocket + STOMP via `spring-boot-starter-websocket` and STOMP.js 7.1
 - Shared STOMP client (`websocket.js`) with `onConnect(callback)` pattern for feature scripts
 - Client-side event bus via `CustomEvent` — decouples notification producers (WebSocket, dropdown, page) from consumers (badge, dropdown list, page list)
-- Online presence tracking with `ConcurrentHashMap` (multi-tab safe); broadcast via `/topic/presence`
+- Online presence tracking with `ConcurrentHashMap` keyed by user ID (multi-tab safe, name-change safe); broadcast via `/topic/presence`
 - Notification persistence with DB-first pattern (save then push) — offline users see notifications on login
 - Auto-purge of old notifications via `@Scheduled` cron (30 days)
 - Central user-resolution helpers in `SecurityUtils` (replaces duplicated patterns across services, dialects, and listeners)
@@ -130,6 +133,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
    - **Dashboard**: http://localhost:8080/dashboard (personal stats + real-time updates)
+   - **Profile**: http://localhost:8080/profile (edit name/email, change password, preferences)
    - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
    - **Settings**: http://localhost:8080/admin/settings (admin only)
@@ -155,8 +159,8 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 Navigate to http://localhost:8080/login. Enter your email and password, or click **Register** to create a new account. New accounts are created with the USER role.
 
 **Roles:**
-- **USER** — can create tasks (defaults to self, can assign to others), edit/delete own and unassigned tasks, view all tasks
-- **ADMIN** — full access to all tasks, can manage users (create/edit/delete/disable/enable) and tags, can assign tasks to any user
+- **USER** — can create tasks (defaults to self, can assign to others), edit/delete own and unassigned tasks, view all tasks, manage own profile and preferences
+- **ADMIN** — full access to all tasks, can manage users (create/edit/delete/disable/enable) and tags, can assign tasks to any user, manage own profile and preferences
 
 ### Web Interface
 
@@ -313,6 +317,7 @@ spring-demo/
 │   │   │   ├── PresenceEventListener.java   # WebSocket connect/disconnect → presence broadcast
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   │   ├── Settings.java               # Typed settings POJO with defaults
+│   │   │   ├── UserPreferences.java        # Typed per-user preferences POJO with defaults
 │   │   │   └── WebSocketConfig.java         # STOMP broker (/topic, /queue), endpoint /ws
 │   │   ├── controller/
 │   │   │   ├── admin/
@@ -333,17 +338,20 @@ spring-demo/
 │   │   │   ├── HomeController.java          # Home page (GET /)
 │   │   │   ├── NotificationController.java  # Notifications page (GET /notifications)
 │   │   │   ├── LoginController.java         # Login page (GET /login)
+│   │   │   ├── ProfileController.java       # Self-service profile (GET/POST /profile)
 │   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
 │   │   │   ├── TagController.java           # Tag web UI
-│   │   │   ├── TaskController.java          # Task web UI (ownership-aware)
-│   │   │   └── UserController.java          # User web UI with search
+│   │   │   ├── TaskController.java          # Task web UI (ownership-aware, CSV export)
+│   │   │   └── UserController.java          # Public user list with search (/users)
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
+│   │   │   ├── ChangePasswordRequest.java # Password change form DTO
 │   │   │   ├── DashboardStats.java     # Dashboard data carrier record
 │   │   │   ├── CommentChangeEvent.java # WebSocket comment change broadcast
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
 │   │   │   ├── NotificationResponse.java # Notification API output DTO
 │   │   │   ├── PresenceResponse.java  # Presence data (REST + WebSocket)
+│   │   │   ├── ProfileRequest.java    # Profile edit form DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
 │   │   │   ├── TaskChangeEvent.java   # WebSocket task change broadcast
 │   │   │   ├── TagResponse.java
@@ -375,7 +383,8 @@ spring-demo/
 │   │   │   ├── Task.java                # Implements OwnedEntity
 │   │   │   ├── TaskStatus.java          # OPEN / IN_PROGRESS / COMPLETED enum
 │   │   │   ├── TaskStatusFilter.java    # ALL / OPEN / IN_PROGRESS / COMPLETED / OVERDUE enum
-│   │   │   └── User.java                # Auth fields: password, role
+│   │   │   ├── User.java                # Auth fields: password, role
+│   │   │   └── UserPreference.java      # Per-user key/value preference entity
 │   │   ├── repository/
 │   │   │   ├── AuditLogRepository.java
 │   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
@@ -385,6 +394,7 @@ spring-demo/
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
 │   │   │   ├── TaskSpecifications.java
+│   │   │   ├── UserPreferenceRepository.java
 │   │   │   └── UserRepository.java
 │   │   ├── security/
 │   │   │   ├── AuthDialect.java             # Registers ${#auth} in Thymeleaf
@@ -402,11 +412,13 @@ spring-demo/
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
 │   │   │   ├── TaskService.java
-│   │   │   └── UserService.java         # Includes updateRole(), findByEmail()
+│   │   │   ├── UserPreferenceService.java # Per-user preferences with BeanWrapper
+│   │   │   └── UserService.java         # Includes updateRole(), findByEmail(), updateProfile()
 │   │   ├── validation/
 │   │   │   ├── Unique.java              # Generic @Unique annotation (class-level, @Repeatable)
 │   │   │   └── UniqueValidator.java     # EntityManager-based uniqueness check
 │   │   ├── util/
+│   │   │   ├── CsvWriter.java             # Generic CSV export utility
 │   │   │   └── HtmxUtils.java
 │   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments
 │   │   └── DemoApplication.java
@@ -460,6 +472,8 @@ spring-demo/
 │       │   ├── users/
 │       │   │   ├── users.html          # User list page with search
 │       │   │   └── user-table.html     # User table fragment (HTMX partial)
+│       │   ├── profile/
+│       │   │   └── profile.html         # Self-service profile page
 │       │   ├── home.html               # Home page (project showcase)
 │       │   ├── login.html              # Login page
 │       │   ├── notifications.html      # Notification inbox page

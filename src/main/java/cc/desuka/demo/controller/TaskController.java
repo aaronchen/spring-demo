@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
@@ -11,8 +12,11 @@ import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.CsvWriter;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.context.MessageSource;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,8 +30,11 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.io.IOException;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/tasks")
@@ -39,17 +46,20 @@ public class TaskController {
   private final CommentService commentService;
   private final OwnershipGuard ownershipGuard;
   private final AuditLogService auditLogService;
+  private final MessageSource messageSource;
 
   public TaskController(TaskService taskService, TagService tagService,
       UserService userService, CommentService commentService,
       OwnershipGuard ownershipGuard,
-      AuditLogService auditLogService) {
+      AuditLogService auditLogService,
+      MessageSource messageSource) {
     this.taskService = taskService;
     this.tagService = tagService;
     this.userService = userService;
     this.commentService = commentService;
     this.ownershipGuard = ownershipGuard;
     this.auditLogService = auditLogService;
+    this.messageSource = messageSource;
   }
 
   // GET /tasks - Display task list (full page or HTMX fragment)
@@ -59,35 +69,42 @@ public class TaskController {
       @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT) TaskStatusFilter statusFilter,
       @RequestParam(required = false, defaultValue = "false") boolean overdue,
       @RequestParam(required = false) Priority priority,
-      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) Long selectedUserId,
       @RequestParam(required = false) List<Long> tags,
       @RequestParam(required = false) String view,
-      @CookieValue(name = "view", required = false, defaultValue = "cards") String viewCookie,
       @CookieValue(name = "pageSize", required = false, defaultValue = "25") int pageSizeCookie,
       @PageableDefault(size = 25, sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request,
       Model model) {
-    // Default to current user's tasks when userId param is absent (first visit).
-    // An explicit empty userId= (from "All Users" click) is present in the param map
-    // but binds as null — distinguished by checking the raw param map.
-    if (userId == null && !request.getParameterMap().containsKey("userId") && currentDetails != null) {
-      userId = currentDetails.getUser().getId();
+    // userPreferences is already in the model via GlobalModelAttributes
+    UserPreferences userPreferences =
+        (UserPreferences) model.getAttribute("userPreferences");
+    // Default user filter on first visit (no userId param):
+    // "mine" preference → current user's tasks; "all" preference → all users.
+    if (selectedUserId == null && !request.getParameterMap().containsKey("selectedUserId") && currentDetails != null) {
+      if (userPreferences == null
+          || UserPreferences.FILTER_MINE.equals(userPreferences.getDefaultUserFilter())) {
+        selectedUserId = currentDetails.getUser().getId();
+      }
     }
-    String resolvedView = (view != null) ? view : viewCookie;
+    // View mode: URL param overrides preference default
+    String resolvedView = (view != null) ? view
+        : (userPreferences != null ? userPreferences.getTaskView() : UserPreferences.VIEW_CARDS);
     if (!request.getParameterMap().containsKey("size")) {
       pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
     }
-    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, userId, tags, pageable);
+    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, selectedUserId, tags, pageable);
     model.addAttribute("taskPage", taskPage);
     model.addAttribute("allTags", tagService.getAllTags());
     model.addAttribute("view", resolvedView);
+    model.addAttribute("selectedUserId", selectedUserId);
 
     // Resolve filtered user's name for the user filter button label
     Long currentId = currentDetails != null ? currentDetails.getUser().getId() : null;
-    if (userId != null && !userId.equals(currentId)) {
+    if (selectedUserId != null && !selectedUserId.equals(currentId)) {
       try {
-        model.addAttribute("filterUserName", userService.getUserById(userId).getName());
+        model.addAttribute("filterUserName", userService.getUserById(selectedUserId).getName());
       } catch (Exception ignored) {}
     }
 
@@ -95,6 +112,46 @@ public class TaskController {
       return "table".equals(resolvedView) ? "tasks/task-table :: grid" : "tasks/task-cards :: grid";
     }
     return "tasks/tasks";
+  }
+
+  // GET /tasks/export - Download CSV of filtered tasks
+  // GET /tasks/export - Download CSV of filtered tasks (same filters as listTasks, unpaged)
+  @GetMapping("/export")
+  public void exportTasks(
+      @RequestParam(required = false, defaultValue = "") String search,
+      @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT) TaskStatusFilter statusFilter,
+      @RequestParam(required = false, defaultValue = "false") boolean overdue,
+      @RequestParam(required = false) Priority priority,
+      @RequestParam(required = false) Long selectedUserId,
+      @RequestParam(required = false) List<Long> tags,
+      @PageableDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
+      HttpServletResponse response) throws IOException {
+
+    Pageable unpaged = Pageable.unpaged(pageable.getSort());
+    List<Task> tasks = taskService.searchAndFilterTasks(
+        search, statusFilter, overdue, priority, selectedUserId, tags, unpaged).getContent();
+
+    Locale locale = Locale.getDefault();
+    String[] headers = {
+        messageSource.getMessage("task.field.title", null, locale),
+        messageSource.getMessage("task.field.status", null, locale),
+        messageSource.getMessage("task.field.priority", null, locale),
+        messageSource.getMessage("task.field.dueDate", null, locale),
+        messageSource.getMessage("task.field.user", null, locale),
+        messageSource.getMessage("task.field.tags", null, locale),
+        messageSource.getMessage("task.field.createdAt", null, locale),
+    };
+    CsvWriter.write(response, "tasks.csv", headers, tasks, task -> new String[]{
+        task.getTitle(),
+        task.getStatus() != null ? task.getStatus().name() : "",
+        task.getPriority() != null ? task.getPriority().name() : "",
+        task.getDueDate() != null ? task.getDueDate().toString() : "",
+        task.getUser() != null ? task.getUser().getName() : "",
+        task.getTags() != null
+            ? task.getTags().stream().map(t -> t.getName()).collect(Collectors.joining("; "))
+            : "",
+        task.getCreatedAt() != null ? task.getCreatedAt().toLocalDate().toString() : ""
+    });
   }
 
   // GET /tasks/{id} - Show task in view (read-only) mode
@@ -138,7 +195,7 @@ public class TaskController {
   public Object createTask(
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
-      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) Long assigneeId,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
@@ -149,7 +206,7 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    Task created = taskService.createTask(task, tagIds, userId);
+    Task created = taskService.createTask(task, tagIds, assigneeId);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
@@ -179,13 +236,13 @@ public class TaskController {
 
   // POST /tasks/{id} - Update task
   // Owner or admin may update. Unassigned tasks are open to any user.
-  // tagIds: null means remove all tags. userId comes from the user select dropdown.
+  // tagIds: null means remove all tags. assigneeId comes from the user select dropdown.
   @PostMapping("/{id}")
   public Object updateTask(
       @PathVariable Long id,
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
-      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) Long assigneeId,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     Task existing = taskService.getTaskById(id);
@@ -200,7 +257,7 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    taskService.updateTask(id, task, tagIds, userId, task.getVersion());
+    taskService.updateTask(id, task, tagIds, assigneeId, task.getVersion());
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }

@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller.admin;
 
+import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.service.AuditLogService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,6 +41,7 @@ public class AuditController {
         Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
         Instant toInstant = to != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
 
+        model.addAttribute("categories", AuditEvent.CATEGORIES);
         model.addAttribute("auditPage",
             auditLogService.searchAuditLogs(category, search, fromInstant, toInstant, pageable));
 

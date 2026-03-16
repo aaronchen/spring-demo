@@ -60,6 +60,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
+- `model/UserPreference.java` - Per-user preference entity (key/value rows per user)
+  - Fields: id, user, key, value
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_USER`, `FIELD_KEY`, `FIELD_VALUE`)
+  - `@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "pref_key"}))` — one row per user+key
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
+  - `key` mapped to `pref_key` column, `value` mapped to `pref_value` column (avoids SQL reserved words)
+  - Manual getters/setters (no Lombok on entities); `equals()`/`hashCode()` use `getId()`
+
 - `model/Notification.java` - Notification entity
   - Fields: id, user (recipient), actor, type, message, link, read, createdAt
   - `FIELD_*` constants (`FIELD_ID`, `FIELD_USER`, `FIELD_ACTOR`, `FIELD_TYPE`, `FIELD_MESSAGE`, `FIELD_LINK`, `FIELD_READ`, `FIELD_CREATED_AT`)
@@ -80,7 +88,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Audit Package
 - `audit/AuditEvent.java` - Event class published via `ApplicationEventPublisher`
-  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_UPDATED`, `USER_DELETED`, `USER_DISABLED`, `USER_ENABLED`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `TAG_CREATED`, `TAG_DELETED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`
+  - `CATEGORIES` — `List.of("TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH", "SETTING")` — single source of truth for filter UI and query logic; each event constant must be prefixed with one of these
+  - Constants: `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED`, `USER_CREATED`, `USER_UPDATED`, `USER_DELETED`, `USER_DISABLED`, `USER_ENABLED`, `USER_PASSWORD_RESET`, `USER_ROLE_CHANGED`, `USER_REGISTERED`, `PROFILE_UPDATED`, `PROFILE_PASSWORD_CHANGED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `TAG_CREATED`, `TAG_DELETED`, `SETTING_UPDATED`, `AUTH_SUCCESS`, `AUTH_FAILURE`
   - Fields: action, entityType, entityId, principal, details
 
 - `audit/AuditDetails.java` - Audit detail utilities
@@ -147,8 +156,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
   - `findByEntityTypeAndEntityIdOrderByTimestampDesc(String, Long)` — entity-specific audit history (used by task detail page)
 
+- `repository/UserPreferenceRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<UserPreference, Long>`
+  - `findByUserId(Long)` — all preferences for a user
+  - `findByUserIdAndKey(Long, String)` — single preference lookup (upsert in service)
+
 - `repository/AuditLogSpecifications.java` - JPA Specifications for dynamic audit queries
-  - `withCategory(String)` — maps category to action prefix LIKE pattern (`"AUTH"` → `LOGIN_%`, `"COMMENT"` → `COMMENT_%`)
+  - `withCategory(String)` — validates against `AuditEvent.CATEGORIES` list, then uses LIKE pattern (`"AUTH"` → `AUTH_%`, `"TASK"` → `TASK_%`)
   - `withSearch(String)` — case-insensitive LIKE on principal and details
   - `withFrom(Instant)` / `withTo(Instant)` — timestamp range
   - `build(category, search, from, to)` — combines all specs
@@ -213,6 +227,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Lists: `myRecentTasks` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
   - Immutable record — built by `DashboardService.buildStats()`
 
+- `dto/ProfileRequest.java` - Profile edit form DTO
+  - Fields: `id` (set to current user's ID — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email)
+  - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
+  - Lombok `@Data`
+
+- `dto/ChangePasswordRequest.java` - Password change form DTO
+  - Fields: `currentPassword` (required), `newPassword` (required, 8–72 chars), `confirmPassword` (required)
+  - Cross-field validation (password match, current password verification) handled programmatically in `ProfileController`
+  - Lombok `@Data`
+
 - `dto/AdminUserRequest.java` - Admin user create/edit form DTO
   - Fields: `id` (null on create, set on edit — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email), `password` (no bean validation — controller validates manually: required on create, ignored on edit), `role` (required, defaults to USER)
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
@@ -263,12 +287,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
-  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
+  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
   - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by admin user management
   - `getEnabledUsers()` / `searchEnabledUsers(query)` — only enabled users; used by public user list, API, and assignment dropdowns (hides disabled users)
   - `findByEmail(String)` — returns `Optional<User>`; used by `CustomUserDetailsService`
   - `updateUser(userId, name, email, role)` — updates user fields; publishes `USER_UPDATED` audit event
+  - `updateProfile(userId, name, email)` — self-service profile update; publishes `PROFILE_UPDATED` audit event
+  - `changePassword(userId, encodedPassword)` — sets pre-encoded password; publishes `PROFILE_PASSWORD_CHANGED` audit event
   - `updateRole(Long userId, Role role)` — loads user, sets role, saves; publishes `USER_ROLE_CHANGED` audit event
   - `canDelete(userId)` — true if user has no completed tasks and no comments (safe to hard-delete)
   - `disableUser(userId)` — sets `enabled = false`, unassigns open/in-progress tasks (resets to OPEN); publishes `USER_DISABLED`
@@ -298,10 +324,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `clearAll(userId)` — deletes all notifications for user
   - `purgeOld()` — `@Scheduled(cron = "0 0 3 * * *")` deletes notifications older than 30 days
 
+- `service/UserPreferenceService.java` - Per-user preference business logic
+  - Constructor injection: `UserPreferenceRepository`, `UserService`
+  - `load(Long userId)` — reads all DB rows for a user into a `UserPreferences` POJO via `BeanWrapper`; missing keys keep field defaults (mirrors `SettingService.load()` pattern)
+  - `save(Long userId, String key, String value)` — creates or updates a single preference (upsert)
+  - `saveAll(Long userId, Map<String, String>)` — saves multiple preferences at once
+
 - `service/PresenceService.java` - Online user tracking
-  - `ConcurrentHashMap<String, String>` mapping WebSocket session IDs to user names
-  - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names
-  - `userConnected(sessionId, userName)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
+  - `ConcurrentHashMap<String, Long>` mapping WebSocket session IDs to user IDs (changed from user names to user IDs for robustness)
+  - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names resolved via `UserService`
+  - `userConnected(sessionId, userId)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
 
 - `service/SettingService.java` - Setting persistence with audit event publishing
   - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
@@ -402,7 +434,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `controller/admin/AuditController.java` - Audit log page
   - `@Controller` with `/admin/audit` base path; secured via `SecurityConfig` (`hasRole(ADMIN)`)
   - `GET /admin/audit` — paginated audit log with category, search, and date range filters
-  - Params: `category` (Task/User/Tag/Auth), `search` (principal/details text), `from`/`to` (LocalDate → Instant)
+  - Params: `category` (Task/User/Profile/Comment/Tag/Auth/Setting), `search` (principal/details text), `from`/`to` (LocalDate → Instant)
   - HTMX requests → `"admin/audit-table"` (bare fragment); full requests → `"admin/audit"`
 
 - `controller/TagController.java` - Tag web UI
@@ -415,6 +447,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - User names link to `/tasks?userId={id}` to show that user's tasks
   - HTMX requests return `users/user-table` fragment; full requests return `users/users`
 
+- `controller/ProfileController.java` - User self-service profile page
+  - `@Controller` with `/profile` base path
+  - `GET /profile` — shows profile page with account form (`ProfileRequest`), password form (`ChangePasswordRequest`), and preferences
+  - `POST /profile` — updates name and email; validates via `@Valid` on `ProfileRequest` (includes `@Unique` email check); updates `SecurityContext` with new values
+  - `POST /profile/password` — changes password; verifies current password, checks new/confirm match, encodes via `PasswordEncoder`; updates `SecurityContext` to keep session valid
+  - `POST /profile/preferences` — saves task view and default user filter preferences via `UserPreferenceService`
+  - Flash attributes trigger toast notifications on redirect
+
 - `controller/DashboardController.java` - Dashboard page and HTMX stats fragment
   - `GET /dashboard` — full dashboard page; builds stats via `DashboardService.buildStats()` and returns `dashboard/dashboard`
   - `GET /dashboard/stats` — returns `dashboard/dashboard-stats` bare fragment for HTMX refresh; used by WebSocket-triggered client-side refresh
@@ -425,12 +465,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `TagService`, `UserService`, `CommentService`, and `OwnershipGuard`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
-  - Task list defaults to current user's tasks on first visit; explicit empty `userId=` param means "All Users"
+  - Injects `TagService`, `UserService`, `CommentService`, `OwnershipGuard`, `AuditLogService`, and `MessageSource`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
+  - Task list defaults based on `userPreferences.defaultUserFilter` (from `GlobalModelAttributes`); view mode defaults based on `userPreferences.taskView`; URL params override preferences
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - `GET /{id}/comments` — fetch comment list fragment (HTMX live refresh via WebSocket)
   - `POST /{id}/comments` — add comment to task; returns `task-comments` template (whole file for hx-swap-oob comment count updates)
   - `DELETE /{id}/comments/{commentId}` — delete comment (owner or admin); returns `task-comments` template
+  - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); uses `CsvWriter` with `MessageSource`-resolved column headers
   - Task delete changed from `@PostMapping("/{id}/delete")` to `@DeleteMapping("/{id}")`
   - **Security**: uses `OwnershipGuard` for edit/delete/comment-delete; new tasks default to current user (changeable via dropdown)
 
@@ -504,7 +545,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `config/PresenceEventListener.java` - WebSocket session lifecycle listener
   - `@EventListener` for `SessionConnectEvent` and `SessionDisconnectEvent`
-  - On connect: resolves user name via `SecurityUtils.getUserFrom(principal)`, registers with `PresenceService`
+  - On connect: resolves user via `SecurityUtils.getUserFrom(principal)`, registers user ID with `PresenceService`
   - On disconnect: removes session from `PresenceService`
   - Broadcasts updated presence payload (`{ users: [...], count: N }`) to `/topic/presence` after each event
   - Uses shared `PresenceResponse` DTO for the broadcast message (replaced private `PresencePayload` record)
@@ -528,7 +569,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
   - `@ModelAttribute("settings")` — loads `Settings` POJO via `SettingService.load()` on every request
   - `@ModelAttribute("currentUser")` — resolves authenticated `User` from `SecurityContextHolder`; null for anonymous
+  - `@ModelAttribute("userPreferences")` — loads `UserPreferences` POJO via `UserPreferenceService.load()` for current user; returns defaults when not logged in
   - Used by HTMX attributes (`th:attr="hx-get=${appRoutes.tasks + ...}"`) where `@{}` URL syntax cannot be used
+
+- `config/UserPreferences.java` - Typed POJO for per-user preferences with defaults (mirrors `Settings` pattern)
+  - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name): `KEY_TASK_VIEW`, `KEY_DEFAULT_USER_FILTER`
+  - Value constants: `VIEW_CARDS`/`VIEW_TABLE`, `FILTER_MINE`/`FILTER_ALL`
+  - Fields: `taskView` (default `"cards"`), `defaultUserFilter` (default `"mine"`)
+  - `UserPreferenceService.load()` populates via `BeanWrapper`; missing keys keep defaults
+  - To add a new preference: (1) add field with default, (2) add `KEY_*` constant matching field name
 
 - `config/Settings.java` - Typed POJO for site-wide settings with defaults (not a JPA entity)
   - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name)
@@ -553,6 +602,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
+
+- `util/CsvWriter.java` - Generic CSV export utility
+  - `write(HttpServletResponse, filename, headers, rows, rowMapper)` — sets `Content-Disposition` header, writes CSV with proper escaping (quotes, commas, newlines)
+  - Generic `<T>` — caller provides `Function<T, String[]>` row mapper for any entity type
+  - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
 - `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**
@@ -626,6 +680,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Dashboard Views
 - `templates/dashboard/dashboard.html` - Dashboard page with welcome banner, quick action buttons, and `th:replace` of `dashboard-stats.html`; subscribes to `/topic/tasks` and `/topic/presence` via WebSocket; refreshes stats fragment via `htmx.ajax()` on any task or presence change (no self-filtering — dashboard should reflect own actions from other tabs)
 - `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); contains My Tasks stats (5 cards), System Overview (4 cards), My Recent Tasks list, and Recent Activity feed with action badges and resolved task titles; returned whole-file for HTMX refresh or via `th:replace` for full page
+
+### Profile Views
+- `templates/profile/profile.html` - User profile page with three cards in two-column layout
+  - Left column: Account card (name/email form with `ProfileRequest`), Change Password card (`ChangePasswordRequest` with current/new/confirm fields)
+  - Right column: Preferences card (task view mode radio: cards/table, default user filter radio: mine/all)
+  - Flash-attribute-driven toast notifications via `data-toast` attributes and inline JS
 
 ### Home, Tag, User, Auth, Admin, Error Views
 - `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Real-Time, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
