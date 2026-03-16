@@ -8,6 +8,7 @@
     <!--/* Prepend site name to page title when it differs (e.g. "Tasks" → "Spring Workshop - Tasks") */-->
     <meta th:if="${settings != null and title != settings.siteName}" name="_siteName" th:content="${settings.siteName}">
     <script>!function(){const m=document.querySelector('meta[name="_siteName"]');if(m)document.title=`${m.content} - ${document.title}`}()</script>
+    <link rel="icon" type="image/png" th:href="@{/favicon.png}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
     <!-- Bootstrap CSS via WebJars -->

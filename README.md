@@ -512,6 +512,19 @@ spring-demo/
 | Dev Tools | Spring DevTools |
 | Monitoring | Spring Actuator |
 
+## Deployment
+
+A multi-stage `Dockerfile` is included for container-based deployment. The build stage compiles with Maven; the runtime stage uses a minimal JRE image.
+
+```bash
+docker build -t spring-demo .
+docker run -p 8080:8080 spring-demo
+```
+
+The app is configured for deployment on [Render](https://render.com) — connect the GitHub repo, select **Docker** runtime, and set the instance to **Free**. Every push to `main` triggers auto-deploy.
+
+> **Note:** H2 is an in-memory database — all data resets on each deploy and on free-tier spin-down. For persistent data, swap H2 for PostgreSQL.
+
 ## Troubleshooting
 
 **Application won't start** — check Java 25: `java -version`; check port: `lsof -i :8080`

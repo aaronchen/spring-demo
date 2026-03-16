@@ -19,7 +19,7 @@
 </div>
 <div class="d-flex task-panels">
     <!-- Left Panel: Form -->
-    <div style="flex: 1; min-width: 0; overflow-y: auto;">
+    <div style="flex: 1; min-width: 0;">
         <form id="task-form"
               th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
               th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
