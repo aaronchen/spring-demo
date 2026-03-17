@@ -2,7 +2,12 @@
 
 A growing full-stack application built as a hands-on learning project for Spring Boot 4.0, featuring both a REST API and an interactive web UI powered by Thymeleaf and HTMX. New features and patterns are added as we continue exploring Spring Boot together.
 
-**Live Demo:** [demo.desuka.cc](https://demo.desuka.cc) — log in with `alice.johnson@example.com` / `password` (admin) or `bob.smith@example.com` / `password` (regular user)
+**Live Demo:** <a href="https://demo.desuka.cc" target="_blank">demo.desuka.cc</a>
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | `alice.johnson@example.com` | `password` |
+| User | `bob.smith@example.com` | `password` |
 
 ## Features
 
