@@ -2,6 +2,8 @@
 
 A growing full-stack application built as a hands-on learning project for Spring Boot 4.0, featuring both a REST API and an interactive web UI powered by Thymeleaf and HTMX. New features and patterns are added as we continue exploring Spring Boot together.
 
+**Live Demo:** [demo.desuka.cc](https://demo.desuka.cc) — log in with `alice.johnson@example.com` / `password` (admin) or `bob.smith@example.com` / `password` (regular user)
+
 ## Features
 
 ### Authentication & Authorization
@@ -536,7 +538,7 @@ docker build -t spring-demo .
 docker run -p 8080:8080 spring-demo
 ```
 
-The app is configured for deployment on [Render](https://render.com) — connect the GitHub repo, select **Docker** runtime, and set the instance to **Free**. Every push to `main` triggers auto-deploy.
+The app is deployed at [demo.desuka.cc](https://demo.desuka.cc) on [Render](https://render.com) (free tier, Docker runtime). Every push to `main` triggers auto-deploy. Custom domain via Cloudflare DNS (CNAME, no proxy).
 
 > **Note:** H2 is an in-memory database — all data resets on each deploy and on free-tier spin-down. For persistent data, swap H2 for PostgreSQL.
 
