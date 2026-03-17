@@ -5,6 +5,7 @@ import cc.desuka.demo.dto.ChangePasswordRequest;
 import cc.desuka.demo.dto.ProfileRequest;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserPreferenceService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
@@ -66,9 +67,7 @@ public class ProfileController {
                 currentDetails.getUser().getId(),
                 profileRequest.getName(),
                 profileRequest.getEmail());
-        // Update the security context with the new name/email
-        currentDetails.getUser().setName(updated.getName());
-        currentDetails.getUser().setEmail(updated.getEmail());
+        SecurityUtils.refreshCachedUser(updated);
         redirectAttributes.addFlashAttribute("profileSaved", true);
         return "redirect:/profile";
     }
