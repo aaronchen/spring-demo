@@ -382,17 +382,17 @@ For updating multiple areas of the page from a single HTMX response (e.g., refre
 ```html
 <th:block>
     <!-- Primary swap target — selected by :: list -->
-    <div th:fragment="list" id="task-comments">
-        ...comment list...
+    <div th:fragment="list" id="task-activity">
+        ...activity timeline...
     </div>
     <!-- OOB spans — only included when whole file is returned (HTMX response) -->
-    <span id="task-comments-btn-label" hx-swap-oob="true"
-          th:text="#{comment.button(${comments.size()})}">Comments (0)</span>
+    <span id="task-activity-panel-heading" hx-swap-oob="true"
+          th:text="#{activity.heading(${activityCount})}">Activity (0)</span>
 </th:block>
 ```
 
-- `th:replace="~{tasks/task-comments :: list}"` — returns only the fragment (page render)
-- Controller returns `"tasks/task-comments"` (no `::`) — returns fragment + OOB spans (HTMX response)
+- `th:replace="~{tasks/task-activity :: list}"` — returns only the fragment (page render)
+- Controller returns `"tasks/task-activity"` (no `::`) — returns fragment + OOB spans (HTMX response)
 
 This replaces JS-based count updates with server-driven updates. No client-side counting logic needed.
 
@@ -494,6 +494,61 @@ CsvWriter.write(response, "tasks.csv", headers, tasks, task -> new String[]{...}
 Handles escaping (commas, quotes, newlines), sets `Content-Type` and `Content-Disposition` headers. Reusable for any entity export.
 
 The task export endpoint (`GET /tasks/export`) accepts the same filter params as the task list, uses `Pageable.unpaged(sort)` to bypass pagination, and delegates to the same `searchAndFilterTasks` service method.
+
+### @Mention Pattern
+
+Comments support @mentions via Tribute.js autocomplete. The system has three layers:
+
+**Client-side (`mentions.js`):**
+- Attaches to any element with `[data-mention]` attribute (input or textarea)
+- Tribute.js with `positionMenu: false` — CSS-only positioning (above input via `bottom: 100%`)
+- Shows clean `@Bob Smith` in the input; tracks name→ID mapping in a `WeakMap`
+- Encodes to `@[Bob Smith](userId:2)` before submission via `htmx:configRequest` and form `submit` listeners
+- Atomic backspace/delete — `@Bob Smith` is deleted as a single token
+- `isMentionMenuActive()` — prevents Enter-to-post while dropdown is open
+
+**Server-side (`MentionUtils`):**
+- `@Component("mentionUtils")` for Thymeleaf `@beanName` access
+- `extractMentionedUserIds(text)` — static, returns `List<Long>` from encoded tokens
+- `renderHtml(text)` — instance method, converts tokens to `<span class="mention">` with HTML escaping
+- Pattern: `@[Display Name](userId:N)`
+
+**Notification subscription:**
+- @Mentioned users get `COMMENT_MENTIONED` notification on the mentioning comment
+- Being mentioned subscribes you to the conversation — all future comments on that task notify you
+- `CommentService.findPreviouslyMentionedUserIds()` parses all comment texts for a task
+
+To add @mentions to a new field: add `data-mention` attribute to the input/textarea element.
+
+### Shared Task Layout Pattern
+
+`task-layout.html` contains the two-column layout fragment (`columns`) shared by both `task-modal.html` and `task.html`:
+- Left column: form fields (scrollable)
+- Right column: checklist (top 50%) + activity timeline (bottom 50%)
+- Checklist add button in header (always visible above scroll)
+- Activity comment input pinned at bottom via flexbox
+
+The comment input uses a `<div>` instead of `<form>` to avoid invalid nested forms (the outer task `<form>` wraps the layout). HTMX `hx-post` on the button with `hx-include="#comment-text"` replaces the inner form.
+
+### Checklist Pattern
+
+Tasks have an embedded checklist via `@ElementCollection`:
+```java
+@ElementCollection
+@CollectionTable(name = "task_checklist_items", joinColumns = @JoinColumn(name = "task_id"))
+@OrderColumn(name = "position")
+private List<ChecklistItem> checklistItems;
+```
+
+`ChecklistItem` is an `@Embeddable` with `text` and `checked` fields. Form binding uses parallel arrays (`checklistTexts[]` + `checklistChecked[]`). Checklist progress shown on cards/table rows via `@Formula` computed columns.
+
+Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for readable diffs.
+
+### Activity Timeline Pattern
+
+`TimelineService` merges comments and audit history into a single chronological stream of `TimelineEntry` records. Each entry has a `type()` ("comment" or "audit") and type-specific accessor methods.
+
+`task-activity.html` renders the timeline with visual timeline dots (colored by action type) and connecting lines. Uses the dual-usage template pattern: `:: list` for page includes, whole-file for HTMX responses with OOB count swaps.
 
 ### CSS Organization
 
@@ -733,15 +788,25 @@ CREATE TABLE users (
 );
 
 CREATE TABLE tasks (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    version     BIGINT,                         -- @Version optimistic locking
-    title       VARCHAR(100) NOT NULL,
-    description VARCHAR(500),
-    status      VARCHAR(255) DEFAULT 'OPEN',   -- OPEN / IN_PROGRESS / COMPLETED (@Enumerated STRING)
-    priority    VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
-    due_date    DATE,                           -- nullable; overdue = incomplete + past due
-    created_at  TIMESTAMP,
-    user_id     BIGINT REFERENCES users(id)   -- nullable FK; @ManyToOne owning side
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    version      BIGINT,                         -- @Version optimistic locking
+    title        VARCHAR(100) NOT NULL,
+    description  VARCHAR(500),
+    status       VARCHAR(255) DEFAULT 'OPEN',   -- OPEN / IN_PROGRESS / COMPLETED (@Enumerated STRING)
+    priority     VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
+    start_date   DATE,                           -- nullable; when work begins
+    due_date     DATE,                           -- nullable; overdue = incomplete + past due
+    completed_at TIMESTAMP,                      -- set automatically when status → COMPLETED
+    created_at   TIMESTAMP,
+    updated_at   TIMESTAMP,
+    user_id      BIGINT REFERENCES users(id)   -- nullable FK; @ManyToOne owning side
+);
+
+CREATE TABLE task_checklist_items (
+    task_id  BIGINT NOT NULL REFERENCES tasks(id),
+    text     VARCHAR(255) NOT NULL,
+    checked  BOOLEAN NOT NULL DEFAULT FALSE,
+    position INT NOT NULL                       -- @OrderColumn preserves list order
 );
 
 CREATE TABLE tags (

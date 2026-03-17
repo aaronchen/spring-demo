@@ -27,6 +27,9 @@
     <meta th:if="${settings != null and settings.theme != 'default'}" name="_theme" th:content="${settings.theme}">
     <script>!function(){const m=document.querySelector('meta[name="_theme"]');if(m)document.documentElement.setAttribute('data-theme',m.content)}()</script>
 
+    <!-- @mention styles (dropdown + rendered spans) -->
+    <link rel="stylesheet" th:href="@{/css/mentions.css}">
+
     <!-- Web Component themes -->
     <link rel="stylesheet" th:href="@{/css/components/searchable-select-bootstrap5.css}">
 
@@ -218,6 +221,9 @@
         <script th:src="@{/config.js}"></script>
         <!-- Shared utilities -->
         <script th:src="@{/js/utils.js}"></script>
+        <!-- Tribute.js for @mention autocomplete -->
+        <script th:src="@{/tribute/tribute.min.js}"></script>
+        <script th:src="@{/js/mentions.js}"></script>
         <!-- Reusable Web Components -->
         <script th:src="@{/js/components/searchable-select.js}"></script>
         <!--/* WebSocket scripts — only load for authenticated users */-->

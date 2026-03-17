@@ -24,7 +24,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Priority Filter** - Dropdown filter for Low / Medium / High with color-coded button state
 - **Sortable Columns** - Sort by title, created date, priority, due date, or description (ascending/descending)
 - **Priority Badges** - Color-coded clickable badges (High=red, Medium=yellow, Low=green) with reception bar icons
-- **Due Dates** - Optional due date with overdue detection; overdue tasks highlighted in red
+- **Task Dates** - Optional start date and due date with overdue detection; overdue tasks highlighted in red; completedAt timestamp recorded when task is completed
+- **Task Checklist** - Embeddable checklist items on tasks (text + checked state); checklist progress shown on cards and table rows; changes audited in activity timeline
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
 - **Task Lifecycle** - Three-state status: OPEN → IN_PROGRESS → COMPLETED; toggle button advances through the cycle; status radio buttons in edit form
@@ -34,8 +35,10 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **User Assignment** - Assign tasks to users via searchable select dropdown (`@ManyToOne`)
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
 - **User & Tag Filters** - Filter tasks by assigned user and/or tags; clickable names/badges for quick filtering
-- **Task Comments** - Any authenticated user can comment on any task; comment owners and admins can delete comments; visible in modal side panel and full-page view with real-time count updates via HTMX out-of-band swaps
-- **Task Audit History** - View change history in task edit modal (split-panel) and full-page view
+- **Task Comments** - Any authenticated user can comment on any task; comment owners and admins can delete comments; real-time count updates via HTMX out-of-band swaps
+- **@Mentions in Comments** - Type @ to mention users in comments with Tribute.js autocomplete; atomic backspace for mention tokens; clean display with encoded storage; mentioned users receive notifications and are subscribed to the conversation
+- **Unified Activity Timeline** - Comments and audit history merged into a single chronological timeline with visual timeline dots and connecting lines; replaces separate comments panel and audit panel in both modal and full-page views
+- **Shared Two-Column Layout** - Task modal and full-page task view share the same layout fragment (`task-layout.html`): form fields on left, checklist + activity timeline on right
 - **Styled Confirm Dialog** - Bootstrap modal confirm dialog (`showConfirm`) replaces native browser `confirm()` for delete actions
 - **Toast Notifications** - Success/error toasts for task save, delete, and conflict events; clickable toasts for notification links (Bootstrap 5 toasts with slide-in animation)
 - **Online Presence** - Real-time online user count and list in navbar via WebSocket + STOMP
@@ -65,7 +68,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Tracked Actions** - Task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, auth success/failure, role changes, registration, profile changes
 - **Field-Level Diffs** - Update events record before/after values for each changed field
 - **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with dynamically generated category buttons (from `AuditEvent.CATEGORIES`), text search, date range, and pagination
-- **Task History** - Per-task audit trail shown in edit modal (split-panel) and full-page view
+- **Task History** - Per-task audit trail shown in unified activity timeline alongside comments
 
 ### Error Handling
 - **Dual exception handlers** - `ApiExceptionHandler` returns JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
@@ -87,6 +90,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions, HX-Trigger events, and out-of-band swaps
+- Tribute.js for @mention autocomplete in comment input
 - Bootstrap 5.3 for styling
 - Reusable pagination fragment with custom DOM events
 - Typed `Settings` POJO with `BeanWrapper` auto-mapping from DB key/value rows
@@ -176,7 +180,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 
 #### Creating a Task
 
-Click **New Task** — a modal opens. Fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), and optional due date, then click **Create Task**. Your current search/filter/sort state is preserved.
+Click **New Task** — a modal opens. Fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
@@ -263,6 +267,7 @@ Content-Type: application/json
   "title": "Write documentation",
   "description": "Document all API endpoints",
   "priority": "HIGH",
+  "startDate": "2026-03-10",
   "dueDate": "2026-03-15",
   "tagIds": [1, 3]
 }
@@ -273,6 +278,7 @@ Content-Type: application/json
 - **description**: optional, max 500 characters
 - **status**: optional, one of `OPEN`, `IN_PROGRESS`, `COMPLETED` (defaults to `OPEN`)
 - **priority**: optional, one of `LOW`, `MEDIUM`, `HIGH` (defaults to `MEDIUM`)
+- **startDate**: optional, ISO date format `yyyy-MM-dd`
 - **dueDate**: optional, ISO date format `yyyy-MM-dd`
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
 - **userId**: optional (admin only); omit or send `null` to auto-assign to caller
@@ -372,6 +378,7 @@ spring-demo/
 │   │   │   └── UserMapper.java
 │   │   ├── model/
 │   │   │   ├── AuditLog.java            # Audit log entity
+│   │   │   ├── ChecklistItem.java     # Embeddable checklist item (text + checked)
 │   │   │   ├── Comment.java            # Comment entity (OwnedEntity)
 │   │   │   ├── Notification.java       # Notification entity (@ManyToOne to User)
 │   │   │   ├── NotificationType.java   # TASK_ASSIGNED, COMMENT_ADDED, TASK_OVERDUE, SYSTEM
@@ -419,7 +426,8 @@ spring-demo/
 │   │   │   └── UniqueValidator.java     # EntityManager-based uniqueness check
 │   │   ├── util/
 │   │   │   ├── CsvWriter.java             # Generic CSV export utility
-│   │   │   └── HtmxUtils.java
+│   │   │   ├── HtmxUtils.java
+│   │   │   └── MentionUtils.java          # @mention parsing and display rendering
 │   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments
 │   │   └── DemoApplication.java
 │   └── resources/
@@ -433,6 +441,8 @@ spring-demo/
 │       │   │   ├── audit.js            # Audit page logic
 │       │   │   ├── utils.js            # Shared utilities (cookies, CSRF for HTMX)
 │       │   │   └── tasks.js            # Task list page logic
+│       │   ├── tribute/
+│       │   │   └── tribute.min.js      # Tribute.js @mention autocomplete
 │       │   ├── favicon.svg             # SVG favicon
 │       │   └── bootstrap-icons/
 │       ├── templates/
@@ -461,9 +471,9 @@ spring-demo/
 │       │   ├── tasks/
 │       │   │   ├── tasks.html          # Task list page
 │       │   │   ├── task.html           # Full-page create/edit form
-│       │   │   ├── task-audit.html     # Shared audit history entries fragment
-│       │   │   ├── task-comments.html  # Shared comments fragment with OOB count swaps
-│       │   │   ├── task-modal.html     # Modal create/edit with history panel
+│       │   │   ├── task-activity.html  # Unified activity timeline (comments + audit history)
+│       │   │   ├── task-layout.html    # Shared two-column layout (form + checklist/timeline)
+│       │   │   ├── task-modal.html     # Modal shell using task-layout
 │       │   │   ├── task-form.html      # Shared form fields fragment
 │       │   │   ├── task-cards.html     # Card grid fragment
 │       │   │   ├── task-card.html      # Single card fragment
@@ -491,7 +501,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied status (Open, In Progress, Completed), creation dates, priorities, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied status (Open, In Progress, Completed), creation dates, priorities, start dates, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), **checklist items** on a subset of tasks, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 
@@ -507,6 +517,7 @@ spring-demo/
 | CSS | Bootstrap 5.3.3 |
 | Icons | Bootstrap Icons |
 | Dynamic UI | HTMX 2.0.4 |
+| @Mentions | Tribute.js |
 | Build | Maven |
 | Mapping | MapStruct 1.6 |
 | Dev Tools | Spring DevTools |

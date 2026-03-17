@@ -205,3 +205,4 @@ document.addEventListener('htmx:configRequest', function (evt) {
         evt.detail.headers[headerMeta.content] = tokenMeta.content;
     }
 });
+

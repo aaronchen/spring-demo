@@ -1,0 +1,85 @@
+<!--/* Unified activity timeline — merges comments and audit history into one chronological stream.
+     Reads ${task}, ${timeline} (List<TimelineEntry>), and ${activityCount} from model context.
+
+     Two usage modes:
+     1. Fragment include (th:replace="~{tasks/task-activity :: list}") — returns only the list div.
+        Used by task.html (full page) and task-modal.html (modal) during initial page render.
+     2. Whole-file return (controller returns "tasks/task-activity") — returns the list div
+        PLUS out-of-band swap spans that update activity count labels elsewhere on the page. */-->
+<th:block xmlns:th="http://www.thymeleaf.org">
+    <div th:fragment="list" id="task-activity">
+        <div th:if="${timeline != null && !timeline.isEmpty()}">
+            <div th:each="entry, stat : ${timeline}" class="timeline-entry mb-3">
+                <!--/* Comment entry */-->
+                <th:block th:if="${entry.type() == 'comment'}">
+                    <span class="timeline-dot bg-secondary">
+                        <i class="bi bi-chat-fill"></i>
+                    </span>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1" style="min-width: 0;">
+                            <div>
+                                <strong class="small" th:text="${entry.commentUserName()}">User</strong>
+                                <small class="text-muted ms-1"
+                                       th:text="${#temporals.format(entry.timestamp(), 'MMM dd, yyyy HH:mm')}">Date</small>
+                                <button th:if="${entry.canDelete()}"
+                                        class="btn btn-sm btn-outline-danger border-0 py-0 px-1 ms-1"
+                                        th:attr="hx-delete=${appRoutes.tasks + '/' + task.id + '/comments/' + entry.commentId()},hx-confirm=#{comment.delete.confirm},data-confirm-title=#{comment.delete.title},data-confirm-text=#{comment.delete.action}"
+                                        hx-target="#task-activity"
+                                        hx-swap="outerHTML"
+                                        th:title="#{action.delete}">
+                                    <i class="bi bi-x-lg small"></i>
+                                </button>
+                            </div>
+                            <p class="mb-0 small" th:utext="${@mentionUtils.renderHtml(entry.commentText())}">Comment text</p>
+                        </div>
+                    </div>
+                </th:block>
+                <!--/* Audit entry */-->
+                <th:block th:if="${entry.type() == 'audit'}">
+                    <span class="timeline-dot"
+                          th:classappend="${entry.auditAction().contains('DELETE') ? 'bg-danger' :
+                                            (entry.auditAction().contains('CREATE') ? 'bg-success' : 'bg-primary')}">
+                        <i th:classappend="${entry.auditAction().contains('DELETE') ? 'bi-trash' :
+                                             (entry.auditAction().contains('CREATE') ? 'bi-plus-lg' : 'bi-pencil')}"></i>
+                    </span>
+                    <div>
+                        <div>
+                            <span class="badge me-1"
+                                  th:classappend="${entry.auditAction().contains('DELETE') ? 'bg-danger' :
+                                                    (entry.auditAction().contains('CREATE') ? 'bg-success' : 'bg-primary')}"
+                                  th:text="${entry.auditAction()}">ACTION</span>
+                            <small class="text-muted"
+                                   th:text="${entry.auditPrincipal()}">user</small>
+                            <small class="text-muted ms-1"
+                                   th:text="${#temporals.format(entry.timestamp(), 'MMM dd, yyyy HH:mm')}">date</small>
+                        </div>
+                        <small th:if="${entry.auditDetails() != null}" class="text-muted">
+                            <span th:each="field, fstat : ${entry.auditDetails()}">
+                                <strong th:text="${field.key}">field</strong>:
+                                <th:block th:if="${field.value instanceof T(java.util.Map)}">
+                                    <span class="text-decoration-line-through"
+                                          th:text="${field.value['old']}">old</span>
+                                    &rarr;
+                                    <span th:text="${field.value['new']}">new</span>
+                                </th:block>
+                                <span th:unless="${field.value instanceof T(java.util.Map)}"
+                                      th:text="${field.value}">value</span>
+                                <span th:unless="${fstat.last}">; </span>
+                            </span>
+                        </small>
+                    </div>
+                </th:block>
+            </div>
+        </div>
+        <p th:if="${timeline == null || timeline.isEmpty()}" class="text-muted small mb-0"
+           th:text="#{activity.empty}">No activity yet</p>
+    </div>
+    <!--/* Out-of-band swaps: update activity count labels wherever they appear.
+         Only included when the whole file is rendered (HTMX response); excluded by :: list selector. */-->
+    <span id="task-activity-btn-label" hx-swap-oob="true"
+          th:text="#{activity.button(${activityCount})}">Activity (0)</span>
+    <span id="task-activity-panel-heading" hx-swap-oob="true"
+          th:text="#{activity.heading(${activityCount})}">Activity (0)</span>
+    <span id="task-activity-heading" hx-swap-oob="true"
+          th:text="#{activity.heading(${activityCount})}">Activity (0)</span>
+</th:block>

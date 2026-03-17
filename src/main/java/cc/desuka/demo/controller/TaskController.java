@@ -7,10 +7,10 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
-import cc.desuka.demo.service.AuditLogService;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.CsvWriter;
 import cc.desuka.demo.util.HtmxUtils;
@@ -44,21 +44,21 @@ public class TaskController {
   private final TagService tagService;
   private final UserService userService;
   private final CommentService commentService;
+  private final TimelineService timelineService;
   private final OwnershipGuard ownershipGuard;
-  private final AuditLogService auditLogService;
   private final MessageSource messageSource;
 
   public TaskController(TaskService taskService, TagService tagService,
       UserService userService, CommentService commentService,
+      TimelineService timelineService,
       OwnershipGuard ownershipGuard,
-      AuditLogService auditLogService,
       MessageSource messageSource) {
     this.taskService = taskService;
     this.tagService = tagService;
     this.userService = userService;
     this.commentService = commentService;
+    this.timelineService = timelineService;
     this.ownershipGuard = ownershipGuard;
-    this.auditLogService = auditLogService;
     this.messageSource = messageSource;
   }
 
@@ -136,34 +136,39 @@ public class TaskController {
         messageSource.getMessage("task.field.title", null, locale),
         messageSource.getMessage("task.field.status", null, locale),
         messageSource.getMessage("task.field.priority", null, locale),
+        messageSource.getMessage("task.field.startDate", null, locale),
         messageSource.getMessage("task.field.dueDate", null, locale),
+        messageSource.getMessage("task.field.completedAt", null, locale),
         messageSource.getMessage("task.field.user", null, locale),
         messageSource.getMessage("task.field.tags", null, locale),
         messageSource.getMessage("task.field.createdAt", null, locale),
+        messageSource.getMessage("task.field.updatedAt", null, locale),
     };
     CsvWriter.write(response, "tasks.csv", headers, tasks, task -> new String[]{
         task.getTitle(),
         task.getStatus() != null ? task.getStatus().name() : "",
         task.getPriority() != null ? task.getPriority().name() : "",
+        task.getStartDate() != null ? task.getStartDate().toString() : "",
         task.getDueDate() != null ? task.getDueDate().toString() : "",
+        task.getCompletedAt() != null ? task.getCompletedAt().toLocalDate().toString() : "",
         task.getUser() != null ? task.getUser().getName() : "",
         task.getTags() != null
             ? task.getTags().stream().map(t -> t.getName()).collect(Collectors.joining("; "))
             : "",
-        task.getCreatedAt() != null ? task.getCreatedAt().toLocalDate().toString() : ""
+        task.getCreatedAt() != null ? task.getCreatedAt().toLocalDate().toString() : "",
+        task.getUpdatedAt() != null ? task.getUpdatedAt().toLocalDate().toString() : ""
     });
   }
 
   // GET /tasks/{id} - Show task in view (read-only) mode
   @GetMapping("/{id}")
-  public String showTask(@PathVariable Long id, Model model, HttpServletRequest request) {
+  public String showTask(@PathVariable Long id, Model model, HttpServletRequest request,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
     Task task = taskService.getTaskById(id);
     model.addAttribute("task", task);
     model.addAttribute("mode", "view");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
-    model.addAttribute("auditHistory",
-        auditLogService.getEntityHistory(Task.class, id));
+    addTimelineAttributes(model, id, currentDetails);
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -180,8 +185,8 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("comments", Collections.emptyList());
-    model.addAttribute("auditHistory", Collections.emptyList());
+    model.addAttribute("timeline", Collections.emptyList());
+    model.addAttribute("activityCount", 0);
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -196,6 +201,8 @@ public class TaskController {
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
       @RequestParam(required = false) Long assigneeId,
+      @RequestParam(required = false) List<String> checklistTexts,
+      @RequestParam(required = false) List<Boolean> checklistChecked,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     if (result.hasErrors()) {
@@ -206,7 +213,7 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    Task created = taskService.createTask(task, tagIds, assigneeId);
+    Task created = taskService.createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
@@ -225,9 +232,7 @@ public class TaskController {
     model.addAttribute("task", task);
     model.addAttribute("mode", "edit");
     model.addAttribute("tags", tagService.getAllTags());
-    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
-    model.addAttribute("auditHistory",
-        auditLogService.getEntityHistory(Task.class, id));
+    addTimelineAttributes(model, id, currentDetails);
     if (HtmxUtils.isHtmxRequest(request)) {
       return "tasks/task-modal";
     }
@@ -243,6 +248,8 @@ public class TaskController {
       @Valid @ModelAttribute Task task, BindingResult result,
       @RequestParam(required = false) List<Long> tagIds,
       @RequestParam(required = false) Long assigneeId,
+      @RequestParam(required = false) List<String> checklistTexts,
+      @RequestParam(required = false) List<Boolean> checklistChecked,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
       HttpServletRequest request, Model model) {
     Task existing = taskService.getTaskById(id);
@@ -257,7 +264,7 @@ public class TaskController {
       }
       return "tasks/task";
     }
-    taskService.updateTask(id, task, tagIds, assigneeId, task.getVersion());
+    taskService.updateTask(id, task, tagIds, assigneeId, task.getVersion(), checklistTexts, checklistChecked);
     if (HtmxUtils.isHtmxRequest(request)) {
       return HtmxUtils.triggerEvent("taskSaved");
     }
@@ -281,12 +288,13 @@ public class TaskController {
     return new RedirectView("/tasks");
   }
 
-  // GET /tasks/{id}/comments - Fetch comment list fragment (HTMX live refresh)
-  @GetMapping("/{id}/comments")
-  public String getComments(@PathVariable Long id, Model model) {
+  // GET /tasks/{id}/activity - Fetch activity timeline fragment (HTMX live refresh)
+  @GetMapping("/{id}/activity")
+  public String getActivity(@PathVariable Long id, Model model,
+      @AuthenticationPrincipal CustomUserDetails currentDetails) {
     model.addAttribute("task", taskService.getTaskById(id));
-    model.addAttribute("comments", commentService.getCommentsByTaskId(id));
-    return "tasks/task-comments";
+    addTimelineAttributes(model, id, currentDetails);
+    return "tasks/task-activity";
   }
 
   // POST /tasks/{id}/comments - Add a comment to a task
@@ -299,8 +307,8 @@ public class TaskController {
     commentService.createComment(text, id, currentDetails.getUser().getId());
     if (HtmxUtils.isHtmxRequest(request)) {
       model.addAttribute("task", taskService.getTaskById(id));
-      model.addAttribute("comments", commentService.getCommentsByTaskId(id));
-      return "tasks/task-comments";
+      addTimelineAttributes(model, id, currentDetails);
+      return "tasks/task-activity";
     }
     return new RedirectView("/tasks/" + id);
   }
@@ -318,8 +326,8 @@ public class TaskController {
     commentService.deleteComment(commentId);
     if (HtmxUtils.isHtmxRequest(request)) {
       model.addAttribute("task", taskService.getTaskById(id));
-      model.addAttribute("comments", commentService.getCommentsByTaskId(id));
-      return "tasks/task-comments";
+      addTimelineAttributes(model, id, currentDetails);
+      return "tasks/task-activity";
     }
     return new RedirectView("/tasks/" + id);
   }
@@ -339,5 +347,12 @@ public class TaskController {
       return "table".equals(view) ? "tasks/task-table-row :: row" : "tasks/task-card :: card";
     }
     return "redirect:/tasks";
+  }
+
+  private void addTimelineAttributes(Model model, Long taskId, CustomUserDetails currentDetails) {
+    var currentUser = currentDetails != null ? currentDetails.getUser() : null;
+    var timeline = timelineService.getTimeline(taskId, currentUser);
+    model.addAttribute("timeline", timeline);
+    model.addAttribute("activityCount", timeline.size());
   }
 }

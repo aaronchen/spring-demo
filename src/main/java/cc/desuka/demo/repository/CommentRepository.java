@@ -26,4 +26,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     @Query("SELECT DISTINCT c.user FROM Comment c WHERE c.task.id = :taskId")
     List<User> findDistinctUsersByTaskId(Long taskId);
+
+    @Query("SELECT c.text FROM Comment c WHERE c.task.id = :taskId")
+    List<String> findCommentTextsByTaskId(Long taskId);
 }

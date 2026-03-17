@@ -8,16 +8,22 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Model Layer
 - `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
-  - Fields: id, version, title, description, status, priority, priorityOrder, dueDate, createdAt, tags, user
-  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_CREATED_AT`, `FIELD_TAGS`, `FIELD_USER`) — used in mappers, specifications, and `toAuditSnapshot()`
+  - Fields: id, version, title, description, status, priority, priorityOrder, startDate, dueDate, createdAt, completedAt, updatedAt, tags, user, checklistItems, checklistTotal, checklistChecked
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_START_DATE`, `FIELD_CREATED_AT`, `FIELD_COMPLETED_AT`, `FIELD_UPDATED_AT`, `FIELD_TAGS`, `FIELD_USER`, `FIELD_CHECKLIST_ITEMS`, `FIELD_CHECKLIST_TOTAL`, `FIELD_CHECKLIST_CHECKED`) — used in mappers, specifications, and `toAuditSnapshot()`
   - `@Version` on `version` field — JPA optimistic locking; Hibernate auto-increments on each update and throws `OptimisticLockException` on stale writes
   - `status` — `@Enumerated(EnumType.STRING)`, `TaskStatus` enum (OPEN, IN_PROGRESS, COMPLETED), defaults to `OPEN`
   - `isCompleted()` — derived convenience method, returns `status == TaskStatus.COMPLETED` (no backing field)
   - `priority` — `@Enumerated(EnumType.STRING)`, defaults to `MEDIUM`
   - `priorityOrder` — `@Formula("CASE priority WHEN 'LOW' THEN 0 WHEN 'MEDIUM' THEN 1 WHEN 'HIGH' THEN 2 END")` virtual column for correct sort order (STRING enums sort alphabetically without this)
+  - `startDate` — `LocalDate`, `@DateTimeFormat(iso = ISO.DATE)` for HTML5 `<input type="date">` binding
   - `dueDate` — `LocalDate`, `@DateTimeFormat(iso = ISO.DATE)` for HTML5 `<input type="date">` binding
+  - `completedAt` — `LocalDateTime`, set automatically by `TaskService` when status changes to COMPLETED (cleared when un-completed)
+  - `updatedAt` — `LocalDateTime`, set by `@PrePersist` / `@PreUpdate` lifecycle callbacks
   - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — Task owns the FK column; user is optional (nullable)
+  - `@OneToMany(mappedBy = "task", cascade = ALL, orphanRemoval = true)` + `@OrderBy("sortOrder ASC")` — checklist items owned by task; cascade delete
+  - `checklistTotal` — `@Formula` subquery counting all checklist items (virtual column, avoids loading collection on list views)
+  - `checklistChecked` — `@Formula` subquery counting checked items (virtual column for progress display)
   - Validation: `@NotBlank`, `@Size` constraints
   - Manual getters/setters (no Lombok on entities)
 
@@ -60,6 +66,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
+- `model/ChecklistItem.java` - Checklist item entity for task sub-items
+  - Fields: id, text, checked, sortOrder, task
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_TEXT`, `FIELD_CHECKED`, `FIELD_SORT_ORDER`, `FIELD_TASK`)
+  - `text` — `@NotBlank`, `@Size(max = 200)`
+  - `checked` — boolean, defaults to `false`
+  - `sortOrder` — int, defaults to `0`; used by `@OrderBy` on `Task.checklistItems`
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "task_id")` — owning side to Task
+  - Convenience constructor: `ChecklistItem(String text, int sortOrder)`
+  - Manual getters/setters (no Lombok on entities)
+
 - `model/UserPreference.java` - Per-user preference entity (key/value rows per user)
   - Fields: id, user, key, value
   - `FIELD_*` constants (`FIELD_ID`, `FIELD_USER`, `FIELD_KEY`, `FIELD_VALUE`)
@@ -77,7 +93,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Convenience constructor: `Notification(user, actor, type, message, link)` — sets `read = false` and `createdAt = now()`
   - Manual getters/setters (no Lombok on entities)
 
-- `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `TASK_OVERDUE`, `SYSTEM`
+- `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `COMMENT_MENTIONED`, `TASK_OVERDUE`, `SYSTEM`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Notification
 
 - `model/AuditLog.java` - Audit log entity
@@ -141,6 +157,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `findByTaskIdOrderByCreatedAtAsc(Long)` — chronological comment list; `@EntityGraph(attributePaths = {"user"})` to prevent N+1 on user names
   - `deleteByTaskId(Long)` — `@Modifying` `@Transactional` bulk delete; called by `CommentService.deleteByTaskId()` which is called by `TaskService.deleteTask()` before removing the task
   - `countByUserId(Long)` — count comments by user; used by `UserService.canDelete()` to determine if user can be hard-deleted
+  - `findDistinctUsersByTaskId(Long)` — `@Query` returning distinct comment authors for a task
+  - `findCommentTextsByTaskId(Long)` — `@Query` returning raw comment texts for a task; used by `CommentService.findPreviouslyMentionedUserIds()` to extract @mention tokens from prior comments
 
 - `repository/NotificationRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Notification, Long>`
@@ -221,6 +239,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `users` (`List<String>`), `count` (int)
   - Used by both `PresenceApiController` (REST response) and `PresenceEventListener` (WebSocket broadcast to `/topic/presence`)
 
+- `dto/TimelineEntry.java` - Record for unified activity timeline entries
+  - Fields: `type` (String), `timestamp` (LocalDateTime), `commentId`, `commentText`, `commentUserName`, `commentUserId`, `canDelete` (comment fields), `auditAction`, `auditPrincipal`, `auditDetails` (audit fields)
+  - `TYPE_COMMENT` / `TYPE_AUDIT` constants — discriminator values for the `type` field
+  - Represents either a comment or an audit log event in a merged chronological timeline
+  - Built by `TimelineService.getTimeline()`; consumed by `task-activity.html`
+
 - `dto/DashboardStats.java` - Record carrying all dashboard data
   - Personal stats: `myOpen`, `myInProgress`, `myCompleted`, `myOverdue`, `myTotal`
   - System stats: `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
@@ -268,7 +292,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/CommentService.java` - Comment business logic with audit event publishing and WebSocket broadcast
   - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
   - Constructor injection includes `NotificationService`, `MessageSource`, and `SimpMessagingTemplate` for COMMENT_ADDED notifications and live updates
-  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner and previous commenters (skips self-notification, deduplicates owner), broadcasts `CommentChangeEvent`
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner and previous commenters (skips self-notification, deduplicates owner), notifies @mentioned users (`COMMENT_MENTIONED`), broadcasts `CommentChangeEvent`
+  - `findPreviouslyMentionedUserIds(taskId)` — private helper; scans all comment texts for a task via `CommentRepository.findCommentTextsByTaskId()` and extracts `@mention` user IDs via `MentionUtils`; previously-mentioned users get notified on subsequent comments (subscription behavior)
   - `countByUserId(userId)` — count of comments by a user (used by `UserService.canDelete()`)
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
@@ -309,7 +334,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
-  - `getEntityHistory(entityType, entityId)` — entity-specific audit trail (used by task detail/modal)
+  - `getEntityHistory(Class<?>, entityId)` — entity-specific audit trail; accepts entity class (uses `getSimpleName()` for DB lookup); used by `TimelineService` and task detail/modal
   - `getRecentByActions(List<String>)` — top 10 entries filtered by action type (used by dashboard activity feed)
   - `searchAuditLogs` and `getEntityHistory` resolve field display names via `AuditDetails.resolveDisplayNames()` before returning
 
@@ -339,6 +364,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
   - `updateValue(key, value)` — upserts a setting row; publishes `AuditEvent` with before/after diff
   - Used by `GlobalModelAttributes` (load) and `SettingsController` (update)
+
+- `service/TimelineService.java` - Merges comments and audit history into chronological timeline
+  - Constructor injection: `CommentService`, `AuditLogService`
+  - `getTimeline(taskId, currentUser)` — fetches comments and audit entries for a task, converts to `TimelineEntry` records, sorts by timestamp descending
+  - Computes `canDelete` per comment entry using `AuthExpressions.isAdmin()` and owner check
+  - Used by `TaskController` to populate the activity panel on task detail/modal pages
 
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
   - Constructor injection: `TaskService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
@@ -465,7 +496,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
-  - Injects `TagService`, `UserService`, `CommentService`, `OwnershipGuard`, `AuditLogService`, and `MessageSource`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
+  - Injects `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, and `MessageSource`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
   - Task list defaults based on `userPreferences.defaultUserFilter` (from `GlobalModelAttributes`); view mode defaults based on `userPreferences.taskView`; URL params override preferences
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - `GET /{id}/comments` — fetch comment list fragment (HTMX live refresh via WebSocket)
@@ -603,6 +634,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
 
+- `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
+  - Encoded format: `@[Display Name](userId:3)` — stored in DB as-is
+  - `extractMentionedUserIds(String)` — static; parses encoded mention tokens, returns list of user IDs; used by `CommentService` for mention notifications
+  - `renderHtml(String)` — instance method; converts encoded tokens to `<span class="mention">@Name</span>` with HTML escaping; exposed to Thymeleaf as `${@mentionUtils.renderHtml(text)}`
+  - Regex pattern: `@\[([^\]]+)\]\(userId:(\d+)\)`
+
 - `util/CsvWriter.java` - Generic CSV export utility
   - `write(HttpServletResponse, filename, headers, rows, rowMapper)` — sets `Content-Disposition` header, writes CSV with proper escaping (quotes, commas, newlines)
   - Generic `<T>` — caller provides `Function<T, String[]>` row mapper for any entity type
@@ -624,7 +661,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
-  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering)
+  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering); loads `mentions.css` globally
   - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (`stomp.umd.min.js`, `websocket.js`, `presence.js`, `notifications.js`) — prevents connection attempts for anonymous users
   - `navbar` - navigation bar with auth-aware elements:
     - Left nav links: Tasks, Tags, Users
@@ -635,7 +672,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `footer` - footer
   - Notification bell dropdown in navbar (unread count badge, recent notifications list, mark-all-read and view-all links)
   - Online users indicator in navbar (count badge + dropdown list)
-  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + `stomp.umd.min.js` + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; STOMP client before feature scripts)
+  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + `tribute.min.js` + `mentions.js` + `stomp.umd.min.js` + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
 
 - `templates/layouts/pagination.html` - Reusable pagination control bar
   - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
@@ -648,27 +685,35 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Live search (JS-debounced, 300ms), status filter buttons (All/Open/In Progress/Completed/Overdue, all btn-sm), priority dropdown filter, user filter (All Users / Mine), tag filter dropdown with pills, sort dropdown (includes priority and due date), view toggle (cards/table)
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
   - Stale-data banner (`#stale-data-banner`) — hidden by default; shown by JS when a WebSocket task change event is received from another user; click refreshes the task list
+  - Loads `task-form.js` page-specifically for checklist management functions
   - Contains two shared modal shells loaded once per page:
     - `#task-modal` — create/edit form, content loaded via HTMX
     - `#task-delete-modal` — delete confirmation, populated via `show.bs.modal` JS event
 
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
-- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 3-state status badge and toggle button
+- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 3-state status badge and toggle button; checklist progress bar (checked/total) when task has checklist items
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
-- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 3-state status badge and toggle button
-- `templates/tasks/task-comments.html` - Shared comments fragment with dual usage
-  - `:: list` fragment selector — returns comment list only (used by `task.html` and `task-modal.html` during page render)
-  - Whole-file return — includes comment list + `hx-swap-oob` spans for comment count updates (used by controller for HTMX add/delete responses)
-  - Delete buttons use `hx-delete` with `hx-confirm` and `data-confirm-*` attributes for styled Bootstrap confirmation dialog
-- `templates/tasks/task-audit.html` - Shared audit history entries fragment (used by both `task.html` and `task-modal.html`)
+- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 3-state status badge and toggle button; checklist progress display (checked/total) when task has checklist items
+- `templates/tasks/task-activity.html` - Unified activity timeline template (replaces task-comments.html and task-audit.html)
+  - Merges comments and audit history into a single chronological list; uses `TimelineEntry.type` to discriminate between comment and audit entries
+  - `:: list` fragment selector — returns timeline list only (used by `task.html` and `task-modal.html` during page render via `task-layout.html`)
+  - Whole-file return — includes timeline list + `hx-swap-oob` spans for activity count updates (used by controller for HTMX add/delete responses)
+  - Comment entries rendered with `MentionUtils.renderHtml()` for styled @mention spans; delete buttons use `hx-delete` with `hx-confirm` and `data-confirm-*` attributes
+  - Audit entries show action badge, principal, and field-level change details
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — title, description, status radio buttons (3-state: Open/In Progress/Completed, shown on edit only, hidden on create since new tasks default to OPEN), priority radio buttons (with reception bar icons), due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
+  - `fields` fragment — title, description, status radio buttons (3-state: Open/In Progress/Completed, shown on edit only, hidden on create since new tasks default to OPEN), priority radio buttons (with reception bar icons), start date picker, due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
+  - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove via `task-form.js`
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
-- `templates/tasks/task.html` - Full-page create/edit form; includes comments card section between form and audit history (edit mode); stale-data banner via WebSocket when another user modifies the same task; live comment auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
-- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); comments and history as exclusive side panels toggled via `toggleTaskPanel(name)`; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live comment auto-refresh via WebSocket; comment input pinned below scrollable list; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
+- `templates/tasks/task-layout.html` - Shared two-column layout fragment used by both `task-modal.html` and `task.html`
+  - Contains form column (left) and activity panel column (right) with unified timeline via `task-activity.html`
+  - Comment input uses `div` + HTMX (not nested `<form>`) to avoid form-in-form issues; Enter key guarded by `isMentionMenuActive()` to prevent submission while selecting @mentions
+  - `data-mention` attribute on comment input for Tribute.js @mention autocomplete
+  - Stale-data banner and WebSocket subscription logic shared across both consumers
+- `templates/tasks/task.html` - Full-page create/edit form; uses shared `task-layout.html` fragment for two-column layout with flex-grow; stale-data banner via WebSocket when another user modifies the same task; live activity auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); uses shared `task-layout.html` fragment; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live activity auto-refresh via WebSocket; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
 
 ### Notification Views
 - `templates/notifications.html` - Full notifications page
@@ -713,7 +758,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles
-- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, active state styles for 3 status filter buttons)
+- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, active state styles for 3 status filter buttons, two-column layout styles, timeline entry styles)
+- `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
@@ -730,10 +776,25 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Custom DOM events decouple producers from consumers: `notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`
   - Manages navbar badge count and dropdown notification list
   - Exposes `window.notificationHelpers` for the full notifications page to reuse rendering logic
+- `static/js/mentions.js` - @mention autocomplete via Tribute.js
+  - `initMentionInputs(root)` — attaches Tribute to any `[data-mention]` element; remote user search via `GET /api/users?q=`; uses `positionMenu: false` + CSS for dropdown positioning (Tribute's built-in caret calculation unreliable in flex/modal layouts)
+  - `mentionMap` WeakMap — tracks `element → Map<name, id>` for encoding; populated by Tribute's `selectTemplate` callback
+  - `isMentionMenuActive()` — returns true if any Tribute dropdown is visible; used to suppress Enter-to-post while selecting a mention
+  - `encodeMentions(text, el)` — converts clean `@Name` display to encoded `@[Name](userId:N)` format before submission
+  - `clearMentions(el)` — resets mention tracking for an element (used after comment post)
+  - Atomic backspace: `keydown` handler removes entire `@Name` token when cursor is inside a mention
+  - Auto-encodes on both HTMX requests (`htmx:configRequest`) and regular form submissions (`submit` event)
+  - Auto-initializes on `DOMContentLoaded` and `htmx:afterSwap`
+- `static/js/task-form.js` - Checklist management for task create/edit forms
+  - `addChecklistItem()` — adds a new checklist row (checkbox + text input + remove button) to the container
+  - `removeChecklistItem(btn)` — removes a checklist row; shows empty state if no items remain
+  - `updateChecklistHeading()` — updates the checklist section heading with current item count via `APP_CONFIG.messages`
+  - Loaded page-specifically on task pages (via `tasks.html` script block)
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; `toggleTaskPanel(name)` for exclusive side panel toggle (comments OR history); task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`
+- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
+- `static/tribute/tribute.min.js` - Tribute.js library for @mention autocomplete; loaded globally in `base.html`
 - `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
 
 ## Resource Files

@@ -79,43 +79,6 @@ function navigateToPage(page) {
     window.history.pushState({}, '', url);
 }
 
-// Toggle side panel in modal — only one panel visible at a time (comments OR history).
-// Clicking the active panel's button hides it; clicking the other switches.
-function toggleTaskPanel(name) {
-    const panels = {
-        comments: { panel: 'task-comments-panel', btn: 'task-comments-btn' },
-        history:  { panel: 'task-history-panel',  btn: 'task-history-btn' }
-    };
-    const target = panels[name];
-    const other = panels[name === 'comments' ? 'history' : 'comments'];
-    if (!target) return;
-    const targetPanel = document.getElementById(target.panel);
-    const targetBtn = document.getElementById(target.btn);
-    if (!targetPanel) return;
-
-    const isVisible = !targetPanel.classList.contains('d-none');
-    // Hide the other panel first
-    const otherPanel = document.getElementById(other.panel);
-    const otherBtn = document.getElementById(other.btn);
-    if (otherPanel) otherPanel.classList.add('d-none');
-    if (otherBtn) otherBtn.classList.remove('active');
-
-    // Toggle the target panel
-    if (isVisible) {
-        targetPanel.classList.add('d-none');
-        if (targetBtn) targetBtn.classList.remove('active');
-    } else {
-        targetPanel.classList.remove('d-none');
-        if (targetBtn) targetBtn.classList.add('active');
-    }
-
-    // Resize modal
-    const dialog = document.querySelector('#task-modal .modal-dialog');
-    if (!dialog) return;
-    const anyOpen = document.querySelector('.task-side-panel:not(.d-none)');
-    dialog.classList.toggle('modal-xl', !!anyOpen);
-}
-
 // Per-page size change
 function onPageSizeChange(newSize) {
     pageSize = parseInt(newSize);
@@ -549,8 +512,6 @@ document.addEventListener('DOMContentLoaded', function() {
             highlightActiveTags();
         }
         if (evt.detail.target && evt.detail.target.id === 'task-modal-content') {
-            // Reset modal to default size (history panel closed)
-            document.querySelector('#task-modal .modal-dialog').classList.remove('modal-xl');
             bootstrap.Modal.getOrCreateInstance(document.getElementById('task-modal')).show();
         }
     });

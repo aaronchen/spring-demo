@@ -1,0 +1,55 @@
+/* @mention styles — Tribute.js dropdown + rendered mention spans.
+   Includes structural properties that Tribute.js expects from CSS.
+   Positioning is CSS-only (positionMenu: false in JS) — the dropdown is appended
+   to the input's parent and appears directly above it via bottom: 100%. */
+
+/* Dropdown container — positioned above input, no caret calculation needed */
+.tribute-container {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    top: auto;
+    height: auto;
+    max-height: 300px;
+    overflow: auto;
+    margin-bottom: 4px;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+    z-index: 1080;
+}
+.tribute-container ul {
+    margin: 0;
+    padding: 0.25rem 0;
+    list-style: none;
+    background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+}
+.tribute-container li {
+    padding: 0.4rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.15s;
+}
+.tribute-container li.highlight {
+    background: var(--bs-primary);
+    color: #fff;
+}
+.tribute-container li.no-match {
+    cursor: default;
+    color: var(--bs-secondary-color, #6c757d);
+    font-style: italic;
+}
+.tribute-container .menu-highlighted {
+    font-weight: 600;
+}
+
+/* Rendered mention spans in comment text */
+.mention {
+    color: var(--bs-primary);
+    font-weight: 600;
+    background: rgba(var(--bs-primary-rgb), 0.1);
+    border-radius: 0.25rem;
+    padding: 0 0.2em;
+}

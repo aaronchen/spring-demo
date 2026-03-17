@@ -1,5 +1,6 @@
 <!--/* Modal content — loaded by HTMX into #task-modal-content.
-     No HTML wrapper; the whole file is swapped in directly. */-->
+     No HTML wrapper; the whole file is swapped in directly.
+     Uses shared task-layout :: columns for the two-column form + checklist/activity layout. */-->
 <div class="modal-header" xmlns:th="http://www.thymeleaf.org">
     <h5 class="modal-title">
         <i th:class="${mode == 'view'} ? 'bi bi-eye' : (${mode == 'edit'} ? 'bi bi-pencil-square' : 'bi bi-plus-circle')"></i>
@@ -17,85 +18,19 @@
     <a href="#" id="modal-stale-refresh" class="alert-link ms-auto"
        th:text="#{task.stale.refresh}">Refresh</a>
 </div>
-<div class="d-flex task-panels">
-    <!-- Left Panel: Form -->
-    <div style="flex: 1; min-width: 0;">
-        <form id="task-form"
-              th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
-              th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
-              hx-target="#task-modal-content"
-              hx-swap="innerHTML"
-              th:object="${task}"
-              method="post">
-            <div class="modal-body">
-                <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
-            </div>
-        </form>
-    </div>
-    <!-- Right Panel -->
-    <th:block th:if="${mode != 'create'}">
-        <!-- Comments Panel -->
-        <div id="task-comments-panel" class="task-side-panel d-none">
-            <div class="p-3 border-bottom bg-light">
-                <h6 class="mb-0">
-                    <i class="bi bi-chat-dots"></i>
-                    <span id="task-comments-panel-heading"
-                          th:text="#{comment.heading(${comments.size()})}">Comments (0)</span>
-                </h6>
-            </div>
-            <div class="task-side-panel-body p-3">
-                <th:block th:replace="~{tasks/task-comments :: list}"></th:block>
-            </div>
-            <!-- Add Comment Form (pinned below scrollable list) -->
-            <div class="p-3 border-top">
-                <form th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
-                      hx-target="#task-comments"
-                      hx-swap="outerHTML"
-                      hx-on::after-request="if(event.detail.successful) this.reset()">
-                    <div class="input-group input-group-sm">
-                        <input type="text" name="text" class="form-control"
-                               th:placeholder="#{comment.field.text.placeholder}" required maxlength="500">
-                        <button type="submit" class="btn btn-outline-primary">
-                            <i class="bi bi-send"></i>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <!-- History Panel -->
-        <div th:if="${!auditHistory.isEmpty()}"
-             id="task-history-panel" class="task-side-panel d-none">
-            <div class="p-3 border-bottom bg-light">
-                <h6 class="mb-0">
-                    <i class="bi bi-clock-history"></i>
-                    <span th:text="#{audit.history.heading}">History</span>
-                </h6>
-            </div>
-            <div class="task-side-panel-body">
-                <th:block th:replace="~{tasks/task-audit :: entries}"></th:block>
-            </div>
-        </div>
-    </th:block>
+<div class="modal-body p-0">
+    <form id="task-form"
+          th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
+          th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
+          hx-target="#task-modal-content"
+          hx-swap="innerHTML"
+          th:object="${task}"
+          method="post">
+        <th:block th:replace="~{tasks/task-layout :: columns}"></th:block>
+    </form>
 </div>
 <!-- Footer -->
 <div class="modal-footer">
-    <th:block th:if="${mode != 'create'}">
-        <div class="me-auto d-flex gap-1">
-            <button type="button" id="task-comments-btn"
-                    class="btn btn-outline-primary"
-                    onclick="toggleTaskPanel('comments')">
-                <i class="bi bi-chat-dots"></i>
-                <span id="task-comments-btn-label"
-                      th:text="#{comment.button(${comments.size()})}">Comments (0)</span>
-            </button>
-            <button th:if="${!auditHistory.isEmpty()}" type="button" id="task-history-btn"
-                    class="btn btn-outline-primary"
-                    onclick="toggleTaskPanel('history')">
-                <i class="bi bi-clock-history"></i>
-                <span th:text="#{audit.history.button(${auditHistory.size()})}">History (3)</span>
-            </button>
-        </div>
-    </th:block>
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
         <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
     </button>
@@ -122,12 +57,12 @@
                 banner.classList.remove('d-none');
             }));
 
-            // Live comment updates
+            // Live comment updates — refresh activity timeline
             subs.push(client.subscribe(`/topic/tasks/${taskId}/comments`, function(message) {
                 const data = JSON.parse(message.body);
                 if (currentUserId && String(data.userId) === currentUserId) return;
-                htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/comments`,
-                    {target: '#task-comments', swap: 'outerHTML'});
+                htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/activity`,
+                    {target: '#task-activity', swap: 'outerHTML'});
             }));
         });
 

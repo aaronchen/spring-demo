@@ -11,13 +11,16 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.util.MentionUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 @Service
 public class CommentService {
@@ -76,19 +79,48 @@ public class CommentService {
                 SecurityUtils.getCurrentPrincipal(),
                 AuditDetails.toJson(saved.toAuditSnapshot())));
 
-        // Notify task owner and previous commenters (excluding the commenter themselves)
+        // Notify task owner, previous commenters, and previously-mentioned users
+        // (excluding the commenter themselves). Being @mentioned subscribes you
+        // to the conversation — you'll see all future comments on that task.
         String message = messageSource.getMessage("notification.comment.added",
                 new Object[]{user.getName(), task.getTitle()}, Locale.getDefault());
         String link = "/tasks/" + taskId;
 
+        Set<Long> notifiedIds = new HashSet<>();
+        notifiedIds.add(userId); // Don't notify self
+
         User taskOwner = task.getUser();
-        if (taskOwner != null && !taskOwner.getId().equals(userId)) {
+        if (taskOwner != null && notifiedIds.add(taskOwner.getId())) {
             notificationService.create(taskOwner, user, NotificationType.COMMENT_ADDED, message, link);
         }
-        Long ownerId = taskOwner != null ? taskOwner.getId() : null;
         for (User commenter : commentRepository.findDistinctUsersByTaskId(taskId)) {
-            if (commenter.getId().equals(userId) || commenter.getId().equals(ownerId)) continue;
-            notificationService.create(commenter, user, NotificationType.COMMENT_ADDED, message, link);
+            if (notifiedIds.add(commenter.getId())) {
+                notificationService.create(commenter, user, NotificationType.COMMENT_ADDED, message, link);
+            }
+        }
+        for (Long previouslyMentionedId : findPreviouslyMentionedUserIds(taskId)) {
+            if (notifiedIds.add(previouslyMentionedId)) {
+                User mentioned = userService.findUserById(previouslyMentionedId);
+                if (mentioned != null) {
+                    notificationService.create(mentioned, user, NotificationType.COMMENT_ADDED, message, link);
+                }
+            }
+        }
+
+        // Notify @mentioned users in this comment (who haven't already been notified)
+        List<Long> mentionedIds = MentionUtils.extractMentionedUserIds(text);
+        if (!mentionedIds.isEmpty()) {
+            String mentionMessage = messageSource.getMessage("notification.comment.mentioned",
+                    new Object[]{user.getName(), task.getTitle()}, Locale.getDefault());
+            for (Long mentionedId : mentionedIds) {
+                if (notifiedIds.add(mentionedId)) {
+                    User mentioned = userService.findUserById(mentionedId);
+                    if (mentioned != null) {
+                        notificationService.create(mentioned, user, NotificationType.COMMENT_MENTIONED,
+                                mentionMessage, link);
+                    }
+                }
+            }
         }
         broadcastCommentChange("created", taskId, saved.getId());
         return saved;
@@ -104,6 +136,18 @@ public class CommentService {
                 SecurityUtils.getCurrentPrincipal(),
                 snapshot));
         broadcastCommentChange("deleted", taskId, id);
+    }
+
+    /**
+     * Collect all user IDs @mentioned in previous comments on a task.
+     * Mentions are stored as encoded tokens in comment text — parsed at read time.
+     */
+    private Set<Long> findPreviouslyMentionedUserIds(Long taskId) {
+        Set<Long> ids = new HashSet<>();
+        for (String text : commentRepository.findCommentTextsByTaskId(taskId)) {
+            ids.addAll(MentionUtils.extractMentionedUserIds(text));
+        }
+        return ids;
     }
 
     private void broadcastCommentChange(String action, Long taskId, Long commentId) {
