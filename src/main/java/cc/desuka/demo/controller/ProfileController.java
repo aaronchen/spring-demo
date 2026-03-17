@@ -114,11 +114,13 @@ public class ProfileController {
     public String savePreferences(
             @RequestParam String taskView,
             @RequestParam String defaultUserFilter,
+            @RequestParam(defaultValue = "false") boolean dueReminder,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             RedirectAttributes redirectAttributes) {
         Long userId = currentDetails.getUser().getId();
         userPreferenceService.save(userId, UserPreferences.KEY_TASK_VIEW, taskView);
         userPreferenceService.save(userId, UserPreferences.KEY_DEFAULT_USER_FILTER, defaultUserFilter);
+        userPreferenceService.save(userId, UserPreferences.KEY_DUE_REMINDER, String.valueOf(dueReminder));
         redirectAttributes.addFlashAttribute("preferencesSaved", true);
         return "redirect:/profile";
     }

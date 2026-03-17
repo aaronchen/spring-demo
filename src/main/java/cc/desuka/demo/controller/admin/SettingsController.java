@@ -44,10 +44,12 @@ public class SettingsController {
     @ResponseBody
     public ResponseEntity<Void> saveGeneral(@RequestParam(defaultValue = "") String siteName,
                                             @RequestParam(defaultValue = "false") boolean registrationEnabled,
-                                            @RequestParam(defaultValue = "") String maintenanceBanner) {
+                                            @RequestParam(defaultValue = "") String maintenanceBanner,
+                                            @RequestParam(defaultValue = "30") int notificationPurgeDays) {
         settingService.updateValue(Settings.KEY_SITE_NAME, siteName);
         settingService.updateValue(Settings.KEY_REGISTRATION_ENABLED, String.valueOf(registrationEnabled));
         settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, maintenanceBanner);
+        settingService.updateValue(Settings.KEY_NOTIFICATION_PURGE_DAYS, String.valueOf(notificationPurgeDays));
 
         return ResponseEntity.ok()
                 .header("HX-Trigger", "settingsSaved")

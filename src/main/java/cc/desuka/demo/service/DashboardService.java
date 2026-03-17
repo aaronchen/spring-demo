@@ -53,6 +53,7 @@ public class DashboardService {
         return new DashboardStats(
             myOpen, myInProgress, myCompleted, myOverdue, myTotal,
             taskService.getRecentTasksByUser(user),
+            taskService.getDueThisWeek(user),
             totalTasks, totalOpen, totalCompleted, totalOverdue,
             presenceService.getOnlineCount(),
             activity, activityTaskTitles

@@ -169,6 +169,19 @@
                                 </div>
                             </div>
 
+                            <!-- Due Date Reminders -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"
+                                       th:text="#{profile.preferences.dueReminder}">Due Date Reminders</label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           name="dueReminder" id="pref-due-reminder" value="true"
+                                           th:checked="${userPreferences.dueReminder}">
+                                    <label class="form-check-label" for="pref-due-reminder"
+                                           th:text="#{profile.preferences.dueReminder.description}">Notify me 1 day before a task is due</label>
+                                </div>
+                            </div>
+
                             <button type="submit" class="btn btn-primary"
                                     th:text="#{admin.settings.save}">Save</button>
                         </form>

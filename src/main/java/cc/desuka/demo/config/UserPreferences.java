@@ -22,6 +22,7 @@ public class UserPreferences {
      */
     public static final String KEY_TASK_VIEW = "taskView";
     public static final String KEY_DEFAULT_USER_FILTER = "defaultUserFilter";
+    public static final String KEY_DUE_REMINDER = "dueReminder";
 
     public static final String VIEW_CARDS = "cards";
     public static final String VIEW_TABLE = "table";
@@ -30,6 +31,7 @@ public class UserPreferences {
 
     private String taskView = VIEW_CARDS;
     private String defaultUserFilter = FILTER_MINE;
+    private boolean dueReminder = true;
 
     public String getTaskView() {
         return taskView;
@@ -45,5 +47,13 @@ public class UserPreferences {
 
     public void setDefaultUserFilter(String defaultUserFilter) {
         this.defaultUserFilter = defaultUserFilter;
+    }
+
+    public boolean isDueReminder() {
+        return dueReminder;
+    }
+
+    public void setDueReminder(boolean dueReminder) {
+        this.dueReminder = dueReminder;
     }
 }

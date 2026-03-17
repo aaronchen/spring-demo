@@ -190,6 +190,16 @@ public class TaskService {
     return taskRepository.findTop5ByUserOrderByCreatedAtDesc(user);
   }
 
+  public List<Task> getDueThisWeek(User user) {
+    java.time.LocalDate today = java.time.LocalDate.now();
+    java.time.LocalDate endOfWeek = today.plusDays(7);
+    return taskRepository.findByUserAndDueDateBetweenAndStatusNot(user, today, endOfWeek, TaskStatus.COMPLETED);
+  }
+
+  public List<Task> getTasksDueOn(java.time.LocalDate date) {
+    return taskRepository.findByDueDateAndStatusNot(date, TaskStatus.COMPLETED);
+  }
+
   public Map<Long, String> getTitlesByIds(List<Long> ids) {
     if (ids.isEmpty()) return Map.of();
     return taskRepository.findAllById(ids).stream()

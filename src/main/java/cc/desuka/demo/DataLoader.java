@@ -2,6 +2,8 @@ package cc.desuka.demo;
 
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
+import cc.desuka.demo.model.Notification;
+import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Setting;
@@ -11,6 +13,7 @@ import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
+import cc.desuka.demo.repository.NotificationRepository;
 import cc.desuka.demo.repository.SettingRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
@@ -31,17 +34,20 @@ public class DataLoader implements CommandLineRunner {
   private final TagRepository tagRepository;
   private final UserRepository userRepository;
   private final CommentRepository commentRepository;
+  private final NotificationRepository notificationRepository;
   private final SettingRepository settingRepository;
   private final PasswordEncoder passwordEncoder;
 
   public DataLoader(TaskRepository taskRepository, TagRepository tagRepository,
                     UserRepository userRepository, CommentRepository commentRepository,
+                    NotificationRepository notificationRepository,
                     SettingRepository settingRepository,
                     PasswordEncoder passwordEncoder) {
     this.taskRepository = taskRepository;
     this.tagRepository = tagRepository;
     this.userRepository = userRepository;
     this.commentRepository = commentRepository;
+    this.notificationRepository = notificationRepository;
     this.settingRepository = settingRepository;
     this.passwordEncoder = passwordEncoder;
   }
@@ -645,7 +651,31 @@ public class DataLoader implements CommandLineRunner {
         task.getChecklistItems().add(item);
       }
     }
+    // Ensure demo users have tasks due tomorrow (for due-date reminder demo).
+    LocalDate tomorrow = LocalDate.now().plusDays(1);
+    List<Task> dueTomorrowTasks = new ArrayList<>();
+    for (Task t : tasks) {
+      if (dueTomorrowTasks.size() >= 3) break;
+      if (t.getUser() != null && t.getUser().equals(users.get(0))
+          && t.getStatus() != TaskStatus.COMPLETED) {
+        t.setDueDate(tomorrow);
+        dueTomorrowTasks.add(t);
+      }
+    }
+
     taskRepository.saveAll(tasks);
+
+    // ── Notifications ───────────────────────────────────────────────────
+    // Seed due-date reminder notifications for Alice's tasks due tomorrow,
+    // so the notification bell has content on first boot.
+    List<Notification> notifications = new ArrayList<>();
+    for (Task t : dueTomorrowTasks) {
+      Notification n = new Notification(
+          t.getUser(), null, NotificationType.TASK_DUE_REMINDER,
+          "Due tomorrow: " + t.getTitle(), "/tasks/" + t.getId());
+      notifications.add(n);
+    }
+    notificationRepository.saveAll(notifications);
 
     // ── Settings ──────────────────────────────────────────────────────────
     settingRepository.save(new Setting(Settings.KEY_THEME, Settings.THEME_WORKSHOP));
@@ -654,6 +684,7 @@ public class DataLoader implements CommandLineRunner {
         + tagRepository.count() + " tags, "
         + taskRepository.count() + " tasks, "
         + commentRepository.count() + " comments, "
+        + notificationRepository.count() + " notifications, "
         + settingRepository.count() + " settings.");
   }
 

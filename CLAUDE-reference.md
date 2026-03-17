@@ -93,7 +93,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Convenience constructor: `Notification(user, actor, type, message, link)` — sets `read = false` and `createdAt = now()`
   - Manual getters/setters (no Lombok on entities)
 
-- `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `COMMENT_MENTIONED`, `TASK_OVERDUE`, `SYSTEM`
+- `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `COMMENT_MENTIONED`, `TASK_DUE_REMINDER`, `TASK_OVERDUE`, `SYSTEM`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Notification
 
 - `model/AuditLog.java` - Audit log entity
@@ -248,7 +248,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `dto/DashboardStats.java` - Record carrying all dashboard data
   - Personal stats: `myOpen`, `myInProgress`, `myCompleted`, `myOverdue`, `myTotal`
   - System stats: `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
-  - Lists: `myRecentTasks` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
+  - Lists: `myRecentTasks` (`List<Task>`), `dueThisWeek` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
   - Immutable record — built by `DashboardService.buildStats()`
 
 - `dto/ProfileRequest.java` - Profile edit form DTO
@@ -347,7 +347,6 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `markAsRead(id, userId)` — marks single notification as read (ownership-scoped)
   - `markAllAsRead(userId)` — bulk mark all as read
   - `clearAll(userId)` — deletes all notifications for user
-  - `purgeOld()` — `@Scheduled(cron = "0 0 3 * * *")` deletes notifications older than 30 days
 
 - `service/UserPreferenceService.java` - Per-user preference business logic
   - Constructor injection: `UserPreferenceRepository`, `UserService`
@@ -371,9 +370,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Computes `canDelete` per comment entry using `AuthExpressions.isAdmin()` and owner check
   - Used by `TaskController` to populate the activity panel on task detail/modal pages
 
+- `service/ScheduledTaskService.java` - Centralized home for all `@Scheduled` jobs
+  - Constructor injection: `TaskService`, `NotificationService`, `NotificationRepository`, `UserPreferenceService`, `SettingService`, `MessageSource`
+  - `sendDueReminders()` — `@Scheduled(cron = "0 0 8 * * *")`; finds tasks due tomorrow, sends `TASK_DUE_REMINDER` notifications to assigned users who have the `dueReminder` preference enabled
+  - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; reads `notificationPurgeDays` from `Settings`, deletes notifications older than that
+
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
   - Constructor injection: `TaskService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
-  - `buildStats(User)` — returns `DashboardStats` record with personal counts, system-wide counts, recent tasks, and recent activity with resolved task titles
+  - `buildStats(User)` — returns `DashboardStats` record with personal counts, system-wide counts, recent tasks, due-this-week tasks, and recent activity with resolved task titles
   - Filters activity to `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED` actions only
 
 ### Controller Layer
@@ -459,7 +463,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `ThemeOption` record — holds theme id and preview swatch colors
   - `THEMES` list — single source of truth for valid themes; used for both rendering and validation
   - `GET /admin/settings` — settings page with theme picker
-  - `POST /admin/settings/general` — saves site name, registration toggle, maintenance banner; triggers `settingsSaved` event
+  - `POST /admin/settings/general` — saves site name, registration toggle, maintenance banner, notification purge days; triggers `settingsSaved` event
   - `POST /admin/settings/theme` — validates theme against `THEMES` list (400 if invalid), saves; triggers `themeSaved` event with theme id
 
 - `controller/admin/AuditController.java` - Audit log page
@@ -483,7 +487,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `GET /profile` — shows profile page with account form (`ProfileRequest`), password form (`ChangePasswordRequest`), and preferences
   - `POST /profile` — updates name and email; validates via `@Valid` on `ProfileRequest` (includes `@Unique` email check); updates `SecurityContext` with new values
   - `POST /profile/password` — changes password; verifies current password, checks new/confirm match, encodes via `PasswordEncoder`; updates `SecurityContext` to keep session valid
-  - `POST /profile/preferences` — saves task view and default user filter preferences via `UserPreferenceService`
+  - `POST /profile/preferences` — saves task view, default user filter, and due reminder preferences via `UserPreferenceService`
   - Flash attributes trigger toast notifications on redirect
 
 - `controller/DashboardController.java` - Dashboard page and HTMX stats fragment
@@ -604,16 +608,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by HTMX attributes (`th:attr="hx-get=${appRoutes.tasks + ...}"`) where `@{}` URL syntax cannot be used
 
 - `config/UserPreferences.java` - Typed POJO for per-user preferences with defaults (mirrors `Settings` pattern)
-  - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name): `KEY_TASK_VIEW`, `KEY_DEFAULT_USER_FILTER`
+  - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name): `KEY_TASK_VIEW`, `KEY_DEFAULT_USER_FILTER`, `KEY_DUE_REMINDER`
   - Value constants: `VIEW_CARDS`/`VIEW_TABLE`, `FILTER_MINE`/`FILTER_ALL`
-  - Fields: `taskView` (default `"cards"`), `defaultUserFilter` (default `"mine"`)
+  - Fields: `taskView` (default `"cards"`), `defaultUserFilter` (default `"mine"`), `dueReminder` (default `true`)
   - `UserPreferenceService.load()` populates via `BeanWrapper`; missing keys keep defaults
   - To add a new preference: (1) add field with default, (2) add `KEY_*` constant matching field name
 
 - `config/Settings.java` - Typed POJO for site-wide settings with defaults (not a JPA entity)
   - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name)
   - `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` — theme id constants
-  - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`)
+  - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`), `notificationPurgeDays` (default `30`)
 
 ### Exception Handling
 - `exception/EntityNotFoundException.java` - Custom unchecked exception for missing entities

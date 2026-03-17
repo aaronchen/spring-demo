@@ -52,6 +52,23 @@
                     </div>
                 </div>
 
+                <!-- Notification Purge Days -->
+                <div class="row align-items-center mb-3">
+                    <label for="setting-purge-days" class="col-sm-3 col-form-label fw-semibold"
+                           th:text="#{admin.settings.purgeDays.label}">Notification Purge</label>
+                    <div class="col-sm-3">
+                        <div class="input-group">
+                            <input type="number" id="setting-purge-days" class="form-control"
+                                   th:value="${settings.notificationPurgeDays}"
+                                   min="1" max="365">
+                            <span class="input-group-text" th:text="#{admin.settings.purgeDays.suffix}">days</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-muted" th:text="#{admin.settings.purgeDays.description}">Notifications older than this are automatically deleted.</small>
+                    </div>
+                </div>
+
                 <!-- Save button -->
                 <div class="row">
                     <div class="col-sm-9 offset-sm-3">
@@ -148,7 +165,8 @@
                 values: {
                     siteName: document.getElementById('setting-site-name').value,
                     registrationEnabled: document.getElementById('setting-registration').checked,
-                    maintenanceBanner: document.getElementById('setting-maintenance').value
+                    maintenanceBanner: document.getElementById('setting-maintenance').value,
+                    notificationPurgeDays: document.getElementById('setting-purge-days').value
                 },
                 swap: 'none'
             });

@@ -25,6 +25,7 @@ public class Settings {
     public static final String KEY_SITE_NAME = "siteName";
     public static final String KEY_REGISTRATION_ENABLED = "registrationEnabled";
     public static final String KEY_MAINTENANCE_BANNER = "maintenanceBanner";
+    public static final String KEY_NOTIFICATION_PURGE_DAYS = "notificationPurgeDays";
     public static final String THEME_DEFAULT = "default";
     public static final String THEME_WORKSHOP = "workshop";
     public static final String THEME_INDIGO = "indigo";
@@ -33,6 +34,7 @@ public class Settings {
     private String siteName = "Spring Workshop";
     private boolean registrationEnabled = true;
     private String maintenanceBanner = "";
+    private int notificationPurgeDays = 30;
 
     public String getTheme() {
         return theme;
@@ -64,5 +66,13 @@ public class Settings {
 
     public void setMaintenanceBanner(String maintenanceBanner) {
         this.maintenanceBanner = maintenanceBanner;
+    }
+
+    public int getNotificationPurgeDays() {
+        return notificationPurgeDays;
+    }
+
+    public void setNotificationPurgeDays(int notificationPurgeDays) {
+        this.notificationPurgeDays = notificationPurgeDays;
     }
 }

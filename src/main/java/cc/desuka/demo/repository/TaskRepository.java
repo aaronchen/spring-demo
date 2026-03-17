@@ -32,6 +32,10 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
   List<Task> findTop5ByUserOrderByCreatedAtDesc(User user);
 
+  List<Task> findByUserAndDueDateBetweenAndStatusNot(User user, LocalDate from, LocalDate to, TaskStatus status);
+
+  List<Task> findByDueDateAndStatusNot(LocalDate dueDate, TaskStatus status);
+
   // @EntityGraph solves the N+1 query problem for paginated task lists.
   //
   // Without this: loading a page of 25 tasks would fire 1 query for the tasks +

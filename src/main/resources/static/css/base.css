@@ -22,6 +22,15 @@ body {
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
 }
 
+/* Dashboard stat cards — subtle hover lift for clickable stats */
+.dashboard-stat-card {
+    cursor: pointer;
+}
+.dashboard-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.12) !important;
+}
+
 /* Button hover effects */
 .btn {
     transition: all 0.2s ease-in-out;

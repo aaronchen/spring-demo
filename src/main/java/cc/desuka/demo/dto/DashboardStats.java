@@ -14,6 +14,7 @@ public record DashboardStats(
     long myOverdue,
     long myTotal,
     List<Task> myRecentTasks,
+    List<Task> dueThisWeek,
 
     // System-wide stats
     long totalTasks,
