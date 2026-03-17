@@ -289,7 +289,7 @@
                     <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="View toggle">
                         <button type="button"
                                 class="btn btn-outline-secondary"
-                                th:classappend="${view != 'table' ? 'active' : ''}"
+                                th:classappend="${view == 'cards' ? 'active' : ''}"
                                 id="view-cards"
                                 th:title="#{task.view.cards}"
                                 onclick="switchView('cards')">
@@ -302,6 +302,14 @@
                                 th:title="#{task.view.table}"
                                 onclick="switchView('table')">
                             <i class="bi bi-table"></i>
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                th:classappend="${view == 'calendar' ? 'active' : ''}"
+                                id="view-calendar"
+                                th:title="#{task.view.calendar}"
+                                onclick="switchView('calendar')">
+                            <i class="bi bi-calendar3"></i>
                         </button>
                     </div>
                 </div>
@@ -319,7 +327,10 @@
                     <th:block th:if="${view == 'table'}">
                         <div th:replace="~{tasks/task-table :: grid}"></div>
                     </th:block>
-                    <th:block th:if="${view != 'table'}">
+                    <th:block th:if="${view == 'calendar'}">
+                        <div th:replace="~{tasks/task-calendar :: grid}"></div>
+                    </th:block>
+                    <th:block th:if="${view != 'table' && view != 'calendar'}">
                         <div th:replace="~{tasks/task-cards :: grid}"></div>
                     </th:block>
                 </div>

@@ -11,7 +11,7 @@
             <tbody>
                 <tr th:each="user : ${users}">
                     <td>
-                        <a th:href="@{/tasks(userId=${user.id})}" th:text="${user.name}" class="text-decoration-none">Name</a>
+                        <a th:href="@{/tasks(selectedUserId=${user.id})}" th:text="${user.name}" class="text-decoration-none">Name</a>
                     </td>
                     <td th:text="${user.email}">email@example.com</td>
                     <td>

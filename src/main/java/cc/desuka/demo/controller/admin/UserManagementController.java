@@ -3,6 +3,7 @@ package cc.desuka.demo.controller.admin;
 import cc.desuka.demo.dto.AdminUserRequest;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -99,8 +100,16 @@ public class UserManagementController {
             return "admin/user-modal";
         }
 
-        userService.updateUser(id, adminUserRequest.getName(),
+        User updated = userService.updateUser(id, adminUserRequest.getName(),
                 adminUserRequest.getEmail(), adminUserRequest.getRole());
+
+        // If editing self, refresh the cached entity in the SecurityContext
+        User currentUser = SecurityUtils.getCurrentUser();
+        if (currentUser != null && currentUser.getId().equals(id)) {
+            currentUser.setName(updated.getName());
+            currentUser.setEmail(updated.getEmail());
+        }
+
         return HtmxUtils.triggerEvent("userSaved");
     }
 
