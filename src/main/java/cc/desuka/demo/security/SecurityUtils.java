@@ -46,6 +46,30 @@ public class SecurityUtils {
     }
 
     /**
+     * Updates the cached {@link User} in the current session's SecurityContext
+     * if the given user is the currently logged-in user. Call this after any
+     * user update to keep the session in sync with the database.
+     */
+    public static void refreshCachedUser(User updated) {
+        User current = getCurrentUser();
+        if (current != null && current.getId().equals(updated.getId())) {
+            current.setName(updated.getName());
+            current.setEmail(updated.getEmail());
+            current.setRole(updated.getRole());
+            current.setEnabled(updated.isEnabled());
+        }
+    }
+
+    /**
+     * Returns {@code true} if the given user ID belongs to the currently
+     * logged-in user.
+     */
+    public static boolean isCurrentUser(Long userId) {
+        User current = getCurrentUser();
+        return current != null && current.getId().equals(userId);
+    }
+
+    /**
      * Extracts the {@link User} entity from an arbitrary {@link Principal},
      * such as the one provided by WebSocket session events.
      * Returns {@code null} if the principal does not wrap a {@link CustomUserDetails}.

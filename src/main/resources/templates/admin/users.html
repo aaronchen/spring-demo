@@ -117,6 +117,10 @@
                     .then(r => r.json())
                     .then(function(info) {
                         const msg = APP_CONFIG.messages;
+                        if (info.isSelf) {
+                            showToast(msg['admin.users.self.cannotRemove'], 'warning');
+                            return;
+                        }
                         if (info.canDelete) {
                             // User has no completed tasks or comments — offer delete
                             let confirmMsg = msg['admin.users.delete.confirm'];

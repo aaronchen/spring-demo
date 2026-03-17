@@ -103,19 +103,16 @@ public class UserManagementController {
         User updated = userService.updateUser(id, adminUserRequest.getName(),
                 adminUserRequest.getEmail(), adminUserRequest.getRole());
 
-        // If editing self, refresh the cached entity in the SecurityContext
-        User currentUser = SecurityUtils.getCurrentUser();
-        if (currentUser != null && currentUser.getId().equals(id)) {
-            currentUser.setName(updated.getName());
-            currentUser.setEmail(updated.getEmail());
-        }
-
+        SecurityUtils.refreshCachedUser(updated);
         return HtmxUtils.triggerEvent("userSaved");
     }
 
     @DeleteMapping("/{id}")
     @ResponseBody
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (SecurityUtils.isCurrentUser(id)) {
+            return ResponseEntity.badRequest().build();
+        }
         userService.deleteUser(id);
         return HtmxUtils.triggerEvent("userSaved");
     }
@@ -123,6 +120,9 @@ public class UserManagementController {
     @PostMapping("/{id}/disable")
     @ResponseBody
     public ResponseEntity<Void> disableUser(@PathVariable Long id) {
+        if (SecurityUtils.isCurrentUser(id)) {
+            return ResponseEntity.badRequest().build();
+        }
         userService.disableUser(id);
         return HtmxUtils.triggerEvent("userSaved");
     }
@@ -151,6 +151,7 @@ public class UserManagementController {
         User user = userService.getUserById(id);
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("name", user.getName());
+        info.put("isSelf", SecurityUtils.isCurrentUser(id));
         info.put("canDelete", userService.canDelete(id));
         info.put("completedTasks", userService.countCompletedTasks(id));
         info.put("comments", userService.countComments(id));

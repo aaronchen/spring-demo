@@ -4,9 +4,11 @@ import cc.desuka.demo.dto.UserRequest;
 import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.mapper.UserMapper;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -46,8 +48,11 @@ public class UserApiController {
 
     // DELETE /api/users/{id}
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        if (SecurityUtils.isCurrentUser(id)) {
+            return ResponseEntity.badRequest().build();
+        }
         userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }
