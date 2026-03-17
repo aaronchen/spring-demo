@@ -35,6 +35,21 @@
         </div>
     </div>
 
+    <!-- Assigned To -->
+    <div class="mb-3">
+        <label for="assigneeId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
+        <searchable-select name="assigneeId" id="assigneeId"
+                           src="/api/users" value-field="id" text-field="name"
+                           th:placeholder="#{task.field.user.placeholder}"
+                           th:disabled="${mode == 'view'}">
+            <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
+            <option th:if="${task.user != null}"
+                    th:value="${task.user.id}"
+                    th:text="${task.user.name}"
+                    selected>Selected User</option>
+        </searchable-select>
+    </div>
+
     <!-- Status -->
     <div class="mb-3" th:if="${mode != 'create'}">
         <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
@@ -91,29 +106,38 @@
         </div>
     </div>
 
-    <!-- Due Date -->
-    <div class="mb-3">
-        <label for="dueDate" class="form-label fw-bold" th:text="#{task.field.dueDate}">Due Date</label>
-        <input type="date"
-               th:field="*{dueDate}"
-               class="form-control"
-               id="dueDate"
-               th:disabled="${mode == 'view'}">
+    <!-- Dates: Start Date and Due Date side by side -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="startDate" class="form-label fw-bold" th:text="#{task.field.startDate}">Start Date</label>
+            <input type="date"
+                   th:field="*{startDate}"
+                   class="form-control"
+                   id="startDate"
+                   th:disabled="${mode == 'view'}">
+        </div>
+        <div class="col-md-6">
+            <label for="dueDate" class="form-label fw-bold" th:text="#{task.field.dueDate}">Due Date</label>
+            <input type="date"
+                   th:field="*{dueDate}"
+                   class="form-control"
+                   id="dueDate"
+                   th:disabled="${mode == 'view'}">
+        </div>
     </div>
 
-    <!-- Assigned To -->
-    <div class="mb-3">
-        <label for="assigneeId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
-        <searchable-select name="assigneeId" id="assigneeId"
-                           src="/api/users" value-field="id" text-field="name"
-                           th:placeholder="#{task.field.user.placeholder}"
-                           th:disabled="${mode == 'view'}">
-            <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>
-            <option th:if="${task.user != null}"
-                    th:value="${task.user.id}"
-                    th:text="${task.user.name}"
-                    selected>Selected User</option>
-        </searchable-select>
+    <!-- Read-only dates: Completed and Last Updated -->
+    <div class="row mb-3" th:if="${mode != 'create'}">
+        <div class="col-md-6" th:if="${task.completedAt != null}">
+            <label class="form-label fw-bold text-muted" th:text="#{task.field.completedAt}">Completed</label>
+            <div class="form-control-plaintext small text-muted"
+                 th:text="${#temporals.format(task.completedAt, 'MMM dd, yyyy h:mm a')}">Date</div>
+        </div>
+        <div class="col-md-6" th:if="${task.updatedAt != null}">
+            <label class="form-label fw-bold text-muted" th:text="#{task.field.updatedAt}">Last Updated</label>
+            <div class="form-control-plaintext small text-muted"
+                 th:text="${#temporals.format(task.updatedAt, 'MMM dd, yyyy h:mm a')}">Date</div>
+        </div>
     </div>
 
     <!-- Tags -->
@@ -132,4 +156,34 @@
         </div>
     </div>
 
+</th:block>
+
+<!--/* Checklist fragment — included separately by modal (right panel) and full page (within form).
+     Must be inside a <form> with th:object="${task}" for submission. */-->
+<th:block th:fragment="checklist" xmlns:th="http://www.thymeleaf.org">
+    <div id="checklist-container">
+        <div th:each="item, stat : ${task.checklistItems}" class="checklist-item input-group input-group-sm mb-1">
+            <div class="input-group-text">
+                <!--/* Hidden field ensures unchecked checkboxes still submit "false" */-->
+                <input type="hidden" name="checklistChecked" th:value="${item.checked}">
+                <input type="checkbox" class="form-check-input mt-0"
+                       th:checked="${item.checked}"
+                       th:disabled="${mode == 'view'}"
+                       onchange="this.previousElementSibling.value = this.checked">
+            </div>
+            <input type="text" class="form-control"
+                   name="checklistTexts"
+                   autocomplete="off"
+                   th:value="${item.text}"
+                   th:placeholder="#{task.checklist.placeholder}"
+                   th:disabled="${mode == 'view'}">
+            <button th:if="${mode != 'view'}" type="button" class="btn btn-outline-danger"
+                    onclick="removeChecklistItem(this)">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    </div>
+    <p id="checklist-empty" class="text-muted small mb-0"
+       th:classappend="${task.checklistItems != null && !task.checklistItems.isEmpty() ? 'd-none' : ''}"
+       th:text="#{task.checklist.empty}">No checklist items</p>
 </th:block>

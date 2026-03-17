@@ -329,7 +329,7 @@
 
     <!-- Task Modal -->
     <div class="modal fade" id="task-modal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered task-modal-dialog">
             <div class="modal-content" id="task-modal-content">
                 <!-- Populated by HTMX -->
             </div>
@@ -369,6 +369,7 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
 
+    <script th:src="@{/js/task-form.js}"></script>
     <script th:src="@{/js/tasks.js}"></script>
 </body>
 </html>

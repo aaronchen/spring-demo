@@ -56,6 +56,7 @@ Content-Type: application/json
     "title": "New task",
     "description": "Created via REST Client",
     "priority": "HIGH",
+    "startDate": "2026-03-10",
     "dueDate": "2026-03-15",
     "tagIds": [1, 3]
 }

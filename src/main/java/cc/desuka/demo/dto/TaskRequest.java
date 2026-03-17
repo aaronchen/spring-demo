@@ -26,6 +26,8 @@ public class TaskRequest {
 
   private Priority priority;
 
+  private LocalDate startDate;
+
   private LocalDate dueDate;
 
   // null or empty = no tags (or remove all existing tags from this task)

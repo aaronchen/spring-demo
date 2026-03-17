@@ -27,9 +27,15 @@ public class Task implements OwnedEntity, Auditable {
   public static final String FIELD_PRIORITY = "priority";
   public static final String FIELD_PRIORITY_ORDER = "priorityOrder";
   public static final String FIELD_DUE_DATE = "dueDate";
+  public static final String FIELD_START_DATE = "startDate";
   public static final String FIELD_CREATED_AT = "createdAt";
+  public static final String FIELD_COMPLETED_AT = "completedAt";
+  public static final String FIELD_UPDATED_AT = "updatedAt";
   public static final String FIELD_TAGS = "tags";
   public static final String FIELD_USER = "user";
+  public static final String FIELD_CHECKLIST_ITEMS = "checklistItems";
+  public static final String FIELD_CHECKLIST_TOTAL = "checklistTotal";
+  public static final String FIELD_CHECKLIST_CHECKED = "checklistChecked";
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -59,11 +65,21 @@ public class Task implements OwnedEntity, Auditable {
   private int priorityOrder;
 
   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+  @Column(name = "start_date")
+  private LocalDate startDate;
+
+  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
   @Column(name = "due_date")
   private LocalDate dueDate;
 
   @Column(name = "created_at")
   private LocalDateTime createdAt = LocalDateTime.now();
+
+  @Column(name = "completed_at")
+  private LocalDateTime completedAt;
+
+  @Column(name = "updated_at")
+  private LocalDateTime updatedAt;
 
   // @ManyToMany: a task can have many tags; a tag can belong to many tasks.
   //
@@ -98,6 +114,27 @@ public class Task implements OwnedEntity, Auditable {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
+
+  @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+  @OrderBy("sortOrder ASC")
+  private List<ChecklistItem> checklistItems = new ArrayList<>();
+
+  // Virtual columns for checklist progress — avoids loading the full collection on list views.
+  @Formula("(SELECT COUNT(*) FROM checklist_items ci WHERE ci.task_id = id)")
+  private int checklistTotal;
+
+  @Formula("(SELECT COUNT(*) FROM checklist_items ci WHERE ci.task_id = id AND ci.checked = TRUE)")
+  private int checklistChecked;
+
+  @PrePersist
+  protected void onPrePersist() {
+    updatedAt = LocalDateTime.now();
+  }
+
+  @PreUpdate
+  protected void onPreUpdate() {
+    updatedAt = LocalDateTime.now();
+  }
 
   // Default constructor (required by JPA)
   public Task() {
@@ -162,6 +199,14 @@ public class Task implements OwnedEntity, Auditable {
     this.priority = priority;
   }
 
+  public LocalDate getStartDate() {
+    return startDate;
+  }
+
+  public void setStartDate(LocalDate startDate) {
+    this.startDate = startDate;
+  }
+
   public LocalDate getDueDate() {
     return dueDate;
   }
@@ -176,6 +221,22 @@ public class Task implements OwnedEntity, Auditable {
 
   public void setCreatedAt(LocalDateTime createdAt) {
     this.createdAt = createdAt;
+  }
+
+  public LocalDateTime getCompletedAt() {
+    return completedAt;
+  }
+
+  public void setCompletedAt(LocalDateTime completedAt) {
+    this.completedAt = completedAt;
+  }
+
+  public LocalDateTime getUpdatedAt() {
+    return updatedAt;
+  }
+
+  public void setUpdatedAt(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
   }
 
   public List<Tag> getTags() {
@@ -194,6 +255,22 @@ public class Task implements OwnedEntity, Auditable {
     this.user = user;
   }
 
+  public List<ChecklistItem> getChecklistItems() {
+    return checklistItems;
+  }
+
+  public void setChecklistItems(List<ChecklistItem> checklistItems) {
+    this.checklistItems = checklistItems;
+  }
+
+  public int getChecklistTotal() {
+    return checklistTotal;
+  }
+
+  public int getChecklistChecked() {
+    return checklistChecked;
+  }
+
   @Override
   public Map<String, Object> toAuditSnapshot() {
     Map<String, Object> snapshot = new LinkedHashMap<>();
@@ -201,9 +278,15 @@ public class Task implements OwnedEntity, Auditable {
     snapshot.put(FIELD_DESCRIPTION, description);
     snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
     snapshot.put(FIELD_PRIORITY, priority != null ? priority.name() : null);
+    snapshot.put(FIELD_START_DATE, startDate != null ? startDate.toString() : null);
     snapshot.put(FIELD_DUE_DATE, dueDate != null ? dueDate.toString() : null);
     snapshot.put(FIELD_USER, user != null ? user.getName() : null);
     snapshot.put(FIELD_TAGS, tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
+    snapshot.put(FIELD_CHECKLIST_ITEMS, checklistItems != null
+        ? checklistItems.stream()
+            .map(ci -> (ci.isChecked() ? "[x] " : "[ ] ") + ci.getText())
+            .toList()
+        : List.of());
     return snapshot;
   }
 }

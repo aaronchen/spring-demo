@@ -1,0 +1,84 @@
+<!--/* Shared two-column task layout — used by both task-modal.html and task.html.
+     Reads from model: ${task}, ${mode}, ${tags}, ${timeline}, ${activityCount}, ${appRoutes}.
+     The enclosing element must set th:object="${task}" on a <form> wrapping this fragment.
+
+     Left column: form fields (scrollable).
+     Right column: checklist (top half, scrollable) + activity timeline (bottom half, scrollable).
+     Checklist add button is in the header (always visible).
+     Activity comment input is pinned at the bottom. */-->
+<div th:fragment="columns" class="task-modal-columns" xmlns:th="http://www.thymeleaf.org">
+    <!-- Left Column: Form Fields -->
+    <div class="task-modal-left">
+        <div class="p-3">
+            <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
+        </div>
+    </div>
+    <!-- Right Column: Checklist (top) + Activity (bottom) -->
+    <div class="task-modal-right">
+        <!-- Checklist Section -->
+        <div class="task-modal-checklist">
+            <div class="p-3 border-bottom bg-light d-flex align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-check2-square"></i>
+                    <span id="task-checklist-heading"
+                          th:text="#{task.field.checklist.heading(${task.checklistItems != null ? task.checklistItems.size() : 0})}">Checklist (0)</span>
+                </h6>
+                <button th:if="${mode != 'view'}" type="button"
+                        class="btn btn-sm btn-outline-secondary ms-auto"
+                        onclick="addChecklistItem()">
+                    <i class="bi bi-plus-circle"></i> <span th:text="#{task.checklist.add}">Add Item</span>
+                </button>
+            </div>
+            <div class="task-modal-checklist-body p-3">
+                <th:block th:replace="~{tasks/task-form :: checklist}"></th:block>
+            </div>
+        </div>
+        <!-- Activity Section -->
+        <th:block th:if="${mode != 'create'}">
+            <div class="task-modal-activity">
+                <div class="p-3 border-bottom bg-light">
+                    <h6 class="mb-0">
+                        <i class="bi bi-activity"></i>
+                        <span id="task-activity-panel-heading"
+                              th:text="#{activity.heading(${activityCount})}">Activity (0)</span>
+                    </h6>
+                </div>
+                <div class="task-modal-activity-body p-3">
+                    <th:block th:replace="~{tasks/task-activity :: list}"></th:block>
+                </div>
+                <!--/* Add Comment — uses a <div> instead of <form> to avoid invalid nested form.
+                     HTMX attributes on the button; hx-include pulls the sibling input. */-->
+                <div class="p-3 border-top">
+                    <div class="input-group input-group-sm" id="comment-input-group">
+                        <input type="text" id="comment-text" name="text" class="form-control" autocomplete="off" data-mention
+                               th:placeholder="#{comment.field.text.placeholder}" maxlength="500"
+                               onkeydown="if(event.key==='Enter'&amp;&amp;!isMentionMenuActive()){event.preventDefault();document.getElementById('comment-post-btn').click();}">
+                        <button type="button" id="comment-post-btn" class="btn btn-outline-primary"
+                                th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
+                                hx-include="#comment-text"
+                                hx-target="#task-activity"
+                                hx-swap="outerHTML"
+                                hx-on::after-request="if(event.detail.successful){const i=document.getElementById('comment-text');i.value='';clearMentions(i);}"
+                                onclick="if(!document.getElementById('comment-text').value.trim()){return false;}">
+                            <i class="bi bi-send"></i> <span th:text="#{comment.action.post}">Post</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+        <!--/* Create mode: activity placeholder */-->
+        <th:block th:if="${mode == 'create'}">
+            <div class="task-modal-activity">
+                <div class="p-3 border-bottom bg-light">
+                    <h6 class="mb-0 text-muted">
+                        <i class="bi bi-activity"></i>
+                        <span th:text="#{activity.heading(0)}">Activity (0)</span>
+                    </h6>
+                </div>
+                <div class="task-modal-activity-body p-3">
+                    <p class="text-muted small mb-0" th:text="#{activity.empty}">No activity yet</p>
+                </div>
+            </div>
+        </th:block>
+    </div>
+</div>

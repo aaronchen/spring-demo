@@ -26,8 +26,13 @@ public interface TaskMapper {
     @Mapping(target = Task.FIELD_ID, ignore = true)
     @Mapping(target = Task.FIELD_STATUS, ignore = true)
     @Mapping(target = Task.FIELD_CREATED_AT, ignore = true)
+    @Mapping(target = Task.FIELD_COMPLETED_AT, ignore = true)
+    @Mapping(target = Task.FIELD_UPDATED_AT, ignore = true)
     @Mapping(target = Task.FIELD_TAGS, ignore = true)
     @Mapping(target = Task.FIELD_USER, ignore = true)
     @Mapping(target = Task.FIELD_VERSION, ignore = true)
+    @Mapping(target = Task.FIELD_CHECKLIST_ITEMS, ignore = true)
+    @Mapping(target = Task.FIELD_CHECKLIST_TOTAL, ignore = true)
+    @Mapping(target = Task.FIELD_CHECKLIST_CHECKED, ignore = true)
     Task toEntity(TaskRequest request);
 }

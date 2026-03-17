@@ -5,6 +5,7 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.dto.TaskChangeEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
+import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
@@ -20,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -67,8 +69,15 @@ public class TaskService {
   // tagIds and assigneeId come from the caller (API or web controller).
   // The mapper cannot do DB lookups, so that responsibility lives here.
   public Task createTask(Task task, List<Long> tagIds, Long assigneeId) {
+    return createTask(task, tagIds, assigneeId, null, null);
+  }
+
+  public Task createTask(Task task, List<Long> tagIds, Long assigneeId,
+                          List<String> checklistTexts, List<Boolean> checklistChecked) {
     task.setTags(tagService.findAllByIds(tagIds));
     task.setUser(userService.findUserById(assigneeId));
+    updateCompletedAt(task, null);
+    applyChecklist(task, checklistTexts, checklistChecked);
     Task saved = taskRepository.save(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
@@ -79,6 +88,11 @@ public class TaskService {
   }
 
   public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long assigneeId, Long expectedVersion) {
+    return updateTask(id, taskDetails, tagIds, assigneeId, expectedVersion, null, null);
+  }
+
+  public Task updateTask(Long id, Task taskDetails, List<Long> tagIds, Long assigneeId, Long expectedVersion,
+                          List<String> checklistTexts, List<Boolean> checklistChecked) {
     Task task = getTaskById(id);
     if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
       throw new StaleDataException(Task.class, id);
@@ -86,12 +100,15 @@ public class TaskService {
     Map<String, Object> before = task.toAuditSnapshot();
     User previousUser = task.getUser();
 
+    TaskStatus previousStatus = task.getStatus();
     task.setTitle(taskDetails.getTitle());
     task.setDescription(taskDetails.getDescription());
     task.setStatus(taskDetails.getStatus());
     task.setPriority(taskDetails.getPriority());
+    task.setStartDate(taskDetails.getStartDate());
     task.setDueDate(taskDetails.getDueDate());
     task.setTags(tagService.findAllByIds(tagIds));
+    updateCompletedAt(task, previousStatus);
     // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
     User newUser = userService.findUserById(assigneeId);
     if (task.getStatus() == TaskStatus.IN_PROGRESS && newUser != null
@@ -99,6 +116,7 @@ public class TaskService {
       task.setStatus(TaskStatus.OPEN);
     }
     task.setUser(newUser);
+    applyChecklist(task, checklistTexts, checklistChecked);
 
     Task saved = taskRepository.save(task);
 
@@ -182,12 +200,14 @@ public class TaskService {
   public Task advanceStatus(Long id) {
     Task task = getTaskById(id);
     Map<String, Object> before = task.toAuditSnapshot();
-    TaskStatus next = switch (task.getStatus()) {
+    TaskStatus previousStatus = task.getStatus();
+    TaskStatus next = switch (previousStatus) {
       case OPEN -> TaskStatus.IN_PROGRESS;
       case IN_PROGRESS -> TaskStatus.COMPLETED;
       case COMPLETED -> TaskStatus.OPEN;
     };
     task.setStatus(next);
+    updateCompletedAt(task, previousStatus);
     Task saved = taskRepository.save(task);
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
@@ -201,6 +221,27 @@ public class TaskService {
     long actorId = current != null ? current.getId() : 0L;
     messagingTemplate.convertAndSend("/topic/tasks",
         new TaskChangeEvent(action, taskId, actorId));
+  }
+
+  private void applyChecklist(Task task, List<String> texts, List<Boolean> checked) {
+    task.getChecklistItems().clear();
+    if (texts == null) return;
+    for (int i = 0; i < texts.size(); i++) {
+      String text = texts.get(i);
+      if (text == null || text.isBlank()) continue;
+      ChecklistItem item = new ChecklistItem(text.trim(), i);
+      item.setChecked(checked != null && i < checked.size() && Boolean.TRUE.equals(checked.get(i)));
+      item.setTask(task);
+      task.getChecklistItems().add(item);
+    }
+  }
+
+  private void updateCompletedAt(Task task, TaskStatus previousStatus) {
+    if (task.getStatus() == TaskStatus.COMPLETED && previousStatus != TaskStatus.COMPLETED) {
+      task.setCompletedAt(LocalDateTime.now());
+    } else if (task.getStatus() != TaskStatus.COMPLETED && previousStatus == TaskStatus.COMPLETED) {
+      task.setCompletedAt(null);
+    }
   }
 
   private void notifyAssignment(Task task, User actor) {

@@ -1,5 +1,6 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Role;
@@ -555,6 +556,19 @@ public class DataLoader implements CommandLineRunner {
       }
     }
 
+    // Assign start dates and completed dates based on status.
+    // IN_PROGRESS/COMPLETED tasks get a start date a few days after creation.
+    // COMPLETED tasks get a completedAt timestamp.
+    for (int i = 0; i < tasks.size(); i++) {
+      Task t = tasks.get(i);
+      if (t.getStatus() == TaskStatus.IN_PROGRESS || t.getStatus() == TaskStatus.COMPLETED) {
+        t.setStartDate(t.getCreatedAt().toLocalDate().plusDays(1 + (i % 3)));
+      }
+      if (t.getStatus() == TaskStatus.COMPLETED) {
+        t.setCompletedAt(t.getCreatedAt().plusDays(2 + (i % 5)));
+      }
+    }
+
     // Assign users to tasks — ~80% assigned, every 5th task unassigned.
     // Demonstrates nullable @ManyToOne: some tasks have no owner.
     for (int i = 0; i < tasks.size(); i++) {
@@ -599,6 +613,39 @@ public class DataLoader implements CommandLineRunner {
       }
     }
     commentRepository.saveAll(comments);
+
+    // ── Checklist items ───────────────────────────────────────────────────
+    // Seed checklist items on ~20% of tasks. Each gets 2–5 items,
+    // with some items marked checked on completed/in-progress tasks.
+    String[] checklistTexts = {
+        "Review requirements",
+        "Write implementation",
+        "Add unit tests",
+        "Update documentation",
+        "Code review",
+        "Deploy to staging",
+        "Run integration tests",
+        "Get sign-off",
+        "Update changelog",
+        "Notify stakeholders",
+    };
+    for (int i = 0; i < tasks.size(); i++) {
+      if (i % 5 != 0) continue; // ~20% of tasks get checklists
+      Task task = tasks.get(i);
+      int itemCount = 2 + (i % 4); // 2–5 items
+      for (int c = 0; c < itemCount; c++) {
+        ChecklistItem item = new ChecklistItem(checklistTexts[(i + c) % checklistTexts.length], c);
+        // Check some items: completed tasks → all checked; in-progress → first half checked
+        if (task.getStatus() == TaskStatus.COMPLETED) {
+          item.setChecked(true);
+        } else if (task.getStatus() == TaskStatus.IN_PROGRESS) {
+          item.setChecked(c < itemCount / 2);
+        }
+        item.setTask(task);
+        task.getChecklistItems().add(item);
+      }
+    }
+    taskRepository.saveAll(tasks);
 
     // ── Settings ──────────────────────────────────────────────────────────
     settingRepository.save(new Setting(Settings.KEY_THEME, Settings.THEME_WORKSHOP));

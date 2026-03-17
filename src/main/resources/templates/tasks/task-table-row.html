@@ -79,6 +79,10 @@
     </td>
     <td class="text-truncate" style="max-width: 280px;">
         <span class="text-muted small" th:text="${task.description} ?: #{task.noDescription}">Description</span>
+        <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark ms-1">
+            <i class="bi bi-check2-square"></i>
+            <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
+        </span>
     </td>
     <td>
         <div class="btn-group btn-group-sm">

@@ -20,8 +20,11 @@ public class TaskResponse {
   private String description;
   private TaskStatus status;
   private Priority priority;
+  private LocalDate startDate;
   private LocalDate dueDate;
   private LocalDateTime createdAt;
+  private LocalDateTime completedAt;
+  private LocalDateTime updatedAt;
   // Empty list when the task has no tags (never null in the response)
   private List<TagResponse> tags;
 
