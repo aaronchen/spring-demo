@@ -68,6 +68,27 @@ public class TaskSpecifications {
     };
   }
 
+  public static Specification<Task> withDueDateBetween(LocalDate from, LocalDate to) {
+    return (root, query, cb) -> {
+      if (from == null || to == null) return cb.conjunction();
+      return cb.between(root.get(Task.FIELD_DUE_DATE), from, to);
+    };
+  }
+
+  public static Specification<Task> withDateInRange(LocalDate from, LocalDate to) {
+    return (root, query, cb) -> {
+      if (from == null || to == null) return cb.conjunction();
+      // Show task on its due date; if no due date, show on start date instead
+      return cb.or(
+          cb.between(root.get(Task.FIELD_DUE_DATE), from, to),
+          cb.and(
+              cb.isNull(root.get(Task.FIELD_DUE_DATE)),
+              cb.between(root.get(Task.FIELD_START_DATE), from, to)
+          )
+      );
+    };
+  }
+
   public static Specification<Task> build(String keyword, TaskStatusFilter statusFilter,
                                           boolean overdue, Priority priority,
                                           Long selectedUserId, List<Long> tagIds) {
@@ -77,5 +98,13 @@ public class TaskSpecifications {
         .and(withKeyword(keyword))
         .and(withUserId(selectedUserId))
         .and(withTagIds(tagIds));
+  }
+
+  public static Specification<Task> build(String keyword, TaskStatusFilter statusFilter,
+                                          boolean overdue, Priority priority,
+                                          Long selectedUserId, List<Long> tagIds,
+                                          LocalDate dueDateFrom, LocalDate dueDateTo) {
+    return build(keyword, statusFilter, overdue, priority, selectedUserId, tagIds)
+        .and(withDateInRange(dueDateFrom, dueDateTo));
   }
 }

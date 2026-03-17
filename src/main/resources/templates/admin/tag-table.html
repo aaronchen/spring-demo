@@ -44,7 +44,7 @@
                 <tbody>
                     <tr th:each="tag : ${tags}">
                         <td>
-                            <a th:href="@{/tasks(tags=${tag.id}, userId='')}"
+                            <a th:href="@{/tasks(tags=${tag.id}, selectedUserId='')}"
                                class="badge bg-primary text-decoration-none"
                                th:text="${tag.name}">Tag</a>
                         </td>

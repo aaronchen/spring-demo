@@ -128,11 +128,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
   - Uses entity `FIELD_*` constants everywhere (e.g. `Task.FIELD_STATUS`, `User.FIELD_ID`, `Tag.FIELD_ID`)
   - `build(keyword, statusFilter, overdue, priority, userId, tagIds)` - builds a combined search + status + overdue + priority + user + tag specification
+  - `build(keyword, statusFilter, overdue, priority, userId, tagIds, dueDateFrom, dueDateTo)` - overload adding date range filter (used by calendar view)
   - `withStatusFilter(TaskStatusFilter)` — maps filter enum name directly to `TaskStatus` enum (ALL returns all; OPEN/IN_PROGRESS/COMPLETED filter by matching status)
   - `withOverdue(boolean)` — filters to non-completed tasks with past due dates
   - `withPriority(Priority)` — filters by priority level
   - `withUserId(Long)` — filters tasks by assigned user
   - `withTagIds(List<Long>)` — filters tasks having any of the given tags (OR logic, uses INNER JOIN + distinct)
+  - `withDueDateBetween(LocalDate, LocalDate)` — filters tasks with due date in range
+  - `withDateInRange(LocalDate, LocalDate)` — filters tasks visible on calendar: due date in range, or start-date-only tasks with start date in range
 
 - `model/TaskStatusFilter.java` - Enum for task status filtering (ALL, OPEN, IN_PROGRESS, COMPLETED)
   - `DEFAULT` constant (`"ALL"`) — for use in `@RequestParam` default value annotations
@@ -244,6 +247,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `TYPE_COMMENT` / `TYPE_AUDIT` constants — discriminator values for the `type` field
   - Represents either a comment or an audit log event in a merged chronological timeline
   - Built by `TimelineService.getTimeline()`; consumed by `task-activity.html`
+
+- `dto/CalendarDay.java` - Record for calendar view day cells
+  - Fields: `date` (LocalDate), `currentMonth` (boolean), `today` (boolean), `tasks` (List<Task>)
+  - Built by `TaskController.buildCalendarWeeks()` for the calendar grid template
 
 - `dto/DashboardStats.java` - Record carrying all dashboard data
   - Personal stats: `myOpen`, `myInProgress`, `myCompleted`, `myOverdue`, `myTotal`
@@ -502,12 +509,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fires `HX-Trigger` events (`taskSaved`, `taskDeleted`) via `HtmxUtils.triggerEvent()`
   - Injects `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, and `MessageSource`; adds `tags` list to all form-serving methods (user list fetched remotely by `<searchable-select>`)
   - Task list defaults based on `userPreferences.defaultUserFilter` (from `GlobalModelAttributes`); view mode defaults based on `userPreferences.taskView`; URL params override preferences
+  - Three view modes: cards, table, calendar — resolved via URL `view` param or user preference
+  - Calendar view: accepts `month` param (YearMonth), queries tasks with dates in visible grid range (unpaged), builds `CalendarDay` grid via `buildCalendarWeeks()`; no pagination
+  - `GET /tasks/new` accepts optional `dueDate` param (ISO date) to pre-fill due date on new tasks (used by calendar cell "+" buttons)
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - `GET /{id}/comments` — fetch comment list fragment (HTMX live refresh via WebSocket)
   - `POST /{id}/comments` — add comment to task; returns `task-comments` template (whole file for hx-swap-oob comment count updates)
   - `DELETE /{id}/comments/{commentId}` — delete comment (owner or admin); returns `task-comments` template
-  - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); uses `CsvWriter` with `MessageSource`-resolved column headers
+  - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); uses `CsvWriter` with `MessageSource`-resolved column headers; works independently of view mode (exports all matching tasks, not just calendar-visible ones)
   - Task delete changed from `@PostMapping("/{id}/delete")` to `@DeleteMapping("/{id}")`
+  - Toggle endpoint returns `HtmxUtils.triggerEvent("taskSaved")` for calendar view (no inline card/row swap)
   - **Security**: uses `OwnershipGuard` for edit/delete/comment-delete; new tasks default to current user (changeable via dropdown)
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS runtime config)
@@ -609,8 +620,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `config/UserPreferences.java` - Typed POJO for per-user preferences with defaults (mirrors `Settings` pattern)
   - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name): `KEY_TASK_VIEW`, `KEY_DEFAULT_USER_FILTER`, `KEY_DUE_REMINDER`
-  - Value constants: `VIEW_CARDS`/`VIEW_TABLE`, `FILTER_MINE`/`FILTER_ALL`
-  - Fields: `taskView` (default `"cards"`), `defaultUserFilter` (default `"mine"`), `dueReminder` (default `true`)
+  - Value constants: `VIEW_CARDS`/`VIEW_TABLE`/`VIEW_CALENDAR`, `FILTER_MINE`/`FILTER_ALL`
+  - Fields: `taskView` (default `"cards"`, also `"table"` or `"calendar"`), `defaultUserFilter` (default `"mine"`), `dueReminder` (default `true`)
   - `UserPreferenceService.load()` populates via `BeanWrapper`; missing keys keep defaults
   - To add a new preference: (1) add field with default, (2) add `KEY_*` constant matching field name
 
@@ -697,6 +708,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
 - `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 3-state status badge and toggle button; checklist progress bar (checked/total) when task has checklist items
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
+- `templates/tasks/task-calendar.html` - Calendar view fragment (`grid` fragment)
+  - Monthly grid (Monday start); reads `${calendarWeeks}` (List<List<CalendarDay>>), `${calendarMonth}` (YearMonth), `${undatedCount}` (long)
+  - Month navigation: prev/next buttons + Today button (right-aligned with `>`)
+  - Task chips: colored by status (open/in-progress/completed/overdue), border-left for start-date-only tasks, border-right for due-date tasks
+  - User initials circle on chips (clickable to filter by user)
+  - Scrollable chip container per cell (no max chip limit)
+  - "+" button on hover to create task with pre-filled due date
+  - Undated tasks info banner when tasks without dates exist in current filters
 - `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 3-state status badge and toggle button; checklist progress display (checked/total) when task has checklist items
 - `templates/tasks/task-activity.html` - Unified activity timeline template (replaces task-comments.html and task-audit.html)
   - Merges comments and audit history into a single chronological list; uses `TimelineEntry.type` to discriminate between comment and audit entries

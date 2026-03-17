@@ -26,6 +26,7 @@ public class UserPreferences {
 
     public static final String VIEW_CARDS = "cards";
     public static final String VIEW_TABLE = "table";
+    public static final String VIEW_CALENDAR = "calendar";
     public static final String FILTER_MINE = "mine";
     public static final String FILTER_ALL = "all";
 

@@ -166,6 +166,14 @@ public class TaskService {
     return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, selectedUserId, tagIds), pageable);
   }
 
+  public Page<Task> searchAndFilterTasks(String keyword, TaskStatusFilter statusFilter,
+                                         boolean overdue, Priority priority,
+                                         Long selectedUserId, List<Long> tagIds,
+                                         Pageable pageable,
+                                         java.time.LocalDate dueDateFrom, java.time.LocalDate dueDateTo) {
+    return taskRepository.findAll(TaskSpecifications.build(keyword, statusFilter, overdue, priority, selectedUserId, tagIds, dueDateFrom, dueDateTo), pageable);
+  }
+
   public long countByUserAndStatus(User user, TaskStatus status) {
     return taskRepository.countByUserAndStatus(user, status);
   }

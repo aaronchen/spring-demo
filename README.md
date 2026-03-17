@@ -17,7 +17,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Web Interface
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
-- **Card & Table Views** - Toggle between card grid and sortable table; preference persisted via user preferences (logged-in) or cookie (fallback)
+- **Card, Table & Calendar Views** - Toggle between card grid, sortable table, and monthly calendar; preference persisted via user preferences
 - **CSV Export** - Download filtered tasks as CSV; respects all active filters (search, status, priority, tags, user, overdue)
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
 - **Filter Buttons** - All / Open / In Progress / Completed / Overdue with color-coded active states
@@ -176,7 +176,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 - **Search** — type to filter tasks by title or description in real time
 - **Filter buttons** — All / Open / In Progress / Completed / Overdue
 - **Sort dropdown** — sort by title, created date, or description
-- **View toggle** — switch between card grid and table view
+- **View toggle** — switch between card grid, table, and calendar view
 - **Page size** — choose 10 / 25 / 50 / 100 tasks per page
 
 #### Creating a Task
@@ -353,6 +353,7 @@ spring-demo/
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
 │   │   │   ├── ChangePasswordRequest.java # Password change form DTO
+│   │   │   ├── CalendarDay.java        # Calendar view day cell record
 │   │   │   ├── DashboardStats.java     # Dashboard data carrier record
 │   │   │   ├── CommentChangeEvent.java # WebSocket comment change broadcast
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
@@ -477,6 +478,7 @@ spring-demo/
 │       │   │   ├── task-layout.html    # Shared two-column layout (form + checklist/timeline)
 │       │   │   ├── task-modal.html     # Modal shell using task-layout
 │       │   │   ├── task-form.html      # Shared form fields fragment
+│       │   │   ├── task-calendar.html  # Calendar view grid fragment
 │       │   │   ├── task-cards.html     # Card grid fragment
 │       │   │   ├── task-card.html      # Single card fragment
 │       │   │   ├── task-table.html     # Table grid fragment

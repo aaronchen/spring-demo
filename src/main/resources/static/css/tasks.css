@@ -181,6 +181,87 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     min-height: 0;
 }
 
+/* ── Calendar View ── */
+
+.calendar-grid { table-layout: fixed; }
+.calendar-grid th { font-size: 0.85rem; font-weight: 600; }
+.calendar-grid tbody tr { height: 130px; }
+.calendar-cell { vertical-align: top; padding: 0.35rem !important; position: relative; }
+.calendar-cell.calendar-other-month { background-color: var(--bs-light, #f8f9fa); }
+.calendar-cell.calendar-other-month .calendar-day-number { opacity: 0.4; }
+.calendar-cell.calendar-today { background-color: rgba(var(--bs-primary-rgb, 13,110,253), 0.06); }
+
+/* Scrollable chip container within each cell */
+.calendar-chips { max-height: 96px; overflow-y: auto; }
+
+.calendar-day-number { font-size: 0.85rem; }
+
+/* Add button — visible on hover */
+.calendar-add-btn { opacity: 0; transition: opacity 0.15s; font-size: 1rem; line-height: 1; }
+.calendar-cell:hover .calendar-add-btn { opacity: 1; }
+
+/* Task chips — border side indicates start date (left) vs due date (right) */
+.calendar-chip {
+    margin-bottom: 2px;
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.calendar-chip-start { border-left: 3px solid; }
+.calendar-chip-end { border-right: 3px solid; }
+
+.calendar-chip-open.calendar-chip-start { border-left-color: var(--bs-secondary, #6c757d); }
+.calendar-chip-open.calendar-chip-end { border-right-color: var(--bs-secondary, #6c757d); }
+.calendar-chip-open { background: rgba(108,117,125,0.08); }
+
+.calendar-chip-in-progress.calendar-chip-start { border-left-color: var(--bs-warning, #ffc107); }
+.calendar-chip-in-progress.calendar-chip-end { border-right-color: var(--bs-warning, #ffc107); }
+.calendar-chip-in-progress { background: rgba(255,193,7,0.1); }
+
+.calendar-chip-completed.calendar-chip-start { border-left-color: var(--bs-success, #198754); }
+.calendar-chip-completed.calendar-chip-end { border-right-color: var(--bs-success, #198754); }
+.calendar-chip-completed { background: rgba(25,135,84,0.08); }
+
+.calendar-chip-overdue.calendar-chip-start { border-left-color: var(--bs-danger, #dc3545); }
+.calendar-chip-overdue.calendar-chip-end { border-right-color: var(--bs-danger, #dc3545); }
+.calendar-chip-overdue { background: rgba(220,53,69,0.1); }
+
+.calendar-chip-link {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    color: inherit;
+    min-width: 0;
+}
+.calendar-chip-link:hover { color: var(--bs-primary, #0d6efd); }
+
+.calendar-chip-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* User initials circle */
+.calendar-chip-user {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--bs-secondary, #6c757d);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.calendar-chip-user:hover { background: var(--bs-primary, #0d6efd); }
+
+
 /* Table action buttons: uniform secondary border/icon in default state,
    colored fill on hover (Bootstrap's native hover vars handle the rest) */
 .table .btn-group .btn-outline-success,

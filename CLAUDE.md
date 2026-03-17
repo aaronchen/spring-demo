@@ -310,7 +310,7 @@ Per-user preferences stored in the `user_preferences` table as key/value rows. M
 - **`UserPreferenceService.load(userId)`** — reads all rows for a user into a `UserPreferences` object; missing keys keep defaults
 
 `GlobalModelAttributes` exposes `${userPreferences}` to all templates. Current preferences:
-- `taskView` — `"cards"` (default) or `"table"` — default view mode for task list
+- `taskView` — `"cards"` (default), `"table"`, or `"calendar"` — default view mode for task list
 - `defaultUserFilter` — `"mine"` (default) or `"all"` — default user filter on task list
 
 ### Profile Controller Pattern
@@ -666,7 +666,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 
 **Web UI** (requires login):
 - `http://localhost:8080/` - Home page
-- `http://localhost:8080/tasks` - Task list (cards or table view)
+- `http://localhost:8080/tasks` - Task list (cards, table, or calendar view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 - `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)

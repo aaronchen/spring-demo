@@ -30,10 +30,17 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import cc.desuka.demo.dto.CalendarDay;
+
 import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Locale;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -72,6 +79,7 @@ public class TaskController {
       @RequestParam(required = false) Long selectedUserId,
       @RequestParam(required = false) List<Long> tags,
       @RequestParam(required = false) String view,
+      @RequestParam(required = false) YearMonth month,
       @CookieValue(name = "pageSize", required = false, defaultValue = "25") int pageSizeCookie,
       @PageableDefault(size = 25, sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC) Pageable pageable,
       @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -91,11 +99,6 @@ public class TaskController {
     // View mode: URL param overrides preference default
     String resolvedView = (view != null) ? view
         : (userPreferences != null ? userPreferences.getTaskView() : UserPreferences.VIEW_CARDS);
-    if (!request.getParameterMap().containsKey("size")) {
-      pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
-    }
-    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, selectedUserId, tags, pageable);
-    model.addAttribute("taskPage", taskPage);
     model.addAttribute("allTags", tagService.getAllTags());
     model.addAttribute("view", resolvedView);
     model.addAttribute("selectedUserId", selectedUserId);
@@ -108,8 +111,26 @@ public class TaskController {
       } catch (Exception ignored) {}
     }
 
+    if (UserPreferences.VIEW_CALENDAR.equals(resolvedView)) {
+      YearMonth calendarMonth = (month != null) ? month : YearMonth.now();
+      List<List<CalendarDay>> calendarWeeks = buildCalendarWeeks(calendarMonth,
+          search, statusFilter, overdue, priority, selectedUserId, tags, model);
+      model.addAttribute("calendarWeeks", calendarWeeks);
+      model.addAttribute("calendarMonth", calendarMonth);
+      if (HtmxUtils.isHtmxRequest(request)) {
+        return "tasks/task-calendar :: grid";
+      }
+      return "tasks/tasks";
+    }
+
+    if (!request.getParameterMap().containsKey("size")) {
+      pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
+    }
+    Page<Task> taskPage = taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, selectedUserId, tags, pageable);
+    model.addAttribute("taskPage", taskPage);
+
     if (HtmxUtils.isHtmxRequest(request)) {
-      return "table".equals(resolvedView) ? "tasks/task-table :: grid" : "tasks/task-cards :: grid";
+      return UserPreferences.VIEW_TABLE.equals(resolvedView) ? "tasks/task-table :: grid" : "tasks/task-cards :: grid";
     }
     return "tasks/tasks";
   }
@@ -178,10 +199,15 @@ public class TaskController {
   // GET /tasks/new - Show create form (full page or modal fragment)
   // Default user assignment is the current user (can be changed via dropdown).
   @GetMapping("/new")
-  public String showCreateForm(Model model, HttpServletRequest request,
+  public String showCreateForm(
+      @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate dueDate,
+      Model model, HttpServletRequest request,
       @AuthenticationPrincipal CustomUserDetails currentDetails) {
     Task task = new Task();
     task.setUser(currentDetails.getUser());
+    if (dueDate != null) {
+      task.setDueDate(dueDate);
+    }
     model.addAttribute("task", task);
     model.addAttribute("mode", "create");
     model.addAttribute("tags", tagService.getAllTags());
@@ -335,7 +361,7 @@ public class TaskController {
   // POST /tasks/{id}/toggle - Advance status (OPEN → IN_PROGRESS → COMPLETED → OPEN)
   // Available to all authenticated users — no ownership restriction.
   @PostMapping("/{id}/toggle")
-  public String advanceStatus(
+  public Object advanceStatus(
       @PathVariable Long id,
       @RequestParam(required = false, defaultValue = "cards") String view,
       HttpServletRequest request,
@@ -343,8 +369,11 @@ public class TaskController {
     Task task = taskService.advanceStatus(id);
 
     if (HtmxUtils.isHtmxRequest(request)) {
+      if (UserPreferences.VIEW_CALENDAR.equals(view)) {
+        return HtmxUtils.triggerEvent("taskSaved");
+      }
       model.addAttribute("task", task);
-      return "table".equals(view) ? "tasks/task-table-row :: row" : "tasks/task-card :: card";
+      return UserPreferences.VIEW_TABLE.equals(view) ? "tasks/task-table-row :: row" : "tasks/task-card :: card";
     }
     return "redirect:/tasks";
   }
@@ -354,5 +383,59 @@ public class TaskController {
     var timeline = timelineService.getTimeline(taskId, currentUser);
     model.addAttribute("timeline", timeline);
     model.addAttribute("activityCount", timeline.size());
+  }
+
+  private List<List<CalendarDay>> buildCalendarWeeks(YearMonth month,
+      String search, TaskStatusFilter statusFilter, boolean overdue,
+      Priority priority, Long selectedUserId, List<Long> tags,
+      Model model) {
+    LocalDate firstOfMonth = month.atDay(1);
+    LocalDate lastOfMonth = month.atEndOfMonth();
+
+    // Grid starts on Monday of the week containing the 1st
+    LocalDate gridStart = firstOfMonth.with(DayOfWeek.MONDAY);
+    // Grid ends on Sunday of the week containing the last day
+    LocalDate gridEnd = lastOfMonth.with(DayOfWeek.SUNDAY);
+
+    // Query tasks with dates overlapping the visible grid range
+    Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_DUE_DATE));
+    List<Task> tasks = taskService.searchAndFilterTasks(
+        search, statusFilter, overdue, priority, selectedUserId, tags, unpaged,
+        gridStart, gridEnd).getContent();
+
+    // Place each task on one date: due date if present, otherwise start date.
+    // Tasks with neither date are counted but not shown on the grid.
+    Map<LocalDate, List<Task>> tasksByDate = new java.util.LinkedHashMap<>();
+    long undatedCount = 0;
+
+    for (Task task : tasks) {
+      LocalDate date = (task.getDueDate() != null) ? task.getDueDate() : task.getStartDate();
+      if (date == null) {
+        undatedCount++;
+        continue;
+      }
+      tasksByDate.computeIfAbsent(date, k -> new ArrayList<>()).add(task);
+    }
+
+    model.addAttribute("undatedCount", undatedCount);
+
+    LocalDate today = LocalDate.now();
+    List<List<CalendarDay>> weeks = new ArrayList<>();
+    LocalDate cursor = gridStart;
+
+    while (!cursor.isAfter(gridEnd)) {
+      List<CalendarDay> week = new ArrayList<>(7);
+      for (int i = 0; i < 7; i++) {
+        week.add(new CalendarDay(
+            cursor,
+            !cursor.isBefore(firstOfMonth) && !cursor.isAfter(lastOfMonth),
+            cursor.equals(today),
+            tasksByDate.getOrDefault(cursor, List.of())
+        ));
+        cursor = cursor.plusDays(1);
+      }
+      weeks.add(week);
+    }
+    return weeks;
   }
 }

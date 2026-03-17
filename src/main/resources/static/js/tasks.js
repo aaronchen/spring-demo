@@ -17,6 +17,7 @@ let activeSorts = [{field: 'createdAt', direction: 'desc'}];
 let currentPage = 0;
 let pageSize = parseInt(getCookie('pageSize') || '25');
 let currentView = 'cards';
+let currentMonth = null;
 let selectedUserId = null;
 let selectedTagIds = [];
 const TASKS_BASE = APP_CONFIG.routes.tasks;
@@ -33,8 +34,13 @@ function buildUrl(page) {
     const priority = document.getElementById('current-priority-filter').value;
     if (priority) params.set('priority', priority);
     activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
-    params.set('size', pageSize);
-    if (page > 0) params.set('page', page);
+    // Calendar view: no pagination, use month param instead
+    if (currentView === 'calendar') {
+        if (currentMonth) params.set('month', currentMonth);
+    } else {
+        params.set('size', pageSize);
+        if (page > 0) params.set('page', page);
+    }
     // Always include selectedUserId: actual ID for "Mine"/specific user, empty for "All Users".
     // This ensures bookmarked URLs preserve the user filter choice.
     params.set('selectedUserId', selectedUserId || '');
@@ -42,6 +48,13 @@ function buildUrl(page) {
     if (currentView !== 'cards') params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
 }
+
+// Navigate to a specific month in calendar view (null = current month / today)
+function navigateMonth(month) {
+    currentMonth = month;
+    doSearch(false);
+}
+
 
 // Export current filtered tasks as CSV
 function exportTasks() {
@@ -98,6 +111,7 @@ function switchView(view) {
 function renderViewToggle() {
     document.getElementById('view-cards').classList.toggle('active', currentView === 'cards');
     document.getElementById('view-table').classList.toggle('active', currentView === 'table');
+    document.getElementById('view-calendar').classList.toggle('active', currentView === 'calendar');
 }
 
 
@@ -184,8 +198,19 @@ function initFromUrl() {
     if (clearBtn) clearBtn.classList.toggle('d-none', !params.get('search'));
 
     // View: URL param takes precedence; otherwise read from server-rendered active state
-    currentView = params.get('view')
-        || (document.getElementById('view-table')?.classList.contains('active') ? 'table' : 'cards');
+    if (params.has('view')) {
+        currentView = params.get('view');
+    } else if (document.getElementById('view-calendar')?.classList.contains('active')) {
+        currentView = 'calendar';
+    } else if (document.getElementById('view-table')?.classList.contains('active')) {
+        currentView = 'table';
+    } else {
+        currentView = 'cards';
+    }
+
+    // Month for calendar view
+    currentMonth = params.get('month') || null;
+
     renderViewToggle();
 
     // User filter: explicit URL param wins; otherwise keep default from server

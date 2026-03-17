@@ -140,6 +140,15 @@
                                             <span th:text="#{profile.preferences.taskView.table}">Table</span>
                                         </label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="taskView" id="pref-view-calendar" value="calendar"
+                                               th:checked="${userPreferences.taskView == 'calendar'}">
+                                        <label class="form-check-label" for="pref-view-calendar">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            <span th:text="#{profile.preferences.taskView.calendar}">Calendar</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
