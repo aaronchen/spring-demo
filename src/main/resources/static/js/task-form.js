@@ -8,7 +8,15 @@ function addChecklistItem() {
     const placeholder = APP_CONFIG.messages['task.checklist.placeholder'] || 'Enter checklist item';
     const div = document.createElement('div');
     div.className = 'checklist-item input-group input-group-sm mb-1';
-    div.innerHTML = `<div class="input-group-text">
+    div.draggable = true;
+    div.ondragstart = checklistDragStart;
+    div.ondragover = checklistDragOver;
+    div.ondragend = checklistDragEnd;
+    div.ondrop = checklistDrop;
+    div.innerHTML = `<span class="input-group-text checklist-drag-handle">
+            <i class="bi bi-grip-vertical"></i>
+        </span>
+        <div class="input-group-text">
             <input type="hidden" name="checklistChecked" value="false">
             <input type="checkbox" class="form-check-input mt-0"
                    onchange="this.previousElementSibling.value = this.checked">
@@ -40,4 +48,41 @@ function updateChecklistHeading() {
     const count = container.children.length;
     const template = APP_CONFIG.messages['task.field.checklist.heading'] || 'Checklist ({0})';
     heading.textContent = template.replace('{0}', count);
+}
+
+// ── Checklist drag-and-drop reordering ─────────────────────────────────────
+
+let checklistDragItem = null;
+
+function checklistDragStart(e) {
+    checklistDragItem = e.currentTarget;
+    checklistDragItem.classList.add('checklist-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function checklistDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const target = e.currentTarget;
+    if (target === checklistDragItem || !checklistDragItem) return;
+    const container = document.getElementById('checklist-container');
+    const items = [...container.children];
+    const dragIdx = items.indexOf(checklistDragItem);
+    const targetIdx = items.indexOf(target);
+    if (dragIdx < targetIdx) {
+        container.insertBefore(checklistDragItem, target.nextSibling);
+    } else {
+        container.insertBefore(checklistDragItem, target);
+    }
+}
+
+function checklistDrop(e) {
+    e.preventDefault();
+}
+
+function checklistDragEnd() {
+    if (checklistDragItem) {
+        checklistDragItem.classList.remove('checklist-dragging');
+        checklistDragItem = null;
+    }
 }

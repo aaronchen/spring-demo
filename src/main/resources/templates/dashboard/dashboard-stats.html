@@ -118,7 +118,7 @@
                         <span th:text="#{dashboard.recent.heading}">My Recent Tasks</span>
                     </h6>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 dashboard-scroll">
                     <div th:if="${stats.myRecentTasks.isEmpty()}" class="p-3 text-muted">
                         <span th:text="#{dashboard.recent.empty}">No tasks assigned to you yet.</span>
                     </div>
@@ -167,7 +167,7 @@
                         <span th:text="#{dashboard.dueThisWeek.heading}">Due This Week</span>
                     </h6>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 dashboard-scroll">
                     <div th:if="${stats.dueThisWeek.isEmpty()}" class="p-3 text-muted">
                         <span th:text="#{dashboard.dueThisWeek.empty}">No tasks due this week.</span>
                     </div>
@@ -206,7 +206,7 @@
                         <span th:text="#{dashboard.activity.heading}">Recent Activity</span>
                     </h6>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 dashboard-scroll">
                     <div th:if="${stats.recentActivity.isEmpty()}" class="p-3 text-muted">
                         <span th:text="#{dashboard.activity.empty}">No recent activity.</span>
                     </div>

@@ -1,7 +1,7 @@
 package cc.desuka.demo.controller.api;
 
 import cc.desuka.demo.dto.PresenceResponse;
-import cc.desuka.demo.service.PresenceService;
+import cc.desuka.demo.presence.PresenceService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 

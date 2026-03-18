@@ -31,6 +31,12 @@ body {
     box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.12) !important;
 }
 
+/* Dashboard detail cards — scrollable content area */
+.dashboard-scroll {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
 /* Button hover effects */
 .btn {
     transition: all 0.2s ease-in-out;

@@ -1,6 +1,7 @@
 package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.presence.PresenceService;
 import cc.desuka.demo.dto.DashboardStats;
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.TaskStatus;

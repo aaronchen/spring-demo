@@ -32,7 +32,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Sortable Columns** - Sort by title, created date, priority, due date, or description (ascending/descending)
 - **Priority Badges** - Color-coded clickable badges (High=red, Medium=yellow, Low=green) with reception bar icons
 - **Task Dates** - Optional start date and due date with overdue detection; overdue tasks highlighted in red; completedAt timestamp recorded when task is completed
-- **Task Checklist** - Embeddable checklist items on tasks (text + checked state); checklist progress shown on cards and table rows; changes audited in activity timeline
+- **Task Checklist** - Embeddable checklist items on tasks (text + checked state); drag-and-drop reordering via native HTML Drag and Drop API; checklist progress shown on cards and table rows; changes audited in activity timeline
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
 - **Task Lifecycle** - Three-state status: OPEN → IN_PROGRESS → COMPLETED; toggle button advances through the cycle; status radio buttons in edit form
@@ -89,6 +89,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Custom Thymeleaf dialect (`${#auth}`) for ownership/role checks in templates
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
+- Event-driven side effects — services publish domain events; three independent listeners handle audit logging, notifications, and WebSocket broadcasting
 - Service-to-service composition (TaskService delegates to TagService/UserService/CommentService instead of direct repository access)
 - Generic `@Unique` validation annotation — class-level, `@Repeatable`, uses `EntityManager` JPQL for uniqueness checks with self-exclusion on edit
 - Global string trimming via `GlobalBindingConfig` (`StringTrimmerEditor`) — trims all form fields, converts blank to null
@@ -328,7 +329,6 @@ spring-demo/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
 │   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
-│   │   │   ├── PresenceEventListener.java   # WebSocket connect/disconnect → presence broadcast
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   │   ├── Settings.java               # Typed settings POJO with defaults
 │   │   │   ├── UserPreferences.java        # Typed per-user preferences POJO with defaults
@@ -361,19 +361,26 @@ spring-demo/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
 │   │   │   ├── ChangePasswordRequest.java # Password change form DTO
 │   │   │   ├── CalendarDay.java        # Calendar view day cell record
-│   │   │   ├── DashboardStats.java     # Dashboard data carrier record
-│   │   │   ├── CommentChangeEvent.java # WebSocket comment change broadcast
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
+│   │   │   ├── DashboardStats.java     # Dashboard data carrier record
 │   │   │   ├── NotificationResponse.java # Notification API output DTO
 │   │   │   ├── PresenceResponse.java  # Presence data (REST + WebSocket)
 │   │   │   ├── ProfileRequest.java    # Profile edit form DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
-│   │   │   ├── TaskChangeEvent.java   # WebSocket task change broadcast
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)
 │   │   │   ├── TaskResponse.java        # API output DTO
+│   │   │   ├── TimelineEntry.java       # Unified timeline record (comment or audit)
 │   │   │   ├── UserRequest.java
 │   │   │   └── UserResponse.java
+│   │   ├── event/
+│   │   │   ├── CommentAddedEvent.java        # Domain event: comment created
+│   │   │   ├── CommentChangeEvent.java       # WebSocket: comment created/deleted
+│   │   │   ├── NotificationEventListener.java # Routes notifications to recipients
+│   │   │   ├── TaskAssignedEvent.java        # Domain event: task assigned
+│   │   │   ├── TaskChangeEvent.java          # WebSocket: task created/updated/deleted
+│   │   │   ├── TaskUpdatedEvent.java         # Domain event: task fields changed
+│   │   │   └── WebSocketEventListener.java   # Broadcasts ephemeral WebSocket messages
 │   │   ├── exception/
 │   │   │   ├── ApiExceptionHandler.java     # JSON error responses for REST API
 │   │   │   ├── EntityNotFoundException.java # Custom 404 exception
@@ -390,7 +397,7 @@ spring-demo/
 │   │   │   ├── ChecklistItem.java     # Embeddable checklist item (text + checked)
 │   │   │   ├── Comment.java            # Comment entity (OwnedEntity)
 │   │   │   ├── Notification.java       # Notification entity (@ManyToOne to User)
-│   │   │   ├── NotificationType.java   # TASK_ASSIGNED, COMMENT_ADDED, TASK_DUE_REMINDER, TASK_OVERDUE, SYSTEM
+│   │   │   ├── NotificationType.java   # TASK_ASSIGNED, TASK_UPDATED, COMMENT_ADDED, COMMENT_MENTIONED, TASK_DUE_REMINDER, TASK_OVERDUE, SYSTEM
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
 │   │   │   ├── Role.java                # USER / ADMIN enum
@@ -419,12 +426,14 @@ spring-demo/
 │   │   │   ├── CustomUserDetailsService.java # Loads user by email for Spring Security
 │   │   │   ├── OwnershipGuard.java          # requireAccess() — owner or admin
 │   │   │   └── SecurityUtils.java           # Central user-resolution helpers
+│   │   ├── presence/
+│   │   │   ├── PresenceEventListener.java # WebSocket connect/disconnect → presence broadcast
+│   │   │   └── PresenceService.java       # Online user tracking (ConcurrentHashMap)
 │   │   ├── service/
 │   │   │   ├── AuditLogService.java     # Audit search + entity history
-│   │   │   ├── CommentService.java      # Comment CRUD with audit events + WebSocket broadcast
+│   │   │   ├── CommentService.java      # Comment CRUD with domain event publishing
 │   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
-│   │   │   ├── NotificationService.java # Create, mark read, clear
-│   │   │   ├── PresenceService.java     # Online user tracking (ConcurrentHashMap)
+│   │   │   ├── NotificationService.java # Create, mark read, clear (DB + WebSocket push)
 │   │   │   ├── ScheduledTaskService.java # Centralized @Scheduled jobs (reminders, purge)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java

@@ -39,8 +39,9 @@
                 <div class="d-flex align-items-start py-1">
                     <i class="bi me-3 mt-1"
                        th:classappend="${n.type == 'TASK_ASSIGNED'} ? 'bi-person-plus text-primary' :
+                                       (${n.type == 'TASK_UPDATED'} ? 'bi-pencil-square text-primary' :
                                        (${n.type == 'COMMENT_ADDED'} ? 'bi-chat-dots text-success' :
-                                       (${n.type == 'TASK_OVERDUE'} ? 'bi-clock text-danger' : 'bi-megaphone text-warning'))"></i>
+                                       (${n.type == 'TASK_OVERDUE'} ? 'bi-clock text-danger' : 'bi-megaphone text-warning')))"></i>
                     <div class="flex-grow-1">
                         <div th:text="${n.message}">Notification message</div>
                         <small class="text-muted" th:text="${#temporals.format(n.createdAt, 'MMM d, yyyy h:mm a')}">Mar 12, 2026 3:00 PM</small>
