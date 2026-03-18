@@ -1,0 +1,13 @@
+name: Daily Redeploy
+
+on:
+  schedule:
+    - cron: '0 22 * * *' # 6 AM UTC+8 (Taipei)
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy
+        run: curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_DEPLOY_HOOK }}"
