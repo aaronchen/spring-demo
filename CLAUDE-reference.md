@@ -113,7 +113,27 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `diff(Map before, Map after)` — computes field-level changes as `{ field: { old: ..., new: ... } }`
   - `resolveDisplayNames(Map, MessageSource, Locale)` — maps raw field keys to human-readable names via `audit.field.{key}` message keys; falls back to raw key if no message found
 
-- `audit/AuditListener.java` - `@EventListener` that persists `AuditEvent` → `AuditLog`
+- `audit/AuditEventListener.java` - `@EventListener` that persists `AuditEvent` → `AuditLog`
+- `audit/AuthAuditListener.java` - `@EventListener` for Spring's `AuthenticationSuccessEvent`/`AuthenticationFailureBadCredentialsEvent`; converts to `AuditEvent` for persistence
+
+### Event Package
+- `event/TaskAssignedEvent.java` - Record published when a task is assigned to someone; fields: `task` (Task), `actor` (User)
+- `event/TaskUpdatedEvent.java` - Record published when task fields change; fields: `task` (Task), `actor` (User)
+- `event/CommentAddedEvent.java` - Record published when a comment is created; fields: `comment` (Comment), `task` (Task), `actor` (User)
+- `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `userId` (long); serialized to JSON for JS clients
+- `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long); serialized to JSON for JS clients
+- `event/NotificationEventListener.java` - Centralized notification routing; listens for domain events (`TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent`) and decides who gets notified via `NotificationService.create()`
+- `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting; listens for `TaskChangeEvent` → `/topic/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
+
+### Presence Package
+- `presence/PresenceService.java` - Online user tracking via `ConcurrentHashMap<String, Long>` (session ID → user ID)
+  - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names resolved via `UserService`
+  - `userConnected(sessionId, userId)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
+- `presence/PresenceEventListener.java` - WebSocket session lifecycle listener
+  - `@EventListener` for `SessionConnectEvent` and `SessionDisconnectEvent`
+  - On connect: resolves user via `SecurityUtils.getUserFrom(principal)`, registers user ID with `PresenceService`
+  - On disconnect: removes session from `PresenceService`
+  - Broadcasts updated presence payload to `/topic/presence` after each event
 
 ### Repository Layer
 - `repository/TaskRepository.java` - Spring Data JPA repository
@@ -230,14 +250,6 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Fields: `id`, `type` (String), `message`, `link`, `read`, `createdAt` (`LocalDateTime`), `actorName`
   - Lombok `@Data`
 
-- `dto/TaskChangeEvent.java` - Record for WebSocket task change broadcast payload
-  - Fields: `action` (String), `taskId` (long), `userId` (long)
-  - Used by `TaskService` to broadcast to `/topic/tasks` on create/update/delete/advanceStatus
-
-- `dto/CommentChangeEvent.java` - Record for WebSocket comment change broadcast payload
-  - Fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long)
-  - Used by `CommentService` to broadcast to `/topic/tasks/{taskId}/comments` on create/delete
-
 - `dto/PresenceResponse.java` - Record for presence data
   - Fields: `users` (`List<String>`), `count` (int)
   - Used by both `PresenceApiController` (REST response) and `PresenceEventListener` (WebSocket broadcast to `/topic/presence`)
@@ -296,26 +308,27 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `toEntity(UserRequest)` — `id`, `password`, `role`, `enabled`, `tasks` explicitly ignored via `User.FIELD_*` constants
 
 ### Service Layer
-- `service/CommentService.java` - Comment business logic with audit event publishing and WebSocket broadcast
+- `service/CommentService.java` - Comment business logic with audit and domain event publishing
   - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
-  - Constructor injection includes `NotificationService`, `MessageSource`, and `SimpMessagingTemplate` for COMMENT_ADDED notifications and live updates
-  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, notifies task owner and previous commenters (skips self-notification, deduplicates owner), notifies @mentioned users (`COMMENT_MENTIONED`), broadcasts `CommentChangeEvent`
-  - `findPreviouslyMentionedUserIds(taskId)` — private helper; scans all comment texts for a task via `CommentRepository.findCommentTextsByTaskId()` and extracts `@mention` user IDs via `MentionUtils`; previously-mentioned users get notified on subsequent comments (subscription behavior)
+  - Constructor injection: `CommentRepository`, `TaskRepository`, `UserService`, `ApplicationEventPublisher`
+  - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, `CommentAddedEvent` (for notifications), and `CommentChangeEvent` (for WebSocket broadcast)
+  - `getSubscriberIds(taskId)` — returns all user IDs subscribed to a task (commenters + @mentioned users)
+  - `getCommenterIds(taskId)` — returns user IDs of all distinct commenters on a task
+  - `getPreviouslyMentionedUserIds(taskId)` — scans all comment texts for a task via `CommentRepository.findCommentTextsByTaskId()` and extracts `@mention` user IDs via `MentionUtils`; previously-mentioned users get notified on subsequent comments (subscription behavior)
   - `countByUserId(userId)` — count of comments by a user (used by `UserService.canDelete()`)
   - `getCommentById(id)` — single comment lookup
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
-  - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event, broadcasts `CommentChangeEvent`
-  - `broadcastCommentChange(action, taskId, commentId)` — private helper; broadcasts `CommentChangeEvent` to `/topic/tasks/{taskId}/comments` via `SimpMessagingTemplate`
+  - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event and `CommentChangeEvent`
 
-- `service/TaskService.java` - Business logic layer
-  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `NotificationService`, `MessageSource`, `ApplicationEventPublisher`, `SimpMessagingTemplate` (uses service layer instead of direct repository access for tags, users, and comments)
+- `service/TaskService.java` - Business logic layer with audit and domain event publishing
+  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
   - Active methods: `getAllTasks`, `getTaskById`, `createTask(task, tagIds, userId)`, `updateTask(id, task, tagIds, userId, version)`, `deleteTask`, `getIncompleteTasks`, `searchTasks`, `searchAndFilterTasks(keyword, statusFilter, overdue, priority, userId, tagIds, pageable)`, `advanceStatus`, `countByUserAndStatus`, `countByUserOverdue`, `countByStatus`, `countOverdue`, `countAll`, `getRecentTasksByUser`, `getTitlesByIds`
-  - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN (replaces `toggleComplete`)
+  - `createTask` — publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
+  - `updateTask` — publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
+  - `advanceStatus(id)` — cycles OPEN -> IN_PROGRESS -> COMPLETED -> OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
+  - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting; publishes `TaskChangeEvent("deleted")`
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
-  - `deleteTask` — calls `commentService.deleteByTaskId()` before deleting the task to avoid FK constraint failure
-  - `notifyAssignment()` — private helper; sends TASK_ASSIGNED notification when task is assigned to a different user (skips self-assignment); uses `SecurityUtils.getCurrentUser()` for actor resolution
-  - `broadcastTaskChange(action, taskId)` — private helper; broadcasts `TaskChangeEvent` to `/topic/tasks` via `SimpMessagingTemplate`; called on create, update, delete, and advanceStatus
 
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
@@ -360,11 +373,6 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `load(Long userId)` — reads all DB rows for a user into a `UserPreferences` POJO via `BeanWrapper`; missing keys keep field defaults (mirrors `SettingService.load()` pattern)
   - `save(Long userId, String key, String value)` — creates or updates a single preference (upsert)
   - `saveAll(Long userId, Map<String, String>)` — saves multiple preferences at once
-
-- `service/PresenceService.java` - Online user tracking
-  - `ConcurrentHashMap<String, Long>` mapping WebSocket session IDs to user IDs (changed from user names to user IDs for robustness)
-  - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names resolved via `UserService`
-  - `userConnected(sessionId, userId)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
 
 - `service/SettingService.java` - Setting persistence with audit event publishing
   - `load()` — reads all DB rows into a `Settings` POJO via `BeanWrapper`; missing keys keep field defaults
@@ -589,13 +597,6 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Application destination prefix: `/app`
   - STOMP endpoint: `/ws` (no SockJS fallback — modern browsers only)
 
-- `config/PresenceEventListener.java` - WebSocket session lifecycle listener
-  - `@EventListener` for `SessionConnectEvent` and `SessionDisconnectEvent`
-  - On connect: resolves user via `SecurityUtils.getUserFrom(principal)`, registers user ID with `PresenceService`
-  - On disconnect: removes session from `PresenceService`
-  - Broadcasts updated presence payload (`{ users: [...], count: N }`) to `/topic/presence` after each event
-  - Uses shared `PresenceResponse` DTO for the broadcast message (replaced private `PresencePayload` record)
-
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
@@ -652,7 +653,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
   - Encoded format: `@[Display Name](userId:3)` — stored in DB as-is
   - `extractMentionedUserIds(String)` — static; parses encoded mention tokens, returns list of user IDs; used by `CommentService` for mention notifications
-  - `renderHtml(String)` — instance method; converts encoded tokens to `<span class="mention">@Name</span>` with HTML escaping; exposed to Thymeleaf as `${@mentionUtils.renderHtml(text)}`
+  - `renderHtml(String)` — instance method; converts encoded tokens to `<a href="/tasks?selectedUserId=N" class="mention">@Name</a>` with HTML escaping; exposed to Thymeleaf as `${@mentionUtils.renderHtml(text)}`; clicking a mention navigates to the task list filtered by that user
   - Regex pattern: `@\[([^\]]+)\]\(userId:(\d+)\)`
 
 - `util/CsvWriter.java` - Generic CSV export utility
@@ -661,7 +662,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
-- `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**
+- `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**, plus curated demo interactions
   - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
   - All passwords: `"password"` (BCrypt-encoded once, reused for all 50 users for speed)
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
@@ -671,6 +672,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - ~80% of tasks are assigned to a user (every 5th task is unassigned)
   - Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW
   - Due dates: ~80% of tasks get a due date spread -10 to +30 days from today (creates a mix of overdue and upcoming)
+  - `seedDemoInteractions()` — creates 8 curated tasks between Alice, Bob, Carol, David, Eva with comments (@mentions), checklists, notifications (assigned, comment, mention, overdue, due reminder), and audit logs for a realistic demo experience
 
 ## Thymeleaf Templates
 
@@ -726,7 +728,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
   - `fields` fragment — title, description, status radio buttons (3-state: Open/In Progress/Completed, shown on edit only, hidden on create since new tasks default to OPEN), priority radio buttons (with reception bar icons), start date picker, due date picker, user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
-  - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove via `task-form.js`
+  - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove/reorder via `task-form.js`; each item has a drag handle for reordering
   - No `<form>` tag; `th:object` is set by the including template
   - Used by both `task.html` and `task-modal.html`
 
@@ -747,7 +749,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Dashboard Views
 - `templates/dashboard/dashboard.html` - Dashboard page with welcome banner, quick action buttons, and `th:replace` of `dashboard-stats.html`; subscribes to `/topic/tasks` and `/topic/presence` via WebSocket; refreshes stats fragment via `htmx.ajax()` on any task or presence change (no self-filtering — dashboard should reflect own actions from other tabs)
-- `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); contains My Tasks stats (5 cards), System Overview (4 cards), My Recent Tasks list, and Recent Activity feed with action badges and resolved task titles; returned whole-file for HTMX refresh or via `th:replace` for full page
+- `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); contains My Tasks stats (5 cards), System Overview (4 cards), My Recent Tasks list, Due This Week list, and Recent Activity feed with action badges and resolved task titles; detail card bodies use `dashboard-scroll` class (max-height with overflow scroll) to prevent unbounded growth; returned whole-file for HTMX refresh or via `th:replace` for full page
 
 ### Profile Views
 - `templates/profile/profile.html` - User profile page with three cards in two-column layout
@@ -809,9 +811,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Auto-encodes on both HTMX requests (`htmx:configRequest`) and regular form submissions (`submit` event)
   - Auto-initializes on `DOMContentLoaded` and `htmx:afterSwap`
 - `static/js/task-form.js` - Checklist management for task create/edit forms
-  - `addChecklistItem()` — adds a new checklist row (checkbox + text input + remove button) to the container
+  - `addChecklistItem()` — adds a new checklist row (drag handle + checkbox + text input + remove button) to the container
   - `removeChecklistItem(btn)` — removes a checklist row; shows empty state if no items remain
   - `updateChecklistHeading()` — updates the checklist section heading with current item count via `APP_CONFIG.messages`
+  - Drag-and-drop reordering via native HTML Drag and Drop API: `checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`; reordering DOM elements naturally updates the parallel arrays on form submission
   - Loaded page-specifically on task pages (via `tasks.html` script block)
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (OPEN, IN_PROGRESS, COMPLETED); filter button IDs use enum names; task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`

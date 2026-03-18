@@ -45,7 +45,9 @@ public class MentionUtils {
         while (matcher.find()) {
             sb.append(escapeHtml(text.substring(lastEnd, matcher.start())));
             String displayName = escapeHtml(matcher.group(1));
-            sb.append("<span class=\"mention\">@").append(displayName).append("</span>");
+            String userId = matcher.group(2);
+            sb.append("<a href=\"/tasks?selectedUserId=").append(userId)
+              .append("\" class=\"mention\">@").append(displayName).append("</a>");
             lastEnd = matcher.end();
         }
         sb.append(escapeHtml(text.substring(lastEnd)));

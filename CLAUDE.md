@@ -426,10 +426,10 @@ showConfirm({
 Real-time features use Spring WebSocket with STOMP protocol:
 
 - **`WebSocketConfig`** — `/ws` endpoint with SockJS fallback; simple broker on `/topic` (broadcast) and `/queue` (user-specific)
-- **`PresenceService`** — `ConcurrentHashMap` tracks online users by WebSocket session
-- **`PresenceEventListener`** — listens for `SessionConnectEvent`/`SessionDisconnectEvent`, broadcasts presence changes to `/topic/presence`
+- **`presence/PresenceService`** — `ConcurrentHashMap` tracks online users by WebSocket session
+- **`presence/PresenceEventListener`** — listens for `SessionConnectEvent`/`SessionDisconnectEvent`, broadcasts presence changes to `/topic/presence`
 - **`NotificationService.create()`** — saves to DB first, then pushes to user via `SimpMessagingTemplate.convertAndSendToUser(email, "/queue/notifications", payload)`
-- **`TaskService.broadcastTaskChange()`** — broadcasts `TaskChangeEvent` to `/topic/tasks` on create/update/delete/toggle; clients show stale-data banner
+- **`event/WebSocketEventListener`** — broadcasts `TaskChangeEvent` to `/topic/tasks` and `CommentChangeEvent` to `/topic/tasks/{id}/comments`; clients show stale-data banners
 
 **Live task update banner** — when another user modifies a task, viewers see an info banner with a "Refresh" link:
 - Task list page: subscribes to `/topic/tasks`, shows banner for any task change, "Refresh" re-runs current filters via `doSearch()`
@@ -453,7 +453,35 @@ document.dispatchEvent(new CustomEvent('notification:received', { detail: data }
 
 `window.notificationHelpers` exposes `getIcon()`, `formatTime()`, `escapeHtml()`, `fire()` for the notifications page to reuse.
 
-**WebSocket payload convention:** payloads shared by multiple classes (e.g., `PresenceResponse` used by both REST API and WebSocket broadcast) go in `dto/`. Single-producer payloads also go in `dto/` as records (e.g., `TaskChangeEvent`). Naming: `*Response` for data returned to clients, `*Event` for push-only broadcasts.
+**WebSocket payload convention:** payloads shared by multiple classes (e.g., `PresenceResponse` used by both REST API and WebSocket broadcast) go in `dto/`. Event records that are both Spring events and WebSocket payloads go in `event/` (e.g., `TaskChangeEvent`, `CommentChangeEvent`). Naming: `*Response` for data returned to clients, `*Event` for push-only broadcasts.
+
+### Event-Driven Side Effects Pattern
+
+Services publish domain events via `ApplicationEventPublisher`; three independent listeners handle all side effects:
+
+| Listener | Package | What it does | Persistence |
+|---|---|---|---|
+| `AuditEventListener` | `audit/` | Persists audit logs | DB |
+| `NotificationEventListener` | `event/` | Routes persistent notifications to recipients | DB + WebSocket push |
+| `WebSocketEventListener` | `event/` | Broadcasts ephemeral stale-data/comment events | WebSocket only |
+
+**Domain events** (consumed by Java listeners only, `actor` field naming):
+- `TaskAssignedEvent(task, actor)` — task assigned to someone new
+- `TaskUpdatedEvent(task, actor)` — task fields changed
+- `CommentAddedEvent(comment, task, actor)` — comment created
+
+**WebSocket events** (serialized to JSON for JS clients, `userId` field naming):
+- `TaskChangeEvent(action, taskId, userId)` — task created/updated/deleted
+- `CommentChangeEvent(action, taskId, commentId, userId)` — comment created/deleted
+
+Services only do business logic + `eventPublisher.publishEvent()` — no `SimpMessagingTemplate`, `NotificationService`, or `MessageSource` dependencies. Scheduled jobs (`ScheduledTaskService`) still call `NotificationService` directly since cron-triggered actions don't fit the event pattern.
+
+### Package-by-Concern Organization
+
+Event-related code is organized by domain concern, not by technical role:
+- `audit/` — audit events, listeners, utilities
+- `event/` — domain events, notification listener, WebSocket listener
+- `presence/` — presence service and session lifecycle listener
 
 ### SecurityUtils Pattern
 
@@ -541,6 +569,8 @@ private List<ChecklistItem> checklistItems;
 ```
 
 `ChecklistItem` is an `@Embeddable` with `text` and `checked` fields. Form binding uses parallel arrays (`checklistTexts[]` + `checklistChecked[]`). Checklist progress shown on cards/table rows via `@Formula` computed columns.
+
+Checklist items support drag-and-drop reordering via native HTML Drag and Drop API. Each item has a grip handle (`bi-grip-vertical`). Reordering DOM elements naturally updates the parallel arrays on form submission — no extra position tracking needed.
 
 Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for readable diffs.
 

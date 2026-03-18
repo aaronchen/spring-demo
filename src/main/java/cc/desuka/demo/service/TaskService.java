@@ -2,11 +2,12 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
-import cc.desuka.demo.dto.TaskChangeEvent;
+import cc.desuka.demo.event.TaskAssignedEvent;
+import cc.desuka.demo.event.TaskChangeEvent;
+import cc.desuka.demo.event.TaskUpdatedEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
-import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
@@ -16,45 +17,31 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.TaskSpecifications;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @Service
 public class TaskService {
 
-
-
   private final TaskRepository taskRepository;
   private final TagService tagService;
   private final UserService userService;
   private final CommentService commentService;
-  private final NotificationService notificationService;
   private final ApplicationEventPublisher eventPublisher;
-  private final MessageSource messageSource;
-  private final SimpMessagingTemplate messagingTemplate;
 
-  public TaskService(TaskRepository taskRepository, 
+  public TaskService(TaskRepository taskRepository,
                      TagService tagService,
                      UserService userService, CommentService commentService,
-                     NotificationService notificationService,
-                     ApplicationEventPublisher eventPublisher,
-                     MessageSource messageSource,
-                     SimpMessagingTemplate messagingTemplate) {
+                     ApplicationEventPublisher eventPublisher) {
     this.taskRepository = taskRepository;
     this.tagService = tagService;
     this.userService = userService;
     this.commentService = commentService;
-    this.notificationService = notificationService;
     this.eventPublisher = eventPublisher;
-    this.messageSource = messageSource;
-    this.messagingTemplate = messagingTemplate;
   }
 
   public List<Task> getAllTasks() {
@@ -82,8 +69,9 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_CREATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(saved.toAuditSnapshot())));
-    notifyAssignment(saved, SecurityUtils.getCurrentUser());
-    broadcastTaskChange("created", saved.getId());
+    User actor = SecurityUtils.getCurrentUser();
+    eventPublisher.publishEvent(new TaskAssignedEvent(saved, actor));
+    eventPublisher.publishEvent(new TaskChangeEvent("created", saved.getId(), actorId(actor)));
     return saved;
   }
 
@@ -127,13 +115,16 @@ public class TaskService {
           AuditDetails.toJson(changes)));
     }
 
-    // Notify if assignment changed to a different user
+    User actor = SecurityUtils.getCurrentUser();
     boolean assignmentChanged = newUser != null
         && (previousUser == null || !previousUser.getId().equals(newUser.getId()));
     if (assignmentChanged) {
-      notifyAssignment(saved, SecurityUtils.getCurrentUser());
+      eventPublisher.publishEvent(new TaskAssignedEvent(saved, actor));
     }
-    broadcastTaskChange("updated", saved.getId());
+    if (!changes.isEmpty()) {
+      eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
+    }
+    eventPublisher.publishEvent(new TaskChangeEvent("updated", saved.getId(), actorId(actor)));
     return saved;
   }
 
@@ -145,7 +136,7 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_DELETED, Task.class, id, SecurityUtils.getCurrentPrincipal(),
         snapshot));
-    broadcastTaskChange("deleted", id);
+    eventPublisher.publishEvent(new TaskChangeEvent("deleted", id, actorId(SecurityUtils.getCurrentUser())));
   }
 
   public List<Task> getIncompleteTasks() {
@@ -230,15 +221,14 @@ public class TaskService {
     eventPublisher.publishEvent(new AuditEvent(
         AuditEvent.TASK_UPDATED, Task.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
         AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
-    broadcastTaskChange("updated", saved.getId());
+    User actor = SecurityUtils.getCurrentUser();
+    eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
+    eventPublisher.publishEvent(new TaskChangeEvent("updated", saved.getId(), actorId(actor)));
     return saved;
   }
 
-  private void broadcastTaskChange(String action, Long taskId) {
-    User current = SecurityUtils.getCurrentUser();
-    long actorId = current != null ? current.getId() : 0L;
-    messagingTemplate.convertAndSend("/topic/tasks",
-        new TaskChangeEvent(action, taskId, actorId));
+  private static long actorId(User user) {
+    return user != null ? user.getId() : 0L;
   }
 
   private void applyChecklist(Task task, List<String> texts, List<Boolean> checked) {
@@ -262,15 +252,4 @@ public class TaskService {
     }
   }
 
-  private void notifyAssignment(Task task, User actor) {
-    User assignee = task.getUser();
-    // Don't notify if assigning to self or unassigned
-    if (assignee == null || (actor != null && actor.getId().equals(assignee.getId()))) {
-      return;
-    }
-    String message = messageSource.getMessage("notification.task.assigned",
-        new Object[]{actor != null ? actor.getName() : "System", task.getTitle()}, Locale.getDefault());
-    notificationService.create(assignee, actor, NotificationType.TASK_ASSIGNED,
-        message, "/tasks/" + task.getId() + "/edit");
-  }
 }

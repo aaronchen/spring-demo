@@ -45,11 +45,16 @@
     font-weight: 600;
 }
 
-/* Rendered mention spans in comment text */
+/* Rendered mention links in comment text */
 .mention {
     color: var(--bs-primary);
     font-weight: 600;
     background: rgba(var(--bs-primary-rgb), 0.1);
     border-radius: 0.25rem;
     padding: 0 0.2em;
+    text-decoration: none;
+}
+.mention:hover {
+    background: rgba(var(--bs-primary-rgb), 0.2);
+    text-decoration: underline;
 }

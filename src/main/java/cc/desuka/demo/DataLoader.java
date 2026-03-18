@@ -1,5 +1,8 @@
 package cc.desuka.demo;
 
+import cc.desuka.demo.audit.AuditDetails;
+import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Notification;
@@ -12,6 +15,7 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.AuditLogRepository;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.NotificationRepository;
 import cc.desuka.demo.repository.SettingRepository;
@@ -24,8 +28,11 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class DataLoader implements CommandLineRunner {
@@ -35,12 +42,14 @@ public class DataLoader implements CommandLineRunner {
   private final UserRepository userRepository;
   private final CommentRepository commentRepository;
   private final NotificationRepository notificationRepository;
+  private final AuditLogRepository auditLogRepository;
   private final SettingRepository settingRepository;
   private final PasswordEncoder passwordEncoder;
 
   public DataLoader(TaskRepository taskRepository, TagRepository tagRepository,
                     UserRepository userRepository, CommentRepository commentRepository,
                     NotificationRepository notificationRepository,
+                    AuditLogRepository auditLogRepository,
                     SettingRepository settingRepository,
                     PasswordEncoder passwordEncoder) {
     this.taskRepository = taskRepository;
@@ -48,6 +57,7 @@ public class DataLoader implements CommandLineRunner {
     this.userRepository = userRepository;
     this.commentRepository = commentRepository;
     this.notificationRepository = notificationRepository;
+    this.auditLogRepository = auditLogRepository;
     this.settingRepository = settingRepository;
     this.passwordEncoder = passwordEncoder;
   }
@@ -677,6 +687,9 @@ public class DataLoader implements CommandLineRunner {
     }
     notificationRepository.saveAll(notifications);
 
+    // ── Curated demo data for Alice & Bob ────────────────────────────────
+    seedDemoInteractions(users, tags);
+
     // ── Settings ──────────────────────────────────────────────────────────
     settingRepository.save(new Setting(Settings.KEY_THEME, Settings.THEME_WORKSHOP));
 
@@ -685,7 +698,341 @@ public class DataLoader implements CommandLineRunner {
         + taskRepository.count() + " tasks, "
         + commentRepository.count() + " comments, "
         + notificationRepository.count() + " notifications, "
+        + auditLogRepository.count() + " audit logs, "
         + settingRepository.count() + " settings.");
+  }
+
+  /**
+   * Creates hand-crafted tasks, comments, @mentions, and notifications between
+   * Alice (admin) and Bob (user) so both accounts have rich, realistic data
+   * on first login. Also involves Carol (users[2]) for multi-party interactions.
+   */
+  private void seedDemoInteractions(List<User> users, List<Tag> tags) {
+    User alice = users.get(0); // admin
+    User bob   = users.get(1);
+    User carol = users.get(2);
+    User david = users.get(3);
+    User eva   = users.get(4);
+    LocalDateTime now = LocalDateTime.now();
+    LocalDate today = LocalDate.now();
+
+    Tag work    = tags.get(0);
+    Tag urgent  = tags.get(3);
+    Tag meeting = tags.get(5);
+    Tag research = tags.get(6);
+
+    // ── Task 1: Alice assigned to Bob, with comment thread ────────────
+    Task t1 = new Task("Set up CI/CD pipeline for staging", "Configure GitHub Actions workflow with build, test, and deploy stages. Use Docker-based runners for consistency.");
+    t1.setUser(bob);
+    t1.setStatus(TaskStatus.IN_PROGRESS);
+    t1.setPriority(Priority.HIGH);
+    t1.setTags(List.of(work, urgent));
+    t1.setStartDate(today.minusDays(5));
+    t1.setDueDate(today.plusDays(2));
+    t1.setCreatedAt(now.minusDays(5));
+    addChecklist(t1, List.of(
+        checklist("Configure build stage", 0, true),
+        checklist("Add test stage with coverage", 1, true),
+        checklist("Set up staging deploy", 2, false),
+        checklist("Add Slack notifications", 3, false),
+        checklist("Document pipeline in wiki", 4, false)
+    ));
+    t1 = taskRepository.save(t1);
+
+    Comment c1a = comment(t1, alice, "Hey @[Bob Smith](userId:" + bob.getId() + "), I've outlined the stages we need. Can you start with the build config?", now.minusDays(5).plusHours(1));
+    Comment c1b = comment(t1, bob, "On it! I'll base it on the Docker runner setup from the docs. Should have the build stage done today.", now.minusDays(5).plusHours(3));
+    Comment c1c = comment(t1, alice, "Build and test stages look great. For the deploy stage, make sure to use the staging secrets from the vault.", now.minusDays(3).plusHours(2));
+    Comment c1d = comment(t1, bob, "Good call. I also added a coverage threshold — it'll fail the build if coverage drops below 80%. Working on the deploy stage now.", now.minusDays(2).plusHours(4));
+    commentRepository.saveAll(List.of(c1a, c1b, c1c, c1d));
+
+    // Bob gets notification: assigned by Alice
+    notificationRepository.save(new Notification(bob, alice, NotificationType.TASK_ASSIGNED,
+        "Alice Johnson assigned you: Set up CI/CD pipeline for staging", "/tasks/" + t1.getId()));
+
+    // ── Task 2: Bob assigned to Alice, overdue ────────────────────────
+    Task t2 = new Task("Write API rate limiting design doc", "Document the approach for API rate limiting including per-user quotas, sliding window algorithm, and Redis-backed counters.");
+    t2.setUser(alice);
+    t2.setStatus(TaskStatus.IN_PROGRESS);
+    t2.setPriority(Priority.HIGH);
+    t2.setTags(List.of(work, research));
+    t2.setStartDate(today.minusDays(10));
+    t2.setDueDate(today.minusDays(1)); // overdue
+    t2.setCreatedAt(now.minusDays(10));
+    addChecklist(t2, List.of(
+        checklist("Research sliding window algorithms", 0, true),
+        checklist("Draft architecture section", 1, true),
+        checklist("Add Redis schema design", 2, false),
+        checklist("Get review from team", 3, false)
+    ));
+    t2 = taskRepository.save(t2);
+
+    Comment c2a = comment(t2, bob, "@[Alice Johnson](userId:" + alice.getId() + ") I started a draft with the requirements. Can you fill in the Redis schema section?", now.minusDays(10).plusHours(2));
+    Comment c2b = comment(t2, alice, "Sure! I've been reading about sliding window counters. Will draft the Redis section this week.", now.minusDays(9).plusHours(5));
+    Comment c2c = comment(t2, carol, "Hey @[Alice Johnson](userId:" + alice.getId() + "), we used a similar approach at my previous company. Happy to review when it's ready.", now.minusDays(7).plusHours(3));
+    Comment c2d = comment(t2, alice, "Thanks @[Carol Williams](userId:" + carol.getId() + ")! I'll tag you once the draft is complete. Still working through the edge cases for burst traffic.", now.minusDays(5).plusHours(1));
+    commentRepository.saveAll(List.of(c2a, c2b, c2c, c2d));
+
+    // Alice gets notification: assigned by Bob
+    notificationRepository.save(new Notification(alice, bob, NotificationType.TASK_ASSIGNED,
+        "Bob Smith assigned you: Write API rate limiting design doc", "/tasks/" + t2.getId()));
+    // Alice gets overdue notification
+    notificationRepository.save(new Notification(alice, null, NotificationType.TASK_OVERDUE,
+        "Overdue: Write API rate limiting design doc", "/tasks/" + t2.getId()));
+
+    // ── Task 3: Completed task with full conversation ─────────────────
+    Task t3 = new Task("Migrate user auth to Spring Security 7", "Upgrade from Spring Security 6 to 7. Update filter chain config, switch to new authorization model, and verify all endpoints.");
+    t3.setUser(alice);
+    t3.setStatus(TaskStatus.COMPLETED);
+    t3.setPriority(Priority.HIGH);
+    t3.setTags(List.of(work, urgent));
+    t3.setStartDate(today.minusDays(14));
+    t3.setDueDate(today.minusDays(5));
+    t3.setCompletedAt(now.minusDays(6));
+    t3.setCreatedAt(now.minusDays(14));
+    addChecklist(t3, List.of(
+        checklist("Update SecurityConfig", 0, true),
+        checklist("Migrate custom filters", 1, true),
+        checklist("Update test security config", 2, true),
+        checklist("Verify all protected endpoints", 3, true),
+        checklist("Update documentation", 4, true)
+    ));
+    t3 = taskRepository.save(t3);
+
+    Comment c3a = comment(t3, alice, "Starting the migration. The new authorization model in Spring Security 7 is quite different — @[Bob Smith](userId:" + bob.getId() + ") heads up if you see any auth issues.", now.minusDays(14).plusHours(3));
+    Comment c3b = comment(t3, bob, "Thanks for the heads up. I'll keep an eye on the API endpoints I own.", now.minusDays(13).plusHours(1));
+    Comment c3c = comment(t3, david, "I ran into a similar migration last month. The biggest gotcha is the new default CSRF handling — it changed from opt-out to opt-in for API endpoints.", now.minusDays(12).plusHours(6));
+    Comment c3d = comment(t3, alice, "Good tip @[David Brown](userId:" + david.getId() + ")! I just hit that exact issue. Fixed by explicitly disabling CSRF for /api/** paths.", now.minusDays(11).plusHours(2));
+    Comment c3e = comment(t3, alice, "Migration complete. All endpoints verified. Merging to main now.", now.minusDays(6).plusHours(1));
+    commentRepository.saveAll(List.of(c3a, c3b, c3c, c3d, c3e));
+
+    // ── Task 4: Bob's task, due soon, with mentions ───────────────────
+    Task t4 = new Task("Design WebSocket notification system", "Plan the real-time notification architecture using STOMP over WebSocket. Cover connection management, message routing, and offline fallback.");
+    t4.setUser(bob);
+    t4.setStatus(TaskStatus.IN_PROGRESS);
+    t4.setPriority(Priority.MEDIUM);
+    t4.setTags(List.of(work, research));
+    t4.setStartDate(today.minusDays(3));
+    t4.setDueDate(today.plusDays(4));
+    t4.setCreatedAt(now.minusDays(3));
+    addChecklist(t4, List.of(
+        checklist("Research STOMP protocol", 0, true),
+        checklist("Design message schema", 1, true),
+        checklist("Plan connection lifecycle", 2, false),
+        checklist("Document offline strategy", 3, false)
+    ));
+    t4 = taskRepository.save(t4);
+
+    Comment c4a = comment(t4, bob, "I've been reading about STOMP vs raw WebSocket. STOMP gives us pub/sub out of the box with Spring's built-in support.", now.minusDays(3).plusHours(4));
+    Comment c4b = comment(t4, alice, "Agree on STOMP. @[Eva Martinez](userId:" + eva.getId() + ") has experience with this — might be worth syncing.", now.minusDays(2).plusHours(2));
+    Comment c4c = comment(t4, eva, "Happy to help! One thing to watch out for: make sure you handle reconnection gracefully. Users on flaky connections will drop and reconnect frequently.", now.minusDays(2).plusHours(5));
+    Comment c4d = comment(t4, bob, "Great point @[Eva Martinez](userId:" + eva.getId() + "). I'll add a reconnection strategy with exponential backoff to the design.", now.minusDays(1).plusHours(3));
+    commentRepository.saveAll(List.of(c4a, c4b, c4c, c4d));
+
+    // ── Task 5: Unassigned task (open for anyone) ─────────────────────
+    Task t5 = new Task("Update team coding standards", "Review and update the coding standards document. Add sections for new patterns we've adopted: record types, sealed classes, and pattern matching.");
+    t5.setUser(null); // unassigned
+    t5.setStatus(TaskStatus.OPEN);
+    t5.setPriority(Priority.LOW);
+    t5.setTags(List.of(work));
+    t5.setDueDate(today.plusDays(14));
+    t5.setCreatedAt(now.minusDays(2));
+    t5 = taskRepository.save(t5);
+
+    Comment c5a = comment(t5, alice, "I'd like to add a section on when to use records vs classes. Anyone want to take this?", now.minusDays(2).plusHours(3));
+    Comment c5b = comment(t5, bob, "I can draft the records and sealed classes sections. @[Carol Williams](userId:" + carol.getId() + ") want to handle pattern matching?", now.minusDays(1).plusHours(2));
+    Comment c5c = comment(t5, carol, "Sure! I'll write up the pattern matching section with some examples from our codebase.", now.minusDays(1).plusHours(5));
+    commentRepository.saveAll(List.of(c5a, c5b, c5c));
+
+    // ── Task 6: Alice's task due tomorrow ─────────────────────────────
+    Task t6 = new Task("Prepare sprint retrospective", "Collect feedback from the team, prepare the retro board, and schedule the meeting room. Focus areas: deployment process and code review turnaround.");
+    t6.setUser(alice);
+    t6.setStatus(TaskStatus.OPEN);
+    t6.setPriority(Priority.MEDIUM);
+    t6.setTags(List.of(work, meeting));
+    t6.setDueDate(today.plusDays(1));
+    t6.setCreatedAt(now.minusDays(3));
+    t6 = taskRepository.save(t6);
+
+    Comment c6a = comment(t6, bob, "Can we add 'improving test coverage' to the agenda? I think we're slipping on that.", now.minusDays(1).plusHours(4));
+    Comment c6b = comment(t6, alice, "Good idea. I'll add it as a discussion point. @[David Brown](userId:" + david.getId() + ") @[Eva Martinez](userId:" + eva.getId() + ") — any other topics you want to cover?", now.minusDays(1).plusHours(6));
+    commentRepository.saveAll(List.of(c6a, c6b));
+
+    // Alice: due tomorrow notification
+    notificationRepository.save(new Notification(alice, null, NotificationType.TASK_DUE_REMINDER,
+        "Due tomorrow: Prepare sprint retrospective", "/tasks/" + t6.getId()));
+
+    // ── Task 7: Bob's completed task ──────────────────────────────────
+    Task t7 = new Task("Fix pagination bug on task list", "Page size selector resets to default when navigating to page 2+. The URL param is lost during HTMX partial swap.");
+    t7.setUser(bob);
+    t7.setStatus(TaskStatus.COMPLETED);
+    t7.setPriority(Priority.MEDIUM);
+    t7.setTags(List.of(work));
+    t7.setStartDate(today.minusDays(4));
+    t7.setDueDate(today.minusDays(1));
+    t7.setCompletedAt(now.minusDays(2));
+    t7.setCreatedAt(now.minusDays(4));
+    t7 = taskRepository.save(t7);
+
+    Comment c7a = comment(t7, bob, "Found the issue — buildUrl() was dropping the size param on navigation. Fix is a one-liner.", now.minusDays(3).plusHours(5));
+    Comment c7b = comment(t7, alice, "Nice catch! Can you also add a test case for this? We don't want it to regress.", now.minusDays(3).plusHours(7));
+    Comment c7c = comment(t7, bob, "Done. Added test and verified manually. Closing this out.", now.minusDays(2).plusHours(1));
+    commentRepository.saveAll(List.of(c7a, c7b, c7c));
+
+    // ── Task 8: Alice's task, open, due next week ─────────────────────
+    Task t8 = new Task("Plan Q2 engineering roadmap", "Draft the Q2 roadmap covering platform reliability, developer experience, and new feature initiatives. Include capacity estimates and dependencies.");
+    t8.setUser(alice);
+    t8.setStatus(TaskStatus.OPEN);
+    t8.setPriority(Priority.HIGH);
+    t8.setTags(List.of(work, meeting));
+    t8.setDueDate(today.plusDays(7));
+    t8.setCreatedAt(now.minusDays(1));
+    addChecklist(t8, List.of(
+        checklist("Gather team input on priorities", 0, false),
+        checklist("Draft reliability initiatives", 1, false),
+        checklist("Draft DX improvements", 2, false),
+        checklist("Estimate capacity per initiative", 3, false),
+        checklist("Review with engineering leads", 4, false),
+        checklist("Present to leadership", 5, false)
+    ));
+    t8 = taskRepository.save(t8);
+
+    Comment c8a = comment(t8, alice, "Starting to collect input. @[Bob Smith](userId:" + bob.getId() + ") @[Carol Williams](userId:" + carol.getId() + ") @[David Brown](userId:" + david.getId() + ") — please share your top 3 priorities for Q2 by Friday.", now.minusDays(1).plusHours(2));
+    Comment c8b = comment(t8, bob, "My top 3: (1) CI/CD improvements, (2) WebSocket notifications, (3) better error handling across the API.", now.minusHours(20));
+    Comment c8c = comment(t8, carol, "From my side: (1) test infrastructure, (2) documentation overhaul, (3) accessibility improvements.", now.minusHours(16));
+    commentRepository.saveAll(List.of(c8a, c8b, c8c));
+
+    // ── Additional notifications for both users ───────────────────────
+    // Bob: comment notifications from Alice on his tasks
+    notificationRepository.saveAll(List.of(
+        notification(bob, alice, NotificationType.COMMENT_ADDED,
+            "Alice Johnson commented on: Set up CI/CD pipeline for staging", "/tasks/" + t1.getId(), now.minusDays(3).plusHours(2)),
+        notification(bob, alice, NotificationType.COMMENT_ADDED,
+            "Alice Johnson commented on: Design WebSocket notification system", "/tasks/" + t4.getId(), now.minusDays(2).plusHours(2)),
+        notification(bob, eva, NotificationType.COMMENT_ADDED,
+            "Eva Martinez commented on: Design WebSocket notification system", "/tasks/" + t4.getId(), now.minusDays(2).plusHours(5)),
+        notification(bob, alice, NotificationType.COMMENT_MENTIONED,
+            "Alice Johnson mentioned you in: Plan Q2 engineering roadmap", "/tasks/" + t8.getId(), now.minusDays(1).plusHours(2))
+    ));
+    // Alice: comment notifications from Bob on her tasks
+    notificationRepository.saveAll(List.of(
+        notification(alice, bob, NotificationType.COMMENT_ADDED,
+            "Bob Smith commented on: Write API rate limiting design doc", "/tasks/" + t2.getId(), now.minusDays(10).plusHours(2)),
+        notification(alice, carol, NotificationType.COMMENT_ADDED,
+            "Carol Williams commented on: Write API rate limiting design doc", "/tasks/" + t2.getId(), now.minusDays(7).plusHours(3)),
+        notification(alice, bob, NotificationType.COMMENT_ADDED,
+            "Bob Smith commented on: Prepare sprint retrospective", "/tasks/" + t6.getId(), now.minusDays(1).plusHours(4)),
+        notification(alice, bob, NotificationType.COMMENT_ADDED,
+            "Bob Smith commented on: Plan Q2 engineering roadmap", "/tasks/" + t8.getId(), now.minusHours(20)),
+        notification(alice, carol, NotificationType.COMMENT_ADDED,
+            "Carol Williams commented on: Plan Q2 engineering roadmap", "/tasks/" + t8.getId(), now.minusHours(16)),
+        notification(alice, bob, NotificationType.COMMENT_ADDED,
+            "Bob Smith commented on: Fix pagination bug on task list", "/tasks/" + t7.getId(), now.minusDays(3).plusHours(5)),
+        notification(alice, david, NotificationType.COMMENT_ADDED,
+            "David Brown commented on: Migrate user auth to Spring Security 7", "/tasks/" + t3.getId(), now.minusDays(12).plusHours(6))
+    ));
+
+    // ── Audit logs for demo tasks ─────────────────────────────────────
+    List<AuditLog> auditLogs = new ArrayList<>();
+
+    // Task creation events
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t1.getId(), alice.getEmail(),
+        AuditDetails.toJson(t1.toAuditSnapshot()), t1.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t2.getId(), bob.getEmail(),
+        AuditDetails.toJson(t2.toAuditSnapshot()), t2.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t3.getId(), alice.getEmail(),
+        AuditDetails.toJson(t3.toAuditSnapshot()), t3.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t4.getId(), bob.getEmail(),
+        AuditDetails.toJson(t4.toAuditSnapshot()), t4.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t5.getId(), alice.getEmail(),
+        AuditDetails.toJson(t5.toAuditSnapshot()), t5.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t6.getId(), alice.getEmail(),
+        AuditDetails.toJson(t6.toAuditSnapshot()), t6.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t7.getId(), bob.getEmail(),
+        AuditDetails.toJson(t7.toAuditSnapshot()), t7.getCreatedAt()));
+    auditLogs.add(auditLog(AuditEvent.TASK_CREATED, Task.class, t8.getId(), alice.getEmail(),
+        AuditDetails.toJson(t8.toAuditSnapshot()), t8.getCreatedAt()));
+
+    // Task update: t3 completed (Spring Security migration)
+    Map<String, Object> t3StatusChange = new LinkedHashMap<>();
+    t3StatusChange.put("status", Map.of("old", "IN_PROGRESS", "new", "COMPLETED"));
+    auditLogs.add(auditLog(AuditEvent.TASK_UPDATED, Task.class, t3.getId(), alice.getEmail(),
+        AuditDetails.toJson(t3StatusChange), now.minusDays(6).plusHours(1)));
+
+    // Task update: t7 completed (pagination bug)
+    Map<String, Object> t7StatusChange = new LinkedHashMap<>();
+    t7StatusChange.put("status", Map.of("old", "IN_PROGRESS", "new", "COMPLETED"));
+    auditLogs.add(auditLog(AuditEvent.TASK_UPDATED, Task.class, t7.getId(), bob.getEmail(),
+        AuditDetails.toJson(t7StatusChange), now.minusDays(2).plusHours(1)));
+
+    // Task update: t1 checklist progress (Bob checked items)
+    Map<String, Object> t1ChecklistUpdate = new LinkedHashMap<>();
+    t1ChecklistUpdate.put("checklistItems", Map.of(
+        "old", List.of("[ ] Configure build stage", "[ ] Add test stage with coverage", "[ ] Set up staging deploy", "[ ] Add Slack notifications", "[ ] Document pipeline in wiki"),
+        "new", List.of("[x] Configure build stage", "[x] Add test stage with coverage", "[ ] Set up staging deploy", "[ ] Add Slack notifications", "[ ] Document pipeline in wiki")
+    ));
+    auditLogs.add(auditLog(AuditEvent.TASK_UPDATED, Task.class, t1.getId(), bob.getEmail(),
+        AuditDetails.toJson(t1ChecklistUpdate), now.minusDays(4).plusHours(6)));
+
+    // Task update: t2 checklist progress (Alice checked items)
+    Map<String, Object> t2ChecklistUpdate = new LinkedHashMap<>();
+    t2ChecklistUpdate.put("checklistItems", Map.of(
+        "old", List.of("[ ] Research sliding window algorithms", "[ ] Draft architecture section", "[ ] Add Redis schema design", "[ ] Get review from team"),
+        "new", List.of("[x] Research sliding window algorithms", "[x] Draft architecture section", "[ ] Add Redis schema design", "[ ] Get review from team")
+    ));
+    auditLogs.add(auditLog(AuditEvent.TASK_UPDATED, Task.class, t2.getId(), alice.getEmail(),
+        AuditDetails.toJson(t2ChecklistUpdate), now.minusDays(7).plusHours(5)));
+
+    // Task update: t4 checklist progress (Bob checked items)
+    Map<String, Object> t4ChecklistUpdate = new LinkedHashMap<>();
+    t4ChecklistUpdate.put("checklistItems", Map.of(
+        "old", List.of("[ ] Research STOMP protocol", "[ ] Design message schema", "[ ] Plan connection lifecycle", "[ ] Document offline strategy"),
+        "new", List.of("[x] Research STOMP protocol", "[x] Design message schema", "[ ] Plan connection lifecycle", "[ ] Document offline strategy")
+    ));
+    auditLogs.add(auditLog(AuditEvent.TASK_UPDATED, Task.class, t4.getId(), bob.getEmail(),
+        AuditDetails.toJson(t4ChecklistUpdate), now.minusDays(1).plusHours(6)));
+
+    auditLogRepository.saveAll(auditLogs);
+  }
+
+  private Comment comment(Task task, User user, String text, LocalDateTime createdAt) {
+    Comment c = new Comment();
+    c.setTask(task);
+    c.setUser(user);
+    c.setText(text);
+    c.setCreatedAt(createdAt);
+    return c;
+  }
+
+  private ChecklistItem checklist(String text, int position, boolean checked) {
+    ChecklistItem item = new ChecklistItem(text, position);
+    item.setChecked(checked);
+    return item;
+  }
+
+  private void addChecklist(Task task, List<ChecklistItem> items) {
+    for (ChecklistItem item : items) {
+      item.setTask(task);
+      task.getChecklistItems().add(item);
+    }
+  }
+
+  private AuditLog auditLog(String action, Class<?> entityType, Long entityId,
+                             String principal, String details, LocalDateTime timestamp) {
+    AuditLog log = new AuditLog();
+    log.setAction(action);
+    log.setEntityType(entityType.getSimpleName());
+    log.setEntityId(entityId);
+    log.setPrincipal(principal);
+    log.setDetails(details);
+    log.setTimestamp(timestamp.atZone(ZoneId.systemDefault()).toInstant());
+    return log;
+  }
+
+  private Notification notification(User user, User actor, NotificationType type,
+                                    String message, String link, LocalDateTime createdAt) {
+    Notification n = new Notification(user, actor, type, message, link);
+    n.setCreatedAt(createdAt);
+    return n;
   }
 
   private Task seedTask(String title, String description, TaskStatus status, int daysAgo) {

@@ -162,7 +162,12 @@
      Must be inside a <form> with th:object="${task}" for submission. */-->
 <th:block th:fragment="checklist" xmlns:th="http://www.thymeleaf.org">
     <div id="checklist-container">
-        <div th:each="item, stat : ${task.checklistItems}" class="checklist-item input-group input-group-sm mb-1">
+        <div th:each="item, stat : ${task.checklistItems}" class="checklist-item input-group input-group-sm mb-1"
+             draggable="true" ondragstart="checklistDragStart(event)" ondragover="checklistDragOver(event)"
+             ondragend="checklistDragEnd(event)" ondrop="checklistDrop(event)">
+            <span th:if="${mode != 'view'}" class="input-group-text checklist-drag-handle">
+                <i class="bi bi-grip-vertical"></i>
+            </span>
             <div class="input-group-text">
                 <!--/* Hidden field ensures unchecked checkboxes still submit "false" */-->
                 <input type="hidden" name="checklistChecked" th:value="${item.checked}">
