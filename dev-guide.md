@@ -17,7 +17,7 @@
 # Stop — Ctrl+C in the terminal
 
 # Start with debug mode (attach debugger on port 5005)
-./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+./mvnw spring-boot:run -Pdebug
 
 # Clean and rebuild
 ./mvnw clean compile
@@ -80,8 +80,7 @@ docker compose -f docker-compose.prod.yml up postgres
 
 # Terminal 2 — run the app natively with prod profile + debug
 DATABASE_URL=jdbc:postgresql://localhost:5432/springdemo?user=demo&password=demo \
-./mvnw spring-boot:run -Dspring-boot.run.profiles=prod \
--Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+./mvnw spring-boot:run -Dspring-boot.run.profiles=prod -Pdebug
 ```
 
 This gives you full debugging (breakpoints, hot-reload) while using PostgreSQL instead of H2.
