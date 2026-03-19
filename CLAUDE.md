@@ -479,9 +479,19 @@ Services only do business logic + `eventPublisher.publishEvent()` — no `SimpMe
 ### Package-by-Concern Organization
 
 Event-related code is organized by domain concern, not by technical role:
-- `audit/` — audit events, listeners, utilities
+- `audit/` — audit events, listeners, service, utilities
 - `event/` — domain events, notification listener, WebSocket listener
 - `presence/` — presence service and session lifecycle listener
+
+Controllers always stay in `controller/` (layer package) — never move them into feature packages. Feature packages are for internal infrastructure only.
+
+### Cross-Service Dependency Rule
+
+A service uses its own repository for its own domain and delegates to other services for other domains. Never call another domain's repository directly — business logic in the owning service would be bypassed.
+
+`TaskQueryService` and `CommentQueryService` exist to break circular dependencies while respecting this rule:
+- `TaskQueryService` — read-only task lookups + `unassignTasks()`; used by `CommentService` and `UserService`
+- `CommentQueryService` — read-only comment lookups; used by `UserService`
 
 ### SecurityUtils Pattern
 

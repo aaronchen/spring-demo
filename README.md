@@ -323,6 +323,7 @@ spring-demo/
 │   │   │   ├── AuditDetails.java            # Snapshot/diff/display-name utilities
 │   │   │   ├── AuditEvent.java              # Event class with action constants
 │   │   │   ├── AuditEventListener.java      # Persists AuditEvent → AuditLog
+│   │   │   ├── AuditLogService.java         # Audit search + entity history
 │   │   │   ├── Auditable.java               # Interface for audit snapshots
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
@@ -430,13 +431,14 @@ spring-demo/
 │   │   │   ├── PresenceEventListener.java # WebSocket connect/disconnect → presence broadcast
 │   │   │   └── PresenceService.java       # Online user tracking (ConcurrentHashMap)
 │   │   ├── service/
-│   │   │   ├── AuditLogService.java     # Audit search + entity history
+│   │   │   ├── CommentQueryService.java # Read-only comment lookups (breaks circular deps)
 │   │   │   ├── CommentService.java      # Comment CRUD with domain event publishing
 │   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
 │   │   │   ├── NotificationService.java # Create, mark read, clear (DB + WebSocket push)
 │   │   │   ├── ScheduledTaskService.java # Centralized @Scheduled jobs (reminders, purge)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
+│   │   │   ├── TaskQueryService.java    # Read-only task lookups (breaks circular deps)
 │   │   │   ├── TaskService.java
 │   │   │   ├── UserPreferenceService.java # Per-user preferences with BeanWrapper
 │   │   │   └── UserService.java         # Includes updateRole(), findByEmail(), updateProfile()

@@ -309,8 +309,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Service Layer
 - `service/CommentService.java` - Comment business logic with audit and domain event publishing
-  - Uses `TaskRepository` directly for task lookups (not `TaskService`) to avoid circular dependency
-  - Constructor injection: `CommentRepository`, `TaskRepository`, `UserService`, `ApplicationEventPublisher`
+  - Constructor injection: `CommentRepository`, `TaskQueryService`, `UserService`, `ApplicationEventPublisher`
   - `createComment(text, taskId, userId)` — creates comment, publishes `COMMENT_CREATED` audit event, `CommentAddedEvent` (for notifications), and `CommentChangeEvent` (for WebSocket broadcast)
   - `getSubscriberIds(taskId)` — returns all user IDs subscribed to a task (commenters + @mentioned users)
   - `getCommenterIds(taskId)` — returns user IDs of all distinct commenters on a task
@@ -320,6 +319,19 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getCommentsByTaskId(taskId)` — chronological comment list for a task
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event and `CommentChangeEvent`
+
+- `service/TaskQueryService.java` - Read-only task lookups and cross-service task operations
+  - Constructor injection: `TaskRepository`
+  - Breaks circular dependency: `TaskService` → `UserService`/`CommentService` → `TaskService`
+  - `getTaskById(id)` — used by `CommentService` for task validation
+  - `countByUserAndStatus(user, status)` — used by `UserService.countCompletedTasks()`
+  - `countAssignedTasks(user)` — used by `UserService.countAssignedTasks()`
+  - `unassignTasks(user)` — sets user to null on all user's tasks, resets non-completed to OPEN; used by `UserService` when disabling/deleting users
+
+- `service/CommentQueryService.java` - Read-only comment lookups for cross-service use
+  - Constructor injection: `CommentRepository`
+  - Breaks circular dependency: `CommentService` → `UserService` → `CommentService`
+  - `countByUserId(userId)` — used by `UserService.countComments()`
 
 - `service/TaskService.java` - Business logic layer with audit and domain event publishing
   - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `CommentService`, `ApplicationEventPublisher` (uses service layer instead of direct repository access for tags, users, and comments)
@@ -331,7 +343,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
 
 - `service/UserService.java` - User business logic
-  - Constructor injection: `UserRepository`, `TaskRepository`, `CommentRepository`, `ApplicationEventPublisher`
+  - Constructor injection: `UserRepository`, `TaskQueryService`, `CommentQueryService`, `ApplicationEventPublisher`
   - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
   - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by admin user management
@@ -344,15 +356,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `canDelete(userId)` — true if user has no completed tasks and no comments (safe to hard-delete)
   - `disableUser(userId)` — sets `enabled = false`, unassigns open/in-progress tasks (resets to OPEN); publishes `USER_DISABLED`
   - `enableUser(userId)` — sets `enabled = true`; publishes `USER_ENABLED`
-  - `deleteUser` — unassigns all tasks (via `unassignTasks()` helper), then deletes user; prevents FK constraint failure
-  - `unassignTasks(user)` — private helper; sets user to null on all user's tasks, resets non-completed tasks to OPEN
+  - `deleteUser` — unassigns all tasks (via `TaskQueryService.unassignTasks()`), then deletes user; prevents FK constraint failure
 
 - `service/TagService.java` - Tag business logic with audit event publishing
   - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `countTasksByTagId`, `createTag`, `deleteTag`
   - `findAllByIds(ids)` — returns tags matching the given IDs; returns empty list for null/empty input; used by `TaskService` for tag resolution
   - `countTasksByTagId(tagId)` — uses ORM relationship traversal (`getTagById(tagId).getTasks().size()`) instead of custom repository query
 
-- `service/AuditLogService.java` - Audit log business logic
+- `audit/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
   - `getEntityHistory(Class<?>, entityId)` — entity-specific audit trail; accepts entity class (uses `getSimpleName()` for DB lookup); used by `TimelineService` and task detail/modal
   - `getRecentByActions(List<String>)` — top 10 entries filtered by action type (used by dashboard activity feed)
