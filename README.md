@@ -79,9 +79,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Task History** - Per-task audit trail shown in unified activity timeline alongside comments
 
 ### Error Handling
-- **Dual exception handlers** - `ApiExceptionHandler` returns JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
+- **Dual exception handlers** - `ApiExceptionHandler` returns RFC 9457 ProblemDetail JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
 - **Custom error pages** - 403 (Access Denied), 404 (Not Found), 409 (Conflict), 500 (Server Error)
-- **Structured API errors** - Consistent JSON with `timestamp`, `status`, `error` fields
+- **RFC 9457 ProblemDetail** - Structured `application/problem+json` responses with `type`, `title`, `status`, `detail` fields; validation errors include field-level `errors` map
 
 ### Technical Highlights
 - Spring Boot 4.0.3 with Java 25
@@ -96,6 +96,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - User enable/disable pattern — disabled users can't log in and are hidden from assignment dropdowns; users with completed tasks or comments can only be disabled (not deleted)
 - Entity `FIELD_*` constants for field names (no hardcoded strings in audit snapshots or specifications)
 - `get`/`find` naming convention: `getXxx()` throws `EntityNotFoundException`, `findXxx()` returns null
+- Paginated REST API (`GET /api/tasks`) with search, status, priority, overdue, user, and tag filters via Spring Data `Pageable`
+- OpenAPI 3.1 documentation via springdoc-openapi — Swagger UI at `/swagger-ui.html`, JSON spec at `/api-docs`
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions, HX-Trigger events, and out-of-band swaps

@@ -551,6 +551,24 @@ Handles escaping (commas, quotes, newlines), sets `Content-Type` and `Content-Di
 
 The task export endpoint (`GET /tasks/export`) accepts the same filter params as the task list, uses `Pageable.unpaged(sort)` to bypass pagination, and delegates to the same `searchAndFilterTasks` service method.
 
+### ProblemDetail Error Response Pattern
+
+REST API errors use RFC 9457 `ProblemDetail` format (`application/problem+json`). `ApiExceptionHandler` extends `ResponseEntityExceptionHandler` and handles:
+
+| Exception | Status | Detail |
+|---|---|---|
+| `MethodArgumentNotValidException` | 400 | "Validation failed" + `errors` map |
+| `EntityNotFoundException` | 404 | Exception message |
+| `StaleDataException` | 409 | Exception message |
+| `AccessDeniedException` | 403 | "Access denied" |
+| `Exception` (catch-all) | 500 | "An unexpected error occurred" |
+
+```json
+{"type":"about:blank","title":"Not Found","status":404,"detail":"Task not found with id: 99"}
+```
+
+Validation errors include field-level details via `ProblemDetail.setProperty("errors", fieldErrors)`. Scoped to `cc.desuka.demo.controller.api` — web UI errors handled separately by `WebExceptionHandler`.
+
 ### @Mention Pattern
 
 Comments support @mentions via Tribute.js autocomplete. The system has three layers:
@@ -658,9 +676,14 @@ spring.application.name=demo
 spring.profiles.active=dev
 
 spring.jpa.open-in-view=false
+spring.mvc.problemdetails.enabled=true
 
 spring.web.resources.chain.strategy.content.enabled=true
 spring.web.resources.chain.strategy.content.paths=/**
+
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+springdoc.swagger-ui.operations-sorter=method
 ```
 
 ### Dev Properties (`application-dev.properties`)
@@ -702,6 +725,7 @@ Key dependencies:
   - `mapstruct-processor` in `annotationProcessorPaths` (after Lombok — order matters)
 - `spring-boot-starter-websocket` - WebSocket + STOMP support
 - `stomp-websocket` (WebJar 2.3.4) - STOMP.js client library
+- `springdoc-openapi-starter-webmvc-ui` (3.0.2) - OpenAPI 3.1 spec + Swagger UI
 
 ## Development Workflow
 
@@ -757,7 +781,9 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/profile` - User profile: edit name/email, change password, preferences
 
 **REST API — Tasks** (requires login; CSRF exempt):
-- `GET /api/tasks` - List all tasks
+- `GET /api/tasks` - Paginated task list (default: page=0, size=20, sort=createdAt,desc)
+  - Filter params: `search`, `status` (ALL/OPEN/IN_PROGRESS/COMPLETED), `overdue`, `priority`, `userId`, `tags`
+  - Pagination params: `page`, `size`, `sort` (Spring Data standard)
 - `GET /api/tasks/{id}` - Get task by ID
 - `POST /api/tasks` - Create task (auto-assigned to caller; admins can specify `userId`)
 - `PUT /api/tasks/{id}` - Update task (owner or admin; requires `version` for optimistic locking)
@@ -798,6 +824,10 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - Endpoint: `ws://localhost:8080/ws`
 - Subscribe: `/user/queue/notifications` — real-time notification push
 - Subscribe: `/topic/presence` — online user list broadcast
+
+**API Documentation** (public, no auth needed):
+- `http://localhost:8080/swagger-ui.html` - Swagger UI (interactive API explorer)
+- `http://localhost:8080/api-docs` - OpenAPI 3.1 spec (JSON)
 
 **Dev Tools:**
 - `http://localhost:8080/h2-console` - H2 database console

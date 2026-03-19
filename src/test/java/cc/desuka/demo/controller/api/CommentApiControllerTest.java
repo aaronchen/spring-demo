@@ -94,9 +94,9 @@ class CommentApiControllerTest {
     }
 
     @Test
-    void getComments_unauthenticated_redirectsToLogin() throws Exception {
+    void getComments_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/tasks/1/comments"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isUnauthorized());
     }
 
     // ── POST /api/tasks/{taskId}/comments ────────────────────────────────

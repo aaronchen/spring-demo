@@ -24,8 +24,20 @@
 ### Tasks — Read (any authenticated user)
 ### ============================================================
 
-### Get all tasks
+### Get all tasks (paginated, default: page=0, size=20, sorted by createdAt desc)
 GET {{baseUrl}}/api/tasks
+Cookie: JSESSIONID={{sessionId}}
+
+### Get tasks — page 2, 10 per page
+GET {{baseUrl}}/api/tasks?page=1&size=10
+Cookie: JSESSIONID={{sessionId}}
+
+### Get tasks — filtered by status and priority
+GET {{baseUrl}}/api/tasks?status=OPEN&priority=HIGH
+Cookie: JSESSIONID={{sessionId}}
+
+### Get tasks — search with filters
+GET {{baseUrl}}/api/tasks?search=bug&status=OPEN&overdue=true&sort=dueDate,asc
 Cookie: JSESSIONID={{sessionId}}
 
 ### Get task by ID
@@ -303,7 +315,7 @@ Content-Type: application/json
 }
 
 ### 400 — validation: multiple field errors at once
-### Expects: { status: 400, errors: { title: "...", description: "..." } }
+### Expects: ProblemDetail { status: 400, detail: "Validation failed", errors: {...} }
 POST {{baseUrl}}/api/tasks
 Cookie: JSESSIONID={{sessionId}}
 Content-Type: application/json
@@ -312,3 +324,14 @@ Content-Type: application/json
     "title": "",
     "description": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 }
+
+
+### ============================================================
+### OpenAPI / Swagger (public, no auth needed)
+### ============================================================
+
+### OpenAPI spec (JSON)
+GET {{baseUrl}}/api-docs
+
+### Swagger UI: open in browser
+### http://localhost:8080/swagger-ui.html

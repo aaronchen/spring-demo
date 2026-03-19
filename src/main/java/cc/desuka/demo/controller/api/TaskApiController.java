@@ -3,17 +3,25 @@ package cc.desuka.demo.controller.api;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
 import cc.desuka.demo.mapper.TaskMapper;
+import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatusFilter;
+import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.TaskService;
-import cc.desuka.demo.security.AuthExpressions;
 
 import jakarta.validation.Valid;
 
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -33,9 +41,20 @@ public class TaskApiController {
   }
 
   // GET /api/tasks
+  // GET /api/tasks?page=0&size=20&sort=createdAt,desc
+  // GET /api/tasks?search=spring&status=OPEN&priority=HIGH&overdue=true&userId=1&tags=1,2
   @GetMapping
-  public List<TaskResponse> getAllTasks() {
-    return taskMapper.toResponseList(taskService.getAllTasks());
+  public Page<TaskResponse> getTasks(
+      @RequestParam(required = false) String search,
+      @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT) String status,
+      @RequestParam(required = false, defaultValue = "false") boolean overdue,
+      @RequestParam(required = false) Priority priority,
+      @RequestParam(required = false) Long userId,
+      @RequestParam(required = false) List<Long> tags,
+      @ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    TaskStatusFilter statusFilter = TaskStatusFilter.from(status);
+    return taskService.searchAndFilterTasks(search, statusFilter, overdue, priority, userId, tags, pageable)
+        .map(taskMapper::toResponse);
   }
 
   // GET /api/tasks/5

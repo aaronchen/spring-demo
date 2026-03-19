@@ -8,6 +8,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 
@@ -28,6 +29,7 @@ public class SecurityConfig {
                 .requestMatchers("/webjars/**", "/css/**", "/js/**",
                                  "/bootstrap-icons/**", "/config.js",
                                  "/favicon.svg").permitAll()
+                .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/login", "/register").permitAll()
                 .requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
                 // API admin-only mutations — GET stays open to all authenticated users
@@ -46,7 +48,9 @@ public class SecurityConfig {
             // a modal or partial target.
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
-                    if ("true".equals(request.getHeader("HX-Request"))) {
+                    if (request.getRequestURI().startsWith("/api/")) {
+                        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    } else if ("true".equals(request.getHeader("HX-Request"))) {
                         response.setHeader("HX-Redirect", request.getContextPath() + "/login");
                         response.setStatus(200);
                     } else {
