@@ -53,6 +53,18 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void actuatorHealth_accessibleWithoutAuth() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void actuatorInfo_accessibleWithoutAuth() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isOk());
+    }
+
     // ── Authenticated access ────────────────────────────────────────────
 
     @Test

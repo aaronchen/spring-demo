@@ -6,3 +6,4 @@ target/
 .DS_Store
 CLAUDE.md
 CLAUDE-reference.md
+docker-compose*.yml

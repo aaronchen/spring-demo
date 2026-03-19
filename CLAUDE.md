@@ -659,7 +659,8 @@ Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for read
 The application uses Spring profiles to separate environment-specific configuration:
 
 - **`dev`** (default) — H2 in-memory database, demo data seeding, SQL logging, H2 console
-- **`prod`** (Phase 6) — PostgreSQL, Flyway migrations, no demo data, no SQL logging
+- **`prod`** — PostgreSQL, Flyway migrations, no demo data, no SQL logging, Swagger UI disabled
+- **`test`** — H2 in-memory (separate `testdb`), no SQL logging, Flyway disabled
 
 `spring.profiles.active=dev` is set in `application.properties`. In production, override via environment variable: `SPRING_PROFILES_ACTIVE=prod`.
 
@@ -684,6 +685,9 @@ spring.web.resources.chain.strategy.content.paths=/**
 springdoc.api-docs.path=/api-docs
 springdoc.swagger-ui.path=/swagger-ui.html
 springdoc.swagger-ui.operations-sorter=method
+
+management.endpoints.web.exposure.include=health,info
+management.endpoint.health.show-details=when-authorized
 ```
 
 ### Dev Properties (`application-dev.properties`)
@@ -702,6 +706,27 @@ spring.jpa.properties.hibernate.format_sql=true
 
 # H2 Console: http://localhost:8080/h2-console
 spring.h2.console.enabled=true
+
+# Flyway disabled — dev uses ddl-auto=create-drop
+spring.flyway.enabled=false
+```
+
+### Prod Properties (`application-prod.properties`)
+
+```properties
+# PostgreSQL — configured via environment variables
+spring.datasource.url=${DATABASE_URL}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.show-sql=false
+
+spring.flyway.enabled=true
+spring.flyway.locations=classpath:db/migration
+
+spring.h2.console.enabled=false
+springdoc.api-docs.enabled=false
+springdoc.swagger-ui.enabled=false
 ```
 
 `app.routes.*` properties are **not** listed here — their defaults live in `AppRoutesProperties.java` (the single source of truth). Only add them to `application.properties` when overriding the defaults.
@@ -716,10 +741,13 @@ Key dependencies:
 - `thymeleaf-extras-springsecurity7` - `sec:authorize` attributes in Thymeleaf templates
 - `spring-boot-starter-validation` - Bean validation
 - `spring-boot-starter-actuator` - Health and metrics endpoints
+- `spring-boot-starter-flyway` - Flyway database migrations (Spring Boot 4 requires the starter, not raw `flyway-core`)
+- `flyway-database-postgresql` - Flyway PostgreSQL dialect support
+- `postgresql` (runtime) - PostgreSQL JDBC driver
 - `spring-boot-devtools` - Hot reload during development
 - `bootstrap` (WebJar 5.3.3) - CSS framework
 - `htmx.org` (WebJar 2.0.4) - AJAX library
-- `h2` (2.4.240) - In-memory database
+- `h2` (2.4.240) - In-memory database (dev/test)
 - `lombok` - Boilerplate reduction (not used on entities)
 - `mapstruct` (1.6.3) - Compile-time DTO mapping code generation
   - `mapstruct-processor` in `annotationProcessorPaths` (after Lombok — order matters)
@@ -829,6 +857,10 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/swagger-ui.html` - Swagger UI (interactive API explorer)
 - `http://localhost:8080/api-docs` - OpenAPI 3.1 spec (JSON)
 
+**Monitoring (public, no auth needed):**
+- `http://localhost:8080/actuator/health` - Application health status
+- `http://localhost:8080/actuator/info` - Application info
+
 **Dev Tools:**
 - `http://localhost:8080/h2-console` - H2 database console
   - JDBC URL: `jdbc:h2:mem:taskdb` / Username: `sa` / Password: (empty)
@@ -845,7 +877,7 @@ The project includes `rest.http` for testing REST API endpoints with VS Code RES
 ./mvnw test
 ```
 
-181 tests across 22 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
+183 tests across 22 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
 
 ### Test Properties (`application-test.properties`)
 

@@ -616,7 +616,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
-    - Public: `/login`, `/register`, static assets, `/favicon.svg`, `/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`
+    - Public: `/login`, `/register`, static assets, `/favicon.svg`, `/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`, `/actuator/health`, `/actuator/info`
     - Admin-only: `/admin/**`, `POST /api/tags`, `DELETE /api/tags/**`, `POST /api/users`, `DELETE /api/users/**`
     - Everything else: `authenticated()`
   - Auth entry point: `/api/**` → 401 Unauthorized (no redirect); HTMX → `HX-Redirect` to login; browser → redirect to login
@@ -866,7 +866,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ## Test Files
 
-- `test/resources/application-test.properties` - Test profile config (separate H2 `testdb`, no SQL logging)
+- `test/resources/application-test.properties` - Test profile config (separate H2 `testdb`, no SQL logging, Flyway disabled)
 - `test/java/.../DemoApplicationTests.java` - Context load smoke test (`@SpringBootTest`, `@ActiveProfiles("test")`)
 - `test/java/.../service/TaskServiceTest.java` - 14 unit tests (Mockito): CRUD, optimistic locking, status transitions, assignment rules
 - `test/java/.../service/TagServiceTest.java` - 6 unit tests (Mockito): CRUD, audit event publishing (`any(AuditEvent.class)` for correct overload matching)
@@ -884,7 +884,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `test/java/.../controller/api/NotificationApiControllerTest.java` - 6 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): unread count, paginated list, custom page size, mark-as-read, mark-all, clear-all
 - `test/java/.../controller/api/AuditApiControllerTest.java` - 2 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): admin gets page, regular user 403
 - `test/java/.../controller/api/PresenceApiControllerTest.java` - 2 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): online users + count, empty list
-- `test/java/.../security/SecurityConfigTest.java` - 16 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): public access (login, register, static assets), auth required, admin-only (pages + API mutations), CSRF (exempt for API, required for web forms)
+- `test/java/.../security/SecurityConfigTest.java` - 18 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): public access (login, register, static assets, actuator health/info), auth required, admin-only (pages + API mutations), CSRF (exempt for API, required for web forms)
 - `test/java/.../security/OwnershipGuardTest.java` - 3 unit tests (Mockito): owner access allowed, admin access allowed, non-owner non-admin throws `AccessDeniedException`
 - `test/java/.../repository/TaskSpecificationsTest.java` - 10 tests (`@DataJpaTest`): status filter, keyword search (case-insensitive), user/priority/overdue/tag filters, combined filters
 - `test/java/.../repository/AuditLogSpecificationsTest.java` - 11 tests (`@DataJpaTest`): category filter (prefix, case-insensitive, null, unknown), search (principal, details, blank), date range, combined build
@@ -894,3 +894,39 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by Hibernate Validator; reference with `{key}` syntax in constraint annotations
   - `{min}`, `{max}` placeholders interpolated from annotation attributes
   - Includes `validation.unique` (default), `tag.name.unique`, `user.email.unique` for `@Unique` validator
+
+## Configuration Files
+
+- `resources/application.properties` - Shared config across all profiles
+  - `spring.profiles.active=dev` (default profile)
+  - `spring.jpa.open-in-view=false` (OSIV disabled)
+  - `spring.mvc.problemdetails.enabled=true` (RFC 9457 ProblemDetail)
+  - springdoc paths, cache busting, actuator exposure (health, info)
+
+- `resources/application-dev.properties` - Dev profile (`@Profile("dev")`)
+  - H2 in-memory (`jdbc:h2:mem:taskdb`), `ddl-auto=create-drop`, show-sql, H2 console enabled
+  - Flyway disabled (schema created by Hibernate)
+
+- `resources/application-prod.properties` - Prod profile
+  - PostgreSQL via `${DATABASE_URL}` env var, `ddl-auto=validate`
+  - Flyway enabled (`classpath:db/migration`)
+  - H2 console disabled, Swagger UI disabled
+
+- `resources/db/migration/V1__initial_schema.sql` - Flyway initial migration
+  - PostgreSQL DDL for all 10 tables: users, tasks, checklist_items, tags, task_tags, comments, audit_logs, notifications, settings, user_preferences
+  - Mirrors JPA entity definitions; used when `ddl-auto=validate` (prod profile)
+
+## Build and Deployment Files
+
+- `docker-compose.prod.yml` - Local prod testing (PostgreSQL 18 + app)
+  - PostgreSQL: `springdemo` database, `demo`/`demo` credentials (local testing only)
+  - App: builds from Dockerfile, `SPRING_PROFILES_ACTIVE=prod`, port 8081
+  - Healthcheck on PostgreSQL; app waits for healthy status
+
+- `.github/workflows/ci.yml` - CI pipeline (GitHub Actions)
+  - Triggers: push to main, PR targeting main
+  - Steps: checkout, JDK 25 setup, Maven cache, `./mvnw verify`
+
+- `.github/workflows/daily-redeploy.yml` - Render deploy trigger
+  - Cron: 6 AM UTC+8 daily
+  - Pings Render deploy hook URL
