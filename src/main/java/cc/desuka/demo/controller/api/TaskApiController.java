@@ -24,8 +24,9 @@ public class TaskApiController {
   private final TaskMapper taskMapper;
   private final OwnershipGuard ownershipGuard;
 
-  public TaskApiController(TaskService taskService, TaskMapper taskMapper,
-      OwnershipGuard ownershipGuard) {
+  public TaskApiController(TaskService taskService,
+                           TaskMapper taskMapper,
+                           OwnershipGuard ownershipGuard) {
     this.taskService = taskService;
     this.taskMapper = taskMapper;
     this.ownershipGuard = ownershipGuard;

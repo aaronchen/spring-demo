@@ -9,7 +9,6 @@ import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
-import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.MentionUtils;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,14 +22,16 @@ import java.util.Set;
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final TaskRepository taskRepository;
+    private final TaskQueryService taskQueryService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public CommentService(CommentRepository commentRepository, TaskRepository taskRepository,
-                          UserService userService, ApplicationEventPublisher eventPublisher) {
+    public CommentService(CommentRepository commentRepository,
+                          TaskQueryService taskQueryService,
+                          UserService userService,
+                          ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
-        this.taskRepository = taskRepository;
+        this.taskQueryService = taskQueryService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
     }
@@ -53,8 +54,7 @@ public class CommentService {
     }
 
     public Comment createComment(String text, Long taskId, Long userId) {
-        Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new EntityNotFoundException(Task.class, taskId));
+        Task task = taskQueryService.getTaskById(taskId);
         User user = userService.getUserById(userId);
 
         Comment comment = new Comment();

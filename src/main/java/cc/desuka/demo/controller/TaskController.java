@@ -55,11 +55,13 @@ public class TaskController {
   private final OwnershipGuard ownershipGuard;
   private final MessageSource messageSource;
 
-  public TaskController(TaskService taskService, TagService tagService,
-      UserService userService, CommentService commentService,
-      TimelineService timelineService,
-      OwnershipGuard ownershipGuard,
-      MessageSource messageSource) {
+  public TaskController(TaskService taskService,
+                        TagService tagService,
+                        UserService userService,
+                        CommentService commentService,
+                        TimelineService timelineService,
+                        OwnershipGuard ownershipGuard,
+                        MessageSource messageSource) {
     this.taskService = taskService;
     this.tagService = tagService;
     this.userService = userService;

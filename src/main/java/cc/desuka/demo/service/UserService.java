@@ -3,11 +3,8 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
-import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.repository.CommentRepository;
-import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
@@ -19,22 +16,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-// Uses TaskRepository and CommentRepository directly (not TaskService/CommentService)
-// to break circular dependency: TaskService → UserService → TaskService.
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
-    private final TaskRepository taskRepository;
-    private final CommentRepository commentRepository;
+    private final TaskQueryService taskQueryService;
+    private final CommentQueryService commentQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepository userRepository, TaskRepository taskRepository,
-                       CommentRepository commentRepository,
+    public UserService(UserRepository userRepository,
+                       TaskQueryService taskQueryService,
+                       CommentQueryService commentQueryService,
                        ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
-        this.taskRepository = taskRepository;
-        this.commentRepository = commentRepository;
+        this.taskQueryService = taskQueryService;
+        this.commentQueryService = commentQueryService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -119,16 +115,16 @@ public class UserService {
 
     public long countCompletedTasks(Long userId) {
         User user = getUserById(userId);
-        return taskRepository.countByUserAndStatus(user, TaskStatus.COMPLETED);
+        return taskQueryService.countByUserAndStatus(user, TaskStatus.COMPLETED);
     }
 
     public long countComments(Long userId) {
-        return commentRepository.countByUserId(userId);
+        return commentQueryService.countByUserId(userId);
     }
 
     public long countAssignedTasks(Long userId) {
         User user = getUserById(userId);
-        return taskRepository.findByUser(user).size();
+        return taskQueryService.countAssignedTasks(user);
     }
 
     public boolean canDelete(Long userId) {
@@ -138,8 +134,7 @@ public class UserService {
     public User disableUser(Long userId) {
         User user = getUserById(userId);
         user.setEnabled(false);
-        // Unassign open/in-progress tasks and reset to OPEN
-        unassignTasks(user);
+        taskQueryService.unassignTasks(user);
         User saved = userRepository.save(user);
         eventPublisher.publishEvent(new AuditEvent(
                 AuditEvent.USER_DISABLED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
@@ -176,23 +171,10 @@ public class UserService {
         return saved;
     }
 
-    private void unassignTasks(User user) {
-        List<Task> tasks = taskRepository.findByUser(user);
-        for (Task task : tasks) {
-            task.setUser(null);
-            // Reset non-completed tasks to OPEN — new owner hasn't started work
-            if (task.getStatus() != TaskStatus.COMPLETED) {
-                task.setStatus(TaskStatus.OPEN);
-            }
-        }
-        taskRepository.saveAll(tasks);
-    }
-
     public void deleteUser(Long id) {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
-        // Unassign all tasks before deleting — prevents FK constraint violation.
-        unassignTasks(user);
+        taskQueryService.unassignTasks(user);
         userRepository.delete(user);
         eventPublisher.publishEvent(new AuditEvent(
                 AuditEvent.USER_DELETED, User.class, id, SecurityUtils.getCurrentPrincipal(),

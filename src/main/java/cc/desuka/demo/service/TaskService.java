@@ -35,7 +35,8 @@ public class TaskService {
 
   public TaskService(TaskRepository taskRepository,
                      TagService tagService,
-                     UserService userService, CommentService commentService,
+                     UserService userService,
+                     CommentService commentService,
                      ApplicationEventPublisher eventPublisher) {
     this.taskRepository = taskRepository;
     this.tagService = tagService;

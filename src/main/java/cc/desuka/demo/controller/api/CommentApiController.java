@@ -22,7 +22,8 @@ public class CommentApiController {
     private final CommentMapper commentMapper;
     private final OwnershipGuard ownershipGuard;
 
-    public CommentApiController(CommentService commentService, CommentMapper commentMapper,
+    public CommentApiController(CommentService commentService,
+                                CommentMapper commentMapper,
                                 OwnershipGuard ownershipGuard) {
         this.commentService = commentService;
         this.commentMapper = commentMapper;

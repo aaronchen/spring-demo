@@ -1,7 +1,7 @@
 package cc.desuka.demo.controller.api;
 
+import cc.desuka.demo.audit.AuditLogService;
 import cc.desuka.demo.model.AuditLog;
-import cc.desuka.demo.service.AuditLogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;

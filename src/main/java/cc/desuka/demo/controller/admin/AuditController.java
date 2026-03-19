@@ -1,7 +1,7 @@
 package cc.desuka.demo.controller.admin;
 
 import cc.desuka.demo.audit.AuditEvent;
-import cc.desuka.demo.service.AuditLogService;
+import cc.desuka.demo.audit.AuditLogService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Pageable;

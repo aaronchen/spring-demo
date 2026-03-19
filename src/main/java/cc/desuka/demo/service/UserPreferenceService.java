@@ -18,7 +18,7 @@ public class UserPreferenceService {
     private final UserService userService;
 
     public UserPreferenceService(UserPreferenceRepository preferenceRepository,
-                                  UserService userService) {
+                                 UserService userService) {
         this.preferenceRepository = preferenceRepository;
         this.userService = userService;
     }

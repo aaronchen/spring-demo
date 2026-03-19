@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.audit.AuditLogService;
 import cc.desuka.demo.dto.TimelineEntry;
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.Comment;

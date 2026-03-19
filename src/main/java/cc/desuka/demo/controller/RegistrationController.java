@@ -24,7 +24,8 @@ public class RegistrationController {
     private final ApplicationEventPublisher eventPublisher;
     private final SettingService settingService;
 
-    public RegistrationController(UserService userService, PasswordEncoder passwordEncoder,
+    public RegistrationController(UserService userService,
+                                  PasswordEncoder passwordEncoder,
                                   ApplicationEventPublisher eventPublisher,
                                   SettingService settingService) {
         this.userService = userService;
