@@ -6,6 +6,7 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -39,6 +40,7 @@ public class TaskQueryService {
      * Unassign all tasks for a user and reset non-completed tasks to OPEN.
      * Used when disabling or deleting a user.
      */
+    @Transactional
     public void unassignTasks(User user) {
         List<Task> tasks = taskRepository.findByUser(user);
         for (Task task : tasks) {

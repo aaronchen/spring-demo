@@ -96,7 +96,7 @@
                                   class="position-absolute badge rounded-pill bg-danger d-none"
                                   style="font-size: 0.6rem; top: 2px; right: -6px;">0</span>
                         </a>
-                        <div class="dropdown-menu dropdown-menu-end shadow-sm py-0" style="width: 360px; max-height: 400px; overflow-y: auto;">
+                        <div class="dropdown-menu dropdown-menu-end shadow-sm py-0" style="width: 360px;">
                             <!-- Header -->
                             <div class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                                 <span class="fw-semibold" th:text="#{nav.notifications}">Notifications</span>
@@ -109,7 +109,7 @@
                                 <span th:text="#{notification.empty}">No notifications</span>
                             </div>
                             <!-- Notification items (populated by notifications.js) -->
-                            <div id="notification-list"></div>
+                            <div id="notification-list" style="max-height: 320px; overflow-y: auto;"></div>
                             <!-- Footer -->
                             <div class="border-top text-center">
                                 <a class="dropdown-item py-2 small" th:href="@{/notifications}"

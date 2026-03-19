@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import org.springframework.data.jpa.repository.EntityGraph;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -15,8 +17,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     long countByUserIdAndReadFalse(Long userId);
 
+    @EntityGraph(attributePaths = {"actor"})
     List<Notification> findTop10ByUserIdOrderByCreatedAtDesc(Long userId);
 
+    @EntityGraph(attributePaths = {"actor"})
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     Optional<Notification> findByIdAndUserId(Long id, Long userId);

@@ -7,11 +7,13 @@ import cc.desuka.demo.repository.UserPreferenceRepository;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class UserPreferenceService {
 
     private final UserPreferenceRepository preferenceRepository;

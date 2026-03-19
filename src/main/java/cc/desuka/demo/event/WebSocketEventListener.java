@@ -1,8 +1,8 @@
 package cc.desuka.demo.event;
 
-import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Handles all WebSocket broadcasting — ephemeral messages that power
@@ -18,12 +18,12 @@ public class WebSocketEventListener {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @EventListener
+    @TransactionalEventListener
     public void onTaskChange(TaskChangeEvent event) {
         messagingTemplate.convertAndSend("/topic/tasks", event);
     }
 
-    @EventListener
+    @TransactionalEventListener
     public void onCommentChange(CommentChangeEvent event) {
         messagingTemplate.convertAndSend(
                 "/topic/tasks/" + event.taskId() + "/comments", event);

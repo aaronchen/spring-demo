@@ -493,6 +493,24 @@ A service uses its own repository for its own domain and delegates to other serv
 - `TaskQueryService` — read-only task lookups + `unassignTasks()`; used by `CommentService` and `UserService`
 - `CommentQueryService` — read-only comment lookups; used by `UserService`
 
+### Transactional Boundaries
+
+**OSIV is disabled** (`spring.jpa.open-in-view=false`). Lazy associations must be loaded within a transaction — either via `@EntityGraph` on repository methods or within a `@Transactional` service method.
+
+**Class-level `@Transactional`** on services with write methods (`TaskService`, `UserService`, `CommentService`, `TagService`, `SettingService`, `UserPreferenceService`). Method-level `@Transactional` for isolated write methods in otherwise read-only services (e.g., `ScheduledTaskService.purgeOldNotifications()`).
+
+**`@EntityGraph`** on repository methods whose results are used outside the service transaction (e.g., mapped by MapStruct in controllers):
+```java
+@EntityGraph(attributePaths = {"tags", "user", "checklistItems"})
+Optional<Task> findById(Long id);
+
+@EntityGraph(attributePaths = {"tags", "user"})
+List<Task> findAll();
+```
+Only include the associations that callers actually access. `findById` includes `checklistItems` (needed by edit form); list queries include only `tags` and `user` (used by mapper/cards).
+
+**`@TransactionalEventListener`** on all event listeners (replaces `@EventListener`). Fires after the publishing transaction commits. `AuditEventListener` uses `@Transactional(propagation = Propagation.REQUIRES_NEW)` because it writes to its own table in a new transaction.
+
 ### SecurityUtils Pattern
 
 Central utility for resolving the current user from `SecurityContextHolder`:
@@ -630,7 +648,7 @@ spring.datasource.username=sa
 spring.datasource.password=
 
 # JPA / Hibernate
-spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.open-in-view=false
 spring.jpa.hibernate.ddl-auto=create-drop
 
 # H2 Console: http://localhost:8080/h2-console

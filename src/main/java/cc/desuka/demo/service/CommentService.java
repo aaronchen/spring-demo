@@ -13,12 +13,14 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.MentionUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 @Service
+@Transactional
 public class CommentService {
 
     private final CommentRepository commentRepository;

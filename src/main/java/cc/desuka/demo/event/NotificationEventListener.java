@@ -9,8 +9,8 @@ import cc.desuka.demo.service.NotificationService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.MentionUtils;
 import org.springframework.context.MessageSource;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,7 +39,7 @@ public class NotificationEventListener {
         this.messageSource = messageSource;
     }
 
-    @EventListener
+    @TransactionalEventListener
     public void onTaskAssigned(TaskAssignedEvent event) {
         Task task = event.task();
         User actor = event.actor();
@@ -57,7 +57,7 @@ public class NotificationEventListener {
                 message, "/tasks/" + task.getId() + "/edit");
     }
 
-    @EventListener
+    @TransactionalEventListener
     public void onTaskUpdated(TaskUpdatedEvent event) {
         Task task = event.task();
         User actor = event.actor();
@@ -87,7 +87,7 @@ public class NotificationEventListener {
         }
     }
 
-    @EventListener
+    @TransactionalEventListener
     public void onCommentAdded(CommentAddedEvent event) {
         Comment comment = event.comment();
         Task task = event.task();

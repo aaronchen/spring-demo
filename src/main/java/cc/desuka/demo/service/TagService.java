@@ -8,11 +8,13 @@ import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Transactional
 public class TagService {
 
     private final TagRepository tagRepository;

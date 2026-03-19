@@ -2,8 +2,10 @@ package cc.desuka.demo.audit;
 
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.repository.AuditLogRepository;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Instant;
 
@@ -16,10 +18,8 @@ public class AuditEventListener {
         this.auditLogRepository = auditLogRepository;
     }
 
-    // Synchronous listener — saves audit log inline.
-    // For production, consider @TransactionalEventListener(phase = AFTER_COMMIT)
-    // to decouple audit persistence from the business transaction.
-    @EventListener
+    @TransactionalEventListener
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onAuditEvent(AuditEvent event) {
         // Skip events generated during DataLoader seeding
         if ("system".equals(event.getPrincipal())) {

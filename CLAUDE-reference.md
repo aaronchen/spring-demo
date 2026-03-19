@@ -142,7 +142,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `findByStatusNot(TaskStatus)` - used by `getIncompleteTasks()` (finds tasks where status is not COMPLETED)
     - `findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String, String)` - used by `searchTasks()`
     - `findByUser(User)` - used by `UserService.deleteUser()` to reassign tasks before deleting a user
-  - `@EntityGraph(attributePaths = {"tags", "user"})` on the paginated query — loads both associations in one LEFT JOIN to prevent N+1
+  - `@EntityGraph` annotations (required since OSIV is disabled):
+    - `findById`: `{"tags", "user", "checklistItems"}` — full eager load for edit form/detail page
+    - `findAll()`, `findByStatusNot()`, `findByTitleContaining...()`: `{"tags", "user"}` — REST API mapper accesses these
+    - `findAll(Specification, Pageable)`: `{"tags", "user"}` — paginated task list (cards/table)
+    - `findByDueDateAndStatusNot()`: `{"user"}` — scheduled reminders access task.getUser()
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
@@ -186,8 +190,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `repository/NotificationRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<Notification, Long>`
   - `countByUserIdAndReadFalse(Long)` — unread count for badge
-  - `findTop10ByUserIdOrderByCreatedAtDesc(Long)` — recent notifications for dropdown
-  - `findByUserIdOrderByCreatedAtDesc(Long, Pageable)` — paginated list for full page
+  - `findTop10ByUserIdOrderByCreatedAtDesc(Long)` — recent notifications for dropdown; `@EntityGraph(attributePaths = {"actor"})` for mapper access
+  - `findByUserIdOrderByCreatedAtDesc(Long, Pageable)` — paginated list for full page; `@EntityGraph(attributePaths = {"actor"})` for mapper access
   - `findByIdAndUserId(Long, Long)` — ownership-scoped single lookup
   - `markAllAsReadByUserId(Long)` — `@Modifying` `@Query` bulk UPDATE (no derived method convention for bulk updates)
   - `deleteByUserId(Long)` — clear all for a user

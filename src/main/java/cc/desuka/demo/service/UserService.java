@@ -9,6 +9,7 @@ import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import cc.desuka.demo.model.Role;
 
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class UserService {
 
     private final UserRepository userRepository;

@@ -12,14 +12,23 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
+  @EntityGraph(attributePaths = {"tags", "user", "checklistItems"})
+  Optional<Task> findById(Long id);
+
+  @EntityGraph(attributePaths = {"tags", "user"})
+  List<Task> findAll();
+
+  @EntityGraph(attributePaths = {"tags", "user"})
   List<Task> findByStatusNot(TaskStatus status);
 
   List<Task> findByUser(User user);
 
+  @EntityGraph(attributePaths = {"tags", "user"})
   List<Task> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
 
   long countByUserAndStatus(User user, TaskStatus status);
@@ -34,6 +43,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
   List<Task> findByUserAndDueDateBetweenAndStatusNot(User user, LocalDate from, LocalDate to, TaskStatus status);
 
+  @EntityGraph(attributePaths = {"user"})
   List<Task> findByDueDateAndStatusNot(LocalDate dueDate, TaskStatus status);
 
   // @EntityGraph solves the N+1 query problem for paginated task lists.
