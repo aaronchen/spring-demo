@@ -122,8 +122,11 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
-- 181 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
-- Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding)
+- 183 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
+- CI pipeline: GitHub Actions runs `./mvnw verify` on every push to main and PR
+- Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding), `prod` (PostgreSQL, Flyway migrations)
+- Flyway schema migrations for production (PostgreSQL); dev/test use Hibernate `create-drop`
+- Spring Actuator health and info endpoints (`/actuator/health`, `/actuator/info`)
 - Hot reload with Spring DevTools
 
 ## Getting Started
@@ -166,13 +169,25 @@ A growing full-stack application built as a hands-on learning project for Spring
    ```bash
    ./mvnw test
    ```
-   181 tests across 22 test classes (unit, repository, integration, validation, security).
+   183 tests across 22 test classes (unit, repository, integration, validation, security).
 
 ### Build for Production
 
 ```bash
 ./mvnw clean package
 java -jar target/demo-0.0.1-SNAPSHOT.jar
+```
+
+### Run with PostgreSQL (Prod Profile)
+
+Requires Docker. See [dev-guide.md](dev-guide.md) for full details.
+
+```bash
+# Start PostgreSQL + app in Docker (port 8081)
+docker compose -f docker-compose.prod.yml up --build
+
+# Stop and clean up
+docker compose -f docker-compose.prod.yml down -v
 ```
 
 ## Usage Guide
@@ -526,8 +541,11 @@ spring-demo/
 │       │   └── additional-spring-configuration-metadata.json
 │       ├── messages.properties         # UI strings (#{key} in Thymeleaf)
 │       ├── ValidationMessages.properties # Validation messages ({key} in annotations)
+│       ├── db/migration/
+│       │   └── V1__initial_schema.sql    # Flyway initial migration (PostgreSQL DDL)
 │       ├── application.properties        # Shared config (profile-agnostic)
-│       └── application-dev.properties    # Dev profile: H2, show-sql, console
+│       ├── application-dev.properties    # Dev profile: H2, show-sql, console
+│       └── application-prod.properties   # Prod profile: PostgreSQL, Flyway, no Swagger
 ├── src/test/
 │   ├── java/cc/desuka/demo/
 │   │   ├── audit/
@@ -563,6 +581,9 @@ spring-demo/
 │   └── resources/
 │       └── application-test.properties           # Test profile config
 ├── rest.http                           # VS Code REST Client test file
+├── dev-guide.md                        # Developer guide (Maven, Docker, profiles)
+├── docker-compose.prod.yml             # Local prod testing (PostgreSQL + app)
+├── Dockerfile                          # Multi-stage build (JDK → JRE)
 ├── pom.xml
 ├── CLAUDE.md                           # Developer reference
 └── README.md
@@ -579,7 +600,7 @@ spring-demo/
 | Framework | Spring Boot 4.0.3 |
 | Language | Java 25 |
 | Security | Spring Security 7.0 |
-| Database | H2 (in-memory) |
+| Database | H2 (dev/test), PostgreSQL (prod) |
 | ORM | Spring Data JPA / Hibernate |
 | Validation | Jakarta Validation |
 | Templates | Thymeleaf 3.x + Spring Security dialect |
@@ -590,9 +611,13 @@ spring-demo/
 | Build | Maven |
 | Mapping | MapStruct 1.6 |
 | Dev Tools | Spring DevTools |
+| Migrations | Flyway (prod profile) |
 | Monitoring | Spring Actuator |
+| CI | GitHub Actions |
 
 ## Deployment
+
+### Docker
 
 A multi-stage `Dockerfile` is included for container-based deployment. The build stage compiles with Maven; the runtime stage uses a minimal JRE image.
 
@@ -601,9 +626,35 @@ docker build -t spring-demo .
 docker run -p 8080:8080 spring-demo
 ```
 
-The app is deployed at [demo.desuka.cc](https://demo.desuka.cc) on [Render](https://render.com) (free tier, Docker runtime). Every push to `main` triggers auto-deploy. Custom domain via Cloudflare DNS (CNAME, no proxy).
+For local prod testing with PostgreSQL, use the Docker Compose file:
 
-> **Note:** H2 is an in-memory database — all data resets on each deploy and on free-tier spin-down. For persistent data, swap H2 for PostgreSQL.
+```bash
+docker compose -f docker-compose.prod.yml up --build    # PostgreSQL + app on port 8081
+docker compose -f docker-compose.prod.yml down -v        # stop and clean up
+```
+
+### Spring Profiles
+
+| Profile | Database | Flyway | Schema | Use case |
+|---------|----------|--------|--------|----------|
+| `dev` | H2 in-memory | Off | `create-drop` | Default — fast dev, data resets on restart |
+| `test` | H2 in-memory | Off | `create-drop` | Automated tests |
+| `prod` | PostgreSQL | On | `validate` | Production — persistent data |
+
+### Render
+
+The app is deployed at [demo.desuka.cc](https://demo.desuka.cc) on [Render](https://render.com) (Starter plan, Docker runtime). Every push to `main` triggers auto-deploy. Custom domain via Cloudflare DNS (CNAME, no proxy).
+
+Currently runs with the `dev` profile (H2 in-memory). To switch to PostgreSQL: create a Render PostgreSQL instance, then set `SPRING_PROFILES_ACTIVE=prod` and `DATABASE_URL` as environment variables on the web service.
+
+> **Note:** With the dev profile, all data resets on each deploy and on free-tier spin-down.
+
+### CI Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and PR targeting `main`:
+1. Sets up JDK 25
+2. Caches Maven dependencies
+3. Runs `./mvnw verify` (compile + 183 tests)
 
 ## Troubleshooting
 

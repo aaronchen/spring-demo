@@ -30,6 +30,7 @@ public class SecurityConfig {
                                  "/bootstrap-icons/**", "/config.js",
                                  "/favicon.svg").permitAll()
                 .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/login", "/register").permitAll()
                 .requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
                 // API admin-only mutations — GET stays open to all authenticated users
