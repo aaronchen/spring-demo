@@ -66,7 +66,7 @@ class NotificationApiControllerTest {
         mockMvc.perform(get("/api/notifications").with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].message").value("Test notification"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.page.totalElements").value(1));
     }
 
     @Test

@@ -679,6 +679,8 @@ spring.profiles.active=dev
 spring.jpa.open-in-view=false
 spring.mvc.problemdetails.enabled=true
 
+spring.data.web.pageable.serialization-mode=via-dto
+
 spring.web.resources.chain.strategy.content.enabled=true
 spring.web.resources.chain.strategy.content.paths=/**
 
@@ -688,6 +690,7 @@ springdoc.swagger-ui.operations-sorter=method
 
 management.endpoints.web.exposure.include=health,info
 management.endpoint.health.show-details=when-authorized
+management.info.env.enabled=true
 ```
 
 ### Dev Properties (`application-dev.properties`)
@@ -763,6 +766,11 @@ Key dependencies:
 ./mvnw spring-boot:run
 ```
 Application runs on: `http://localhost:8080`
+
+**With remote debugging** (port 5005):
+```bash
+./mvnw spring-boot:run -Pdebug
+```
 
 ### Development Workflow with MapStruct
 
