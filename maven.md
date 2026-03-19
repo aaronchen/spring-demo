@@ -56,11 +56,14 @@ Get-NetTCPConnection -LocalPort 8080 | ForEach-Object { Stop-Process -Id $_.Owni
 # Run the application with a specific profile (e.g., dev, prod)
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
-# Run all tests
+# Run all tests (uses test profile via @ActiveProfiles("test"))
 ./mvnw test
 
 # Run a specific test class
-./mvnw test -Dtest=DemoApplicationTests
+./mvnw test -Dtest=TaskServiceTest
+
+# Run a specific test method
+./mvnw test -Dtest=TaskServiceTest#createTask_withTags_delegatesToTagService
 
 # Run with debug mode (port 5005)
 ./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
@@ -145,11 +148,19 @@ Only mapper interface changes require a manual `./mvnw compile`.
 | spring-boot-starter-data-jpa | Database access (JPA/Hibernate) |
 | spring-boot-starter-validation | Bean validation (@Valid, @NotBlank) |
 | spring-boot-starter-thymeleaf | Server-side HTML templates |
+| spring-boot-starter-security | Authentication and authorization |
+| spring-boot-starter-websocket | WebSocket + STOMP support |
 | spring-boot-starter-actuator | Health checks & monitoring |
 | spring-boot-starter-tomcat | Embedded Tomcat web server |
+| thymeleaf-extras-springsecurity6 | sec:authorize attributes in templates |
 | spring-boot-devtools | Auto-restart during development |
 | h2 | In-memory database |
 | lombok | Reduce boilerplate (getters/setters) |
 | mapstruct | Compile-time DTO mapping code generation |
 | bootstrap (WebJar) | CSS framework |
 | htmx.org (WebJar) | Reactive HTML updates |
+| stomp__stompjs (WebJar) | STOMP.js client for WebSocket |
+| spring-boot-starter-data-jpa-test | JPA test slice (@DataJpaTest) |
+| spring-boot-starter-validation-test | Validation test support |
+| spring-boot-starter-webmvc-test | MockMvc test support (@AutoConfigureMockMvc) |
+| spring-security-test | Security test utilities (mock users, CSRF) |

@@ -861,6 +861,32 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `resources/META-INF/additional-spring-configuration-metadata.json` - IDE metadata for custom `app.routes.*` properties
 
+## Test Files
+
+- `test/resources/application-test.properties` - Test profile config (separate H2 `testdb`, no SQL logging)
+- `test/java/.../DemoApplicationTests.java` - Context load smoke test (`@SpringBootTest`, `@ActiveProfiles("test")`)
+- `test/java/.../service/TaskServiceTest.java` - 14 unit tests (Mockito): CRUD, optimistic locking, status transitions, assignment rules
+- `test/java/.../service/TagServiceTest.java` - 6 unit tests (Mockito): CRUD, audit event publishing (`any(AuditEvent.class)` for correct overload matching)
+- `test/java/.../service/CommentServiceTest.java` - 14 unit tests (Mockito): CRUD, event publishing, subscriber/mention ID extraction, deduplication
+- `test/java/.../service/UserServiceTest.java` - 20 unit tests (Mockito): CRUD, find/get, search, canDelete logic, enable/disable + unassign, profile update with diff, role change, password change
+- `test/java/.../service/NotificationServiceTest.java` - 8 unit tests (Mockito): DB-first create + WebSocket push, unread count, pagination, mark-as-read, mark-all, clear-all
+- `test/java/.../audit/AuditEventListenerTest.java` - 2 unit tests (Mockito): persists audit log, skips system principal
+- `test/java/.../event/NotificationEventListenerTest.java` - 8 unit tests (Mockito): task assigned/updated/comment notification routing, self-exclusion, deduplication across groups
+- `test/java/.../event/WebSocketEventListenerTest.java` - 2 unit tests (Mockito): broadcasts to correct STOMP topics
+- `test/java/.../util/MentionUtilsTest.java` - 12 unit tests: extract user IDs (single, multiple, duplicates, none, null, malformed), render HTML links, XSS escaping in text and display names
+- `test/java/.../controller/api/TaskApiControllerTest.java` - 15 tests (`@SpringBootTest` + `@AutoConfigureMockMvc` + `@MockitoBean`): REST API JSON CRUD, auth redirect, validation 400, ownership 403, optimistic locking 409
+- `test/java/.../controller/api/CommentApiControllerTest.java` - 7 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): GET/POST/DELETE, auth redirect, ownership 403, not found 404
+- `test/java/.../controller/api/TagApiControllerTest.java` - 7 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): GET all/by-id, admin-only POST 201/DELETE 204, regular user 403
+- `test/java/.../controller/api/UserApiControllerTest.java` - 8 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): GET all/with-query/by-id, admin POST 201/DELETE 204, regular user 403, self-delete 400
+- `test/java/.../controller/api/NotificationApiControllerTest.java` - 6 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): unread count, paginated list, custom page size, mark-as-read, mark-all, clear-all
+- `test/java/.../controller/api/AuditApiControllerTest.java` - 2 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): admin gets page, regular user 403
+- `test/java/.../controller/api/PresenceApiControllerTest.java` - 2 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): online users + count, empty list
+- `test/java/.../security/SecurityConfigTest.java` - 16 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): public access (login, register, static assets), auth required, admin-only (pages + API mutations), CSRF (exempt for API, required for web forms)
+- `test/java/.../security/OwnershipGuardTest.java` - 3 unit tests (Mockito): owner access allowed, admin access allowed, non-owner non-admin throws `AccessDeniedException`
+- `test/java/.../repository/TaskSpecificationsTest.java` - 10 tests (`@DataJpaTest`): status filter, keyword search (case-insensitive), user/priority/overdue/tag filters, combined filters
+- `test/java/.../repository/AuditLogSpecificationsTest.java` - 11 tests (`@DataJpaTest`): category filter (prefix, case-insensitive, null, unknown), search (principal, details, blank), date range, combined build
+- `test/java/.../validation/UniqueValidatorTest.java` - 6 tests (`@DataJpaTest` + `@Import(ValidationAutoConfiguration.class)`): unique passes, duplicate fails, case-insensitive, self-exclusion on update, null/blank passthrough
+
 - `resources/ValidationMessages.properties` - Bean Validation error messages
   - Used by Hibernate Validator; reference with `{key}` syntax in constraint annotations
   - `{min}`, `{max}` placeholders interpolated from annotation attributes

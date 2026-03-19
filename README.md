@@ -120,6 +120,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
+- 181 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
+- Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding)
 - Hot reload with Spring DevTools
 
 ## Getting Started
@@ -157,6 +159,12 @@ A growing full-stack application built as a hands-on learning project for Spring
    - **Admin**: `alice.johnson@example.com` / `password`
    - **Regular user**: `bob.smith@example.com` / `password`
    - All 50 seeded users share the password `password`
+
+5. **Run tests**
+   ```bash
+   ./mvnw test
+   ```
+   181 tests across 22 test classes (unit, repository, integration, validation, security).
 
 ### Build for Production
 
@@ -518,6 +526,40 @@ spring-demo/
 │       ├── ValidationMessages.properties # Validation messages ({key} in annotations)
 │       ├── application.properties        # Shared config (profile-agnostic)
 │       └── application-dev.properties    # Dev profile: H2, show-sql, console
+├── src/test/
+│   ├── java/cc/desuka/demo/
+│   │   ├── audit/
+│   │   │   └── AuditEventListenerTest.java       # Audit persistence tests (2)
+│   │   ├── controller/api/
+│   │   │   ├── AuditApiControllerTest.java       # Audit REST API tests (2)
+│   │   │   ├── CommentApiControllerTest.java     # Comment REST API tests (7)
+│   │   │   ├── NotificationApiControllerTest.java # Notification REST API tests (6)
+│   │   │   ├── PresenceApiControllerTest.java    # Presence REST API tests (2)
+│   │   │   ├── TagApiControllerTest.java         # Tag REST API tests (7)
+│   │   │   ├── TaskApiControllerTest.java        # Task REST API tests (15)
+│   │   │   └── UserApiControllerTest.java        # User REST API tests (8)
+│   │   ├── event/
+│   │   │   ├── NotificationEventListenerTest.java # Notification routing tests (8)
+│   │   │   └── WebSocketEventListenerTest.java   # WebSocket broadcast tests (2)
+│   │   ├── repository/
+│   │   │   ├── AuditLogSpecificationsTest.java   # Audit filter tests (11)
+│   │   │   └── TaskSpecificationsTest.java       # Task filter tests (10)
+│   │   ├── security/
+│   │   │   ├── OwnershipGuardTest.java           # Ownership unit tests (3)
+│   │   │   └── SecurityConfigTest.java           # URL security tests (16)
+│   │   ├── service/
+│   │   │   ├── CommentServiceTest.java           # Comment service tests (14)
+│   │   │   ├── NotificationServiceTest.java      # Notification service tests (8)
+│   │   │   ├── TagServiceTest.java               # Tag service tests (6)
+│   │   │   ├── TaskServiceTest.java              # Task service tests (14)
+│   │   │   └── UserServiceTest.java              # User service tests (20)
+│   │   ├── util/
+│   │   │   └── MentionUtilsTest.java             # Mention parsing/rendering tests (12)
+│   │   ├── validation/
+│   │   │   └── UniqueValidatorTest.java          # @Unique validator tests (6)
+│   │   └── DemoApplicationTests.java             # Context load test (1)
+│   └── resources/
+│       └── application-test.properties           # Test profile config
 ├── rest.http                           # VS Code REST Client test file
 ├── pom.xml
 ├── CLAUDE.md                           # Developer reference

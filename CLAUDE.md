@@ -807,6 +807,66 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 
 The project includes `rest.http` for testing REST API endpoints with VS Code REST Client extension. CSRF is disabled for `/api/**`, so only a valid session cookie is needed. Log in via browser, copy your `JSESSIONID` from DevTools, and paste it in the `@sessionId` variable.
 
+## Testing
+
+### Running Tests
+
+```bash
+./mvnw test
+```
+
+181 tests across 22 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
+
+### Test Properties (`application-test.properties`)
+
+```properties
+spring.datasource.url=jdbc:h2:mem:testdb
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=create-drop
+spring.jpa.show-sql=false
+```
+
+Separate H2 database (`testdb` vs `taskdb`) so tests don't collide with a running dev instance.
+
+### Test Categories
+
+| Test class | Type | What it tests |
+|---|---|---|
+| `TaskServiceTest` | Unit (Mockito) | Service CRUD, optimistic locking, status transitions, assignment |
+| `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
+| `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
+| `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
+| `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
+| `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
+| `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |
+| `NotificationEventListenerTest` | Unit (Mockito) | Task assigned/updated/comment routing, self-exclusion, dedup |
+| `WebSocketEventListenerTest` | Unit (Mockito) | Broadcasts to correct STOMP topics |
+| `MentionUtilsTest` | Unit | Extract IDs, render HTML links, XSS escaping |
+| `TaskSpecificationsTest` | `@DataJpaTest` | JPA Specifications: status/keyword/user/priority/overdue/tag filters |
+| `AuditLogSpecificationsTest` | `@DataJpaTest` | Category/search/date-range filters, combined build |
+| `UniqueValidatorTest` | `@DataJpaTest` + validation | `@Unique` annotation: uniqueness, case-insensitive, self-exclusion |
+| `TaskApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: JSON CRUD, auth, validation, ownership, optimistic locking |
+| `CommentApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: GET/POST/DELETE, auth, ownership |
+| `TagApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE |
+| `UserApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE, self-delete prevention |
+| `NotificationApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: paginated list, unread count, mark-read, clear |
+| `AuditApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: admin-only access |
+| `PresenceApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: online users + count |
+| `SecurityConfigTest` | `@SpringBootTest` + MockMvc | URL security: public/auth/admin access, CSRF behavior |
+| `DemoApplicationTests` | `@SpringBootTest` | Context loads successfully |
+
+### Test Patterns
+
+**`@SpringBootTest` + `@AutoConfigureMockMvc`** — used for controller and security tests. Full application context with mocked service layer via `@MockitoBean`. Preferred over `@WebMvcTest` because Spring Security 7's `@AuthenticationPrincipal` resolution requires the full security filter chain.
+
+**`@DataJpaTest`** — used for repository and specification tests. Slim context with only JPA infrastructure. For validation tests, add `@Import(ValidationAutoConfiguration.class)` to get the `Validator` bean.
+
+**Mock authentication** — use `SecurityMockMvcRequestPostProcessors.user(CustomUserDetails)` to set the authenticated user in MockMvc requests.
+
+**`@MockitoBean`** for `ApplicationEventPublisher` — use `verify(eventPublisher).publishEvent(any(AuditEvent.class))` (not bare `any()`) to match the correct `publishEvent` overload.
+
 ## Common Issues and Solutions
 
 ### Thymeleaf Template Parsing Errors
