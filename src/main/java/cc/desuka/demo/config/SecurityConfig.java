@@ -25,7 +25,6 @@ public class SecurityConfig {
         http
             // ── Authorization rules ──────────────────────────────────────────
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/webjars/**", "/css/**", "/js/**",
                                  "/bootstrap-icons/**", "/config.js",
                                  "/favicon.svg").permitAll()
@@ -80,9 +79,7 @@ public class SecurityConfig {
             // ── CSRF ─────────────────────────────────────────────────────────
             // Enabled by default. Thymeleaf injects the token into <form th:action> tags.
             // HTMX standalone hx-post buttons get it via the htmx:configRequest listener in utils.js.
-            // H2 console uses its own frame-based UI and cannot carry CSRF tokens — exempt it.
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/h2-console/**")
                 // REST API clients don't use browser cookies/forms, so CSRF
                 // doesn't apply. Web UI forms keep CSRF protection via Thymeleaf.
                 .ignoringRequestMatchers("/api/**")
@@ -92,10 +89,8 @@ public class SecurityConfig {
             )
 
             // ── Headers ──────────────────────────────────────────────────────
-            // Spring Security sets X-Frame-Options: DENY by default, which breaks the H2 console
-            // (it renders inside frames). sameOrigin() allows frames from the same origin only.
             .headers(headers -> headers
-                .frameOptions(frame -> frame.sameOrigin())
+                .frameOptions(frame -> frame.deny())
             );
 
         return http.build();

@@ -615,13 +615,21 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
-    - Public: `/login`, `/register`, static assets, `/favicon.svg`, `/h2-console/**`
+    - Public: `/login`, `/register`, static assets, `/favicon.svg`
     - Admin-only: `/admin/**`, `POST /api/tags`, `DELETE /api/tags/**`, `POST /api/users`, `DELETE /api/users/**`
     - Everything else: `authenticated()`
   - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
   - Logout: `POST /logout` → `/login?logout`, invalidates session, deletes JSESSIONID
-  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**`, `/h2-console/**`, and `/ws` (WebSocket endpoint)
-  - Headers: `X-Frame-Options: SAMEORIGIN` (for H2 console)
+  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/ws` (WebSocket endpoint)
+  - Headers: `X-Frame-Options: DENY`
+
+- `config/DevSecurityConfig.java` - Dev-only security rules (`@Profile("dev")`)
+  - `@Order(1)` filter chain for `/h2-console/**` — permits all, disables CSRF, allows frames (sameOrigin)
+  - Ordered before the main filter chain so H2 paths are matched first
+
+- `config/H2DevConfig.java` - H2 database tooling (`@Profile("dev")`)
+  - `startH2WebServer()` — starts H2 web server on port 8082
+  - `h2ConsoleServlet()` — registers H2 console servlet at `/h2-console/*`
 
 - `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
   - Fields: `tasks` (default `/tasks`), `api` (default `/api`), `audit` (default `/admin/audit`)
@@ -677,7 +685,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
-- `DataLoader.java` - Seeds database on startup: **50 users**, **8 tags**, **300 tasks**, plus curated demo interactions
+- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **50 users**, **8 tags**, **300 tasks**, plus curated demo interactions
   - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
   - All passwords: `"password"` (BCrypt-encoded once, reused for all 50 users for speed)
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)

@@ -23,6 +23,7 @@ import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+@Profile("dev")
 public class DataLoader implements CommandLineRunner {
 
   private final TaskRepository taskRepository;

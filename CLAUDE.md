@@ -636,31 +636,49 @@ Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for read
 
 ## Configuration
 
+### Spring Profiles
+
+The application uses Spring profiles to separate environment-specific configuration:
+
+- **`dev`** (default) — H2 in-memory database, demo data seeding, SQL logging, H2 console
+- **`prod`** (Phase 6) — PostgreSQL, Flyway migrations, no demo data, no SQL logging
+
+`spring.profiles.active=dev` is set in `application.properties`. In production, override via environment variable: `SPRING_PROFILES_ACTIVE=prod`.
+
+**Profile-gated components:**
+- `DataLoader` — `@Profile("dev")` — seeds demo users, tasks, tags, comments
+- `H2DevConfig` — `@Profile("dev")` — H2 web server (port 8082) + H2 console servlet
+- `DevSecurityConfig` — `@Profile("dev")` — permits `/h2-console/**`, disables CSRF and relaxes frame options for H2 console only
+
 ### Application Properties (`application.properties`)
 
+Shared across all profiles:
 ```properties
 spring.application.name=demo
+spring.profiles.active=dev
 
-# H2 in-memory database (data lost on restart)
+spring.jpa.open-in-view=false
+
+spring.web.resources.chain.strategy.content.enabled=true
+spring.web.resources.chain.strategy.content.paths=/**
+```
+
+### Dev Properties (`application-dev.properties`)
+
+```properties
+# H2 in-memory database
 spring.datasource.url=jdbc:h2:mem:taskdb
 spring.datasource.driver-class-name=org.h2.Driver
 spring.datasource.username=sa
 spring.datasource.password=
 
-# JPA / Hibernate
-spring.jpa.open-in-view=false
+# JPA / Hibernate — dev settings
 spring.jpa.hibernate.ddl-auto=create-drop
-
-# H2 Console: http://localhost:8080/h2-console
-spring.h2.console.enabled=true
-
-# SQL logging (helpful for debugging)
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
-# Cache busting: content hash appended to static resource URLs
-spring.web.resources.chain.strategy.content.enabled=true
-spring.web.resources.chain.strategy.content.paths=/**
+# H2 Console: http://localhost:8080/h2-console
+spring.h2.console.enabled=true
 ```
 
 `app.routes.*` properties are **not** listed here — their defaults live in `AppRoutesProperties.java` (the single source of truth). Only add them to `application.properties` when overriding the defaults.

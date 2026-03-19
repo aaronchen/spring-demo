@@ -328,8 +328,10 @@ spring-demo/
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
+│   │   │   ├── DevSecurityConfig.java      # H2 console security rules (@Profile("dev"))
 │   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
+│   │   │   ├── H2DevConfig.java            # H2 web server + console servlet (@Profile("dev"))
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   │   ├── Settings.java               # Typed settings POJO with defaults
 │   │   │   ├── UserPreferences.java        # Typed per-user preferences POJO with defaults
@@ -449,7 +451,7 @@ spring-demo/
 │   │   │   ├── CsvWriter.java             # Generic CSV export utility
 │   │   │   ├── HtmxUtils.java
 │   │   │   └── MentionUtils.java          # @mention parsing and display rendering
-│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments, notifications
+│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments, notifications (@Profile("dev"))
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
@@ -514,7 +516,8 @@ spring-demo/
 │       │   └── additional-spring-configuration-metadata.json
 │       ├── messages.properties         # UI strings (#{key} in Thymeleaf)
 │       ├── ValidationMessages.properties # Validation messages ({key} in annotations)
-│       └── application.properties
+│       ├── application.properties        # Shared config (profile-agnostic)
+│       └── application-dev.properties    # Dev profile: H2, show-sql, console
 ├── rest.http                           # VS Code REST Client test file
 ├── pom.xml
 ├── CLAUDE.md                           # Developer reference
