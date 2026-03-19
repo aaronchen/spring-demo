@@ -414,6 +414,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `controller/api/TaskApiController.java` - Task REST API endpoints
   - `@RestController` with `/api/tasks` base path
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
+  - GET `/api/tasks` — paginated with filters: `search`, `status`, `overdue`, `priority`, `userId`, `tags`; uses `@PageableDefault(size = 20, sort = "createdAt", direction = DESC)`; returns `Page<TaskResponse>` via `Page.map(taskMapper::toResponse)`
   - Accepts `TaskRequest` (includes `tagIds`, `userId`), returns `TaskResponse` — no raw entity exposure
   - Injects `TaskMapper` for all DTO ↔ entity conversion
   - **Security**: injects `OwnershipGuard`; uses `@AuthenticationPrincipal CustomUserDetails` on POST, PUT, DELETE
@@ -615,9 +616,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `config/SecurityConfig.java` - Spring Security configuration
   - `PasswordEncoder` bean — `BCryptPasswordEncoder` (default strength)
   - `SecurityFilterChain` bean — HTTP security rules:
-    - Public: `/login`, `/register`, static assets, `/favicon.svg`
+    - Public: `/login`, `/register`, static assets, `/favicon.svg`, `/api-docs/**`, `/swagger-ui/**`, `/swagger-ui.html`
     - Admin-only: `/admin/**`, `POST /api/tags`, `DELETE /api/tags/**`, `POST /api/users`, `DELETE /api/users/**`
     - Everything else: `authenticated()`
+  - Auth entry point: `/api/**` → 401 Unauthorized (no redirect); HTMX → `HX-Redirect` to login; browser → redirect to login
   - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
   - Logout: `POST /logout` → `/login?logout`, invalidates session, deletes JSESSIONID
   - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/ws` (WebSocket endpoint)
@@ -659,10 +661,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `exception/StaleDataException.java` - Custom unchecked exception for optimistic locking conflicts (409)
 
-- `exception/ApiExceptionHandler.java` - `@RestControllerAdvice` scoped to `controller.api`
+- `exception/ApiExceptionHandler.java` - `@RestControllerAdvice` scoped to `controller.api`; extends `ResponseEntityExceptionHandler`
   - Ordered at `HIGHEST_PRECEDENCE` to win over `WebExceptionHandler`
+  - Returns RFC 9457 `ProblemDetail` responses (`application/problem+json` content type)
+  - Overrides `handleMethodArgumentNotValid()` — adds field-level `errors` map via `ProblemDetail.setProperty("errors", fieldErrors)`
   - Handles: `MethodArgumentNotValidException` (400), `EntityNotFoundException` (404), `AccessDeniedException` (403), `StaleDataException` (409), catch-all `Exception` (500)
-  - All responses are JSON maps with `timestamp`, `status`, `error` fields
 
 - `exception/WebExceptionHandler.java` - `@ControllerAdvice` for Thymeleaf web controllers
   - Handles: `EntityNotFoundException` and `NoResourceFoundException` → `error/404.html`, `StaleDataException` → `error/409.html`, catch-all → `error/500.html`

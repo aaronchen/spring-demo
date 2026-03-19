@@ -70,7 +70,7 @@ class SecurityConfigTest {
     @Test
     void apiTasks_requiresAuth() throws Exception {
         mockMvc.perform(get("/api/tasks"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isUnauthorized());
     }
 
     // ── Admin-only access ───────────────────────────────────────────────

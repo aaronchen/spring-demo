@@ -24,6 +24,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Map;
 
@@ -78,20 +81,22 @@ class TaskApiControllerTest {
     // ── GET /api/tasks ──────────────────────────────────────────────────
 
     @Test
-    void getAllTasks_returnsJsonList() throws Exception {
-        when(taskService.getAllTasks()).thenReturn(List.of(task));
-        when(taskMapper.toResponseList(anyList())).thenReturn(List.of(taskResponse));
+    void getTasks_returnsPaginatedResults() throws Exception {
+        when(taskService.searchAndFilterTasks(any(), any(), anyBoolean(), any(), any(), any(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(task)));
+        when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         mockMvc.perform(get("/api/tasks").with(user(regularDetails)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].title").value("Test Task"));
+                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].title").value("Test Task"))
+                .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
-    void getAllTasks_unauthenticated_redirectsToLogin() throws Exception {
+    void getAllTasks_unauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/api/tasks"))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().isUnauthorized());
     }
 
     // ── GET /api/tasks/{id} ─────────────────────────────────────────────
