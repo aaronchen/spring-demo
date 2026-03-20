@@ -784,7 +784,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Flash-attribute-driven toast notifications via `data-toast` attributes and inline JS
 
 ### Home, Tag, User, Auth, Admin, Error Views
-- `templates/home.html` - Home page with hero section and 6 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Real-Time, Admin & Audit); all strings from `messages.properties` (`home.feature.*` keys)
+- `templates/home.html` - Home page with hero section and 8 feature cards (REST API, Spring Security, Dynamic UI, Data & Persistence, Real-Time, Task Lifecycle, Admin & Audit, Production Ready); all strings from `messages.properties` (`home.feature.*` keys)
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
 - `templates/users/users.html` - User list page (HTMX live search)
 - `templates/users/user-table.html` - User table fragment (bare file)
@@ -858,7 +858,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `task.*` — Task feature (includes `task.status.open`, `task.status.inProgress`, `task.status.completed`); `tag.*` — Tag feature; `user.*` — User feature
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
-    - `home.feature.*` — Home page feature cards (rest, security, ui, data, lifecycle, admin)
+    - `home.feature.*` — Home page feature cards (rest, security, ui, data, realtime, lifecycle, admin, production)
     - `notification.*` — Notification feature (includes `notification.task.assigned`, `notification.comment.added`, `notification.time.*` for relative timestamps)
     - `role.*` — Role display names; `error.*` — Error pages; `toast.*` — Toast notifications
 
