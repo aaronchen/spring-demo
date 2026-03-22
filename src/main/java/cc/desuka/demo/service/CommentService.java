@@ -11,13 +11,12 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.MentionUtils;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
@@ -28,10 +27,11 @@ public class CommentService {
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public CommentService(CommentRepository commentRepository,
-                          TaskQueryService taskQueryService,
-                          UserService userService,
-                          ApplicationEventPublisher eventPublisher) {
+    public CommentService(
+            CommentRepository commentRepository,
+            TaskQueryService taskQueryService,
+            UserService userService,
+            ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
         this.taskQueryService = taskQueryService;
         this.userService = userService;
@@ -39,7 +39,8 @@ public class CommentService {
     }
 
     public Comment getCommentById(Long id) {
-        return commentRepository.findById(id)
+        return commentRepository
+                .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Comment.class, id));
     }
 
@@ -65,12 +66,16 @@ public class CommentService {
         comment.setUser(user);
 
         Comment saved = commentRepository.save(comment);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.COMMENT_CREATED, Comment.class, saved.getId(),
-                SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.COMMENT_CREATED,
+                        Comment.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         eventPublisher.publishEvent(new CommentAddedEvent(saved, task, user));
-        eventPublisher.publishEvent(new CommentChangeEvent("created", taskId, saved.getId(), user.getId()));
+        eventPublisher.publishEvent(
+                new CommentChangeEvent("created", taskId, saved.getId(), user.getId()));
         return saved;
     }
 
@@ -79,18 +84,22 @@ public class CommentService {
         Long taskId = comment.getTask().getId();
         String snapshot = AuditDetails.toJson(comment.toAuditSnapshot());
         commentRepository.delete(comment);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.COMMENT_DELETED, Comment.class, id,
-                SecurityUtils.getCurrentPrincipal(),
-                snapshot));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.COMMENT_DELETED,
+                        Comment.class,
+                        id,
+                        SecurityUtils.getCurrentPrincipal(),
+                        snapshot));
         User current = SecurityUtils.getCurrentUser();
-        eventPublisher.publishEvent(new CommentChangeEvent("deleted", taskId, id,
-                current != null ? current.getId() : 0L));
+        eventPublisher.publishEvent(
+                new CommentChangeEvent(
+                        "deleted", taskId, id, current != null ? current.getId() : 0L));
     }
 
     /**
-     * Returns the set of user IDs "subscribed" to a task via comments or @mentions.
-     * Includes all users who have commented and all users @mentioned in any comment.
+     * Returns the set of user IDs "subscribed" to a task via comments or @mentions. Includes all
+     * users who have commented and all users @mentioned in any comment.
      */
     public Set<Long> getSubscriberIds(Long taskId) {
         Set<Long> ids = new HashSet<>(getCommenterIds(taskId));
@@ -98,9 +107,7 @@ public class CommentService {
         return ids;
     }
 
-    /**
-     * Returns user IDs of all distinct commenters on a task.
-     */
+    /** Returns user IDs of all distinct commenters on a task. */
     public Set<Long> getCommenterIds(Long taskId) {
         Set<Long> ids = new HashSet<>();
         for (User commenter : commentRepository.findDistinctUsersByTaskId(taskId)) {
@@ -110,8 +117,8 @@ public class CommentService {
     }
 
     /**
-     * Collect all user IDs @mentioned in previous comments on a task.
-     * Mentions are stored as encoded tokens in comment text — parsed at read time.
+     * Collect all user IDs @mentioned in previous comments on a task. Mentions are stored as
+     * encoded tokens in comment text — parsed at read time.
      */
     public Set<Long> getPreviouslyMentionedUserIds(Long taskId) {
         Set<Long> ids = new HashSet<>();
@@ -120,5 +127,4 @@ public class CommentService {
         }
         return ids;
     }
-
 }

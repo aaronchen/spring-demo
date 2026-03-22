@@ -1,5 +1,7 @@
 package cc.desuka.demo.exception;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -14,19 +16,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Exception handler for REST API endpoints ({@code /api/**}).
- * Returns RFC 9457 ProblemDetail responses ({@code application/problem+json}).
+ * Exception handler for REST API endpoints ({@code /api/**}). Returns RFC 9457 ProblemDetail
+ * responses ({@code application/problem+json}).
  *
- * <p>Scoped to {@code cc.desuka.demo.controller.api} so it only advises
- * {@code @RestController} beans, not Thymeleaf web controllers. Web UI
- * errors are handled by {@link WebExceptionHandler}.
+ * <p>Scoped to {@code cc.desuka.demo.controller.api} so it only advises {@code @RestController}
+ * beans, not Thymeleaf web controllers. Web UI errors are handled by {@link WebExceptionHandler}.
  *
- * <p>Ordered at highest precedence so it wins over {@link WebExceptionHandler}
- * if both could theoretically match the same controller.
+ * <p>Ordered at highest precedence so it wins over {@link WebExceptionHandler} if both could
+ * theoretically match the same controller.
  */
 @RestControllerAdvice(basePackages = "cc.desuka.demo.controller.api")
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -36,14 +34,17 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     // Overrides the default handler to include per-field error details.
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpHeaders headers,
-            HttpStatusCode status, WebRequest request) {
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
 
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.BAD_REQUEST, "Validation failed");
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
 
         Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors()
+        ex.getBindingResult()
+                .getFieldErrors()
                 .forEach(error -> fieldErrors.put(error.getField(), error.getDefaultMessage()));
         problem.setProperty("errors", fieldErrors);
 

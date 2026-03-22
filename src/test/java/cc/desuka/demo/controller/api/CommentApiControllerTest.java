@@ -1,5 +1,11 @@
 package cc.desuka.demo.controller.api;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import cc.desuka.demo.dto.CommentResponse;
 import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.exception.EntityNotFoundException;
@@ -11,7 +17,9 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.CommentService;
-import tools.jackson.databind.ObjectMapper;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,16 +30,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -95,8 +94,7 @@ class CommentApiControllerTest {
 
     @Test
     void getComments_unauthenticated_returns401() throws Exception {
-        mockMvc.perform(get("/api/tasks/1/comments"))
-                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/tasks/1/comments")).andExpect(status().isUnauthorized());
     }
 
     // ── POST /api/tasks/{taskId}/comments ────────────────────────────────
@@ -108,10 +106,11 @@ class CommentApiControllerTest {
 
         String body = objectMapper.writeValueAsString(Map.of("text", "New comment"));
 
-        mockMvc.perform(post("/api/tasks/1/comments")
-                        .with(user(regularDetails))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/tasks/1/comments")
+                                .with(user(regularDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1));
 
@@ -126,10 +125,11 @@ class CommentApiControllerTest {
 
         String body = objectMapper.writeValueAsString(Map.of("text", "Admin comment"));
 
-        mockMvc.perform(post("/api/tasks/1/comments")
-                        .with(user(adminDetails))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/tasks/1/comments")
+                                .with(user(adminDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isCreated());
     }
 
@@ -159,7 +159,8 @@ class CommentApiControllerTest {
     void deleteComment_notOwnerNotAdmin_returns403() throws Exception {
         when(commentService.getCommentById(1L)).thenReturn(comment);
         doThrow(new AccessDeniedException("Access denied"))
-                .when(ownershipGuard).requireAccess(any(Comment.class), any(CustomUserDetails.class));
+                .when(ownershipGuard)
+                .requireAccess(any(Comment.class), any(CustomUserDetails.class));
 
         mockMvc.perform(delete("/api/tasks/1/comments/1").with(user(regularDetails)))
                 .andExpect(status().isForbidden());

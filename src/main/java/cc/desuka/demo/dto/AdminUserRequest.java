@@ -29,6 +29,5 @@ public class AdminUserRequest {
     // Controller validates manually for both cases.
     private String password;
 
-    @NotNull
-    private Role role = Role.USER;
+    @NotNull private Role role = Role.USER;
 }

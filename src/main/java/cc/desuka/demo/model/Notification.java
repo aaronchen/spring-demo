@@ -1,7 +1,6 @@
 package cc.desuka.demo.model;
 
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity

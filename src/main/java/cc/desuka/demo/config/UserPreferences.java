@@ -1,26 +1,28 @@
 package cc.desuka.demo.config;
 
 /**
- * Typed representation of per-user preferences with defaults.
- * Mirrors the {@link Settings} pattern for site-wide settings.
+ * Typed representation of per-user preferences with defaults. Mirrors the {@link Settings} pattern
+ * for site-wide settings.
  *
- * <p>{@link cc.desuka.demo.service.UserPreferenceService#load(Long)} uses Spring's
- * {@code BeanWrapper} to auto-map DB rows to fields by name, with type
- * conversion. Missing keys keep their default.</p>
+ * <p>{@link cc.desuka.demo.service.UserPreferenceService#load(Long)} uses Spring's {@code
+ * BeanWrapper} to auto-map DB rows to fields by name, with type conversion. Missing keys keep their
+ * default.
  *
- * <p><b>To add a new preference:</b></p>
+ * <p><b>To add a new preference:</b>
+ *
  * <ol>
- *   <li>Add a field with its default value below</li>
- *   <li>Add a {@code KEY_*} constant whose value matches the field name exactly</li>
+ *   <li>Add a field with its default value below
+ *   <li>Add a {@code KEY_*} constant whose value matches the field name exactly
  * </ol>
  */
 public class UserPreferences {
 
     /**
-     * DB key constants — each value must match the corresponding field name
-     * exactly (BeanWrapper resolves fields by name).
+     * DB key constants — each value must match the corresponding field name exactly (BeanWrapper
+     * resolves fields by name).
      */
     public static final String KEY_TASK_VIEW = "taskView";
+
     public static final String KEY_DEFAULT_USER_FILTER = "defaultUserFilter";
     public static final String KEY_DUE_REMINDER = "dueReminder";
 
@@ -30,7 +32,7 @@ public class UserPreferences {
     public static final String FILTER_MINE = "mine";
     public static final String FILTER_ALL = "all";
 
-    private String taskView = VIEW_CARDS;
+    private String taskView = VIEW_TABLE;
     private String defaultUserFilter = FILTER_MINE;
     private boolean dueReminder = true;
 

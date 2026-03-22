@@ -50,7 +50,7 @@
         <!-- Two-Column Layout -->
         <form id="task-page-form" class="task-page-form border rounded-0 flex-grow-1 min-h-0"
               th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
-              th:object="${task}"
+              th:object="${taskFormRequest}"
               method="post">
             <th:block th:replace="~{tasks/task-layout :: columns}"></th:block>
         </form>

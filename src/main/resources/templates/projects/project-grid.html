@@ -1,0 +1,41 @@
+<!--/* Bare fragment — returned by HTMX when sort/filter changes.
+     Also included from projects.html via th:replace. */-->
+<div th:fragment="grid" id="project-grid" xmlns:th="http://www.thymeleaf.org">
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" th:if="${!#lists.isEmpty(projects)}">
+        <div class="col" th:each="project : ${projects}">
+            <div th:with="isArchived=${project.status.name() == 'ARCHIVED'}"
+                 class="card h-100"
+                 th:classappend="${isArchived ? 'bg-light text-muted' : 'shadow-sm card-lift'}">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <a th:href="@{/projects/{id}(id=${project.id})}"
+                           class="text-decoration-none"
+                           th:text="${project.name}">Project Name</a>
+                    </h5>
+                    <p class="card-text text-muted small" th:if="${project.description}"
+                       th:text="${#strings.abbreviate(project.description, 120)}">Description</p>
+                </div>
+                <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="bi bi-person"></i>
+                        <span th:text="${project.createdBy?.name}">Creator</span>
+                        <span class="ms-2">
+                            <i class="bi bi-calendar3"></i>
+                            <span th:text="${#temporals.format(project.createdAt, 'MMM dd, yyyy')}">Date</span>
+                        </span>
+                    </small>
+                    <span class="badge"
+                          th:classappend="${isArchived ? 'bg-secondary' : 'bg-success'}"
+                          th:text="${isArchived} ? #{project.status.archived} : #{project.status.active}">Status</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${#lists.isEmpty(projects)}" class="text-center text-muted py-5">
+        <i class="bi bi-folder2-open display-4"></i>
+        <p class="mt-3" th:text="#{project.empty}">No projects found.</p>
+    </div>
+</div>

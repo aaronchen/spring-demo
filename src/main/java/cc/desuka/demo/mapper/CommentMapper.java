@@ -2,12 +2,13 @@ package cc.desuka.demo.mapper;
 
 import cc.desuka.demo.dto.CommentResponse;
 import cc.desuka.demo.model.Comment;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-import java.util.List;
-
-@Mapper(componentModel = "spring", uses = {UserMapper.class})
+@Mapper(
+        componentModel = "spring",
+        uses = {UserMapper.class})
 public interface CommentMapper {
 
     @Mapping(source = "task.id", target = "taskId")

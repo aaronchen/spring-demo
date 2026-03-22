@@ -7,15 +7,15 @@ import org.springframework.stereotype.Component;
 /**
  * Reusable access guard for controller methods.
  *
- * <p>Allows access if the current user is an admin or the entity's owner.
- * Throws {@link AccessDeniedException} otherwise — the 403 template falls
- * through to {@code #{error.403.message}} from {@code messages.properties}.
+ * <p>Allows access if the current user is an admin or the entity's owner. Throws {@link
+ * AccessDeniedException} otherwise — the 403 template falls through to {@code #{error.403.message}}
+ * from {@code messages.properties}.
  *
- * <p>Delegates to {@link AuthExpressions} for both the admin and ownership checks,
- * so template-side ({@code #auth.canEdit()}) and controller-side checks share
- * identical logic.
+ * <p>Delegates to {@link AuthExpressions} for both the admin and ownership checks, so template-side
+ * ({@code #auth.canEdit()}) and controller-side checks share identical logic.
  *
  * <h3>Usage</h3>
+ *
  * <pre>{@code
  * private final OwnershipGuard ownershipGuard;
  *
@@ -32,14 +32,13 @@ import org.springframework.stereotype.Component;
 public class OwnershipGuard {
 
     /**
-     * Throws {@link AccessDeniedException} unless the authenticated user is an admin
-     * or the entity's owner.
+     * Throws {@link AccessDeniedException} unless the authenticated user is an admin or the
+     * entity's owner.
      *
-     * <p>Does NOT handle unassigned entities — callers should check
-     * {@code entity.getUser() == null} before calling this method if
-     * unassigned entities should be accessible to all users.
+     * <p>Does NOT handle unassigned entities — callers should check {@code entity.getUser() ==
+     * null} before calling this method if unassigned entities should be accessible to all users.
      *
-     * @param entity         the entity to check access for
+     * @param entity the entity to check access for
      * @param currentDetails the currently authenticated user's details
      * @throws AccessDeniedException if the user has no access
      */

@@ -2,12 +2,11 @@ package cc.desuka.demo.presence;
 
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.service.UserService;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import org.springframework.stereotype.Service;
 
 @Service
 public class PresenceService {
@@ -28,8 +27,7 @@ public class PresenceService {
     }
 
     public List<String> getOnlineUsers() {
-        Set<Long> uniqueIds = onlineSessions.values().stream()
-                .collect(Collectors.toSet());
+        Set<Long> uniqueIds = onlineSessions.values().stream().collect(Collectors.toSet());
         return uniqueIds.stream()
                 .map(userService::findUserById)
                 .filter(user -> user != null)

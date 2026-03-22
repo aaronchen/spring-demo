@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.projects}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <h1 class="display-4 mb-4" th:text="#{project.action.new}">New Project</h1>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <form th:action="@{/projects}" th:object="${projectRequest}" method="post">
+
+                            <!-- Name -->
+                            <div class="mb-3">
+                                <label for="name" class="form-label form-label-required"
+                                       th:text="#{project.field.name}">Name</label>
+                                <input type="text" class="form-control" id="name" th:field="*{name}"
+                                       th:placeholder="#{project.field.name}"
+                                       th:errorclass="is-invalid">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                                     th:errors="*{name}">Name error</div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label"
+                                       th:text="#{project.field.description}">Description</label>
+                                <textarea class="form-control" id="description" th:field="*{description}"
+                                          rows="3"
+                                          th:placeholder="#{project.field.description}"
+                                          th:errorclass="is-invalid"></textarea>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}"
+                                     th:errors="*{description}">Description error</div>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i> <span th:text="#{project.action.new}">Create Project</span>
+                                </button>
+                                <a th:href="@{/projects}" class="btn btn-secondary">
+                                    <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+</body>
+</html>

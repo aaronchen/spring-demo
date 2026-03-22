@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
  * Externalized route configuration for Thymeleaf templates and the /config.js endpoint.
  *
  * <p>Defaults are defined here. Override in any Spring properties source:
+ *
  * <pre>
  * # application-prod.properties
  * app.routes.api=https://api.example.com
@@ -16,40 +17,49 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.routes")
 public class AppRoutesProperties {
 
-  private String tasks = "/tasks";
-  private String api = "/api";
-  private String audit = "/admin/audit";
-  private String dashboard = "/dashboard";
+    private String projects = "/projects";
+    private String tasks = "/tasks";
+    private String api = "/api";
+    private String audit = "/admin/audit";
+    private String dashboard = "/dashboard";
 
-  public String getTasks() {
-    return tasks;
-  }
+    public String getProjects() {
+        return projects;
+    }
 
-  public void setTasks(String tasks) {
-    this.tasks = tasks;
-  }
+    public void setProjects(String projects) {
+        this.projects = projects;
+    }
 
-  public String getApi() {
-    return api;
-  }
+    public String getTasks() {
+        return tasks;
+    }
 
-  public void setApi(String api) {
-    this.api = api;
-  }
+    public void setTasks(String tasks) {
+        this.tasks = tasks;
+    }
 
-  public String getAudit() {
-    return audit;
-  }
+    public String getApi() {
+        return api;
+    }
 
-  public void setAudit(String audit) {
-    this.audit = audit;
-  }
+    public void setApi(String api) {
+        this.api = api;
+    }
 
-  public String getDashboard() {
-    return dashboard;
-  }
+    public String getAudit() {
+        return audit;
+    }
 
-  public void setDashboard(String dashboard) {
-    this.dashboard = dashboard;
-  }
+    public void setAudit(String audit) {
+        this.audit = audit;
+    }
+
+    public String getDashboard() {
+        return dashboard;
+    }
+
+    public void setDashboard(String dashboard) {
+        this.dashboard = dashboard;
+    }
 }

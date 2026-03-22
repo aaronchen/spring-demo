@@ -4,7 +4,6 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +34,7 @@ public class Tag implements Auditable {
     @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
     private List<Task> tasks = new ArrayList<>();
 
-    public Tag() {
-    }
+    public Tag() {}
 
     public Tag(String name) {
         this.name = name;

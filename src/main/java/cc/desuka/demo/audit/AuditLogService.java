@@ -3,14 +3,13 @@ package cc.desuka.demo.audit;
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.repository.AuditLogRepository;
 import cc.desuka.demo.repository.AuditLogSpecifications;
+import java.time.Instant;
+import java.util.List;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.util.List;
 
 @Service
 public class AuditLogService {
@@ -27,10 +26,11 @@ public class AuditLogService {
         return auditLogRepository.findAll(pageable);
     }
 
-    public Page<AuditLog> searchAuditLogs(String category, String search,
-                                           Instant from, Instant to, Pageable pageable) {
-        Page<AuditLog> page = auditLogRepository.findAll(
-            AuditLogSpecifications.build(category, search, from, to), pageable);
+    public Page<AuditLog> searchAuditLogs(
+            String category, String search, Instant from, Instant to, Pageable pageable) {
+        Page<AuditLog> page =
+                auditLogRepository.findAll(
+                        AuditLogSpecifications.build(category, search, from, to), pageable);
         resolveDisplayNames(page.getContent());
         return page;
     }
@@ -40,8 +40,9 @@ public class AuditLogService {
     }
 
     public List<AuditLog> getEntityHistory(Class<?> entityType, Long entityId) {
-        List<AuditLog> entries = auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc(
-                entityType.getSimpleName(), entityId);
+        List<AuditLog> entries =
+                auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc(
+                        entityType.getSimpleName(), entityId);
         resolveDisplayNames(entries);
         return entries;
     }
@@ -49,8 +50,8 @@ public class AuditLogService {
     private void resolveDisplayNames(List<AuditLog> entries) {
         var locale = LocaleContextHolder.getLocale();
         for (AuditLog entry : entries) {
-            entry.setDetailsMap(AuditDetails.resolveDisplayNames(
-                entry.getDetailsMap(), messageSource, locale));
+            entry.setDetailsMap(
+                    AuditDetails.resolveDisplayNames(entry.getDetailsMap(), messageSource, locale));
         }
     }
 }

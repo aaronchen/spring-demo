@@ -4,13 +4,10 @@ import cc.desuka.demo.dto.TagRequest;
 import cc.desuka.demo.dto.TagResponse;
 import cc.desuka.demo.mapper.TagMapper;
 import cc.desuka.demo.service.TagService;
-
 import jakarta.validation.Valid;
-
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/tags")

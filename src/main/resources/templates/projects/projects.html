@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layouts/base :: head(#{page.title.projects}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4" th:text="#{project.heading}">Projects</h1>
+            <a th:href="@{/projects/new}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle"></i> <span th:text="#{project.action.new}">New Project</span>
+            </a>
+        </div>
+
+        <!-- Sort & Filter Controls -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="btn-group btn-group-sm">
+                <button type="button" id="sort-name"
+                        th:class="${sort == 'name' ? 'btn btn-primary' : 'btn btn-outline-primary'}"
+                        onclick="updateProjectList('name')">
+                    <i class="bi bi-sort-alpha-down"></i> <span th:text="#{project.sort.name}">Name</span>
+                </button>
+                <button type="button" id="sort-newest"
+                        th:class="${sort == 'newest' ? 'btn btn-primary' : 'btn btn-outline-primary'}"
+                        onclick="updateProjectList('newest')">
+                    <i class="bi bi-clock-history"></i> <span th:text="#{project.sort.newest}">Newest</span>
+                </button>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="showArchived"
+                       th:checked="${showArchived}"
+                       onchange="updateProjectList()">
+                <label class="form-check-label" for="showArchived"
+                       th:text="#{project.showArchived}">Show Archived</label>
+            </div>
+        </div>
+
+        <div th:replace="~{projects/project-grid :: grid}"></div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script th:inline="javascript">
+        let currentSort = /*[[${sort}]]*/ 'name';
+
+        function updateProjectList(newSort) {
+            if (newSort) currentSort = newSort;
+            const showArchived = document.getElementById('showArchived')?.checked || false;
+            const params = new URLSearchParams();
+            params.set('sort', currentSort);
+            if (showArchived) params.set('showArchived', 'true');
+
+            // Update button states
+            document.getElementById('sort-name').className =
+                currentSort === 'name' ? 'btn btn-primary' : 'btn btn-outline-primary';
+            document.getElementById('sort-newest').className =
+                currentSort === 'newest' ? 'btn btn-primary' : 'btn btn-outline-primary';
+
+            htmx.ajax('GET', '/projects?' + params.toString(), {target: '#project-grid', swap: 'outerHTML'});
+        }
+    </script>
+</body>
+</html>

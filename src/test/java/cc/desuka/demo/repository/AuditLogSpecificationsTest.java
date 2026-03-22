@@ -1,18 +1,17 @@
 package cc.desuka.demo.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import cc.desuka.demo.model.AuditLog;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -56,32 +55,32 @@ class AuditLogSpecificationsTest {
 
     @Test
     void withCategory_filtersbyPrefix() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withCategory("TASK"));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withCategory("TASK"));
 
         assertThat(result).extracting(AuditLog::getAction).containsExactly("TASK_CREATED");
     }
 
     @Test
     void withCategory_caseInsensitive() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withCategory("task"));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withCategory("task"));
 
         assertThat(result).extracting(AuditLog::getAction).containsExactly("TASK_CREATED");
     }
 
     @Test
     void withCategory_null_returnsAll() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withCategory(null));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withCategory(null));
 
         assertThat(result).hasSize(3);
     }
 
     @Test
     void withCategory_unknownCategory_returnsAll() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withCategory("UNKNOWN"));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withCategory("UNKNOWN"));
 
         assertThat(result).hasSize(3);
     }
@@ -90,16 +89,16 @@ class AuditLogSpecificationsTest {
 
     @Test
     void withSearch_matchesPrincipal() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withSearch("bob@example"));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withSearch("bob@example"));
 
         assertThat(result).extracting(AuditLog::getPrincipal).containsExactly("bob@example.com");
     }
 
     @Test
     void withSearch_matchesDetails() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withSearch("Fix bug"));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.withSearch("Fix bug"));
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getAction()).isEqualTo("TASK_CREATED");
@@ -107,8 +106,7 @@ class AuditLogSpecificationsTest {
 
     @Test
     void withSearch_blank_returnsAll() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withSearch("  "));
+        List<AuditLog> result = auditLogRepository.findAll(AuditLogSpecifications.withSearch("  "));
 
         assertThat(result).hasSize(3);
     }
@@ -119,8 +117,7 @@ class AuditLogSpecificationsTest {
     void withFrom_filtersOlderEntries() {
         Instant cutoff = Instant.now().minus(90, ChronoUnit.MINUTES);
 
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withFrom(cutoff));
+        List<AuditLog> result = auditLogRepository.findAll(AuditLogSpecifications.withFrom(cutoff));
 
         // Should include userLog and authLog, but not taskLog
         assertThat(result).hasSize(2);
@@ -130,8 +127,7 @@ class AuditLogSpecificationsTest {
     void withTo_filtersNewerEntries() {
         Instant cutoff = Instant.now().minus(90, ChronoUnit.MINUTES);
 
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.withTo(cutoff));
+        List<AuditLog> result = auditLogRepository.findAll(AuditLogSpecifications.withTo(cutoff));
 
         // Should include only taskLog
         assertThat(result).hasSize(1);
@@ -154,8 +150,8 @@ class AuditLogSpecificationsTest {
 
     @Test
     void build_allNulls_returnsAll() {
-        List<AuditLog> result = auditLogRepository.findAll(
-                AuditLogSpecifications.build(null, null, null, null));
+        List<AuditLog> result =
+                auditLogRepository.findAll(AuditLogSpecifications.build(null, null, null, null));
 
         assertThat(result).hasSize(3);
     }

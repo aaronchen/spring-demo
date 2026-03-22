@@ -20,7 +20,8 @@ let currentView = 'cards';
 let currentMonth = null;
 let selectedUserId = null;
 let selectedTagIds = [];
-const TASKS_BASE = APP_CONFIG.routes.tasks;
+// Project pages override this to /projects/{id} for search/filter/pagination
+const TASKS_BASE = window.TASKS_BASE_OVERRIDE || APP_CONFIG.routes.tasks;
 
 // Build the URL for the current state
 function buildUrl(page) {
@@ -45,7 +46,7 @@ function buildUrl(page) {
     // This ensures bookmarked URLs preserve the user filter choice.
     params.set('selectedUserId', selectedUserId || '');
     if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
-    if (currentView !== 'cards') params.set('view', currentView);
+    params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
 }
 
@@ -72,7 +73,7 @@ function exportTasks() {
     if (activeSorts.length > 0) {
         params.set('sort', `${activeSorts[0].field},${activeSorts[0].direction}`);
     }
-    window.location.href = `${TASKS_BASE}/export?${params.toString()}`;
+    window.location.href = `${APP_CONFIG.routes.tasks}/export?${params.toString()}`;
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
@@ -553,7 +554,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = e.relatedTarget;
         document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
         const confirmBtn = document.getElementById('delete-confirm-btn');
-        confirmBtn.setAttribute('hx-delete', `${TASKS_BASE}/${btn.dataset.taskId}`);
+        confirmBtn.setAttribute('hx-delete', `${APP_CONFIG.routes.tasks}/${btn.dataset.taskId}`);
         htmx.process(confirmBtn);
     });
 

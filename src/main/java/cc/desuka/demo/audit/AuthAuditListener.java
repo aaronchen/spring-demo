@@ -1,7 +1,6 @@
 package cc.desuka.demo.audit;
 
 import java.util.Map;
-
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
@@ -20,16 +19,20 @@ public class AuthAuditListener {
     @EventListener
     public void onAuthenticationSuccess(AuthenticationSuccessEvent event) {
         String principal = event.getAuthentication().getName();
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.AUTH_SUCCESS, null, null, principal, null));
+        eventPublisher.publishEvent(
+                new AuditEvent(AuditEvent.AUTH_SUCCESS, null, null, principal, null));
     }
 
     @EventListener
     public void onAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
         String principal = event.getAuthentication().getName();
         String reason = event.getException().getMessage();
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.AUTH_FAILURE, null, null, principal,
-                AuditDetails.toJson(Map.of("reason", reason))));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.AUTH_FAILURE,
+                        null,
+                        null,
+                        principal,
+                        AuditDetails.toJson(Map.of("reason", reason))));
     }
 }

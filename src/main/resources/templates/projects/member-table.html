@@ -1,0 +1,108 @@
+<!--/* Bare fragment — returned by HTMX after add/remove/role change.
+     Also included from project-settings.html via th:replace. */-->
+<div id="member-management-content" xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Error Alert -->
+    <div th:if="${memberError}" class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+        <span th:text="${memberError}">Error</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Add Member Form -->
+    <div class="card-body border-bottom">
+        <form class="row g-2 align-items-end"
+              th:attr="hx-post=@{/projects/{id}/members(id=${project.id})}"
+              hx-target="#member-management-content"
+              hx-swap="outerHTML">
+            <div class="col">
+                <label class="form-label fw-bold form-label-required"
+                       th:text="#{project.member.field.user}">User</label>
+                <searchable-select name="userId" id="memberUserId"
+                                   src="/api/users" value-field="id" text-field="name"
+                                   th:placeholder="#{project.member.field.user.placeholder}">
+                    <option value="">---</option>
+                </searchable-select>
+            </div>
+            <div class="col-auto">
+                <label class="form-label fw-bold" th:text="#{project.member.field.role}">Role</label>
+                <select name="role" class="form-select">
+                    <option th:each="r : ${projectRoles}"
+                            th:value="${r}"
+                            th:text="#{${'project.role.' + r.name().toLowerCase()}}"
+                            th:selected="${r.name() == 'EDITOR'}">Role</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-person-plus"></i>
+                    <span th:text="#{project.member.action.add}">Add Member</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Toast Triggers -->
+    <th:block th:if="${memberAdded}">
+        <script>showToast(APP_CONFIG.messages['toast.project.member.added'], 'success');</script>
+    </th:block>
+    <th:block th:if="${memberRemoved}">
+        <script>showToast(APP_CONFIG.messages['toast.project.member.removed'], 'success');</script>
+    </th:block>
+    <th:block th:if="${roleChanged}">
+        <script>showToast(APP_CONFIG.messages['toast.project.member.roleChanged'], 'success');</script>
+    </th:block>
+
+    <!-- Members Table -->
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th th:text="#{user.table.column.name}">Name</th>
+                    <th th:text="#{user.table.column.email}">Email</th>
+                    <th th:text="#{project.member.field.role}">Role</th>
+                    <th th:text="#{project.member.table.actions}">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="member : ${projectMembers}">
+                    <td th:text="${member.user.name}">Alice Johnson</td>
+                    <td th:text="${member.user.email}">alice@example.com</td>
+                    <td>
+                        <div class="dropdown">
+                            <button class="btn btn-sm dropdown-toggle"
+                                    th:classappend="${member.role.name() == 'OWNER' ? 'btn-primary' : (member.role.name() == 'EDITOR' ? 'btn-success' : 'btn-secondary')}"
+                                    style="min-width: 5.5rem;"
+                                    type="button"
+                                    data-bs-toggle="dropdown">
+                                <span th:text="#{${'project.role.' + member.role.name().toLowerCase()}}">Role</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li th:each="r : ${projectRoles}">
+                                    <button type="button"
+                                            th:class="${r == member.role ? 'dropdown-item active' : 'dropdown-item'}"
+                                            th:text="#{${'project.role.' + r.name().toLowerCase()}}"
+                                            th:attr="hx-patch=@{/projects/{pId}/members/{uId}/role(pId=${project.id}, uId=${member.user.id}, role=${r.name()})}"
+                                            hx-target="#member-management-content"
+                                            hx-swap="outerHTML">Role</button>
+                                </li>
+                            </ul>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger"
+                                th:attr="hx-delete=@{/projects/{pId}/members/{uId}(pId=${project.id}, uId=${member.user.id})},
+                                         hx-confirm=#{project.member.remove.confirm(${member.user.name})},
+                                         data-confirm-title=#{project.member.remove.title},
+                                         data-confirm-text=#{project.member.action.remove},
+                                         data-confirm-header-class='bg-danger text-white',
+                                         data-confirm-btn-class='btn btn-danger'"
+                                hx-target="#member-management-content"
+                                hx-swap="outerHTML">
+                            <i class="bi bi-person-x"></i>
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

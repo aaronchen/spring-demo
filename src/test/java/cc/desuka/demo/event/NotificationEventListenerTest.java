@@ -1,22 +1,20 @@
 package cc.desuka.demo.event;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
 import cc.desuka.demo.model.*;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.NotificationService;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.Messages;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
-
-import java.util.Locale;
-import java.util.Set;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationEventListenerTest {
@@ -24,7 +22,7 @@ class NotificationEventListenerTest {
     @Mock private NotificationService notificationService;
     @Mock private CommentService commentService;
     @Mock private UserService userService;
-    @Mock private MessageSource messageSource;
+    @Mock private Messages messages;
 
     @InjectMocks private NotificationEventListener listener;
 
@@ -51,13 +49,18 @@ class NotificationEventListenerTest {
 
     @Test
     void onTaskAssigned_notifiesAssignee() {
-        when(messageSource.getMessage(eq("notification.task.assigned"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.task.assigned"), any(Object[].class)))
                 .thenReturn("Bob assigned you Test Task");
 
         listener.onTaskAssigned(new TaskAssignedEvent(task, bob));
 
-        verify(notificationService).create(
-                eq(alice), eq(bob), eq(NotificationType.TASK_ASSIGNED), anyString(), anyString());
+        verify(notificationService)
+                .create(
+                        eq(alice),
+                        eq(bob),
+                        eq(NotificationType.TASK_ASSIGNED),
+                        anyString(),
+                        anyString());
     }
 
     @Test
@@ -82,7 +85,7 @@ class NotificationEventListenerTest {
 
     @Test
     void onTaskUpdated_notifiesOwnerAndSubscribers() {
-        when(messageSource.getMessage(eq("notification.task.updated"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Bob updated Test Task");
         when(commentService.getSubscriberIds(1L)).thenReturn(Set.of(3L));
         when(userService.findUserById(3L)).thenReturn(charlie);
@@ -90,17 +93,27 @@ class NotificationEventListenerTest {
         listener.onTaskUpdated(new TaskUpdatedEvent(task, bob));
 
         // Notifies owner (alice) and subscriber (charlie), not actor (bob)
-        verify(notificationService).create(
-                eq(alice), eq(bob), eq(NotificationType.TASK_UPDATED), anyString(), anyString());
-        verify(notificationService).create(
-                eq(charlie), eq(bob), eq(NotificationType.TASK_UPDATED), anyString(), anyString());
+        verify(notificationService)
+                .create(
+                        eq(alice),
+                        eq(bob),
+                        eq(NotificationType.TASK_UPDATED),
+                        anyString(),
+                        anyString());
+        verify(notificationService)
+                .create(
+                        eq(charlie),
+                        eq(bob),
+                        eq(NotificationType.TASK_UPDATED),
+                        anyString(),
+                        anyString());
         verify(notificationService, times(2)).create(any(), any(), any(), any(), any());
     }
 
     @Test
     void onTaskUpdated_actorIsOwner_doesNotSelfNotify() {
         task.setUser(alice);
-        when(messageSource.getMessage(eq("notification.task.updated"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Alice updated Test Task");
         when(commentService.getSubscriberIds(1L)).thenReturn(Set.of());
 
@@ -120,7 +133,7 @@ class NotificationEventListenerTest {
     @Test
     void onTaskUpdated_subscriberAlsoOwner_notifiedOnlyOnce() {
         // Alice is owner AND subscriber (she commented before)
-        when(messageSource.getMessage(eq("notification.task.updated"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Bob updated Test Task");
         when(commentService.getSubscriberIds(1L)).thenReturn(Set.of(1L));
 
@@ -140,9 +153,9 @@ class NotificationEventListenerTest {
         comment.setTask(task);
         comment.setUser(bob);
 
-        when(messageSource.getMessage(eq("notification.comment.added"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.comment.added"), any(Object[].class)))
                 .thenReturn("Bob commented on Test Task");
-        when(messageSource.getMessage(eq("notification.comment.mentioned"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.comment.mentioned"), any(Object[].class)))
                 .thenReturn("Bob mentioned you on Test Task");
         when(commentService.getCommenterIds(1L)).thenReturn(Set.of());
         when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of());
@@ -151,10 +164,20 @@ class NotificationEventListenerTest {
         listener.onCommentAdded(new CommentAddedEvent(comment, task, bob));
 
         // Owner (alice) gets COMMENT_ADDED, mentioned (charlie) gets COMMENT_MENTIONED
-        verify(notificationService).create(
-                eq(alice), eq(bob), eq(NotificationType.COMMENT_ADDED), anyString(), anyString());
-        verify(notificationService).create(
-                eq(charlie), eq(bob), eq(NotificationType.COMMENT_MENTIONED), anyString(), anyString());
+        verify(notificationService)
+                .create(
+                        eq(alice),
+                        eq(bob),
+                        eq(NotificationType.COMMENT_ADDED),
+                        anyString(),
+                        anyString());
+        verify(notificationService)
+                .create(
+                        eq(charlie),
+                        eq(bob),
+                        eq(NotificationType.COMMENT_MENTIONED),
+                        anyString(),
+                        anyString());
         verify(notificationService, times(2)).create(any(), any(), any(), any(), any());
     }
 
@@ -167,7 +190,7 @@ class NotificationEventListenerTest {
         comment.setUser(alice);
 
         task.setUser(alice);
-        when(messageSource.getMessage(eq("notification.comment.added"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.comment.added"), any(Object[].class)))
                 .thenReturn("Alice commented on Test Task");
         when(commentService.getCommenterIds(1L)).thenReturn(Set.of());
         when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of());
@@ -189,7 +212,7 @@ class NotificationEventListenerTest {
         comment.setTask(task);
         comment.setUser(bob);
 
-        when(messageSource.getMessage(eq("notification.comment.added"), any(), any(Locale.class)))
+        when(messages.get(eq("notification.comment.added"), any(Object[].class)))
                 .thenReturn("Bob commented on Test Task");
         when(commentService.getCommenterIds(1L)).thenReturn(Set.of(3L));
         when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of(3L));

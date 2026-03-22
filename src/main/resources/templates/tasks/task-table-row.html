@@ -7,26 +7,35 @@
 <tbody>
 <tr th:fragment="row"
     th:id="'task-row-' + ${task.id}"
-    th:classappend="${task.status.name() == 'COMPLETED' ? 'table-success' : ''}"
-    th:with="canEdit=${#auth.canEdit(task) || task.user == null},
+    th:classappend="${task.status.name() == 'COMPLETED' ? 'table-success' : (task.status.name() == 'CANCELLED' ? 'table-secondary' : '')}"
+    th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
+             isBacklog=${task.status.name() == 'BACKLOG'},
              isOpen=${task.status.name() == 'OPEN'},
              isInProgress=${task.status.name() == 'IN_PROGRESS'},
+             isInReview=${task.status.name() == 'IN_REVIEW'},
              isCompleted=${task.status.name() == 'COMPLETED'},
-             overdue=${!isCompleted && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+             isCancelled=${task.status.name() == 'CANCELLED'},
+             isTerminal=${isCompleted || isCancelled},
+             overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
     <td>
-        <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-           th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
-           hx-target="#task-modal-content"
-           hx-swap="innerHTML"
-           class="fw-semibold text-decoration-none"
-           th:text="${task.title}">Title</a>
-        <a th:each="tag : ${task.tags}" href="#"
-           class="badge bg-secondary ms-1 text-decoration-none text-white"
-           th:data-tag-id="${tag.id}"
-           onclick="toggleTagFilter(this.dataset.tagId); return false;">
-            <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
-        </a>
-        <br th:if="${task.user != null}">
+        <div class="d-flex align-items-center flex-wrap gap-1">
+            <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark">
+                <i class="bi bi-check2-square"></i>
+                <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
+            </span>
+            <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
+               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+               hx-target="#task-modal-content"
+               hx-swap="innerHTML"
+               class="fw-semibold text-decoration-none"
+               th:text="${task.title}">Title</a>
+            <a th:each="tag : ${task.tags}" href="#"
+               class="badge bg-secondary text-decoration-none text-white"
+               th:data-tag-id="${tag.id}"
+               onclick="toggleTagFilter(this.dataset.tagId); return false;">
+                <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
+            </a>
+        </div>
         <small th:if="${task.user != null}">
             <i class="bi bi-person text-muted"></i>
             <a href="#" class="text-muted text-decoration-none user-link"
@@ -55,13 +64,25 @@
            onclick="setStatusFilter('COMPLETED'); return false;">
             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
         </a>
+        <a href="#" th:if="${isCancelled}" class="badge bg-dark text-decoration-none text-white"
+           onclick="setStatusFilter('CANCELLED'); return false;">
+            <i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span>
+        </a>
         <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
            onclick="setStatusFilter('overdue'); return false;">
             <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
         </a>
+        <a href="#" th:if="${isInReview && !overdue}" class="badge bg-info text-decoration-none text-white"
+           onclick="setStatusFilter('IN_REVIEW'); return false;">
+            <i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span>
+        </a>
         <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-warning text-dark text-decoration-none"
            onclick="setStatusFilter('IN_PROGRESS'); return false;">
             <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
+        </a>
+        <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-light text-dark text-decoration-none"
+           onclick="setStatusFilter('BACKLOG'); return false;">
+            <i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span>
         </a>
         <a href="#" th:if="${isOpen && !overdue}" class="badge bg-secondary text-decoration-none text-white"
            onclick="setStatusFilter('OPEN'); return false;">
@@ -79,19 +100,15 @@
     </td>
     <td class="text-truncate" style="max-width: 280px;">
         <span class="text-muted small" th:text="${task.description} ?: #{task.noDescription}">Description</span>
-        <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark ms-1">
-            <i class="bi bi-check2-square"></i>
-            <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
-        </span>
     </td>
     <td>
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
-            <button th:class="${isCompleted ? 'btn btn-outline-warning' : (isInProgress ? 'btn btn-outline-success' : 'btn btn-outline-primary')}"
+            <button th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
                     th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
-                    th:title="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">
-                <i th:classappend="${isCompleted ? 'bi-arrow-counterclockwise' : (isInProgress ? 'bi-check2' : 'bi-play-fill')}"></i>
+                    th:title="${isBacklog} ? #{action.toggle.backlog.next} : (${isOpen} ? #{action.toggle.open.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : (${isInReview} ? #{action.toggle.inReview.next} : (${isCancelled} ? #{action.toggle.cancelled.next} : #{action.toggle.completed.next}))))">
+                <i th:classappend="${isCompleted || isCancelled ? 'bi-arrow-counterclockwise' : (isInReview ? 'bi-check2' : (isInProgress ? 'bi-eye' : (isBacklog ? 'bi-arrow-right' : 'bi-play-fill')))}"></i>
             </button>
             <!-- View/Edit Button -->
             <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
@@ -103,7 +120,7 @@
                 <i th:class="${canEdit} ? 'bi bi-pencil' : 'bi bi-eye'"></i>
             </a>
             <!-- Delete Button -->
-            <button th:if="${canEdit}" class="btn btn-outline-danger"
+            <button th:if="${canEdit && !isTerminal}" class="btn btn-outline-danger"
                     data-bs-toggle="modal"
                     data-bs-target="#task-delete-modal"
                     th:data-task-id="${task.id}"

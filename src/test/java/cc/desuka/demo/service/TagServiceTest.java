@@ -1,25 +1,24 @@
 package cc.desuka.demo.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import cc.desuka.demo.audit.AuditEvent;
 import org.springframework.context.ApplicationEventPublisher;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TagServiceTest {
@@ -63,11 +62,13 @@ class TagServiceTest {
     @Test
     void createTag_savesAndPublishesAuditEvent() {
         Tag tag = new Tag("NewTag");
-        when(tagRepository.save(any(Tag.class))).thenAnswer(inv -> {
-            Tag t = inv.getArgument(0);
-            t.setId(1L);
-            return t;
-        });
+        when(tagRepository.save(any(Tag.class)))
+                .thenAnswer(
+                        inv -> {
+                            Tag t = inv.getArgument(0);
+                            t.setId(1L);
+                            return t;
+                        });
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("admin@example.com");

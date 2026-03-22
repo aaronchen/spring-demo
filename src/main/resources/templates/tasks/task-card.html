@@ -1,35 +1,51 @@
 <!--/* Reusable task card fragment - used by both full page and HTMX partial responses */-->
 <div th:fragment="card" class="col" th:id="'task-card-' + ${task.id}"
-     th:with="canEdit=${#auth.canEdit(task) || task.user == null},
+     th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
+              isBacklog=${task.status.name() == 'BACKLOG'},
               isOpen=${task.status.name() == 'OPEN'},
               isInProgress=${task.status.name() == 'IN_PROGRESS'},
+              isInReview=${task.status.name() == 'IN_REVIEW'},
               isCompleted=${task.status.name() == 'COMPLETED'},
-              overdue=${!isCompleted && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+              isCancelled=${task.status.name() == 'CANCELLED'},
+              isTerminal=${isCompleted || isCancelled},
+              overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
     <div class="card card-clip card-lift h-100 shadow-sm"
-         th:classappend="${isCompleted ? 'border-success' : (isInProgress ? 'border-warning' : '')}">
+         th:classappend="${isCompleted ? 'border-success' : (isCancelled ? 'border-dark' : (isInReview ? 'border-info' : (isInProgress ? 'border-warning' : '')))}">
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
-             th:classappend="${isCompleted ? 'bg-success text-white' : (isInProgress ? 'bg-warning text-dark' : '')}">
+             th:classappend="${isCompleted ? 'bg-success text-white' : (isCancelled ? 'bg-dark text-white' : (isInReview ? 'bg-info text-white' : (isInProgress ? 'bg-warning text-dark' : '')))}">
             <h5 class="mb-0">
                 <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
                    th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="text-decoration-none"
-                   th:classappend="${isCompleted ? 'text-white' : (isInProgress ? 'text-dark' : '')}"
+                   th:classappend="${isCompleted || isCancelled || isInReview ? 'text-white' : (isInProgress ? 'text-dark' : '')}"
                    th:text="${task.title}">Task Title</a>
             </h5>
             <a href="#" th:if="${isCompleted}" class="badge bg-light text-success text-decoration-none"
                onclick="setStatusFilter('COMPLETED'); return false;">
                 <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
             </a>
+            <a href="#" th:if="${isCancelled}" class="badge bg-light text-dark text-decoration-none"
+               onclick="setStatusFilter('CANCELLED'); return false;">
+                <i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span>
+            </a>
             <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
                onclick="setStatusFilter('overdue'); return false;">
                 <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
             </a>
+            <a href="#" th:if="${isInReview && !overdue}" class="badge bg-light text-info text-decoration-none"
+               onclick="setStatusFilter('IN_REVIEW'); return false;">
+                <i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span>
+            </a>
             <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-light text-warning text-decoration-none"
                onclick="setStatusFilter('IN_PROGRESS'); return false;">
                 <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
+            </a>
+            <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-light text-muted text-decoration-none"
+               onclick="setStatusFilter('BACKLOG'); return false;">
+                <i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span>
             </a>
             <a href="#" th:if="${isOpen && !overdue}" class="badge bg-light text-secondary text-decoration-none"
                onclick="setStatusFilter('OPEN'); return false;">
@@ -58,9 +74,7 @@
                       th:classappend="${overdue} ? 'bg-danger' : 'bg-light text-dark'">
                     <i class="bi bi-calendar"></i> <span th:text="${#temporals.format(task.dueDate, 'MMM dd')}">Date</span>
                 </span>
-            </div>
-            <div th:if="${task.checklistTotal > 0}" class="mb-2">
-                <span class="badge bg-light text-dark">
+                <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark">
                     <i class="bi bi-check2-square"></i>
                     <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
                 </span>
@@ -96,11 +110,11 @@
             <div class="d-flex gap-2">
                 <!-- Toggle Button -->
                 <button class="btn btn-sm flex-fill"
-                        th:classappend="${isCompleted ? 'btn-outline-warning' : (isInProgress ? 'btn-outline-success' : 'btn-outline-primary')}"
+                        th:classappend="${isInReview ? 'btn-outline-success' : (isInProgress ? 'btn-outline-info' : (isOpen ? 'btn-outline-warning' : 'btn-outline-secondary'))}"
                         th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=cards'},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">
-                    <i th:classappend="${isCompleted ? 'bi-arrow-counterclockwise' : (isInProgress ? 'bi-check2' : 'bi-play-fill')}"></i>
-                    <span th:text="${isCompleted} ? #{action.toggle.completed.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : #{action.toggle.open.next})">Toggle</span>
+                    <i th:classappend="${isCompleted || isCancelled ? 'bi-arrow-counterclockwise' : (isInReview ? 'bi-check2' : (isInProgress ? 'bi-eye' : (isBacklog ? 'bi-arrow-right' : 'bi-play-fill')))}"></i>
+                    <span th:text="${isBacklog} ? #{action.toggle.backlog.next} : (${isOpen} ? #{action.toggle.open.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : (${isInReview} ? #{action.toggle.inReview.next} : (${isCancelled} ? #{action.toggle.cancelled.next} : #{action.toggle.completed.next}))))">Toggle</span>
                 </button>
 
                 <!-- View/Edit Button -->
@@ -114,7 +128,7 @@
                 </a>
 
                 <!-- Delete Button -->
-                <button th:if="${canEdit}" class="btn btn-sm btn-outline-danger flex-fill"
+                <button th:if="${canEdit && !isTerminal}" class="btn btn-sm btn-outline-danger flex-fill"
                         data-bs-toggle="modal"
                         data-bs-target="#task-delete-modal"
                         th:data-task-id="${task.id}"

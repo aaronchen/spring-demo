@@ -1,0 +1,167 @@
+package cc.desuka.demo.model;
+
+import cc.desuka.demo.audit.Auditable;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+@Entity
+@Table(name = "projects")
+public class Project implements Auditable {
+
+    public static final String FIELD_ID = "id";
+    public static final String FIELD_NAME = "name";
+    public static final String FIELD_DESCRIPTION = "description";
+    public static final String FIELD_STATUS = "status";
+    public static final String FIELD_CREATED_BY = "createdBy";
+    public static final String FIELD_CREATED_AT = "createdAt";
+    public static final String FIELD_UPDATED_AT = "updatedAt";
+    public static final String FIELD_MEMBERS = "members";
+    public static final String FIELD_MEMBER = "member";
+    public static final String FIELD_ROLE = "role";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "{project.name.notBlank}")
+    @Size(min = 1, max = 100, message = "{project.name.size}")
+    @Column(nullable = false)
+    private String name;
+
+    @Size(max = 500, message = "{project.description.size}")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProjectStatus status = ProjectStatus.ACTIVE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @OneToMany(
+            mappedBy = "project",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    private List<ProjectMember> members = new ArrayList<>();
+
+    @OneToMany(
+            mappedBy = "project",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    private List<Task> tasks = new ArrayList<>();
+
+    @PrePersist
+    protected void onPrePersist() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onPreUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    public Project() {}
+
+    public Project(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    // Getters and Setters
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public ProjectStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ProjectStatus status) {
+        this.status = status;
+    }
+
+    public User getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(User createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public List<ProjectMember> getMembers() {
+        return members;
+    }
+
+    public void setMembers(List<ProjectMember> members) {
+        this.members = members;
+    }
+
+    public List<Task> getTasks() {
+        return tasks;
+    }
+
+    public void setTasks(List<Task> tasks) {
+        this.tasks = tasks;
+    }
+
+    @Override
+    public Map<String, Object> toAuditSnapshot() {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_NAME, name);
+        snapshot.put(FIELD_DESCRIPTION, description);
+        snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
+        return snapshot;
+    }
+}

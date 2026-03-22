@@ -1,14 +1,14 @@
 package cc.desuka.demo.security;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
-
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class OwnershipGuardTest {
 
@@ -36,8 +36,7 @@ class OwnershipGuardTest {
         Task task = new Task("Test", null);
         task.setUser(bob);
 
-        assertThatCode(() -> guard.requireAccess(task, bobDetails))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> guard.requireAccess(task, bobDetails)).doesNotThrowAnyException();
     }
 
     @Test
@@ -45,8 +44,7 @@ class OwnershipGuardTest {
         Task task = new Task("Test", null);
         task.setUser(bob); // owned by Bob
 
-        assertThatCode(() -> guard.requireAccess(task, aliceDetails))
-                .doesNotThrowAnyException();
+        assertThatCode(() -> guard.requireAccess(task, aliceDetails)).doesNotThrowAnyException();
     }
 
     @Test

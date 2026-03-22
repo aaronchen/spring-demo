@@ -3,12 +3,12 @@ package cc.desuka.demo.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.util.Objects;
 
 @Entity
-@Table(name = "user_preferences",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "pref_key"}))
+@Table(
+        name = "user_preferences",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "pref_key"}))
 public class UserPreference {
 
     public static final String FIELD_ID = "id";
@@ -33,8 +33,7 @@ public class UserPreference {
     @Column(name = "pref_value")
     private String value;
 
-    public UserPreference() {
-    }
+    public UserPreference() {}
 
     public UserPreference(User user, String key, String value) {
         this.user = user;

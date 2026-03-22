@@ -17,8 +17,6 @@ public class PresenceApiController {
     @GetMapping("/api/presence")
     public PresenceResponse getPresence() {
         return new PresenceResponse(
-                presenceService.getOnlineUsers(),
-                presenceService.getOnlineCount()
-        );
+                presenceService.getOnlineUsers(), presenceService.getOnlineCount());
     }
 }

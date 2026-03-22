@@ -1,5 +1,9 @@
 package cc.desuka.demo.audit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.AuditLogRepository;
@@ -10,10 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class AuditEventListenerTest {
 
@@ -23,8 +23,13 @@ class AuditEventListenerTest {
 
     @Test
     void onAuditEvent_persistsAuditLog() {
-        AuditEvent event = new AuditEvent(
-                AuditEvent.TASK_CREATED, User.class, 1L, "alice@example.com", "{\"title\":\"Test\"}");
+        AuditEvent event =
+                new AuditEvent(
+                        AuditEvent.TASK_CREATED,
+                        User.class,
+                        1L,
+                        "alice@example.com",
+                        "{\"title\":\"Test\"}");
 
         auditEventListener.onAuditEvent(event);
 
@@ -41,8 +46,7 @@ class AuditEventListenerTest {
 
     @Test
     void onAuditEvent_systemPrincipal_skipsLog() {
-        AuditEvent event = new AuditEvent(
-                AuditEvent.TASK_CREATED, User.class, 1L, "system", null);
+        AuditEvent event = new AuditEvent(AuditEvent.TASK_CREATED, User.class, 1L, "system", null);
 
         auditEventListener.onAuditEvent(event);
 

@@ -6,9 +6,18 @@ public class AuditEvent {
 
     // Audit categories — single source of truth for filter UI and query logic.
     // Each event constant must be prefixed with one of these categories.
-    public static final List<String> CATEGORIES = List.of(
-        "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH", "SETTING"
-    );
+    public static final List<String> CATEGORIES =
+            List.of("PROJECT", "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH", "SETTING");
+
+    // Project actions
+    public static final String PROJECT_CREATED = "PROJECT_CREATED";
+    public static final String PROJECT_UPDATED = "PROJECT_UPDATED";
+    public static final String PROJECT_ARCHIVED = "PROJECT_ARCHIVED";
+    public static final String PROJECT_UNARCHIVED = "PROJECT_UNARCHIVED";
+    public static final String PROJECT_DELETED = "PROJECT_DELETED";
+    public static final String PROJECT_MEMBER_ADDED = "PROJECT_MEMBER_ADDED";
+    public static final String PROJECT_MEMBER_REMOVED = "PROJECT_MEMBER_REMOVED";
+    public static final String PROJECT_MEMBER_ROLE_CHANGED = "PROJECT_MEMBER_ROLE_CHANGED";
 
     // Task actions
     public static final String TASK_CREATED = "TASK_CREATED";
@@ -50,7 +59,8 @@ public class AuditEvent {
     private final String principal;
     private final String details;
 
-    public AuditEvent(String action, Class<?> entityType, Long entityId, String principal, String details) {
+    public AuditEvent(
+            String action, Class<?> entityType, Long entityId, String principal, String details) {
         this.action = action;
         this.entityType = entityType != null ? entityType.getSimpleName() : null;
         this.entityId = entityId;

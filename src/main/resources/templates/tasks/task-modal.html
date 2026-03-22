@@ -24,7 +24,7 @@
           th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
           hx-target="#task-modal-content"
           hx-swap="innerHTML"
-          th:object="${task}"
+          th:object="${taskFormRequest}"
           method="post">
         <th:block th:replace="~{tasks/task-layout :: columns}"></th:block>
     </form>

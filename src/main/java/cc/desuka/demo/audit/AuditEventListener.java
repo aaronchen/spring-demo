@@ -2,12 +2,11 @@ package cc.desuka.demo.audit;
 
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.repository.AuditLogRepository;
+import java.time.Instant;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.time.Instant;
 
 @Component
 public class AuditEventListener {

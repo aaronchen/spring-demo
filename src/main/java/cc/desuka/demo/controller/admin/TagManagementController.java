@@ -6,15 +6,14 @@ import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/tags")
@@ -33,8 +32,11 @@ public class TagManagementController {
     }
 
     @PostMapping
-    public String createTag(@Valid @ModelAttribute TagRequest tagRequest, BindingResult result,
-                            Model model, HttpServletRequest request) {
+    public String createTag(
+            @Valid @ModelAttribute TagRequest tagRequest,
+            BindingResult result,
+            Model model,
+            HttpServletRequest request) {
         if (result.hasErrors()) {
             model.addAttribute("tagName", tagRequest.getName());
             populateModel(model);

@@ -9,6 +9,25 @@ CREATE TABLE users (
     enabled  BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+CREATE TABLE projects (
+    id          BIGSERIAL PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    created_by  BIGINT NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMP,
+    updated_at  TIMESTAMP
+);
+
+CREATE TABLE project_members (
+    id          BIGSERIAL PRIMARY KEY,
+    project_id  BIGINT NOT NULL REFERENCES projects(id),
+    user_id     BIGINT NOT NULL REFERENCES users(id),
+    role        VARCHAR(50) NOT NULL DEFAULT 'EDITOR',
+    created_at  TIMESTAMP,
+    UNIQUE (project_id, user_id)
+);
+
 CREATE TABLE tasks (
     id           BIGSERIAL PRIMARY KEY,
     version      BIGINT,
@@ -21,6 +40,7 @@ CREATE TABLE tasks (
     completed_at TIMESTAMP,
     created_at   TIMESTAMP,
     updated_at   TIMESTAMP,
+    project_id   BIGINT NOT NULL REFERENCES projects(id),
     user_id      BIGINT REFERENCES users(id)
 );
 
@@ -85,3 +105,9 @@ CREATE TABLE user_preferences (
     pref_value VARCHAR(500),
     UNIQUE (user_id, pref_key)
 );
+
+-- Seed a default admin user for first login
+-- Password: 'password' (BCrypt encoded)
+-- Change this password after first login via the profile page
+INSERT INTO users (name, email, password, role, enabled)
+VALUES ('Admin', 'admin@example.com', '$2b$10$eKasj4ieP4KxeTTOYcMBh.9MHNSWIKjRc5lcTWr7Um8K5m/CJIux2', 'ADMIN', true);

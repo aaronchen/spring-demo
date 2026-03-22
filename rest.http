@@ -65,6 +65,7 @@ Cookie: JSESSIONID={{sessionId}}
 Content-Type: application/json
 
 {
+    "projectId": 1,
     "title": "New task",
     "description": "Created via REST Client",
     "priority": "HIGH",
@@ -79,6 +80,7 @@ Cookie: JSESSIONID={{sessionId}}
 Content-Type: application/json
 
 {
+    "projectId": 1,
     "title": "Task for another user",
     "description": "Admin assigns to user 2",
     "tagIds": [1],
@@ -124,7 +126,7 @@ Cookie: JSESSIONID={{sessionId}}
 DELETE {{baseUrl}}/api/tasks/2
 Cookie: JSESSIONID={{sessionId}}
 
-### Toggle task completion (open to all authenticated users)
+### Toggle task status (project editor or admin; advances through BACKLOG→OPEN→IN_PROGRESS→IN_REVIEW→COMPLETED)
 PATCH {{baseUrl}}/api/tasks/1/toggle
 Cookie: JSESSIONID={{sessionId}}
 

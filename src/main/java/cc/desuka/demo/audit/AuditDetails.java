@@ -1,13 +1,12 @@
 package cc.desuka.demo.audit;
 
-import org.springframework.context.MessageSource;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.core.JacksonException;
-
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import org.springframework.context.MessageSource;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 public final class AuditDetails {
 
@@ -30,13 +29,14 @@ public final class AuditDetails {
         }
     }
 
-    public static Map<String, Object> resolveDisplayNames(Map<String, Object> map,
-                                                          MessageSource messageSource, Locale locale) {
+    public static Map<String, Object> resolveDisplayNames(
+            Map<String, Object> map, MessageSource messageSource, Locale locale) {
         if (map == null) return null;
         Map<String, Object> resolved = new LinkedHashMap<>();
         for (var entry : map.entrySet()) {
-            String displayName = messageSource.getMessage(
-                "audit.field." + entry.getKey(), null, entry.getKey(), locale);
+            String displayName =
+                    messageSource.getMessage(
+                            "audit.field." + entry.getKey(), null, entry.getKey(), locale);
             resolved.put(displayName, entry.getValue());
         }
         return resolved;
@@ -48,7 +48,13 @@ public final class AuditDetails {
             Object oldVal = before.get(key);
             Object newVal = after.get(key);
             if (!Objects.equals(oldVal, newVal)) {
-                changes.put(key, Map.of("old", oldVal != null ? oldVal : "", "new", newVal != null ? newVal : ""));
+                changes.put(
+                        key,
+                        Map.of(
+                                "old",
+                                oldVal != null ? oldVal : "",
+                                "new",
+                                newVal != null ? newVal : ""));
             }
         }
         return changes;

@@ -4,7 +4,6 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,8 +41,7 @@ public class Comment implements OwnedEntity, Auditable {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    public Comment() {
-    }
+    public Comment() {}
 
     public Long getId() {
         return id;

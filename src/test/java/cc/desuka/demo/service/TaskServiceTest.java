@@ -1,11 +1,18 @@
 package cc.desuka.demo.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
+
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
@@ -13,6 +20,9 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.util.Messages;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,28 +32,20 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
 class TaskServiceTest {
 
     @Mock private TaskRepository taskRepository;
     @Mock private TagService tagService;
     @Mock private UserService userService;
-    @Mock private CommentService commentService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private Messages messages;
 
     @InjectMocks private TaskService taskService;
 
     private User alice;
     private User bob;
+    private Project project;
     private Task task;
 
     @BeforeEach
@@ -53,10 +55,14 @@ class TaskServiceTest {
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
         bob.setId(2L);
 
+        project = new Project("Test Project", "Description");
+        project.setId(1L);
+
         task = new Task("Test Task", "Description");
         task.setId(1L);
         task.setVersion(0L);
         task.setUser(alice);
+        task.setProject(project);
         task.setStatus(TaskStatus.OPEN);
         task.setPriority(Priority.MEDIUM);
     }
@@ -88,17 +94,21 @@ class TaskServiceTest {
         tag.setId(1L);
         when(tagService.findAllByIds(List.of(1L))).thenReturn(List.of(tag));
         when(userService.findUserById(1L)).thenReturn(alice);
-        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> {
-            Task t = inv.getArgument(0);
-            t.setId(1L);
-            return t;
-        });
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(
+                        inv -> {
+                            Task t = inv.getArgument(0);
+                            t.setId(1L);
+                            return t;
+                        });
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
             mocked.when(SecurityUtils::getCurrentUser).thenReturn(alice);
 
-            Task result = taskService.createTask(new Task("New Task", "Desc"), List.of(1L), 1L);
+            Task newTask = new Task("New Task", "Desc");
+            newTask.setProject(project);
+            Task result = taskService.createTask(newTask, List.of(1L), 1L);
 
             assertThat(result.getTags()).containsExactly(tag);
             assertThat(result.getUser()).isEqualTo(alice);
@@ -117,17 +127,21 @@ class TaskServiceTest {
     void createTask_noTags_noUser() {
         when(tagService.findAllByIds(anyList())).thenReturn(List.of());
         when(userService.findUserById(null)).thenReturn(null);
-        when(taskRepository.save(any(Task.class))).thenAnswer(inv -> {
-            Task t = inv.getArgument(0);
-            t.setId(2L);
-            return t;
-        });
+        when(taskRepository.save(any(Task.class)))
+                .thenAnswer(
+                        inv -> {
+                            Task t = inv.getArgument(0);
+                            t.setId(2L);
+                            return t;
+                        });
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
             mocked.when(SecurityUtils::getCurrentUser).thenReturn(alice);
 
-            Task result = taskService.createTask(new Task("Unassigned", null), List.of(), null);
+            Task unassigned = new Task("Unassigned", null);
+            unassigned.setProject(project);
+            Task result = taskService.createTask(unassigned, List.of(), null);
 
             assertThat(result.getTags()).isEmpty();
             assertThat(result.getUser()).isNull();
@@ -140,8 +154,7 @@ class TaskServiceTest {
     void updateTask_optimisticLock_throwsStaleDataException() {
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
 
-        assertThatThrownBy(() ->
-                taskService.updateTask(1L, task, List.of(), 1L, 999L))
+        assertThatThrownBy(() -> taskService.updateTask(1L, task, List.of(), 1L, 999L))
                 .isInstanceOf(StaleDataException.class);
     }
 
@@ -173,7 +186,7 @@ class TaskServiceTest {
     // ── deleteTask ──────────────────────────────────────────────────────
 
     @Test
-    void deleteTask_deletesCommentsFirst() {
+    void deleteTask_deletesTaskAndPublishesEvents() {
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -182,10 +195,8 @@ class TaskServiceTest {
 
             taskService.deleteTask(1L);
 
-            // Comments deleted before task
-            var inOrder = inOrder(commentService, taskRepository);
-            inOrder.verify(commentService).deleteByTaskId(1L);
-            inOrder.verify(taskRepository).delete(task);
+            verify(taskRepository).delete(task);
+            verify(eventPublisher, atLeast(1)).publishEvent(any(Object.class));
         }
     }
 
@@ -208,8 +219,8 @@ class TaskServiceTest {
     }
 
     @Test
-    void advanceStatus_inProgressToCompleted_setsCompletedAt() {
-        task.setStatus(TaskStatus.IN_PROGRESS);
+    void advanceStatus_inReviewToCompleted_setsCompletedAt() {
+        task.setStatus(TaskStatus.IN_REVIEW);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -255,12 +266,13 @@ class TaskServiceTest {
 
     @Test
     void getIncompleteTasks_excludesCompleted() {
-        when(taskRepository.findByStatusNot(TaskStatus.COMPLETED)).thenReturn(List.of(task));
+        when(taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses()))
+                .thenReturn(List.of(task));
 
         List<Task> result = taskService.getIncompleteTasks();
 
         assertThat(result).containsExactly(task);
-        verify(taskRepository).findByStatusNot(TaskStatus.COMPLETED);
+        verify(taskRepository).findByStatusNotIn(TaskStatus.terminalStatuses());
     }
 
     // ── searchTasks ─────────────────────────────────────────────────────
@@ -277,11 +289,39 @@ class TaskServiceTest {
 
     @Test
     void searchTasks_withKeyword_searchesTitleAndDescription() {
-        when(taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("test", "test"))
+        when(taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+                        "test", "test"))
                 .thenReturn(List.of(task));
 
         List<Task> result = taskService.searchTasks("test");
 
         assertThat(result).containsExactly(task);
+    }
+
+    // ── deleteTask ───────────────────────────────────────────────────────
+
+    @Test
+    void deleteTask_completedTask_throwsIllegalStateException() {
+        task.setStatus(TaskStatus.COMPLETED);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        assertThatThrownBy(() -> taskService.deleteTask(1L))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void deleteTask_openTask_deletesAndPublishesEvents() {
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+        try (var mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
+            mocked.when(SecurityUtils::getCurrentUser).thenReturn(alice);
+
+            taskService.deleteTask(1L);
+
+            verify(taskRepository).delete(task);
+            verify(eventPublisher).publishEvent(any(AuditEvent.class));
+            verify(eventPublisher).publishEvent(any(TaskChangeEvent.class));
+        }
     }
 }

@@ -1,5 +1,11 @@
 package cc.desuka.demo.controller.api;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.mapper.UserMapper;
 import cc.desuka.demo.model.Role;
@@ -7,7 +13,8 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
-import tools.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,15 +24,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -107,26 +106,30 @@ class UserApiControllerTest {
         when(userService.createUser(any(User.class))).thenReturn(newUser);
         when(userMapper.toResponse(any(User.class))).thenReturn(newResponse);
 
-        String body = objectMapper.writeValueAsString(
-                Map.of("name", "Charlie", "email", "charlie@example.com"));
+        String body =
+                objectMapper.writeValueAsString(
+                        Map.of("name", "Charlie", "email", "charlie@example.com"));
 
-        mockMvc.perform(post("/api/users")
-                        .with(user(adminDetails))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/users")
+                                .with(user(adminDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Charlie"));
     }
 
     @Test
     void createUser_regularUser_returns403() throws Exception {
-        String body = objectMapper.writeValueAsString(
-                Map.of("name", "Charlie", "email", "charlie@example.com"));
+        String body =
+                objectMapper.writeValueAsString(
+                        Map.of("name", "Charlie", "email", "charlie@example.com"));
 
-        mockMvc.perform(post("/api/users")
-                        .with(user(regularDetails))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+        mockMvc.perform(
+                        post("/api/users")
+                                .with(user(regularDetails))
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
                 .andExpect(status().isForbidden());
     }
 

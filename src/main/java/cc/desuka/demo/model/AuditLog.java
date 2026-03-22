@@ -2,7 +2,6 @@ package cc.desuka.demo.model;
 
 import cc.desuka.demo.audit.AuditDetails;
 import jakarta.persistence.*;
-
 import java.time.Instant;
 import java.util.Map;
 
@@ -97,8 +96,7 @@ public class AuditLog {
     // @Transient: excluded from JPA/Hibernate column mapping.
     // transient: excluded from Java serialization (e.g., HTTP session storage).
     // Lazily parsed on first access via getDetailsMap(); templates use ${entry.detailsMap}.
-    @Transient
-    private transient Map<String, Object> detailsMap;
+    @Transient private transient Map<String, Object> detailsMap;
 
     public Map<String, Object> getDetailsMap() {
         if (detailsMap == null) {

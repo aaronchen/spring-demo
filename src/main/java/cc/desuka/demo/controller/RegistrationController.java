@@ -24,10 +24,11 @@ public class RegistrationController {
     private final ApplicationEventPublisher eventPublisher;
     private final SettingService settingService;
 
-    public RegistrationController(UserService userService,
-                                  PasswordEncoder passwordEncoder,
-                                  ApplicationEventPublisher eventPublisher,
-                                  SettingService settingService) {
+    public RegistrationController(
+            UserService userService,
+            PasswordEncoder passwordEncoder,
+            ApplicationEventPublisher eventPublisher,
+            SettingService settingService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
@@ -44,15 +45,17 @@ public class RegistrationController {
     }
 
     @PostMapping("/register")
-    public String register(@Valid @ModelAttribute RegistrationRequest registrationRequest,
-                           BindingResult result) {
+    public String register(
+            @Valid @ModelAttribute RegistrationRequest registrationRequest, BindingResult result) {
         if (!settingService.load().isRegistrationEnabled()) {
             return "redirect:/login";
         }
 
         // Cross-field validation: passwords must match
         if (!registrationRequest.getPassword().equals(registrationRequest.getConfirmPassword())) {
-            result.rejectValue("confirmPassword", "register.error.passwordMismatch",
+            result.rejectValue(
+                    "confirmPassword",
+                    "register.error.passwordMismatch",
                     "Passwords do not match.");
         }
 
@@ -60,15 +63,19 @@ public class RegistrationController {
             return "register";
         }
 
-        User user = new User(
-                registrationRequest.getName(),
-                registrationRequest.getEmail(),
-                passwordEncoder.encode(registrationRequest.getPassword())
-        );
+        User user =
+                new User(
+                        registrationRequest.getName(),
+                        registrationRequest.getEmail(),
+                        passwordEncoder.encode(registrationRequest.getPassword()));
         User saved = userService.createUser(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_REGISTERED, User.class, saved.getId(),
-                saved.getEmail(), AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_REGISTERED,
+                        User.class,
+                        saved.getId(),
+                        saved.getEmail(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
 
         return "redirect:/login?registered";
     }
