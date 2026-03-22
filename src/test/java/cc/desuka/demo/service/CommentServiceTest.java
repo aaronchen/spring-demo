@@ -1,5 +1,10 @@
 package cc.desuka.demo.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.CommentAddedEvent;
 import cc.desuka.demo.event.CommentChangeEvent;
@@ -10,6 +15,9 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,15 +26,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
@@ -96,11 +95,13 @@ class CommentServiceTest {
     void createComment_savesAndPublishesEvents() {
         when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(userService.getUserById(1L)).thenReturn(alice);
-        when(commentRepository.save(any(Comment.class))).thenAnswer(inv -> {
-            Comment c = inv.getArgument(0);
-            c.setId(1L);
-            return c;
-        });
+        when(commentRepository.save(any(Comment.class)))
+                .thenAnswer(
+                        inv -> {
+                            Comment c = inv.getArgument(0);
+                            c.setId(1L);
+                            return c;
+                        });
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
@@ -201,8 +202,7 @@ class CommentServiceTest {
 
     @Test
     void getCommenterIds_returnsDistinctUserIds() {
-        when(commentRepository.findDistinctUsersByTaskId(1L))
-                .thenReturn(List.of(alice, bob));
+        when(commentRepository.findDistinctUsersByTaskId(1L)).thenReturn(List.of(alice, bob));
 
         Set<Long> result = commentService.getCommenterIds(1L);
 
@@ -214,9 +214,10 @@ class CommentServiceTest {
     @Test
     void getPreviouslyMentionedUserIds_parsesEncodedMentions() {
         when(commentRepository.findCommentTextsByTaskId(1L))
-                .thenReturn(List.of(
-                        "Hey @[Alice](userId:1)",
-                        "cc @[Bob](userId:2) and @[Alice](userId:1)"));
+                .thenReturn(
+                        List.of(
+                                "Hey @[Alice](userId:1)",
+                                "cc @[Bob](userId:2) and @[Alice](userId:1)"));
 
         Set<Long> result = commentService.getPreviouslyMentionedUserIds(1L);
 

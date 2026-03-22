@@ -3,10 +3,9 @@ package cc.desuka.demo.mapper;
 import cc.desuka.demo.dto.UserRequest;
 import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.model.User;
+import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-
-import java.util.List;
 
 @Mapper(componentModel = "spring")
 public interface UserMapper {

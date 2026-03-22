@@ -1,22 +1,21 @@
 package cc.desuka.demo.security;
 
+import java.util.Collections;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 import org.thymeleaf.context.IExpressionContext;
 import org.thymeleaf.dialect.AbstractDialect;
 import org.thymeleaf.dialect.IExpressionObjectDialect;
 import org.thymeleaf.expression.IExpressionObjectFactory;
 
-import java.util.Collections;
-import java.util.Set;
-
 /**
  * Thymeleaf dialect that registers the {@code #auth} expression object.
  *
- * <p>Being a {@link Component @Component}, Spring Boot auto-discovers this dialect
- * and registers it with the Thymeleaf engine — no manual configuration needed.
+ * <p>Being a {@link Component @Component}, Spring Boot auto-discovers this dialect and registers it
+ * with the Thymeleaf engine — no manual configuration needed.
  *
- * <p>Templates can then use expressions like {@code ${#auth.isOwner(task)}} to
- * centralize ownership checks instead of duplicating inline boolean logic.
+ * <p>Templates can then use expressions like {@code ${#auth.isOwner(task)}} to centralize ownership
+ * checks instead of duplicating inline boolean logic.
  *
  * @see AuthExpressions
  */
@@ -33,8 +32,8 @@ public class AuthDialect extends AbstractDialect implements IExpressionObjectDia
     }
 
     /**
-     * Factory that creates a fresh {@link AuthExpressions} per template rendering,
-     * populated with the current user from {@link SecurityUtils}.
+     * Factory that creates a fresh {@link AuthExpressions} per template rendering, populated with
+     * the current user from {@link SecurityUtils}.
      */
     private static class AuthExpressionFactory implements IExpressionObjectFactory {
 

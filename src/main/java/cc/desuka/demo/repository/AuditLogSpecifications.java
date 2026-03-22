@@ -2,9 +2,8 @@ package cc.desuka.demo.repository;
 
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.model.AuditLog;
-import org.springframework.data.jpa.domain.Specification;
-
 import java.time.Instant;
+import org.springframework.data.jpa.domain.Specification;
 
 public class AuditLogSpecifications {
 
@@ -22,9 +21,8 @@ public class AuditLogSpecifications {
             if (search == null || search.trim().isEmpty()) return cb.conjunction();
             String pattern = "%" + search.toLowerCase() + "%";
             return cb.or(
-                cb.like(cb.lower(root.get(AuditLog.FIELD_PRINCIPAL)), pattern),
-                cb.like(cb.lower(root.get(AuditLog.FIELD_DETAILS)), pattern)
-            );
+                    cb.like(cb.lower(root.get(AuditLog.FIELD_PRINCIPAL)), pattern),
+                    cb.like(cb.lower(root.get(AuditLog.FIELD_DETAILS)), pattern));
         };
     }
 
@@ -42,11 +40,11 @@ public class AuditLogSpecifications {
         };
     }
 
-    public static Specification<AuditLog> build(String category, String search,
-                                                 Instant from, Instant to) {
+    public static Specification<AuditLog> build(
+            String category, String search, Instant from, Instant to) {
         return Specification.where(withCategory(category))
-            .and(withSearch(search))
-            .and(withFrom(from))
-            .and(withTo(to));
+                .and(withSearch(search))
+                .and(withFrom(from))
+                .and(withTo(to));
     }
 }

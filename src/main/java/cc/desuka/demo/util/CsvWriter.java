@@ -1,7 +1,6 @@
 package cc.desuka.demo.util;
 
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -11,13 +10,16 @@ import java.util.stream.Stream;
 
 public class CsvWriter {
 
-    public static <T> void write(HttpServletResponse response, String filename,
-                                 String[] headers, List<T> rows,
-                                 Function<T, String[]> rowMapper) throws IOException {
+    public static <T> void write(
+            HttpServletResponse response,
+            String filename,
+            String[] headers,
+            List<T> rows,
+            Function<T, String[]> rowMapper)
+            throws IOException {
         response.setContentType("text/csv");
         response.setCharacterEncoding("UTF-8");
-        response.setHeader("Content-Disposition",
-                "attachment; filename=\"" + filename + "\"");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
 
         try (PrintWriter writer = response.getWriter()) {
             writer.println(formatRow(headers));
@@ -28,9 +30,7 @@ public class CsvWriter {
     }
 
     private static String formatRow(String[] fields) {
-        return Stream.of(fields)
-                .map(CsvWriter::escape)
-                .collect(Collectors.joining(","));
+        return Stream.of(fields).map(CsvWriter::escape).collect(Collectors.joining(","));
     }
 
     private static String escape(String value) {

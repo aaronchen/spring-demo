@@ -1,0 +1,349 @@
+<!--/* Shared task list fragment — used by both tasks.html (cross-project) and project.html (single project).
+     Reads from model context: view, selectedUserId, filterUserName, allTags, taskPage, calendarWeeks, calendarMonth, undatedCount.
+     canEditProject (optional): when set, controls task edit/delete visibility for project-scoped views. */-->
+
+<!-- Stale data banner -->
+<div id="stale-banner" class="alert alert-info d-none mb-3 d-flex align-items-center" role="alert"
+     xmlns:th="http://www.thymeleaf.org">
+    <div>
+        <i class="bi bi-arrow-repeat me-1"></i>
+        <span th:text="#{task.stale.list}">Tasks have been updated.</span>
+    </div>
+    <a href="#" id="stale-banner-refresh" class="alert-link ms-auto"
+       th:text="#{task.stale.refresh}">Refresh</a>
+</div>
+
+<!-- Row 1: Search -->
+<div class="mb-3">
+    <div class="input-group input-group-lg position-relative">
+        <span class="input-group-text">
+            <i class="bi bi-search"></i>
+        </span>
+        <input type="text"
+               id="search-input"
+               class="form-control"
+               th:placeholder="#{task.search.placeholder}">
+        <button id="search-clear-btn"
+                class="d-none position-absolute top-50 end-0 translate-middle-y"
+                type="button"
+                th:title="#{task.search.clear}"
+                aria-label="Clear search">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <input type="hidden" id="current-status-filter" value="ALL">
+    </div>
+</div>
+
+<!-- Row 2: Filter + Sort + View Toggle -->
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <!-- User Filter Buttons -->
+    <div class="btn-group btn-group-sm" role="group" aria-label="User filter">
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-dark fw-bold"
+                th:classappend="${selectedUserId == null ? 'active' : ''}"
+                id="user-filter-all"
+                onclick="clearUserFilter()">
+            <i class="bi bi-people"></i> <span th:text="#{task.filter.user.all}">All Members</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-primary fw-bold"
+                th:classappend="${selectedUserId != null ? 'active' : ''}"
+                id="user-filter-mine"
+                th:data-current-user-id="${currentUser?.id}"
+                th:data-current-user-name="${currentUser?.name}"
+                th:data-filter-user-name="${filterUserName}"
+                onclick="setMyFilter()">
+            <i class="bi bi-person"></i>
+            <span id="user-filter-label" th:text="#{task.filter.user.mine}">Mine</span>
+            <span id="user-filter-clear" class="d-none ms-1"
+                  onclick="event.stopPropagation(); resetUserFilter();">&times;</span>
+        </button>
+    </div>
+
+    <!-- Status Filter Buttons -->
+    <div class="btn-group btn-group-sm" role="group" aria-label="Task filters">
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-dark active fw-bold"
+                id="status-filter-ALL">
+            <i class="bi bi-list-ul"></i> <span th:text="#{task.filter.all}">All</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-secondary fw-bold"
+                id="status-filter-OPEN">
+            <i class="bi bi-circle"></i> <span th:text="#{task.filter.open}">Open</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-warning fw-bold"
+                id="status-filter-IN_PROGRESS">
+            <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.filter.inProgress}">In Progress</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-success fw-bold"
+                id="status-filter-COMPLETED">
+            <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.filter.completed}">Completed</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-light border-secondary text-danger fw-bold"
+                id="overdue-filter">
+            <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
+        </button>
+    </div>
+    <input type="hidden" id="current-overdue-filter" value="false">
+    <input type="hidden" id="current-priority-filter" value="">
+
+    <!-- Priority Filter Dropdown -->
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                id="priorityDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            <i class="bi bi-reception-2"></i> <span id="priority-filter-label" th:text="#{task.field.priority}">Priority</span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="priorityDropdown">
+            <li>
+                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="LOW"
+                   onclick="setPriorityFilter('LOW')">
+                    <span class="badge bg-success"><i class="bi bi-reception-1"></i></span>
+                    <span th:text="#{task.priority.low}">Low</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="MEDIUM"
+                   onclick="setPriorityFilter('MEDIUM')">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i></span>
+                    <span th:text="#{task.priority.medium}">Medium</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="HIGH"
+                   onclick="setPriorityFilter('HIGH')">
+                    <span class="badge bg-danger"><i class="bi bi-reception-4"></i></span>
+                    <span th:text="#{task.priority.high}">High</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority=""
+                   onclick="setPriorityFilter('')">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span th:text="#{task.filter.all}">All</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Sort Dropdown -->
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                id="sortDropdown"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="outside"
+                aria-expanded="false">
+            <i class="bi bi-sort-down"></i> <span id="sort-label" th:text="#{task.sort.newestFirst}">Newest First</span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="sortDropdown">
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="title" data-sort-dir="asc"
+                   onclick="toggleSort('title','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-alpha-down"></i> <span th:text="#{task.sort.title.asc}">Title (A-Z)</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="title" data-sort-dir="desc"
+                   onclick="toggleSort('title','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-alpha-up"></i> <span th:text="#{task.sort.title.desc}">Title (Z-A)</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="createdAt" data-sort-dir="asc"
+                   onclick="toggleSort('createdAt','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-down"></i> <span th:text="#{task.sort.createdAt.asc}">Oldest First</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="createdAt" data-sort-dir="desc"
+                   onclick="toggleSort('createdAt','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.createdAt.desc}">Newest First</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="priorityOrder" data-sort-dir="asc"
+                   onclick="toggleSort('priorityOrder','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-down"></i> <span th:text="#{task.sort.priorityOrder.asc}">Priority (Low-High)</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="priorityOrder" data-sort-dir="desc"
+                   onclick="toggleSort('priorityOrder','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-up"></i> <span th:text="#{task.sort.priorityOrder.desc}">Priority (High-Low)</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="dueDate" data-sort-dir="asc"
+                   onclick="toggleSort('dueDate','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-down"></i> <span th:text="#{task.sort.dueDate.asc}">Due Date (Earliest)</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="dueDate" data-sort-dir="desc"
+                   onclick="toggleSort('dueDate','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.dueDate.desc}">Due Date (Latest)</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="description" data-sort-dir="asc"
+                   onclick="toggleSort('description','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-alpha-down"></i> <span th:text="#{task.sort.description.asc}">Description (A-Z)</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="description" data-sort-dir="desc"
+                   onclick="toggleSort('description','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-alpha-up"></i> <span th:text="#{task.sort.description.desc}">Description (Z-A)</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   onclick="resetSort(); return false;">
+                    <i class="bi bi-check-lg" style="visibility: hidden;"></i>
+                    <i class="bi bi-arrow-counterclockwise"></i> <span th:text="#{task.sort.default}">Default</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Tag Filter Dropdown -->
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                id="tagDropdown"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="outside"
+                aria-expanded="false">
+            <i class="bi bi-tags"></i> <span id="tag-filter-label" th:text="#{task.filter.tags}">Tags</span>
+        </button>
+        <ul class="dropdown-menu" aria-labelledby="tagDropdown" style="max-height: 300px; overflow-y: auto;">
+            <li th:each="tag : ${allTags}">
+                <label class="dropdown-item d-flex align-items-center gap-2 mb-0">
+                    <input type="checkbox" class="form-check-input tag-filter-checkbox mt-0"
+                           th:data-tag-id="${tag.id}"
+                           th:data-tag-name="${tag.name}"
+                           onchange="onTagCheckboxChange(this)">
+                    <span th:text="${tag.name}">Tag Name</span>
+                </label>
+            </li>
+        </ul>
+    </div>
+
+    <!-- View Toggle -->
+    <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="View toggle">
+        <button type="button"
+                class="btn btn-outline-secondary"
+                th:classappend="${view == 'cards' ? 'active' : ''}"
+                id="view-cards"
+                th:title="#{task.view.cards}"
+                onclick="switchView('cards')">
+            <i class="bi bi-grid-3x3-gap-fill"></i>
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                th:classappend="${view == 'table' ? 'active' : ''}"
+                id="view-table"
+                th:title="#{task.view.table}"
+                onclick="switchView('table')">
+            <i class="bi bi-table"></i>
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                th:classappend="${view == 'calendar' ? 'active' : ''}"
+                id="view-calendar"
+                th:title="#{task.view.calendar}"
+                onclick="switchView('calendar')">
+            <i class="bi bi-calendar3"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Active tag filter pills -->
+<div id="filter-pills" class="d-none mb-3">
+    <span id="tag-pills-container"></span>
+    <a href="#" id="tag-clear-all" class="d-none ms-2 small text-decoration-none"
+       onclick="clearAllTags(); return false;"
+       th:text="#{task.filter.tags.clearAll}">Clear all</a>
+</div>
+
+<!-- Task List Container -->
+<div id="tasks-view">
+    <th:block th:if="${view == 'table'}">
+        <div th:replace="~{tasks/task-table :: grid}"></div>
+    </th:block>
+    <th:block th:if="${view == 'calendar'}">
+        <div th:replace="~{tasks/task-calendar :: grid}"></div>
+    </th:block>
+    <th:block th:if="${view != 'table' && view != 'calendar'}">
+        <div th:replace="~{tasks/task-cards :: grid}"></div>
+    </th:block>
+</div>
+
+<!-- Task Modal -->
+<div class="modal fade" id="task-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered task-modal-dialog">
+        <div class="modal-content" id="task-modal-content">
+            <!-- Populated by HTMX -->
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="task-delete-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-exclamation-triangle"></i> <span th:text="#{task.delete.title}">Confirm Delete</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p th:text="#{task.delete.confirm}">Are you sure you want to delete this task?</p>
+                <p id="task-delete-modal-title" class="fw-bold"></p>
+                <p class="text-muted small" th:text="#{task.delete.warning}">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
+                </button>
+                <button id="delete-confirm-btn" class="btn btn-danger" hx-swap="none" data-bs-dismiss="modal">
+                    <i class="bi bi-trash"></i> <span th:text="#{action.delete}">Delete</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

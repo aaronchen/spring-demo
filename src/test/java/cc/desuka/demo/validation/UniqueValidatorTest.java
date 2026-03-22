@@ -1,10 +1,13 @@
 package cc.desuka.demo.validation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.UserRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +16,6 @@ import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
 import org.springframework.boot.validation.autoconfigure.ValidationAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -37,8 +36,13 @@ class UniqueValidatorTest {
             this.email = email;
         }
 
-        public Long getId() { return id; }
-        public String getEmail() { return email; }
+        public Long getId() {
+            return id;
+        }
+
+        public String getEmail() {
+            return email;
+        }
     }
 
     @BeforeEach

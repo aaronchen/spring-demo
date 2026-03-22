@@ -11,13 +11,19 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ## Features
 
+### Projects & Team Collaboration
+- **Project Management** - Create, edit, archive, and delete projects; every task belongs to a project
+- **Role-Based Project Access** - Three project roles: VIEWER (read-only), EDITOR (read/write tasks), OWNER (full control including settings and member management)
+- **Team Members** - Add/remove project members with role assignment; last owner protection prevents accidental lockout
+- **Project-Scoped Views** - Task lists, dashboards, and API endpoints scoped to accessible projects; admins see all
+
 ### Authentication & Authorization
 - **Form Login** - Email + password authentication with BCrypt hashing
 - **Self-Registration** - New users can sign up; default role is USER
-- **Role-Based Access** - Two roles: USER (standard) and ADMIN (elevated privileges)
-- **Ownership Checks** - Users can edit/delete their own tasks and unassigned tasks; admins can access all
+- **Role-Based Access** - Two system roles: USER (standard) and ADMIN (elevated privileges); three project roles: VIEWER, EDITOR, OWNER
+- **Project Access Control** - `ProjectAccessGuard` enforces view/edit/owner access per project; admin bypass for all projects
 - **Admin Panel** - Modal-based user management (create/edit/delete/disable/enable) at `/admin/users`; tag management at `/admin/tags` (admin only)
-- **Audit Logging** - All entity changes and auth events logged; admin audit page with search/filters at `/admin/audit`
+- **Audit Logging** - All entity changes, project member mutations, and auth events logged; admin audit page with search/filters at `/admin/audit`
 - **Admin Settings** - Configurable site name, registration toggle, maintenance banner, notification purge age, and theme picker at `/admin/settings`
 - **User Profile** - Self-service account management at `/profile`: edit name/email, change password, and configure preferences (task view mode, default user filter, due date reminders)
 - **Auth-Aware UI** - Navbar shows user info, role badge, and role-appropriate links
@@ -35,9 +41,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Task Checklist** - Embeddable checklist items on tasks (text + checked state); drag-and-drop reordering via native HTML Drag and Drop API; checklist progress shown on cards and table rows; changes audited in activity timeline
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
-- **Task Lifecycle** - Three-state status: OPEN → IN_PROGRESS → COMPLETED; toggle button advances through the cycle; status radio buttons in edit form
+- **Task Lifecycle** - Six-state status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED; CANCELLED as separate terminal state; toggle button advances through the cycle; status radio buttons in edit form
 - **Status-Aware Reassignment** - Reassigning an in-progress task resets its status to OPEN
-- **Color-Coded Tasks** - Green = completed, blue = in progress, yellow = open throughout UI
+- **Color-Coded Tasks** - Six-status visual system: grey = backlog, secondary = open, yellow = in progress, cyan = in review, green = completed, dark = cancelled throughout UI
 - **Dynamic Updates** - Toggle status and delete without page reloads via HTMX
 - **User Assignment** - Assign tasks to users via searchable select dropdown (`@ManyToOne`)
 - **Tags** - Tag tasks with multiple labels via checkboxes (`@ManyToMany`)
@@ -53,7 +59,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
-- **Real-Time Dashboard** - Personal stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, system overview, due-this-week tasks, recent tasks, and activity feed; auto-refreshes via WebSocket on task and presence changes
+- **Real-Time Dashboard** - Per-project stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, due-this-week tasks, recent tasks, and activity feed; admin-only system overview across all projects; auto-refreshes via WebSocket on task and presence changes
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
@@ -66,14 +72,14 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Ownership Enforcement** - Task PUT/DELETE require owner or admin; POST auto-assigns to caller
 - **Role Restrictions** - Tag and user mutations (POST/DELETE) restricted to admins
 - **Search & Filter** - Query tasks by keyword and status
-- **Toggle Status** - Quick PATCH endpoint advances task through OPEN → IN_PROGRESS → COMPLETED cycle
+- **Toggle Status** - Quick PATCH endpoint advances task through BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED cycle
 - **Task Comments** - Nested comment endpoints under each task
 - **Notifications** - Unread count, paginated list, mark read, mark all read, clear all
 - **Presence** - Online user count and list
 
 ### Audit Logging
 - **Event-Driven** - Services publish audit events via `ApplicationEventPublisher`; listener persists to database
-- **Tracked Actions** - Task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, auth success/failure, role changes, registration, profile changes
+- **Tracked Actions** - Project CRUD and member management, task CRUD, comment create/delete, user CRUD (including disable/enable), tag CRUD, settings changes, auth success/failure, role changes, registration, profile changes
 - **Field-Level Diffs** - Update events record before/after values for each changed field
 - **Admin Audit Page** - Searchable, filterable audit log at `/admin/audit` with dynamically generated category buttons (from `AuditEvent.CATEGORIES`), text search, date range, and pagination
 - **Task History** - Per-task audit trail shown in unified activity timeline alongside comments
@@ -90,7 +96,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
 - Event-driven side effects — services publish domain events; three independent listeners handle audit logging, notifications, and WebSocket broadcasting
-- Service-to-service composition (TaskService delegates to TagService/UserService/CommentService instead of direct repository access)
+- Project-scoped access control via `ProjectAccessGuard` with VIEWER/EDITOR/OWNER roles; admin bypass
+- Service-to-service composition (TaskService delegates to TagService/UserService instead of direct repository access)
 - Generic `@Unique` validation annotation — class-level, `@Repeatable`, uses `EntityManager` JPQL for uniqueness checks with self-exclusion on edit
 - Global string trimming via `GlobalBindingConfig` (`StringTrimmerEditor`) — trims all form fields, converts blank to null
 - User enable/disable pattern — disabled users can't log in and are hidden from assignment dropdowns; users with completed tasks or comments can only be disabled (not deleted)
@@ -122,7 +129,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
-- 183 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
+- Spotless + google-java-format (AOSP style, 4-space indent) enforced at compile time
+- 204 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
 - CI pipeline: GitHub Actions runs `./mvnw verify` on every push to main and PR
 - Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding), `prod` (PostgreSQL, Flyway migrations)
 - Flyway schema migrations for production (PostgreSQL); dev/test use Hibernate `create-drop`
@@ -152,7 +160,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 3. **Access the application**
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
-   - **Dashboard**: http://localhost:8080/dashboard (personal stats, due this week, real-time updates)
+   - **Projects**: http://localhost:8080/projects (project list)
+   - **Dashboard**: http://localhost:8080/dashboard (per-project stats, due this week, real-time updates; admin system overview)
    - **Profile**: http://localhost:8080/profile (edit name/email, change password, preferences)
    - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
@@ -163,13 +172,13 @@ A growing full-stack application built as a hands-on learning project for Spring
 4. **Dev credentials** (seeded by `DataLoader`)
    - **Admin**: `alice.johnson@example.com` / `password`
    - **Regular user**: `bob.smith@example.com` / `password`
-   - All 50 seeded users share the password `password`
+   - All 20 seeded users share the password `password`
 
 5. **Run tests**
    ```bash
    ./mvnw test
    ```
-   183 tests across 22 test classes (unit, repository, integration, validation, security).
+   206 tests across 23 test classes (unit, repository, integration, validation, security).
 
 ### Build for Production
 
@@ -197,8 +206,8 @@ docker compose -f docker-compose.prod.yml down -v
 Navigate to http://localhost:8080/login. Enter your email and password, or click **Register** to create a new account. New accounts are created with the USER role.
 
 **Roles:**
-- **USER** — can create tasks (defaults to self, can assign to others), edit/delete own and unassigned tasks, view all tasks, manage own profile and preferences
-- **ADMIN** — full access to all tasks, can manage users (create/edit/delete/disable/enable) and tags, can assign tasks to any user, manage own profile and preferences
+- **USER** — can create projects and tasks within their projects, edit/delete tasks based on project role (VIEWER/EDITOR/OWNER), manage own profile and preferences
+- **ADMIN** — full access to all projects and tasks, can manage users (create/edit/delete/disable/enable) and tags, bypasses all project access checks, manage own profile and preferences
 
 ### Web Interface
 
@@ -207,22 +216,22 @@ Navigate to http://localhost:8080/tasks (requires login).
 #### Viewing Tasks
 
 - **Search** — type to filter tasks by title or description in real time
-- **Filter buttons** — All / Open / In Progress / Completed / Overdue
+- **Filter buttons** — All / Backlog / Open / In Progress / In Review / Completed / Cancelled / Overdue
 - **Sort dropdown** — sort by title, created date, or description
 - **View toggle** — switch between card grid, table, and calendar view
 - **Page size** — choose 10 / 25 / 50 / 100 tasks per page
 
 #### Creating a Task
 
-Click **New Task** — a modal opens. Fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Your current search/filter/sort state is preserved.
+Click **New Task** — a modal opens. Select a project from the dropdown (pre-selected if you're on a project page), fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Tasks can be created from any page with the New Task button. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
-Click the title or the **Edit** button on any card or table row. The same modal opens pre-filled. In edit mode you can set the status via radio buttons (Open / In Progress / Completed).
+Click the title or the **Edit** button on any card or table row. The same modal opens pre-filled. In edit mode you can set the status via radio buttons (Backlog / Open / In Progress / In Review / Completed / Cancelled).
 
 #### Advancing Task Status
 
-Click the toggle button on a card or row to advance the task through the lifecycle: OPEN → IN_PROGRESS → COMPLETED → OPEN.
+Click the toggle button on a card or row to advance the task through the lifecycle: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN.
 
 #### Deleting a Task
 
@@ -243,7 +252,7 @@ All API endpoints require authentication. CSRF is disabled for `/api/**`, so you
 | POST | `/api/tasks` | Any user | Create task (auto-assigned to caller) |
 | PUT | `/api/tasks/{id}` | Owner/Admin | Update task (requires `version` for optimistic locking) |
 | DELETE | `/api/tasks/{id}` | Owner/Admin | Delete task (204) |
-| PATCH | `/api/tasks/{id}/toggle` | Any user | Advance status (OPEN → IN_PROGRESS → COMPLETED) |
+| PATCH | `/api/tasks/{id}/toggle` | Project Editor/Admin | Advance status (BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED) |
 | GET | `/api/tasks/search?keyword=` | Any user | Search by title/description |
 | GET | `/api/tasks/incomplete` | Any user | Get non-completed tasks (OPEN and IN_PROGRESS) |
 
@@ -298,6 +307,7 @@ Cookie: JSESSIONID=your-session-id
 Content-Type: application/json
 
 {
+  "projectId": 1,
   "title": "Write documentation",
   "description": "Document all API endpoints",
   "priority": "HIGH",
@@ -308,9 +318,10 @@ Content-Type: application/json
 ```
 
 #### Validation Rules
+- **projectId**: required on create; the project the task belongs to
 - **title**: required, 1–100 characters
 - **description**: optional, max 500 characters
-- **status**: optional, one of `OPEN`, `IN_PROGRESS`, `COMPLETED` (defaults to `OPEN`)
+- **status**: optional, one of `BACKLOG`, `OPEN`, `IN_PROGRESS`, `IN_REVIEW`, `COMPLETED`, `CANCELLED` (defaults to `OPEN`)
 - **priority**: optional, one of `LOW`, `MEDIUM`, `HIGH` (defaults to `MEDIUM`)
 - **startDate**: optional, ISO date format `yyyy-MM-dd`
 - **dueDate**: optional, ISO date format `yyyy-MM-dd`
@@ -375,6 +386,7 @@ spring-demo/
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
+│   │   │   ├── ProjectController.java         # Project web UI (list, create, settings, archive)
 │   │   │   ├── DashboardController.java      # Dashboard page + HTMX stats fragment
 │   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
 │   │   │   ├── HomeController.java          # Home page (GET /)
@@ -389,13 +401,17 @@ spring-demo/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
 │   │   │   ├── ChangePasswordRequest.java # Password change form DTO
 │   │   │   ├── CalendarDay.java        # Calendar view day cell record
+│   │   │   ├── CommentRequest.java   # Comment creation form DTO
 │   │   │   ├── CommentResponse.java   # Comment API output DTO
 │   │   │   ├── DashboardStats.java     # Dashboard data carrier record
 │   │   │   ├── NotificationResponse.java # Notification API output DTO
 │   │   │   ├── PresenceResponse.java  # Presence data (REST + WebSocket)
 │   │   │   ├── ProfileRequest.java    # Profile edit form DTO
+│   │   │   ├── ProjectRequest.java   # Project create/edit form DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
+│   │   │   ├── TagRequest.java
 │   │   │   ├── TagResponse.java
+│   │   │   ├── TaskFormRequest.java     # Web form DTO (parallel array checklist binding)
 │   │   │   ├── TaskRequest.java         # API input DTO (create/update)
 │   │   │   ├── TaskResponse.java        # API output DTO
 │   │   │   ├── TimelineEntry.java       # Unified timeline record (comment or audit)
@@ -428,12 +444,16 @@ spring-demo/
 │   │   │   ├── NotificationType.java   # TASK_ASSIGNED, TASK_UPDATED, COMMENT_ADDED, COMMENT_MENTIONED, TASK_DUE_REMINDER, TASK_OVERDUE, SYSTEM
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
 │   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
+│   │   │   ├── Project.java             # Project entity (Auditable)
+│   │   │   ├── ProjectMember.java       # Project membership (user + role)
+│   │   │   ├── ProjectRole.java         # VIEWER / EDITOR / OWNER enum
+│   │   │   ├── ProjectStatus.java       # ACTIVE / ARCHIVED enum
 │   │   │   ├── Role.java                # USER / ADMIN enum
 │   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
-│   │   │   ├── Task.java                # Implements OwnedEntity
-│   │   │   ├── TaskStatus.java          # OPEN / IN_PROGRESS / COMPLETED enum
-│   │   │   ├── TaskStatusFilter.java    # ALL / OPEN / IN_PROGRESS / COMPLETED / OVERDUE enum
+│   │   │   ├── Task.java                # Implements OwnedEntity (belongs to Project)
+│   │   │   ├── TaskStatus.java          # BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED enum
+│   │   │   ├── TaskStatusFilter.java    # ALL / BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED enum
 │   │   │   ├── User.java                # Auth fields: password, role
 │   │   │   └── UserPreference.java      # Per-user key/value preference entity
 │   │   ├── repository/
@@ -441,6 +461,8 @@ spring-demo/
 │   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
 │   │   │   ├── CommentRepository.java
 │   │   │   ├── NotificationRepository.java
+│   │   │   ├── ProjectRepository.java
+│   │   │   ├── ProjectMemberRepository.java
 │   │   │   ├── SettingRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
@@ -453,6 +475,7 @@ spring-demo/
 │   │   │   ├── CustomUserDetails.java       # UserDetails wrapper for User entity
 │   │   │   ├── CustomUserDetailsService.java # Loads user by email for Spring Security
 │   │   │   ├── OwnershipGuard.java          # requireAccess() — owner or admin
+│   │   │   ├── ProjectAccessGuard.java     # requireViewAccess/EditAccess/OwnerAccess
 │   │   │   └── SecurityUtils.java           # Central user-resolution helpers
 │   │   ├── presence/
 │   │   │   ├── PresenceEventListener.java # WebSocket connect/disconnect → presence broadcast
@@ -462,6 +485,7 @@ spring-demo/
 │   │   │   ├── CommentService.java      # Comment CRUD with domain event publishing
 │   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
 │   │   │   ├── NotificationService.java # Create, mark read, clear (DB + WebSocket push)
+│   │   │   ├── ProjectService.java      # Project CRUD, member management, access checks
 │   │   │   ├── ScheduledTaskService.java # Centralized @Scheduled jobs (reminders, purge)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
@@ -475,8 +499,9 @@ spring-demo/
 │   │   ├── util/
 │   │   │   ├── CsvWriter.java             # Generic CSV export utility
 │   │   │   ├── HtmxUtils.java
-│   │   │   └── MentionUtils.java          # @mention parsing and display rendering
-│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments, notifications (@Profile("dev"))
+│   │   │   ├── MentionUtils.java          # @mention parsing and display rendering
+│   │   │   └── Messages.java             # MessageSource helper (shorthand for getMessage)
+│   │   ├── DataLoader.java              # Seeds 20 users, 8 tags, 56 tasks, comments, notifications (@Profile("dev"))
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
@@ -527,10 +552,18 @@ spring-demo/
 │       │   │   ├── task-cards.html     # Card grid fragment
 │       │   │   ├── task-card.html      # Single card fragment
 │       │   │   ├── task-table.html     # Table grid fragment
-│       │   │   └── task-table-row.html # Single table row fragment
+│       │   │   ├── task-table-row.html # Single table row fragment
+│       │   │   └── task-list-fragment.html # Shared task list controls fragment
 │       │   ├── users/
 │       │   │   ├── users.html          # User list page with search
 │       │   │   └── user-table.html     # User table fragment (HTMX partial)
+│       │   ├── projects/
+│       │   │   ├── projects.html         # Project list with sort/archive toggle
+│       │   │   ├── project.html          # Project home with task filtering
+│       │   │   ├── project-form.html     # Create/edit project form
+│       │   │   ├── project-grid.html     # Project card grid fragment (HTMX partial)
+│       │   │   ├── project-settings.html # Project settings and member management
+│       │   │   └── member-table.html     # Member management table fragment (HTMX partial)
 │       │   ├── profile/
 │       │   │   └── profile.html         # Self-service profile page
 │       │   ├── home.html               # Home page (project showcase)
@@ -542,7 +575,7 @@ spring-demo/
 │       ├── messages.properties         # UI strings (#{key} in Thymeleaf)
 │       ├── ValidationMessages.properties # Validation messages ({key} in annotations)
 │       ├── db/migration/
-│       │   └── V1__initial_schema.sql    # Flyway initial migration (PostgreSQL DDL)
+│       │   └── V1__initial_schema.sql    # Flyway initial migration (PostgreSQL DDL + admin seed)
 │       ├── application.properties        # Shared config (profile-agnostic)
 │       ├── application-dev.properties    # Dev profile: H2, show-sql, console
 │       └── application-prod.properties   # Prod profile: PostgreSQL, Flyway, no Swagger
@@ -552,7 +585,7 @@ spring-demo/
 │   │   │   └── AuditEventListenerTest.java       # Audit persistence tests (2)
 │   │   ├── controller/api/
 │   │   │   ├── AuditApiControllerTest.java       # Audit REST API tests (2)
-│   │   │   ├── CommentApiControllerTest.java     # Comment REST API tests (7)
+│   │   │   ├── CommentApiControllerTest.java     # Comment REST API tests (8)
 │   │   │   ├── NotificationApiControllerTest.java # Notification REST API tests (6)
 │   │   │   ├── PresenceApiControllerTest.java    # Presence REST API tests (2)
 │   │   │   ├── TagApiControllerTest.java         # Tag REST API tests (7)
@@ -566,12 +599,13 @@ spring-demo/
 │   │   │   └── TaskSpecificationsTest.java       # Task filter tests (10)
 │   │   ├── security/
 │   │   │   ├── OwnershipGuardTest.java           # Ownership unit tests (3)
-│   │   │   └── SecurityConfigTest.java           # URL security tests (16)
+│   │   │   └── SecurityConfigTest.java           # URL security tests (18)
 │   │   ├── service/
-│   │   │   ├── CommentServiceTest.java           # Comment service tests (14)
+│   │   │   ├── CommentServiceTest.java           # Comment service tests (13)
 │   │   │   ├── NotificationServiceTest.java      # Notification service tests (8)
+│   │   │   ├── ProjectServiceTest.java           # Project service tests (21)
 │   │   │   ├── TagServiceTest.java               # Tag service tests (6)
-│   │   │   ├── TaskServiceTest.java              # Task service tests (14)
+│   │   │   ├── TaskServiceTest.java              # Task service tests (16)
 │   │   │   └── UserServiceTest.java              # User service tests (20)
 │   │   ├── util/
 │   │   │   └── MentionUtilsTest.java             # Mention parsing/rendering tests (12)
@@ -591,7 +625,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** with varied status (Open, In Progress, Completed), creation dates, priorities, start dates, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), **checklist items** on a subset of tasks, **due-date reminder notifications** for Alice's tasks due tomorrow, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). 3 of Alice's tasks are explicitly set to due tomorrow for demo purposes. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **4 projects** (Platform, Product, Security, Ops) with team members across different roles, **20 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **56 tasks** distributed across projects with varied status (Backlog, Open, In Progress, In Review, Completed, Cancelled), creation dates, priorities, start dates, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), **checklist items** on a subset of tasks, **due-date reminder notifications** for Alice's tasks due tomorrow, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). 3 of Alice's tasks are explicitly set to due tomorrow for demo purposes. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 
@@ -609,6 +643,7 @@ spring-demo/
 | Dynamic UI | HTMX 2.0.4 |
 | @Mentions | Tribute.js |
 | Build | Maven |
+| Formatting | Spotless + google-java-format 1.30 (AOSP) |
 | Mapping | MapStruct 1.6 |
 | Dev Tools | Spring DevTools |
 | Migrations | Flyway (prod profile) |
@@ -654,7 +689,7 @@ Currently runs with the `dev` profile (H2 in-memory). To switch to PostgreSQL: c
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and PR targeting `main`:
 1. Sets up JDK 25
 2. Caches Maven dependencies
-3. Runs `./mvnw verify` (compile + 183 tests)
+3. Runs `./mvnw verify` (compile + 206 tests)
 
 ## Troubleshooting
 

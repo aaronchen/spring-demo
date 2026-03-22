@@ -7,11 +7,10 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")

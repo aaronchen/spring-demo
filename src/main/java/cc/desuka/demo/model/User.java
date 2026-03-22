@@ -4,7 +4,6 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -61,8 +60,7 @@ public class User implements Auditable {
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private List<Task> tasks = new ArrayList<>();
 
-    public User() {
-    }
+    public User() {}
 
     public User(String name, String email) {
         this.name = name;

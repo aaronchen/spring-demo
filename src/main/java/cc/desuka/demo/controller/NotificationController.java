@@ -23,12 +23,14 @@ public class NotificationController {
     }
 
     @GetMapping
-    public String notificationsPage(@AuthenticationPrincipal CustomUserDetails user,
-                                    @RequestParam(defaultValue = "0") int page,
-                                    @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size,
-                                    Model model) {
+    public String notificationsPage(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size,
+            Model model) {
         Long userId = user.getUser().getId();
-        model.addAttribute("notifications",
+        model.addAttribute(
+                "notifications",
                 notificationService.findAllForUser(userId, PageRequest.of(page, size)));
         return "notifications";
     }

@@ -5,9 +5,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Handles all WebSocket broadcasting — ephemeral messages that power
- * stale-data banners and live comment refresh. No DB persistence.
- * Same pattern as {@code AuditEventListener} and {@code NotificationEventListener}.
+ * Handles all WebSocket broadcasting — ephemeral messages that power stale-data banners and live
+ * comment refresh. No DB persistence. Same pattern as {@code AuditEventListener} and {@code
+ * NotificationEventListener}.
  */
 @Component
 public class WebSocketEventListener {
@@ -25,7 +25,6 @@ public class WebSocketEventListener {
 
     @TransactionalEventListener
     public void onCommentChange(CommentChangeEvent event) {
-        messagingTemplate.convertAndSend(
-                "/topic/tasks/" + event.taskId() + "/comments", event);
+        messagingTemplate.convertAndSend("/topic/tasks/" + event.taskId() + "/comments", event);
     }
 }

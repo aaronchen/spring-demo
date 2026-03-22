@@ -29,9 +29,10 @@ public class ProfileController {
     private final UserPreferenceService userPreferenceService;
     private final PasswordEncoder passwordEncoder;
 
-    public ProfileController(UserService userService,
-                             UserPreferenceService userPreferenceService,
-                             PasswordEncoder passwordEncoder) {
+    public ProfileController(
+            UserService userService,
+            UserPreferenceService userPreferenceService,
+            PasswordEncoder passwordEncoder) {
         this.userService = userService;
         this.userPreferenceService = userPreferenceService;
         this.passwordEncoder = passwordEncoder;
@@ -40,8 +41,7 @@ public class ProfileController {
     // GET /profile - Show profile page
     @GetMapping
     public String showProfile(
-            @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            @AuthenticationPrincipal CustomUserDetails currentDetails, Model model) {
         User user = currentDetails.getUser();
         ProfileRequest profileRequest = new ProfileRequest();
         profileRequest.setId(user.getId());
@@ -58,15 +58,17 @@ public class ProfileController {
             @Valid @ModelAttribute ProfileRequest profileRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model, RedirectAttributes redirectAttributes) {
+            Model model,
+            RedirectAttributes redirectAttributes) {
         if (result.hasErrors()) {
             model.addAttribute("changePasswordRequest", new ChangePasswordRequest());
             return "profile/profile";
         }
-        User updated = userService.updateProfile(
-                currentDetails.getUser().getId(),
-                profileRequest.getName(),
-                profileRequest.getEmail());
+        User updated =
+                userService.updateProfile(
+                        currentDetails.getUser().getId(),
+                        profileRequest.getName(),
+                        profileRequest.getEmail());
         SecurityUtils.refreshCachedUser(updated);
         redirectAttributes.addFlashAttribute("profileSaved", true);
         return "redirect:/profile";
@@ -78,16 +80,20 @@ public class ProfileController {
             @Valid @ModelAttribute ChangePasswordRequest changePasswordRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model, RedirectAttributes redirectAttributes) {
+            Model model,
+            RedirectAttributes redirectAttributes) {
         User user = currentDetails.getUser();
         // Verify current password
-        if (!result.hasErrors() && !passwordEncoder.matches(
-                changePasswordRequest.getCurrentPassword(), user.getPassword())) {
+        if (!result.hasErrors()
+                && !passwordEncoder.matches(
+                        changePasswordRequest.getCurrentPassword(), user.getPassword())) {
             result.rejectValue("currentPassword", "profile.password.current.invalid");
         }
         // Verify passwords match
-        if (!result.hasErrors() && !changePasswordRequest.getNewPassword()
-                .equals(changePasswordRequest.getConfirmPassword())) {
+        if (!result.hasErrors()
+                && !changePasswordRequest
+                        .getNewPassword()
+                        .equals(changePasswordRequest.getConfirmPassword())) {
             result.rejectValue("confirmPassword", "profile.password.mismatch");
         }
         if (result.hasErrors()) {
@@ -118,8 +124,10 @@ public class ProfileController {
             RedirectAttributes redirectAttributes) {
         Long userId = currentDetails.getUser().getId();
         userPreferenceService.save(userId, UserPreferences.KEY_TASK_VIEW, taskView);
-        userPreferenceService.save(userId, UserPreferences.KEY_DEFAULT_USER_FILTER, defaultUserFilter);
-        userPreferenceService.save(userId, UserPreferences.KEY_DUE_REMINDER, String.valueOf(dueReminder));
+        userPreferenceService.save(
+                userId, UserPreferences.KEY_DEFAULT_USER_FILTER, defaultUserFilter);
+        userPreferenceService.save(
+                userId, UserPreferences.KEY_DUE_REMINDER, String.valueOf(dueReminder));
         redirectAttributes.addFlashAttribute("preferencesSaved", true);
         return "redirect:/profile";
     }

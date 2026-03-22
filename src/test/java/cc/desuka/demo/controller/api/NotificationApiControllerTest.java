@@ -1,10 +1,17 @@
 package cc.desuka.demo.controller.api;
 
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import cc.desuka.demo.dto.NotificationResponse;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.NotificationService;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +22,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -74,10 +73,11 @@ class NotificationApiControllerTest {
         when(notificationService.findAllForUser(eq(2L), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 5), 0));
 
-        mockMvc.perform(get("/api/notifications")
-                        .param("page", "1")
-                        .param("size", "5")
-                        .with(user(regularDetails)))
+        mockMvc.perform(
+                        get("/api/notifications")
+                                .param("page", "1")
+                                .param("size", "5")
+                                .with(user(regularDetails)))
                 .andExpect(status().isOk());
 
         verify(notificationService).findAllForUser(eq(2L), eq(PageRequest.of(1, 5)));

@@ -8,15 +8,14 @@ import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Controller
 @RequestMapping("/admin/users")
@@ -31,8 +30,10 @@ public class UserManagementController {
     }
 
     @GetMapping
-    public String listUsers(@RequestParam(required = false) String search,
-                            Model model, HttpServletRequest request) {
+    public String listUsers(
+            @RequestParam(required = false) String search,
+            Model model,
+            HttpServletRequest request) {
         populateModel(model, search);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "admin/user-table";
@@ -64,8 +65,10 @@ public class UserManagementController {
     }
 
     @PostMapping
-    public Object createUser(@Valid @ModelAttribute AdminUserRequest adminUserRequest,
-                             BindingResult result, Model model) {
+    public Object createUser(
+            @Valid @ModelAttribute AdminUserRequest adminUserRequest,
+            BindingResult result,
+            Model model) {
         String pw = adminUserRequest.getPassword();
         if (pw == null) {
             result.rejectValue("password", "user.password.notBlank");
@@ -79,20 +82,22 @@ public class UserManagementController {
             return "admin/user-modal";
         }
 
-        User user = new User(
-                adminUserRequest.getName(),
-                adminUserRequest.getEmail(),
-                passwordEncoder.encode(adminUserRequest.getPassword()),
-                adminUserRequest.getRole()
-        );
+        User user =
+                new User(
+                        adminUserRequest.getName(),
+                        adminUserRequest.getEmail(),
+                        passwordEncoder.encode(adminUserRequest.getPassword()),
+                        adminUserRequest.getRole());
         userService.createUser(user);
         return HtmxUtils.triggerEvent("userSaved");
     }
 
     @PutMapping("/{id}")
-    public Object updateUser(@PathVariable Long id,
-                             @Valid @ModelAttribute AdminUserRequest adminUserRequest,
-                             BindingResult result, Model model) {
+    public Object updateUser(
+            @PathVariable Long id,
+            @Valid @ModelAttribute AdminUserRequest adminUserRequest,
+            BindingResult result,
+            Model model) {
         if (result.hasErrors()) {
             model.addAttribute("userId", id);
             model.addAttribute("roles", Role.values());
@@ -100,8 +105,12 @@ public class UserManagementController {
             return "admin/user-modal";
         }
 
-        User updated = userService.updateUser(id, adminUserRequest.getName(),
-                adminUserRequest.getEmail(), adminUserRequest.getRole());
+        User updated =
+                userService.updateUser(
+                        id,
+                        adminUserRequest.getName(),
+                        adminUserRequest.getEmail(),
+                        adminUserRequest.getRole());
 
         SecurityUtils.refreshCachedUser(updated);
         return HtmxUtils.triggerEvent("userSaved");
@@ -136,8 +145,8 @@ public class UserManagementController {
 
     @PostMapping("/{id}/reset-password")
     @ResponseBody
-    public ResponseEntity<Void> resetPassword(@PathVariable Long id,
-                                              @RequestParam String password) {
+    public ResponseEntity<Void> resetPassword(
+            @PathVariable Long id, @RequestParam String password) {
         if (password.length() < 8 || password.length() > 72) {
             return ResponseEntity.badRequest().build();
         }

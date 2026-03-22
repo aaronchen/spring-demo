@@ -5,6 +5,23 @@
 
     <input type="hidden" th:field="*{version}">
 
+    <!--/* Project selector: shown in create mode when editableProjects is available (cross-project create
+         or validation re-render). Pre-selects the current project if set. */-->
+    <div class="mb-3" th:if="${mode == 'create' && editableProjects != null}">
+        <label for="projectId" class="form-label fw-bold form-label-required"
+               th:text="#{task.field.project}">Project</label>
+        <select name="projectId" id="projectId" class="form-select" required>
+            <option value="" th:text="#{task.field.project.placeholder}">Select a project...</option>
+            <option th:each="p : ${editableProjects}"
+                    th:value="${p.id}"
+                    th:text="${p.name}"
+                    th:selected="${task.project != null && task.project.id == p.id}">Project</option>
+        </select>
+    </div>
+    <!--/* When project is set but no dropdown available (project-scoped create from project page),
+         carry projectId in a hidden field. */-->
+    <input th:if="${task.project != null && editableProjects == null}" type="hidden" name="projectId" th:value="${task.project.id}">
+
     <!-- Title -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold"
@@ -53,7 +70,14 @@
     <!-- Status -->
     <div class="mb-3" th:if="${mode != 'create'}">
         <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
-        <div class="d-flex gap-3">
+        <div class="d-flex gap-3 flex-wrap">
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="BACKLOG" id="status-backlog"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-backlog">
+                    <span class="badge bg-light text-dark"><i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span></span>
+                </label>
+            </div>
             <div class="form-check">
                 <input class="form-check-input" type="radio" th:field="*{status}" value="OPEN" id="status-open"
                        th:disabled="${mode == 'view'}">
@@ -69,10 +93,24 @@
                 </label>
             </div>
             <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="IN_REVIEW" id="status-in-review"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-in-review">
+                    <span class="badge bg-info text-white"><i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span></span>
+                </label>
+            </div>
+            <div class="form-check">
                 <input class="form-check-input" type="radio" th:field="*{status}" value="COMPLETED" id="status-completed"
                        th:disabled="${mode == 'view'}">
                 <label class="form-check-label" for="status-completed">
                     <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span></span>
+                </label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" th:field="*{status}" value="CANCELLED" id="status-cancelled"
+                       th:disabled="${mode == 'view'}">
+                <label class="form-check-label" for="status-cancelled">
+                    <span class="badge bg-dark"><i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span></span>
                 </label>
             </div>
         </div>

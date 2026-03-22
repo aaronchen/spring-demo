@@ -6,13 +6,12 @@ import cc.desuka.demo.model.Notification;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.NotificationRepository;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class NotificationService {
@@ -21,16 +20,18 @@ public class NotificationService {
     private final NotificationMapper notificationMapper;
     private final SimpMessagingTemplate messagingTemplate;
 
-    public NotificationService(NotificationRepository notificationRepository,
-                               NotificationMapper notificationMapper,
-                               SimpMessagingTemplate messagingTemplate) {
+    public NotificationService(
+            NotificationRepository notificationRepository,
+            NotificationMapper notificationMapper,
+            SimpMessagingTemplate messagingTemplate) {
         this.notificationRepository = notificationRepository;
         this.notificationMapper = notificationMapper;
         this.messagingTemplate = messagingTemplate;
     }
 
     @Transactional
-    public void create(User recipient, User actor, NotificationType type, String message, String link) {
+    public void create(
+            User recipient, User actor, NotificationType type, String message, String link) {
         Notification notification = new Notification(recipient, actor, type, message, link);
         Notification saved = notificationRepository.save(notification);
 
@@ -49,17 +50,20 @@ public class NotificationService {
     }
 
     public Page<NotificationResponse> findAllForUser(Long userId, Pageable pageable) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        return notificationRepository
+                .findByUserIdOrderByCreatedAtDesc(userId, pageable)
                 .map(notificationMapper::toResponse);
     }
 
     @Transactional
     public void markAsRead(Long id, Long userId) {
-        notificationRepository.findByIdAndUserId(id, userId)
-                .ifPresent(n -> {
-                    n.setRead(true);
-                    notificationRepository.save(n);
-                });
+        notificationRepository
+                .findByIdAndUserId(id, userId)
+                .ifPresent(
+                        n -> {
+                            n.setRead(true);
+                            notificationRepository.save(n);
+                        });
     }
 
     @Transactional

@@ -3,19 +3,17 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
+import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import cc.desuka.demo.model.Role;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
@@ -26,10 +24,11 @@ public class UserService {
     private final CommentQueryService commentQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public UserService(UserRepository userRepository,
-                       TaskQueryService taskQueryService,
-                       CommentQueryService commentQueryService,
-                       ApplicationEventPublisher eventPublisher) {
+    public UserService(
+            UserRepository userRepository,
+            TaskQueryService taskQueryService,
+            CommentQueryService commentQueryService,
+            ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskQueryService = taskQueryService;
         this.commentQueryService = commentQueryService;
@@ -41,7 +40,8 @@ public class UserService {
     }
 
     public User getUserById(Long id) {
-        return userRepository.findById(id)
+        return userRepository
+                .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(User.class, id));
     }
 
@@ -52,7 +52,9 @@ public class UserService {
 
     public List<User> searchUsers(String query) {
         if (query == null || query.isBlank()) return getAllUsers();
-        return userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(query, query);
+        return userRepository
+                .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(
+                        query, query);
     }
 
     public List<User> getEnabledUsers() {
@@ -61,7 +63,9 @@ public class UserService {
 
     public List<User> searchEnabledUsers(String query) {
         if (query == null || query.isBlank()) return getEnabledUsers();
-        return userRepository.findByEnabledTrueAndNameContainingIgnoreCaseOrEnabledTrueAndEmailContainingIgnoreCaseOrderByNameAsc(query, query);
+        return userRepository
+                .findByEnabledTrueAndNameContainingIgnoreCaseOrEnabledTrueAndEmailContainingIgnoreCaseOrderByNameAsc(
+                        query, query);
     }
 
     public Optional<User> findByEmail(String email) {
@@ -70,9 +74,13 @@ public class UserService {
 
     public User createUser(User user) {
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_CREATED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_CREATED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }
 
@@ -82,9 +90,13 @@ public class UserService {
         user.setEmail(email);
         user.setRole(role);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_UPDATED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_UPDATED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }
 
@@ -97,10 +109,13 @@ public class UserService {
         Map<String, Object> after = saved.toAuditSnapshot();
         Map<String, Object> diff = AuditDetails.diff(before, after);
         if (!diff.isEmpty()) {
-            eventPublisher.publishEvent(new AuditEvent(
-                    AuditEvent.PROFILE_UPDATED, User.class, saved.getId(),
-                    SecurityUtils.getCurrentPrincipal(),
-                    AuditDetails.toJson(diff)));
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.PROFILE_UPDATED,
+                            User.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(diff)));
         }
         return saved;
     }
@@ -109,10 +124,13 @@ public class UserService {
         User user = getUserById(userId);
         user.setPassword(encodedPassword);
         userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.PROFILE_PASSWORD_CHANGED, User.class, userId,
-                SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.PROFILE_PASSWORD_CHANGED,
+                        User.class,
+                        userId,
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
     }
 
     public long countCompletedTasks(Long userId) {
@@ -138,9 +156,13 @@ public class UserService {
         user.setEnabled(false);
         taskQueryService.unassignTasks(user);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_DISABLED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_DISABLED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }
 
@@ -148,9 +170,13 @@ public class UserService {
         User user = getUserById(userId);
         user.setEnabled(true);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_ENABLED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_ENABLED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }
 
@@ -158,18 +184,31 @@ public class UserService {
         User user = getUserById(userId);
         user.setPassword(encodedPassword);
         userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_PASSWORD_RESET, User.class, userId, SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_PASSWORD_RESET,
+                        User.class,
+                        userId,
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
     }
 
     public User updateRole(Long userId, Role role) {
         User user = getUserById(userId);
         user.setRole(role);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_ROLE_CHANGED, User.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(Map.of(User.FIELD_NAME, saved.getName(), User.FIELD_ROLE, role.name()))));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_ROLE_CHANGED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(
+                                Map.of(
+                                        User.FIELD_NAME,
+                                        saved.getName(),
+                                        User.FIELD_ROLE,
+                                        role.name()))));
         return saved;
     }
 
@@ -178,8 +217,12 @@ public class UserService {
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
         taskQueryService.unassignTasks(user);
         userRepository.delete(user);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.USER_DELETED, User.class, id, SecurityUtils.getCurrentPrincipal(),
-                snapshot));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_DELETED,
+                        User.class,
+                        id,
+                        SecurityUtils.getCurrentPrincipal(),
+                        snapshot));
     }
 }

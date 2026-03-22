@@ -46,14 +46,18 @@ public class UniqueValidator implements ConstraintValidator<Unique, Object> {
             idValue = wrapper.getPropertyValue(idField);
         }
 
-        String jpql = "SELECT COUNT(e) FROM " + entity.getSimpleName()
-                + " e WHERE LOWER(e." + field + ") = LOWER(:value)";
+        String jpql =
+                "SELECT COUNT(e) FROM "
+                        + entity.getSimpleName()
+                        + " e WHERE LOWER(e."
+                        + field
+                        + ") = LOWER(:value)";
         if (idValue != null) {
             jpql += " AND e." + idField + " != :excludeId";
         }
 
-        TypedQuery<Long> query = entityManager.createQuery(jpql, Long.class)
-                .setParameter("value", trimmed);
+        TypedQuery<Long> query =
+                entityManager.createQuery(jpql, Long.class).setParameter("value", trimmed);
         if (idValue != null) {
             query.setParameter("excludeId", idValue);
         }

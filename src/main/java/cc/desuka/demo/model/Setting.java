@@ -4,7 +4,6 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -26,8 +25,7 @@ public class Setting implements Auditable {
     @Column(name = "setting_value")
     private String value;
 
-    public Setting() {
-    }
+    public Setting() {}
 
     public Setting(String key, String value) {
         this.key = key;

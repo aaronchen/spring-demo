@@ -6,12 +6,11 @@ import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 @Transactional
@@ -30,7 +29,8 @@ public class TagService {
     }
 
     public Tag getTagById(Long id) {
-        return tagRepository.findById(id)
+        return tagRepository
+                .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Tag.class, id));
     }
 
@@ -45,9 +45,13 @@ public class TagService {
 
     public Tag createTag(Tag tag) {
         Tag saved = tagRepository.save(tag);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.TAG_CREATED, Tag.class, saved.getId(), SecurityUtils.getCurrentPrincipal(),
-                AuditDetails.toJson(saved.toAuditSnapshot())));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.TAG_CREATED,
+                        Tag.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }
 
@@ -55,8 +59,12 @@ public class TagService {
         Tag tag = getTagById(id);
         String snapshot = AuditDetails.toJson(tag.toAuditSnapshot());
         tagRepository.delete(tag);
-        eventPublisher.publishEvent(new AuditEvent(
-                AuditEvent.TAG_DELETED, Tag.class, id, SecurityUtils.getCurrentPrincipal(),
-                snapshot));
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.TAG_DELETED,
+                        Tag.class,
+                        id,
+                        SecurityUtils.getCurrentPrincipal(),
+                        snapshot));
     }
 }

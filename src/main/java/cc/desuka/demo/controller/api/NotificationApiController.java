@@ -3,13 +3,12 @@ package cc.desuka.demo.controller.api;
 import cc.desuka.demo.dto.NotificationResponse;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.NotificationService;
+import java.util.Map;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -36,8 +35,8 @@ public class NotificationApiController {
     }
 
     @PatchMapping("/{id}/read")
-    public ResponseEntity<Void> markAsRead(@PathVariable Long id,
-                                           @AuthenticationPrincipal CustomUserDetails user) {
+    public ResponseEntity<Void> markAsRead(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails user) {
         notificationService.markAsRead(id, user.getUser().getId());
         return ResponseEntity.noContent().build();
     }

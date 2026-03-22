@@ -344,14 +344,16 @@ Security is enforced at **three layers** — any one can block access:
 ```
 Use for endpoints where the entire operation is role-restricted (admin panel, tag/user mutations).
 
-**2. Controller-level (OwnershipGuard)** — fine-grained, ownership-based:
+**2. Controller-level (ProjectAccessGuard / OwnershipGuard)** — fine-grained, project-role-based or ownership-based:
 ```java
-Task task = taskService.getTaskById(id);
-if (task.getUser() != null) {
-    ownershipGuard.requireAccess(task, currentDetails); // throws AccessDeniedException
-}
+// Project-scoped access (for task CRUD within projects):
+projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
+
+// Entity ownership (for comments):
+ownershipGuard.requireAccess(comment, currentDetails);
 ```
-Use for endpoints where access depends on who owns the entity (task edit/delete). Unassigned-entity handling is a business rule — callers skip the guard when `getUser() == null`.
+`ProjectAccessGuard` checks project membership and role (VIEWER/EDITOR/OWNER); admin bypasses all.
+`OwnershipGuard` checks entity ownership for non-project-scoped entities like comments.
 
 **3. Template-level** — UI visibility only (not a security boundary):
 ```html
@@ -485,6 +487,22 @@ Event-related code is organized by domain concern, not by technical role:
 
 Controllers always stay in `controller/` (layer package) — never move them into feature packages. Feature packages are for internal infrastructure only.
 
+### Project Access Pattern
+
+Every task belongs to a project. Access is controlled via `ProjectAccessGuard` at the controller level:
+- **View access** — any project member (VIEWER, EDITOR, OWNER) or admin
+- **Edit access** — EDITOR or OWNER role, or admin
+- **Owner access** — OWNER role only, or admin
+
+Cross-project views (`/tasks`, `/api/tasks`) use `accessibleProjectIds`:
+```java
+List<Long> accessibleProjectIds = AuthExpressions.isAdmin(user)
+    ? null  // admin sees all
+    : projectService.getAccessibleProjectIds(user.getId());
+taskService.searchAndFilterTasksForProjects(accessibleProjectIds, ...);
+```
+`null` means "no project filter" (admin bypass). Non-null filters to only accessible projects.
+
 ### Cross-Service Dependency Rule
 
 A service uses its own repository for its own domain and delegates to other services for other domains. Never call another domain's repository directly — business logic in the owning service would be bypassed.
@@ -497,7 +515,7 @@ A service uses its own repository for its own domain and delegates to other serv
 
 **OSIV is disabled** (`spring.jpa.open-in-view=false`). Lazy associations must be loaded within a transaction — either via `@EntityGraph` on repository methods or within a `@Transactional` service method.
 
-**Class-level `@Transactional`** on services with write methods (`TaskService`, `UserService`, `CommentService`, `TagService`, `SettingService`, `UserPreferenceService`). Method-level `@Transactional` for isolated write methods in otherwise read-only services (e.g., `ScheduledTaskService.purgeOldNotifications()`).
+**Class-level `@Transactional`** on services with write methods (`TaskService`, `UserService`, `ProjectService`, `CommentService`, `TagService`, `SettingService`, `UserPreferenceService`). Method-level `@Transactional` for isolated write methods in otherwise read-only services (e.g., `ScheduledTaskService.purgeOldNotifications()`).
 
 **`@EntityGraph`** on repository methods whose results are used outside the service transaction (e.g., mapped by MapStruct in controllers):
 ```java
@@ -665,7 +683,7 @@ The application uses Spring profiles to separate environment-specific configurat
 `spring.profiles.active=dev` is set in `application.properties`. In production, override via environment variable: `SPRING_PROFILES_ACTIVE=prod`.
 
 **Profile-gated components:**
-- `DataLoader` — `@Profile("dev")` — seeds demo users, tasks, tags, comments
+- `DataLoader` — `@Profile("dev")` — seeds 20 demo users, project-specific tasks, tags, comments
 - `H2DevConfig` — `@Profile("dev")` — H2 web server (port 8082) + H2 console servlet
 - `DevSecurityConfig` — `@Profile("dev")` — permits `/h2-console/**`, disables CSRF and relaxes frame options for H2 console only
 
@@ -757,6 +775,10 @@ Key dependencies:
 - `spring-boot-starter-websocket` - WebSocket + STOMP support
 - `stomp-websocket` (WebJar 2.3.4) - STOMP.js client library
 - `springdoc-openapi-starter-webmvc-ui` (3.0.2) - OpenAPI 3.1 spec + Swagger UI
+- `spotless-maven-plugin` (2.44.5) - Code formatting enforcement
+  - `google-java-format` (1.30.0) AOSP style (4-space indent)
+  - Runs `apply` goal at `compile` phase — auto-formats on every build
+  - Manual check: `./mvnw spotless:check`
 
 ## Development Workflow
 
@@ -802,11 +824,15 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 
 **Web UI** (requires login):
 - `http://localhost:8080/` - Home page
-- `http://localhost:8080/tasks` - Task list (cards, table, or calendar view)
+- `http://localhost:8080/projects` - Project list
+- `http://localhost:8080/projects/new` - Create project
+- `http://localhost:8080/projects/{id}` - Project home with task filtering
+- `http://localhost:8080/projects/{id}/settings` - Project settings and member management (owner/admin)
+- `http://localhost:8080/tasks` - Cross-project task list (cards, table, or calendar view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 - `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
-- `http://localhost:8080/dashboard` - Personal dashboard (real-time stats, recent tasks, activity feed)
+- `http://localhost:8080/dashboard` - Per-project dashboard (real-time stats, recent tasks, activity feed); admins see additional system overview section
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)
@@ -818,7 +844,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 
 **REST API — Tasks** (requires login; CSRF exempt):
 - `GET /api/tasks` - Paginated task list (default: page=0, size=20, sort=createdAt,desc)
-  - Filter params: `search`, `status` (ALL/OPEN/IN_PROGRESS/COMPLETED), `overdue`, `priority`, `userId`, `tags`
+  - Filter params: `search`, `status` (ALL/BACKLOG/OPEN/IN_PROGRESS/IN_REVIEW/COMPLETED/CANCELLED), `overdue`, `priority`, `userId`, `tags`
   - Pagination params: `page`, `size`, `sort` (Spring Data standard)
 - `GET /api/tasks/{id}` - Get task by ID
 - `POST /api/tasks` - Create task (auto-assigned to caller; admins can specify `userId`)
@@ -885,7 +911,7 @@ The project includes `rest.http` for testing REST API endpoints with VS Code RES
 ./mvnw test
 ```
 
-183 tests across 22 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
+206 tests across 23 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
 
 ### Test Properties (`application-test.properties`)
 
@@ -908,6 +934,7 @@ Separate H2 database (`testdb` vs `taskdb`) so tests don't collide with a runnin
 | `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
 | `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
 | `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
+| `ProjectServiceTest` | Unit (Mockito) | Project CRUD, member management, access checks, last-owner protection |
 | `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
 | `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
 | `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |
@@ -993,19 +1020,40 @@ CREATE TABLE users (
     enabled  BOOLEAN NOT NULL DEFAULT TRUE      -- disabled users cannot log in
 );
 
+CREATE TABLE projects (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE / ARCHIVED
+    created_by  BIGINT NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMP,
+    updated_at  TIMESTAMP
+);
+
+CREATE TABLE project_members (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id  BIGINT NOT NULL REFERENCES projects(id),
+    user_id     BIGINT NOT NULL REFERENCES users(id),
+    role        VARCHAR(50) NOT NULL DEFAULT 'EDITOR',  -- VIEWER / EDITOR / OWNER
+    created_at  TIMESTAMP,
+    UNIQUE (project_id, user_id)
+);
+
 CREATE TABLE tasks (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     version      BIGINT,                         -- @Version optimistic locking
     title        VARCHAR(100) NOT NULL,
     description  VARCHAR(500),
-    status       VARCHAR(255) DEFAULT 'OPEN',   -- OPEN / IN_PROGRESS / COMPLETED (@Enumerated STRING)
+    status       VARCHAR(255) DEFAULT 'OPEN',   -- BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED (@Enumerated STRING)
     priority     VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
     start_date   DATE,                           -- nullable; when work begins
-    due_date     DATE,                           -- nullable; overdue = incomplete + past due
+    due_date     DATE,                           -- nullable; overdue = non-terminal + past due
     completed_at TIMESTAMP,                      -- set automatically when status → COMPLETED
     created_at   TIMESTAMP,
     updated_at   TIMESTAMP,
-    user_id      BIGINT REFERENCES users(id)   -- nullable FK; @ManyToOne owning side
+    project_id   BIGINT NOT NULL REFERENCES projects(id),  -- every task belongs to a project
+    user_id      BIGINT REFERENCES users(id),   -- nullable FK; @ManyToOne owning side
+    parent_id    BIGINT REFERENCES tasks(id)    -- nullable FK; subtask support
 );
 
 CREATE TABLE task_checklist_items (

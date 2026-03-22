@@ -58,16 +58,29 @@
                 <!-- Left nav links -->
                 <ul class="navbar-nav me-auto ms-3">
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/dashboard}" th:text="#{nav.dashboard}">Dashboard</a>
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath.startsWith('/dashboard') ? 'active' : ''}"
+                           th:href="@{/dashboard}" th:text="#{nav.dashboard}">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/tasks}" th:text="#{nav.tasks}">Tasks</a>
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath.startsWith('/projects') ? 'active' : ''}"
+                           th:href="@{/projects}" th:text="#{nav.projects}">Projects</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/tags}" th:text="#{nav.tags}">Tags</a>
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath == '/tasks' ? 'active' : ''}"
+                           th:href="@{/tasks}" th:text="#{nav.tasks}">Tasks</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold nav-link-bright" th:href="@{/users}" th:text="#{nav.users}">Users</a>
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath.startsWith('/tags') ? 'active' : ''}"
+                           th:href="@{/tags}" th:text="#{nav.tags}">Tags</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath == '/users' ? 'active' : ''}"
+                           th:href="@{/users}" th:text="#{nav.users}">Users</a>
                     </li>
                 </ul>
                 <!-- Online Users Indicator -->

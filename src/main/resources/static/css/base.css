@@ -73,6 +73,12 @@ body {
     color: #fff !important;
 }
 
+.nav-link-bright.active {
+    color: #fff !important;
+    text-decoration: underline;
+    text-underline-offset: 0.25rem;
+}
+
 /* Sticky footer */
 .footer {
     background-color: #f8f9fa;

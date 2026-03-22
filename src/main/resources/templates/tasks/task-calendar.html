@@ -56,7 +56,7 @@
                                   th:classappend="${day.today() ? 'fw-bold text-primary' : ''}"
                                   th:text="${day.date().dayOfMonth}">1</span>
                             <a href="#" class="calendar-add-btn text-muted"
-                               th:attr="hx-get=${appRoutes.tasks + '/new?dueDate=' + #temporals.format(day.date(), 'yyyy-MM-dd')}"
+                               th:attr="hx-get=${appRoutes.tasks + '/new?dueDate=' + #temporals.format(day.date(), 'yyyy-MM-dd') + (project != null ? '&projectId=' + project.id : '')}"
                                hx-target="#task-modal-content"
                                hx-swap="innerHTML"
                                th:title="#{task.calendar.addTask}">
@@ -68,12 +68,15 @@
                         <div class="calendar-chips">
                             <th:block th:each="task : ${day.tasks()}">
                                 <div th:with="isCompleted=${task.status.name() == 'COMPLETED'},
+                                             isCancelled=${task.status.name() == 'CANCELLED'},
+                                             isTerminal=${isCompleted || isCancelled},
                                              isInProgress=${task.status.name() == 'IN_PROGRESS'},
-                                             isOverdue=${!isCompleted && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())},
-                                             canEdit=${#auth.canEdit(task) || task.user == null},
+                                             isInReview=${task.status.name() == 'IN_REVIEW'},
+                                             isOverdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())},
+                                             canEdit=${canEditProject != null ? canEditProject : (#auth.canEdit(task) || task.user == null)},
                                              onDueDate=${task.dueDate != null}"
                                      class="calendar-chip"
-                                     th:classappend="${isOverdue ? 'calendar-chip-overdue' : (isCompleted ? 'calendar-chip-completed' : (isInProgress ? 'calendar-chip-in-progress' : 'calendar-chip-open'))} + ${onDueDate ? ' calendar-chip-end' : ' calendar-chip-start'}">
+                                     th:classappend="${isOverdue ? 'calendar-chip-overdue' : (isCompleted ? 'calendar-chip-completed' : (isCancelled ? 'calendar-chip-cancelled' : (isInReview ? 'calendar-chip-in-review' : (isInProgress ? 'calendar-chip-in-progress' : 'calendar-chip-open'))))} + ${onDueDate ? ' calendar-chip-end' : ' calendar-chip-start'}">
                                     <a href="#"
                                        th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                                        hx-target="#task-modal-content"

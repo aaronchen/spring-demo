@@ -1,8 +1,7 @@
 package cc.desuka.demo.dto;
 
-import lombok.Data;
-
 import java.time.LocalDateTime;
+import lombok.Data;
 
 @Data
 public class NotificationResponse {

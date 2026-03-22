@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(#{page.title.project.settings}, null)}"></head>
+<body class="d-flex flex-column min-vh-100">
+
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 mb-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+
+                <!-- Back link -->
+                <a th:href="@{/projects/{id}(id=${project.id})}" class="text-decoration-none mb-3 d-inline-block">
+                    <i class="bi bi-arrow-left"></i> <span th:text="${project.name}">Project Name</span>
+                </a>
+
+                <h1 class="display-4 mb-4" th:text="#{project.settings.heading}">Project Settings</h1>
+
+                <!-- Project Details Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <form th:action="@{/projects/{id}(id=${project.id})}" th:object="${projectRequest}" method="post">
+
+                            <!-- Name -->
+                            <div class="mb-3">
+                                <label for="name" class="form-label form-label-required"
+                                       th:text="#{project.field.name}">Name</label>
+                                <input type="text" class="form-control" id="name" th:field="*{name}"
+                                       th:placeholder="#{project.field.name}"
+                                       th:errorclass="is-invalid">
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                                     th:errors="*{name}">Name error</div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="mb-3">
+                                <label for="description" class="form-label"
+                                       th:text="#{project.field.description}">Description</label>
+                                <textarea class="form-control" id="description" th:field="*{description}"
+                                          rows="3"
+                                          th:placeholder="#{project.field.description}"
+                                          th:errorclass="is-invalid"></textarea>
+                                <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}"
+                                     th:errors="*{description}">Description error</div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> <span th:text="#{admin.settings.save}">Save</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Members Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0" th:text="#{project.members.heading}">Members</h5>
+                    </div>
+                    <div th:replace="~{projects/member-table}"></div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="card shadow-sm border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> <span th:text="#{project.settings.dangerZone}">Danger Zone</span></h5>
+                    </div>
+                    <div class="card-body">
+                        <!--/* Unarchive — shown when project is archived */-->
+                        <div th:if="${project.status.name() == 'ARCHIVED'}"
+                             class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong th:text="#{project.action.unarchive}">Restore Project</strong>
+                                <p class="text-muted mb-0 small" th:text="#{project.unarchive.description}">
+                                    Restoring makes the project visible and active again.
+                                </p>
+                            </div>
+                            <form th:action="@{/projects/{id}/unarchive(id=${project.id})}" method="post">
+                                <button type="submit" class="btn btn-outline-success">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                    <span th:text="#{project.action.unarchive}">Restore</span>
+                                </button>
+                            </form>
+                        </div>
+                        <!--/* Archive — shown when project is active */-->
+                        <div th:if="${project.status.name() == 'ACTIVE'}"
+                             class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong th:text="#{project.action.archive}">Archive Project</strong>
+                                <p class="text-muted mb-0 small" th:text="#{project.archive.description}">
+                                    Archiving hides the project from the list. This can be undone.
+                                </p>
+                            </div>
+                            <form id="archive-form" th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
+                                <button type="button" class="btn btn-outline-danger" id="archive-btn">
+                                    <i class="bi bi-archive"></i> <span th:text="#{project.action.archive}">Archive</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <script th:inline="javascript">
+        document.getElementById('archive-btn')?.addEventListener('click', function() {
+            showConfirm({
+                message: /*[[#{project.archive.confirm}]]*/ 'Are you sure?',
+                title: /*[[#{project.action.archive}]]*/ 'Archive Project',
+                confirmText: /*[[#{project.action.archive}]]*/ 'Archive',
+                headerClass: 'bg-danger text-white',
+                confirmClass: 'btn btn-danger',
+            }, function() {
+                document.getElementById('archive-form').submit();
+            });
+        });
+    </script>
+</body>
+</html>

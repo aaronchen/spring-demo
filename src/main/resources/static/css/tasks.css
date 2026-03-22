@@ -64,8 +64,8 @@
 }
 #user-filter-mine.active { color: var(--theme-primary-text, #fff) !important; }
 
-/* Clickable user names on cards/rows */
-a.user-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
+/* Clickable user/project names on cards/rows */
+a.user-link:hover, a.project-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
 
 /* Clickable tag badges on cards/rows */
 a.badge:hover { opacity: 0.85; cursor: pointer; }
@@ -229,9 +229,17 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 .calendar-chip-in-progress.calendar-chip-end { border-right-color: var(--bs-warning, #ffc107); }
 .calendar-chip-in-progress { background: rgba(255,193,7,0.1); }
 
+.calendar-chip-in-review.calendar-chip-start { border-left-color: var(--bs-info, #0dcaf0); }
+.calendar-chip-in-review.calendar-chip-end { border-right-color: var(--bs-info, #0dcaf0); }
+.calendar-chip-in-review { background: rgba(13,202,240,0.1); }
+
 .calendar-chip-completed.calendar-chip-start { border-left-color: var(--bs-success, #198754); }
 .calendar-chip-completed.calendar-chip-end { border-right-color: var(--bs-success, #198754); }
 .calendar-chip-completed { background: rgba(25,135,84,0.08); }
+
+.calendar-chip-cancelled.calendar-chip-start { border-left-color: var(--bs-dark, #212529); }
+.calendar-chip-cancelled.calendar-chip-end { border-right-color: var(--bs-dark, #212529); }
+.calendar-chip-cancelled { background: rgba(33,37,41,0.08); }
 
 .calendar-chip-overdue.calendar-chip-start { border-left-color: var(--bs-danger, #dc3545); }
 .calendar-chip-overdue.calendar-chip-end { border-right-color: var(--bs-danger, #dc3545); }
@@ -272,8 +280,10 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 /* Table action buttons: uniform secondary border/icon in default state,
    colored fill on hover (Bootstrap's native hover vars handle the rest) */
 .table .btn-group .btn-outline-success,
+.table .btn-group .btn-outline-info,
 .table .btn-group .btn-outline-warning,
 .table .btn-group .btn-outline-primary,
+.table .btn-group .btn-outline-secondary,
 .table .btn-group .btn-outline-danger {
     --bs-btn-color: var(--theme-secondary, #6c757d);
     --bs-btn-border-color: var(--theme-secondary, #6c757d);

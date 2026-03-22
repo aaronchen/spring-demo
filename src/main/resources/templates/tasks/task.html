@@ -22,10 +22,18 @@
 
             <!-- Page Header -->
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h1 class="display-4 mb-0"
-                    th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{task.create.heading})">
-                    Task Form
-                </h1>
+                <div>
+                    <h1 class="display-4 mb-0"
+                        th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{task.create.heading})">
+                        Task Form
+                    </h1>
+                    <small th:if="${task.project != null && mode != 'create'}" class="text-muted">
+                        <i class="bi bi-folder"></i>
+                        <a th:href="@{/projects/{id}(id=${task.project.id})}"
+                           class="text-muted text-decoration-none project-link"
+                           th:text="${task.project.name}">Project</a>
+                    </small>
+                </div>
                 <div class="d-flex gap-2">
                     <a th:href="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
                        class="btn btn-outline-secondary btn-lg px-4">
@@ -50,7 +58,7 @@
         <!-- Two-Column Layout -->
         <form id="task-page-form" class="task-page-form border rounded-0 flex-grow-1 min-h-0"
               th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
-              th:object="${task}"
+              th:object="${taskFormRequest}"
               method="post">
             <th:block th:replace="~{tasks/task-layout :: columns}"></th:block>
         </form>

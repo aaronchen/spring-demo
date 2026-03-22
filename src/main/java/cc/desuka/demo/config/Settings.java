@@ -1,27 +1,29 @@
 package cc.desuka.demo.config;
 
 /**
- * Typed representation of all site-wide settings with defaults.
- * This is the single source of truth — add new settings here.
+ * Typed representation of all site-wide settings with defaults. This is the single source of truth
+ * — add new settings here.
  *
- * <p>{@link cc.desuka.demo.service.SettingService#load()} uses Spring's
- * {@code BeanWrapper} to auto-map DB rows to fields by name, with type
- * conversion (e.g. String → boolean). Missing keys keep their default.</p>
+ * <p>{@link cc.desuka.demo.service.SettingService#load()} uses Spring's {@code BeanWrapper} to
+ * auto-map DB rows to fields by name, with type conversion (e.g. String → boolean). Missing keys
+ * keep their default.
  *
- * <p><b>To add a new setting:</b></p>
+ * <p><b>To add a new setting:</b>
+ *
  * <ol>
- *   <li>Add a field with its default value below</li>
- *   <li>Add a {@code KEY_*} constant whose value matches the field name exactly</li>
- *   <li>Add {@code audit.field.<key>} to {@code messages.properties} for audit display</li>
+ *   <li>Add a field with its default value below
+ *   <li>Add a {@code KEY_*} constant whose value matches the field name exactly
+ *   <li>Add {@code audit.field.<key>} to {@code messages.properties} for audit display
  * </ol>
  */
 public class Settings {
 
     /**
-     * DB key constants — each value must match the corresponding field name
-     * exactly (BeanWrapper resolves fields by name).
+     * DB key constants — each value must match the corresponding field name exactly (BeanWrapper
+     * resolves fields by name).
      */
     public static final String KEY_THEME = "theme";
+
     public static final String KEY_SITE_NAME = "siteName";
     public static final String KEY_REGISTRATION_ENABLED = "registrationEnabled";
     public static final String KEY_MAINTENANCE_BANNER = "maintenanceBanner";

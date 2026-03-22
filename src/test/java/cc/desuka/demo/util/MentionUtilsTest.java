@@ -1,10 +1,9 @@
 package cc.desuka.demo.util;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class MentionUtilsTest {
 
@@ -21,16 +20,17 @@ class MentionUtilsTest {
 
     @Test
     void extractMentionedUserIds_multipleMentions() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds(
-                "@[Alice](userId:1) and @[Bob](userId:2) please review");
+        List<Long> ids =
+                MentionUtils.extractMentionedUserIds(
+                        "@[Alice](userId:1) and @[Bob](userId:2) please review");
 
         assertThat(ids).containsExactly(1L, 2L);
     }
 
     @Test
     void extractMentionedUserIds_duplicateMentions_preservesAll() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds(
-                "@[Alice](userId:1) hey @[Alice](userId:1)");
+        List<Long> ids =
+                MentionUtils.extractMentionedUserIds("@[Alice](userId:1) hey @[Alice](userId:1)");
 
         assertThat(ids).containsExactly(1L, 1L);
     }
@@ -62,8 +62,8 @@ class MentionUtilsTest {
     void renderHtml_convertsMentionToLink() {
         String result = mentionUtils.renderHtml("Hey @[Alice](userId:1)!");
 
-        assertThat(result).isEqualTo(
-                "Hey <a href=\"/tasks?selectedUserId=1\" class=\"mention\">@Alice</a>!");
+        assertThat(result)
+                .isEqualTo("Hey <a href=\"/tasks?selectedUserId=1\" class=\"mention\">@Alice</a>!");
     }
 
     @Test

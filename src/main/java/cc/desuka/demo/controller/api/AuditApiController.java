@@ -22,8 +22,8 @@ public class AuditApiController {
 
     @GetMapping
     public Page<AuditLog> getAuditLogs(
-            @PageableDefault(size = 50, sort = "timestamp",
-                    direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 50, sort = "timestamp", direction = Sort.Direction.DESC)
+                    Pageable pageable) {
         return auditLogService.getAuditPage(pageable);
     }
 }
