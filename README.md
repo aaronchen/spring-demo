@@ -59,7 +59,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
-- **Real-Time Dashboard** - Personal stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, system overview, due-this-week tasks, recent tasks, and activity feed; auto-refreshes via WebSocket on task and presence changes
+- **Real-Time Dashboard** - Per-project stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, due-this-week tasks, recent tasks, and activity feed; admin-only system overview across all projects; auto-refreshes via WebSocket on task and presence changes
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
@@ -161,7 +161,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    - **Login**: http://localhost:8080/login
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
    - **Projects**: http://localhost:8080/projects (project list)
-   - **Dashboard**: http://localhost:8080/dashboard (personal stats, due this week, real-time updates)
+   - **Dashboard**: http://localhost:8080/dashboard (per-project stats, due this week, real-time updates; admin system overview)
    - **Profile**: http://localhost:8080/profile (edit name/email, change password, preferences)
    - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
@@ -172,7 +172,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 4. **Dev credentials** (seeded by `DataLoader`)
    - **Admin**: `alice.johnson@example.com` / `password`
    - **Regular user**: `bob.smith@example.com` / `password`
-   - All 50 seeded users share the password `password`
+   - All 20 seeded users share the password `password`
 
 5. **Run tests**
    ```bash
@@ -223,7 +223,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 
 #### Creating a Task
 
-Click **New Task** — a modal opens. Fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Your current search/filter/sort state is preserved.
+Click **New Task** — a modal opens. Select a project from the dropdown (pre-selected if you're on a project page), fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Tasks can be created from any page with the New Task button. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
@@ -501,7 +501,7 @@ spring-demo/
 │   │   │   ├── HtmxUtils.java
 │   │   │   ├── MentionUtils.java          # @mention parsing and display rendering
 │   │   │   └── Messages.java             # MessageSource helper (shorthand for getMessage)
-│   │   ├── DataLoader.java              # Seeds 50 users, 8 tags, 300 tasks, comments, notifications (@Profile("dev"))
+│   │   ├── DataLoader.java              # Seeds 20 users, 8 tags, 56 tasks, comments, notifications (@Profile("dev"))
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
@@ -625,7 +625,7 @@ spring-demo/
 
 ## Sample Data
 
-`DataLoader.java` seeds on startup: **4 projects** (Platform, Product, Security, Ops) with team members across different roles, **50 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **300 tasks** distributed across projects with varied status (Backlog, Open, In Progress, In Review, Completed, Cancelled), creation dates, priorities, start dates, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), **checklist items** on a subset of tasks, **due-date reminder notifications** for Alice's tasks due tomorrow, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). 3 of Alice's tasks are explicitly set to due tomorrow for demo purposes. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
+`DataLoader.java` seeds on startup: **4 projects** (Platform, Product, Security, Ops) with team members across different roles, **20 users**, **8 tags** (Work, Personal, Home, Urgent, Someday, Meeting, Research, Errand), **56 tasks** distributed across projects with varied status (Backlog, Open, In Progress, In Review, Completed, Cancelled), creation dates, priorities, start dates, and due dates, **sample comments** on ~30% of tasks (1–3 comments each from random users), **checklist items** on a subset of tasks, **due-date reminder notifications** for Alice's tasks due tomorrow, and the **Workshop theme** as the default — ready to test search, filter, sort, and pagination immediately. ~80% of tasks are assigned to a user; each task gets 1–2 tags. Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW. ~80% of tasks have a due date spread -10 to +30 days from today (creating a mix of overdue and upcoming). 3 of Alice's tasks are explicitly set to due tomorrow for demo purposes. The first user (Alice Johnson) is an admin; all others are regular users. All passwords are `password`.
 
 ## Technologies
 

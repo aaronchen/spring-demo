@@ -52,9 +52,11 @@ public class Task implements OwnedEntity, Auditable {
     private String description;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private TaskStatus status = TaskStatus.OPEN;
 
     @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Priority priority = Priority.MEDIUM;
 
     // Virtual column for correct priority sorting (LOW=0, MEDIUM=1, HIGH=2).

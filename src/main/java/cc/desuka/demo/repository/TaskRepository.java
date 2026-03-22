@@ -42,8 +42,10 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     long countByDueDateBeforeAndStatusNotIn(LocalDate date, Collection<TaskStatus> statuses);
 
+    @EntityGraph(attributePaths = {"project"})
     List<Task> findTop5ByUserOrderByCreatedAtDesc(User user);
 
+    @EntityGraph(attributePaths = {"project"})
     List<Task> findByUserAndDueDateBetweenAndStatusNotIn(
             User user, LocalDate from, LocalDate to, Collection<TaskStatus> statuses);
 

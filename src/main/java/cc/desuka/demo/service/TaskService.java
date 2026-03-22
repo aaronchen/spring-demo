@@ -378,6 +378,24 @@ public class TaskService {
                         .and(TaskSpecifications.withOverdue(true)));
     }
 
+    public long countForProject(Long projectId) {
+        return taskRepository.count(TaskSpecifications.withProjectId(projectId));
+    }
+
+    public long countByStatusForProject(Long projectId, TaskStatus status) {
+        return taskRepository.count(
+                TaskSpecifications.withProjectId(projectId)
+                        .and(
+                                TaskSpecifications.withStatusFilter(
+                                        TaskStatusFilter.valueOf(status.name()))));
+    }
+
+    public long countOverdueForProject(Long projectId) {
+        return taskRepository.count(
+                TaskSpecifications.withProjectId(projectId)
+                        .and(TaskSpecifications.withOverdue(true)));
+    }
+
     public List<Task> getRecentTasksByUser(User user) {
         return taskRepository.findTop5ByUserOrderByCreatedAtDesc(user);
     }

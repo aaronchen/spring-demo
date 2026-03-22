@@ -31,9 +31,11 @@ public class SecurityConfig {
                                                 "/webjars/**",
                                                 "/css/**",
                                                 "/js/**",
+                                                "/tribute/**",
                                                 "/bootstrap-icons/**",
                                                 "/config.js",
-                                                "/favicon.svg")
+                                                "/favicon.svg",
+                                                "/favicon.png")
                                         .permitAll()
                                         .requestMatchers(
                                                 "/api-docs/**",

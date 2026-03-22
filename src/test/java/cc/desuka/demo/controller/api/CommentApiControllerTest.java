@@ -11,12 +11,15 @@ import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.CommentMapper;
 import cc.desuka.demo.model.Comment;
+import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
+import cc.desuka.demo.service.TaskService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +46,8 @@ class CommentApiControllerTest {
     @MockitoBean private CommentService commentService;
     @MockitoBean private CommentMapper commentMapper;
     @MockitoBean private OwnershipGuard ownershipGuard;
+    @MockitoBean private ProjectAccessGuard projectAccessGuard;
+    @MockitoBean private TaskService taskService;
 
     private CustomUserDetails regularDetails;
     private CustomUserDetails adminDetails;
@@ -58,8 +63,15 @@ class CommentApiControllerTest {
         regularDetails = new CustomUserDetails(regularUser);
         adminDetails = new CustomUserDetails(adminUser);
 
+        Project project = new Project();
+        project.setId(1L);
+        project.setName("Test Project");
+
         Task task = new Task("Test Task", "Description");
         task.setId(1L);
+        task.setProject(project);
+
+        when(taskService.getTaskById(1L)).thenReturn(task);
 
         comment = new Comment();
         comment.setId(1L);

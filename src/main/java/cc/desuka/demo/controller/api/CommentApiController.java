@@ -4,9 +4,12 @@ import cc.desuka.demo.dto.CommentRequest;
 import cc.desuka.demo.dto.CommentResponse;
 import cc.desuka.demo.mapper.CommentMapper;
 import cc.desuka.demo.model.Comment;
+import cc.desuka.demo.model.Task;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
+import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -20,30 +23,42 @@ public class CommentApiController {
     private final CommentService commentService;
     private final CommentMapper commentMapper;
     private final OwnershipGuard ownershipGuard;
+    private final ProjectAccessGuard projectAccessGuard;
+    private final TaskService taskService;
 
     public CommentApiController(
             CommentService commentService,
             CommentMapper commentMapper,
-            OwnershipGuard ownershipGuard) {
+            OwnershipGuard ownershipGuard,
+            ProjectAccessGuard projectAccessGuard,
+            TaskService taskService) {
         this.commentService = commentService;
         this.commentMapper = commentMapper;
         this.ownershipGuard = ownershipGuard;
+        this.projectAccessGuard = projectAccessGuard;
+        this.taskService = taskService;
     }
 
     // GET /api/tasks/1/comments
+    // Project members only.
     @GetMapping
-    public List<CommentResponse> getComments(@PathVariable Long taskId) {
+    public List<CommentResponse> getComments(
+            @PathVariable Long taskId, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        Task task = taskService.getTaskById(taskId);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return commentMapper.toResponseList(commentService.getCommentsByTaskId(taskId));
     }
 
     // POST /api/tasks/1/comments
-    // Any authenticated user may comment on any task.
+    // Project members only.
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponse createComment(
             @PathVariable Long taskId,
             @Valid @RequestBody CommentRequest commentRequest,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        Task task = taskService.getTaskById(taskId);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return commentMapper.toResponse(
                 commentService.createComment(
                         commentRequest.getText(), taskId, currentDetails.getUser().getId()));
@@ -57,6 +72,8 @@ public class CommentApiController {
             @PathVariable Long taskId,
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        Task task = taskService.getTaskById(taskId);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         Comment comment = commentService.getCommentById(commentId);
         ownershipGuard.requireAccess(comment, currentDetails);
         commentService.deleteComment(commentId);

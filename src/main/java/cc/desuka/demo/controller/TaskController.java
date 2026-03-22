@@ -128,6 +128,7 @@ public class TaskController {
         model.addAttribute("allTags", tagService.getAllTags());
         model.addAttribute("view", resolvedView);
         model.addAttribute("selectedUserId", selectedUserId);
+        addEditableProjects(model, currentDetails);
 
         // Resolve filtered user's name for the user filter button label
         Long currentId = currentDetails.getUser().getId();
@@ -269,6 +270,7 @@ public class TaskController {
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskService.getTaskById(id);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
         model.addAttribute("mode", "view");
@@ -282,10 +284,10 @@ public class TaskController {
 
     // GET /tasks/new - Show create form (full page or modal fragment)
     // Default user assignment is the current user (can be changed via dropdown).
-    // projectId is required — every task must belong to a project.
+    // projectId is optional — if omitted, user picks from a dropdown of editable projects.
     @GetMapping("/new")
     public String showCreateForm(
-            @RequestParam Long projectId,
+            @RequestParam(required = false) Long projectId,
             @RequestParam(required = false)
                     @org.springframework.format.annotation.DateTimeFormat(
                             iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
@@ -293,11 +295,15 @@ public class TaskController {
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        projectAccessGuard.requireEditAccess(projectId, currentDetails);
-        Project project = projectService.getProjectById(projectId);
         Task task = new Task();
-        task.setProject(project);
         task.setUser(currentDetails.getUser());
+        if (projectId != null) {
+            projectAccessGuard.requireEditAccess(projectId, currentDetails);
+            Project project = projectService.getProjectById(projectId);
+            task.setProject(project);
+        } else {
+            addEditableProjects(model, currentDetails);
+        }
         if (dueDate != null) {
             task.setDueDate(dueDate);
         }
@@ -316,7 +322,7 @@ public class TaskController {
     // POST /tasks - Create new task
     // Defaults to current user; user can pick a different assignee via the dropdown.
     // tagIds: list of selected tag IDs from form checkboxes. null when no checkbox is checked.
-    // projectId comes from a hidden form field — every task must belong to a project.
+    // projectId comes from a hidden or select form field — every task must belong to a project.
     @PostMapping
     public Object createTask(
             @Valid @ModelAttribute TaskFormRequest taskFormRequest,
@@ -338,6 +344,7 @@ public class TaskController {
             model.addAttribute("task", task);
             model.addAttribute("mode", "create");
             model.addAttribute("tags", tagService.getAllTags());
+            addEditableProjects(model, currentDetails);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
@@ -438,13 +445,15 @@ public class TaskController {
             @PathVariable Long id,
             Model model,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        model.addAttribute("task", taskService.getTaskById(id));
+        Task task = taskService.getTaskById(id);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
+        model.addAttribute("task", task);
         addTimelineAttributes(model, id, currentDetails);
         return "tasks/task-activity";
     }
 
     // POST /tasks/{id}/comments - Add a comment to a task
-    // Any authenticated user may comment on any task.
+    // Any project member may comment on tasks in their project.
     @PostMapping("/{id}/comments")
     public Object addComment(
             @PathVariable Long id,
@@ -452,6 +461,8 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
+        Task task = taskService.getTaskById(id);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         commentService.createComment(text, id, currentDetails.getUser().getId());
         if (HtmxUtils.isHtmxRequest(request)) {
             model.addAttribute("task", taskService.getTaskById(id));
@@ -599,6 +610,17 @@ public class TaskController {
             weeks.add(week);
         }
         return weeks;
+    }
+
+    private void addEditableProjects(Model model, CustomUserDetails currentDetails) {
+        List<Project> editableProjects;
+        if (AuthExpressions.isAdmin(currentDetails.getUser())) {
+            editableProjects = projectService.getActiveProjects();
+        } else {
+            editableProjects =
+                    projectService.getEditableProjectsForUser(currentDetails.getUser().getId());
+        }
+        model.addAttribute("editableProjects", editableProjects);
     }
 
     /** Task delete access: task creator, project OWNER, or system admin. */

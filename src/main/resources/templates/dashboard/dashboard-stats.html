@@ -27,6 +27,17 @@
             </a>
         </div>
         <div class="col-6 col-md">
+            <a th:href="@{/tasks(selectedUserId=${currentUser.id},statusFilter='IN_REVIEW')}" class="text-decoration-none">
+                <div class="card text-center shadow-sm h-100 dashboard-stat-card">
+                    <div class="card-body py-3">
+                        <i class="bi bi-eye display-6 text-info d-block mb-1"></i>
+                        <h3 class="mb-0" th:text="${stats.myInReview}">0</h3>
+                        <small class="text-muted" th:text="#{dashboard.my.inReview}">In Review</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-6 col-md">
             <a th:href="@{/tasks(selectedUserId=${currentUser.id},statusFilter='COMPLETED')}" class="text-decoration-none">
                 <div class="card text-center shadow-sm h-100 dashboard-stat-card">
                     <div class="card-body py-3">
@@ -64,50 +75,92 @@
         </div>
     </div>
 
-    <!-- System Overview Stats -->
-    <h5 class="mb-3"><i class="bi bi-bar-chart"></i> <span th:text="#{dashboard.system.heading}">System Overview</span></h5>
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <a th:href="@{/tasks(selectedUserId='')}" class="text-decoration-none">
-                <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
-                    <div class="card-body py-3">
-                        <h4 class="mb-0" th:text="${stats.totalTasks}">0</h4>
-                        <small class="text-muted" th:text="#{dashboard.system.totalTasks}">Total Tasks</small>
+    <!-- My Projects -->
+    <th:block th:if="${!stats.projectSummaries.isEmpty()}">
+        <h5 class="mb-3"><i class="bi bi-folder"></i> <span th:text="#{dashboard.projects.heading}">My Projects</span></h5>
+        <div class="row g-3 mb-4">
+            <div th:each="ps : ${stats.projectSummaries}" class="col-md-6 col-lg-4">
+                <a th:href="@{/projects/{id}(id=${ps.id})}" class="text-decoration-none">
+                    <div class="card shadow-sm h-100 dashboard-stat-card">
+                        <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0 text-truncate" th:text="${ps.name}">Project Name</h6>
+                            <span class="badge bg-secondary" th:text="${ps.totalTasks}">0</span>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between small">
+                                <span><i class="bi bi-circle text-secondary"></i> <span th:text="#{dashboard.my.open}">Open</span></span>
+                                <span th:text="${ps.openTasks}">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span><i class="bi bi-play-circle text-warning"></i> <span th:text="#{dashboard.my.inProgress}">In Progress</span></span>
+                                <span th:text="${ps.inProgressTasks}">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span><i class="bi bi-eye text-info"></i> <span th:text="#{dashboard.my.inReview}">In Review</span></span>
+                                <span th:text="${ps.inReviewTasks}">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between small">
+                                <span><i class="bi bi-check-circle text-success"></i> <span th:text="#{dashboard.my.completed}">Completed</span></span>
+                                <span th:text="${ps.completedTasks}">0</span>
+                            </div>
+                            <div th:if="${ps.overdueTasks > 0}" class="d-flex justify-content-between small text-danger">
+                                <span><i class="bi bi-exclamation-triangle"></i> <span th:text="#{dashboard.my.overdue}">Overdue</span></span>
+                                <span th:text="${ps.overdueTasks}">0</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </a>
+                </a>
+            </div>
         </div>
-        <div class="col-6 col-md-3">
-            <a th:href="@{/tasks(selectedUserId='',statusFilter='OPEN')}" class="text-decoration-none">
-                <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
-                    <div class="card-body py-3">
-                        <h4 class="mb-0" th:text="${stats.totalOpen}">0</h4>
-                        <small class="text-muted" th:text="#{dashboard.system.totalOpen}">Open Tasks</small>
+    </th:block>
+
+    <!-- System Overview Stats (admin only) -->
+    <th:block th:if="${#auth.isAdmin()}">
+        <h5 class="mb-3"><i class="bi bi-bar-chart"></i> <span th:text="#{dashboard.system.heading}">System Overview</span></h5>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <a th:href="@{/tasks(selectedUserId='')}" class="text-decoration-none">
+                    <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
+                        <div class="card-body py-3">
+                            <h4 class="mb-0" th:text="${stats.totalTasks}">0</h4>
+                            <small class="text-muted" th:text="#{dashboard.system.totalTasks}">Total Tasks</small>
+                        </div>
                     </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3">
-            <a th:href="@{/tasks(selectedUserId='',statusFilter='COMPLETED')}" class="text-decoration-none">
-                <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
-                    <div class="card-body py-3">
-                        <h4 class="mb-0" th:text="${stats.totalCompleted}">0</h4>
-                        <small class="text-muted" th:text="#{dashboard.system.totalCompleted}">Completed Tasks</small>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a th:href="@{/tasks(selectedUserId='',statusFilter='OPEN')}" class="text-decoration-none">
+                    <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
+                        <div class="card-body py-3">
+                            <h4 class="mb-0" th:text="${stats.totalOpen}">0</h4>
+                            <small class="text-muted" th:text="#{dashboard.system.totalOpen}">Open Tasks</small>
+                        </div>
                     </div>
-                </div>
-            </a>
-        </div>
-        <div class="col-6 col-md-3">
-            <div class="card text-center shadow-sm bg-light h-100">
-                <div class="card-body py-3">
-                    <h4 class="mb-0" th:text="${stats.onlineCount}">0</h4>
-                    <small class="text-muted" th:text="#{dashboard.system.onlineUsers}">Users Online</small>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <a th:href="@{/tasks(selectedUserId='',statusFilter='COMPLETED')}" class="text-decoration-none">
+                    <div class="card text-center shadow-sm bg-light h-100 dashboard-stat-card">
+                        <div class="card-body py-3">
+                            <h4 class="mb-0" th:text="${stats.totalCompleted}">0</h4>
+                            <small class="text-muted" th:text="#{dashboard.system.totalCompleted}">Completed Tasks</small>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center shadow-sm bg-light h-100">
+                    <div class="card-body py-3">
+                        <h4 class="mb-0" th:text="${stats.onlineCount}">0</h4>
+                        <small class="text-muted" th:text="#{dashboard.system.onlineUsers}">Users Online</small>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </th:block>
 
-    <!-- Three-column detail row -->
+    <!-- At a Glance -->
+    <h5 class="mb-3"><i class="bi bi-speedometer2"></i> <span th:text="#{dashboard.glance.heading}">At a Glance</span></h5>
     <div class="row g-4 mb-5">
         <!-- My Recent Tasks -->
         <div class="col-lg-4">
@@ -136,13 +189,15 @@
                                     overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
                             <div class="me-3" style="min-width: 0;">
                                 <div class="text-truncate" th:text="${task.title}">Task title</div>
-                                <small class="text-muted"
-                                       th:if="${task.dueDate != null}"
-                                       th:classappend="${overdue ? 'text-danger' : ''}"
-                                       th:text="${#temporals.format(task.dueDate, 'MMM d, yyyy')}">Jan 1, 2026</small>
-                                <small class="text-muted"
-                                       th:unless="${task.dueDate != null}"
-                                       th:text="#{dashboard.recent.noDueDate}">No due date</small>
+                                <small class="text-muted">
+                                    <span th:if="${task.project != null}" th:text="${task.project.name}">Project</span>
+                                    <span th:if="${task.project != null && task.dueDate != null}">&middot;</span>
+                                    <span th:if="${task.dueDate != null}"
+                                          th:classappend="${overdue ? 'text-danger' : ''}"
+                                          th:text="${#temporals.format(task.dueDate, 'MMM d, yyyy')}">Jan 1, 2026</span>
+                                    <span th:if="${task.dueDate == null && task.project == null}"
+                                          th:text="#{dashboard.recent.noDueDate}">No due date</span>
+                                </small>
                             </div>
                             <span th:if="${isCompleted}" class="badge bg-success">
                                 <i class="bi bi-check-circle-fill"></i>
@@ -193,12 +248,16 @@
                                     isTomorrow=${task.dueDate.isEqual(T(java.time.LocalDate).now().plusDays(1))}">
                             <div class="me-3" style="min-width: 0;">
                                 <div class="text-truncate" th:text="${task.title}">Task title</div>
-                                <small th:if="${isToday}" class="text-danger fw-semibold"
-                                       th:text="#{dashboard.dueThisWeek.today}">Today</small>
-                                <small th:if="${isTomorrow}" class="text-warning fw-semibold"
-                                       th:text="#{dashboard.dueThisWeek.tomorrow}">Tomorrow</small>
-                                <small th:if="${!isToday && !isTomorrow}" class="text-muted"
-                                       th:text="${#temporals.format(task.dueDate, 'EEE, MMM d')}">Mon, Jan 1</small>
+                                <small class="text-muted">
+                                    <span th:if="${task.project != null}" th:text="${task.project.name}">Project</span>
+                                    <span th:if="${task.project != null}">&middot;</span>
+                                    <span th:if="${isToday}" class="text-danger fw-semibold"
+                                          th:text="#{dashboard.dueThisWeek.today}">Today</span>
+                                    <span th:if="${isTomorrow}" class="text-warning fw-semibold"
+                                          th:text="#{dashboard.dueThisWeek.tomorrow}">Tomorrow</span>
+                                    <span th:if="${!isToday && !isTomorrow}"
+                                          th:text="${#temporals.format(task.dueDate, 'EEE, MMM d')}">Mon, Jan 1</span>
+                                </small>
                             </div>
                             <span class="badge"
                                   th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bg-info' : (task.status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' : (task.status.name() == 'BACKLOG' ? 'bg-light text-dark' : 'bg-secondary'))}">

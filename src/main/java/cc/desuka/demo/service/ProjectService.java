@@ -94,6 +94,20 @@ public class ProjectService {
                 .toList();
     }
 
+    public List<Project> getEditableProjectsForUser(Long userId) {
+        return memberRepository.findByUserId(userId).stream()
+                .filter(
+                        m ->
+                                m.getProject().getStatus() == ProjectStatus.ACTIVE
+                                        && (m.getRole() == ProjectRole.EDITOR
+                                                || m.getRole() == ProjectRole.OWNER))
+                .map(ProjectMember::getProject)
+                .sorted(
+                        java.util.Comparator.comparing(
+                                Project::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
     public Project createProject(Project project, User creator) {
         project.setCreatedBy(creator);
         project.setStatus(ProjectStatus.ACTIVE);

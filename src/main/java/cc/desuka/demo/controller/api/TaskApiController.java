@@ -77,8 +77,11 @@ public class TaskApiController {
 
     // GET /api/tasks/5
     @GetMapping("/{id}")
-    public TaskResponse getTaskById(@PathVariable Long id) {
-        return taskMapper.toResponse(taskService.getTaskById(id));
+    public TaskResponse getTaskById(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        Task task = taskService.getTaskById(id);
+        projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
+        return taskMapper.toResponse(task);
     }
 
     // POST /api/tasks

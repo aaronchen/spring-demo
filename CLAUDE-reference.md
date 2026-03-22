@@ -349,10 +349,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Built by `TaskController.buildCalendarWeeks()` for the calendar grid template
 
 - `dto/DashboardStats.java` - Record carrying all dashboard data
-  - Personal stats: `myOpen`, `myInProgress`, `myCompleted`, `myOverdue`, `myTotal`
-  - System stats: `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
+  - Personal stats: `myOpen`, `myInProgress`, `myInReview`, `myCompleted`, `myOverdue`, `myTotal`
+  - Per-project summaries: `projectSummaries` (`List<ProjectSummary>`)
+  - System stats (admin only): `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
   - Lists: `myRecentTasks` (`List<Task>`), `dueThisWeek` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
+  - `editableProjects` (`List<Project>`) — for "New Task" button visibility
   - Immutable record — built by `DashboardService.buildStats()`
+
+- `dto/ProjectSummary.java` - Per-project task stats for dashboard cards
+  - Immutable record: `id`, `name`, `openTasks`, `inProgressTasks`, `inReviewTasks`, `completedTasks`, `overdueTasks`, `totalTasks`
+  - Factory method `of(Project, ...)` for construction from service-level counts
 
 - `dto/ProfileRequest.java` - Profile edit form DTO
   - Fields: `id` (set to current user's ID — used by `@Unique` to exclude self), `name` (required, max 100), `email` (required, max 150, @Email)
@@ -506,9 +512,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; reads `notificationPurgeDays` from `Settings`, deletes notifications older than that
 
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
-  - Constructor injection: `TaskService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
+  - Constructor injection: `TaskService`, `ProjectService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
   - `buildStats(User, List<Long> accessibleProjectIds)` — returns `DashboardStats` record; `accessibleProjectIds` null = admin (show all), non-null = scoped to user's projects
-  - Team stats use project-scoped counts when non-null; personal stats always unscoped (user's own tasks across all projects)
+  - Builds per-project `ProjectSummary` cards via `buildProjectSummary()` helper using single-project count methods
+  - System stats (totalTasks, onlineCount, etc.) only populated for admins; null/zero for regular users
+  - Personal stats always unscoped (user's own tasks across all projects); includes In Review count
   - Filters activity to `TASK_CREATED`, `TASK_UPDATED`, `TASK_DELETED` actions only
 
 ### Controller Layer
@@ -641,6 +649,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `buildCalendarWeeks()` — private helper for project-scoped calendar view
 
 - `controller/DashboardController.java` - Dashboard page and HTMX stats fragment
+  - Uses `@AuthenticationPrincipal CustomUserDetails` for reliable user resolution
   - `GET /dashboard` — full dashboard page; resolves `accessibleProjectIds` and passes to `DashboardService.buildStats()`
   - `GET /dashboard/stats` — returns `dashboard/dashboard-stats` bare fragment for HTMX refresh; resolves project scoping
 
@@ -830,16 +839,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
-- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **50 users**, **8 tags**, **300 tasks**, plus curated demo interactions
+- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **20 users**, **8 tags**, **4 projects**, **56 tasks** (48 project-specific + 8 curated demo interactions)
   - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
-  - All passwords: `"password"` (BCrypt-encoded once, reused for all 50 users for speed)
+  - All passwords: `"password"` (BCrypt-encoded once, reused for all 20 users for speed)
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
+  - 4 projects: Platform Engineering, Product Development, Security & Compliance, Operations — each with 5-7 members (OWNER/EDITOR/VIEWER)
+  - 12 tasks per project, each assigned to an actual project member (not round-robin); uses all 6 statuses (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED)
   - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
-  - Each task gets 1–2 tags drawn from different dimensions for natural combos (e.g. "Work + Urgent")
-  - `seedTask` takes `TaskStatus` (OPEN, IN_PROGRESS, COMPLETED) instead of boolean `completed`
-  - ~80% of tasks are assigned to a user (every 5th task is unassigned)
-  - Priority distribution: ~20% HIGH, ~40% MEDIUM, ~40% LOW
-  - Due dates: ~80% of tasks get a due date spread -10 to +30 days from today (creates a mix of overdue and upcoming)
+  - Meaningful comments between actual project teammates; @mentions between collaborators
+  - Checklists on ~30% of tasks with project-relevant items
   - `seedDemoInteractions()` — creates 8 curated tasks between Alice, Bob, Carol, David, Eva with comments (@mentions), checklists, notifications (assigned, comment, mention, overdue, due reminder), and audit logs for a realistic demo experience
 
 ## Thymeleaf Templates

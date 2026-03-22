@@ -81,6 +81,12 @@
             </div>
             <p class="card-text mt-1 mb-0">
                 <small class="text-muted">
+                    <span th:if="${project == null}" class="d-block">
+                        <i class="bi bi-folder"></i>
+                        <a th:href="@{/projects/{id}(id=${task.project.id})}"
+                           class="text-muted text-decoration-none project-link"
+                           th:text="${task.project.name}">Project</a>
+                    </span>
                     <span th:if="${task.user != null}" class="d-block">
                         <i class="bi bi-person"></i>
                         <a href="#" class="text-muted text-decoration-none user-link"

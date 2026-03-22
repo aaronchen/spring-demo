@@ -14,20 +14,20 @@
                 <h2 th:text="#{dashboard.welcome(${currentUser?.name})}">Welcome back, Alice</h2>
             </div>
             <div class="col-auto d-flex gap-2">
-                <a th:href="@{/tasks/new}" class="btn btn-primary">
+                <a th:if="${!stats.editableProjects.isEmpty()}"
+                   th:href="@{/tasks/new}"
+                   class="btn btn-primary btn-lg">
                     <i class="bi bi-plus-circle"></i>
                     <span th:text="#{dashboard.action.newTask}">New Task</span>
                 </a>
-                <a th:href="@{/tasks}" class="btn btn-outline-primary">
+                <a th:href="@{/tasks(selectedUserId=${currentUser?.id})}" class="btn btn-outline-primary btn-lg">
                     <i class="bi bi-list-check"></i>
                     <span th:text="#{dashboard.action.myTasks}">My Tasks</span>
                 </a>
             </div>
         </div>
 
-        <th:block th:if="${stats != null}">
-            <div th:replace="~{dashboard/dashboard-stats}"></div>
-        </th:block>
+        <div th:replace="~{dashboard/dashboard-stats}"></div>
     </main>
 
     <!-- Footer -->

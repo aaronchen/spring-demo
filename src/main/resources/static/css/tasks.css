@@ -64,8 +64,8 @@
 }
 #user-filter-mine.active { color: var(--theme-primary-text, #fff) !important; }
 
-/* Clickable user names on cards/rows */
-a.user-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
+/* Clickable user/project names on cards/rows */
+a.user-link:hover, a.project-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
 
 /* Clickable tag badges on cards/rows */
 a.badge:hover { opacity: 0.85; cursor: pointer; }

@@ -494,7 +494,7 @@ Every task belongs to a project. Access is controlled via `ProjectAccessGuard` a
 - **Edit access** — EDITOR or OWNER role, or admin
 - **Owner access** — OWNER role only, or admin
 
-Cross-project views (`/tasks`, `/api/tasks`, `/dashboard`) use `accessibleProjectIds`:
+Cross-project views (`/tasks`, `/api/tasks`) use `accessibleProjectIds`:
 ```java
 List<Long> accessibleProjectIds = AuthExpressions.isAdmin(user)
     ? null  // admin sees all
@@ -683,7 +683,7 @@ The application uses Spring profiles to separate environment-specific configurat
 `spring.profiles.active=dev` is set in `application.properties`. In production, override via environment variable: `SPRING_PROFILES_ACTIVE=prod`.
 
 **Profile-gated components:**
-- `DataLoader` — `@Profile("dev")` — seeds demo users, tasks, tags, comments
+- `DataLoader` — `@Profile("dev")` — seeds 20 demo users, project-specific tasks, tags, comments
 - `H2DevConfig` — `@Profile("dev")` — H2 web server (port 8082) + H2 console servlet
 - `DevSecurityConfig` — `@Profile("dev")` — permits `/h2-console/**`, disables CSRF and relaxes frame options for H2 console only
 
@@ -832,7 +832,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 - `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
-- `http://localhost:8080/dashboard` - Personal dashboard (real-time stats, recent tasks, activity feed)
+- `http://localhost:8080/dashboard` - Per-project dashboard (real-time stats, recent tasks, activity feed); admins see additional system overview section
 - `http://localhost:8080/tags` - Tag list
 - `http://localhost:8080/users` - User list with search
 - `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)

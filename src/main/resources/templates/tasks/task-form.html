@@ -4,7 +4,23 @@
 <th:block th:fragment="fields" xmlns:th="http://www.thymeleaf.org">
 
     <input type="hidden" th:field="*{version}">
-    <input type="hidden" name="projectId" th:value="${task.project?.id}">
+
+    <!--/* Project selector: shown in create mode when editableProjects is available (cross-project create
+         or validation re-render). Pre-selects the current project if set. */-->
+    <div class="mb-3" th:if="${mode == 'create' && editableProjects != null}">
+        <label for="projectId" class="form-label fw-bold form-label-required"
+               th:text="#{task.field.project}">Project</label>
+        <select name="projectId" id="projectId" class="form-select" required>
+            <option value="" th:text="#{task.field.project.placeholder}">Select a project...</option>
+            <option th:each="p : ${editableProjects}"
+                    th:value="${p.id}"
+                    th:text="${p.name}"
+                    th:selected="${task.project != null && task.project.id == p.id}">Project</option>
+        </select>
+    </div>
+    <!--/* When project is set but no dropdown available (project-scoped create from project page),
+         carry projectId in a hidden field. */-->
+    <input th:if="${task.project != null && editableProjects == null}" type="hidden" name="projectId" th:value="${task.project.id}">
 
     <!-- Title -->
     <div class="mb-3">

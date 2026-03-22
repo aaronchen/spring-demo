@@ -2,10 +2,18 @@
      No HTML wrapper; the whole file is swapped in directly.
      Uses shared task-layout :: columns for the two-column form + checklist/activity layout. */-->
 <div class="modal-header" xmlns:th="http://www.thymeleaf.org">
-    <h5 class="modal-title">
-        <i th:class="${mode == 'view'} ? 'bi bi-eye' : (${mode == 'edit'} ? 'bi bi-pencil-square' : 'bi bi-plus-circle')"></i>
-        <span th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{action.newTask})">Task</span>
-    </h5>
+    <div>
+        <h5 class="modal-title mb-0">
+            <i th:class="${mode == 'view'} ? 'bi bi-eye' : (${mode == 'edit'} ? 'bi bi-pencil-square' : 'bi bi-plus-circle')"></i>
+            <span th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{action.newTask})">Task</span>
+        </h5>
+        <small th:if="${task.project != null && mode != 'create'}" class="text-muted">
+            <i class="bi bi-folder"></i>
+            <a th:href="@{/projects/{id}(id=${task.project.id})}"
+               class="text-muted text-decoration-none project-link"
+               th:text="${task.project.name}">Project</a>
+        </small>
+    </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
 <!--/* Stale data banner — shown when another user modifies this task while modal is open */-->

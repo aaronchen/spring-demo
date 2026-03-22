@@ -19,9 +19,9 @@ public class TaskFormRequest {
     @Size(max = 500, message = "{task.description.size}")
     private String description;
 
-    private TaskStatus status;
+    private TaskStatus status = TaskStatus.OPEN;
 
-    private Priority priority;
+    private Priority priority = Priority.MEDIUM;
 
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate startDate;
