@@ -529,6 +529,8 @@ Only include the associations that callers actually access. `findById` includes 
 
 **`@TransactionalEventListener`** on all event listeners (replaces `@EventListener`). Fires after the publishing transaction commits. `AuditEventListener` uses `@Transactional(propagation = Propagation.REQUIRES_NEW)` because it writes to its own table in a new transaction.
 
+**Exception: `AuthAuditListener`** uses `@EventListener` (not `@TransactionalEventListener`) and saves directly to `AuditLogRepository`. Spring Security publishes auth events outside any Spring-managed transaction, so `@TransactionalEventListener` would never fire. This listener manages its own `@Transactional` boundary.
+
 ### SecurityUtils Pattern
 
 Central utility for resolving the current user from `SecurityContextHolder`:

@@ -226,22 +226,22 @@
             </div>
         </div>
 
-        <!-- Due This Week -->
+        <!-- Due Soon -->
         <div class="col-lg-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-light">
                     <h6 class="mb-0">
                         <i class="bi bi-calendar-week"></i>
-                        <span th:text="#{dashboard.dueThisWeek.heading}">Due This Week</span>
+                        <span th:text="#{dashboard.dueSoon.heading}">Due Soon</span>
                     </h6>
                 </div>
                 <div class="card-body p-0 dashboard-scroll">
-                    <div th:if="${stats.dueThisWeek.isEmpty()}" class="p-3 text-muted">
-                        <span th:text="#{dashboard.dueThisWeek.empty}">No tasks due this week.</span>
+                    <div th:if="${stats.dueSoon.isEmpty()}" class="p-3 text-muted">
+                        <span th:text="#{dashboard.dueSoon.empty}">No tasks due in the next 7 days.</span>
                     </div>
                     <div class="list-group list-group-flush"
-                         th:unless="${stats.dueThisWeek.isEmpty()}">
-                        <a th:each="task : ${stats.dueThisWeek}"
+                         th:unless="${stats.dueSoon.isEmpty()}">
+                        <a th:each="task : ${stats.dueSoon}"
                            th:href="@{/tasks/{id}/edit(id=${task.id})}"
                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
                            th:with="isToday=${task.dueDate.isEqual(T(java.time.LocalDate).now())},
@@ -252,9 +252,9 @@
                                     <span th:if="${task.project != null}" th:text="${task.project.name}">Project</span>
                                     <span th:if="${task.project != null}">&middot;</span>
                                     <span th:if="${isToday}" class="text-danger fw-semibold"
-                                          th:text="#{dashboard.dueThisWeek.today}">Today</span>
+                                          th:text="#{dashboard.dueSoon.today}">Today</span>
                                     <span th:if="${isTomorrow}" class="text-warning fw-semibold"
-                                          th:text="#{dashboard.dueThisWeek.tomorrow}">Tomorrow</span>
+                                          th:text="#{dashboard.dueSoon.tomorrow}">Tomorrow</span>
                                     <span th:if="${!isToday && !isTomorrow}"
                                           th:text="${#temporals.format(task.dueDate, 'EEE, MMM d')}">Mon, Jan 1</span>
                                 </small>

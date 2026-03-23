@@ -400,7 +400,7 @@ public class TaskService {
         return taskRepository.findTop5ByUserOrderByCreatedAtDesc(user);
     }
 
-    public List<Task> getDueThisWeek(User user) {
+    public List<Task> getDueSoon(User user) {
         LocalDate today = LocalDate.now();
         LocalDate endOfWeek = today.plusDays(7);
         return taskRepository.findByUserAndDueDateBetweenAndStatusNotIn(

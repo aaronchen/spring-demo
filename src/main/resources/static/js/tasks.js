@@ -13,6 +13,16 @@ const SORT_LABELS = {
     'description,desc': 'Desc ↓',
 };
 
+const STATUS_CONFIG = {
+    BACKLOG:     { msgKey: 'task.filter.backlog',    css: 'bg-light text-dark',   btnCss: 'btn-outline-secondary', icon: 'bi-inbox' },
+    OPEN:        { msgKey: 'task.filter.open',       css: 'bg-secondary text-white', btnCss: 'btn-secondary',      icon: 'bi-circle' },
+    IN_PROGRESS: { msgKey: 'task.filter.inProgress', css: 'bg-warning text-dark', btnCss: 'btn-warning',           icon: 'bi-play-circle-fill' },
+    IN_REVIEW:   { msgKey: 'task.filter.inReview',   css: 'bg-info text-white',   btnCss: 'btn-info',             icon: 'bi-eye-fill' },
+    COMPLETED:   { msgKey: 'task.filter.completed',  css: 'bg-success text-white', btnCss: 'btn-success',          icon: 'bi-check-circle-fill' },
+    CANCELLED:   { msgKey: 'task.filter.cancelled',  css: 'bg-dark text-white',   btnCss: 'btn-dark',             icon: 'bi-x-circle-fill' },
+    OVERDUE:     { msgKey: 'task.dueDate.overdue',   css: 'bg-danger text-white', btnCss: 'btn-danger',            icon: 'bi-exclamation-circle-fill' },
+};
+
 let activeSorts = [{field: 'createdAt', direction: 'desc'}];
 let currentPage = 0;
 let pageSize = parseInt(getCookie('pageSize') || '25');
@@ -180,14 +190,9 @@ function initFromUrl() {
     // Status filter
     const statusFilter = params.get('statusFilter') || 'ALL';
     document.getElementById('current-status-filter').value = statusFilter;
-    document.querySelectorAll('[id^="status-filter-"]').forEach(btn => {
-        btn.classList.toggle('active', btn.id === 'status-filter-' + statusFilter);
-    });
-
-    // Overdue filter
     const overdue = params.get('overdue') === 'true';
     document.getElementById('current-overdue-filter').value = overdue;
-    document.getElementById('overdue-filter').classList.toggle('active', overdue);
+    renderStatusButton();
 
     // Priority filter
     document.getElementById('current-priority-filter').value = params.get('priority') || '';
@@ -289,26 +294,75 @@ function renderUserFilter(userName) {
     }
 }
 
-// ── Status filter (clickable badges on cards/rows) ──
+// ── Status filter (dropdown + clickable badges on cards/rows) ──
 
 function setStatusFilter(status) {
-    // status: 'OPEN', 'IN_PROGRESS', 'COMPLETED', or 'overdue'
-    if (status === 'overdue') {
-        document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
-            btn.classList.remove('active'));
-        document.getElementById('status-filter-ALL').classList.add('active');
-        document.getElementById('current-status-filter').value = 'ALL';
-        document.getElementById('current-overdue-filter').value = 'true';
-        document.getElementById('overdue-filter').classList.add('active');
-    } else {
-        document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
-            btn.classList.remove('active'));
-        document.getElementById('status-filter-' + status).classList.add('active');
-        document.getElementById('current-status-filter').value = status;
+    const current = document.getElementById('current-status-filter').value;
+    const currentOverdue = document.getElementById('current-overdue-filter').value;
+
+    if (status === 'OVERDUE') {
+        // Toggle overdue off if already active
+        if (currentOverdue === 'true') {
+            document.getElementById('current-overdue-filter').value = 'false';
+            document.getElementById('current-status-filter').value = 'ALL';
+        } else {
+            document.getElementById('current-overdue-filter').value = 'true';
+            document.getElementById('current-status-filter').value = 'ALL';
+        }
+    } else if (status) {
+        // Toggle off if clicking the same status
+        if (current === status && currentOverdue !== 'true') {
+            document.getElementById('current-status-filter').value = 'ALL';
+        } else {
+            document.getElementById('current-status-filter').value = status;
+        }
         document.getElementById('current-overdue-filter').value = 'false';
-        document.getElementById('overdue-filter').classList.remove('active');
+    } else {
+        // "All" / reset
+        document.getElementById('current-status-filter').value = 'ALL';
+        document.getElementById('current-overdue-filter').value = 'false';
     }
+
+    // Close the dropdown if open
+    const dd = document.getElementById('statusDropdown');
+    if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
+    renderStatusButton();
     doSearch(true);
+}
+
+function renderStatusButton() {
+    const statusFilter = document.getElementById('current-status-filter').value;
+    const overdue = document.getElementById('current-overdue-filter').value === 'true';
+    const label = document.getElementById('status-filter-label');
+    const btn = document.getElementById('statusDropdown');
+    const icon = btn.querySelector('i');
+    const baseLabel = APP_CONFIG.messages['task.field.status'] || 'Status';
+
+    // Determine effective status for display
+    const effectiveStatus = overdue ? 'OVERDUE' : (statusFilter !== 'ALL' ? statusFilter : '');
+
+    // Update active item styling
+    document.querySelectorAll('.status-filter-item').forEach(item => {
+        const itemStatus = item.dataset.status;
+        if (itemStatus === 'OVERDUE') {
+            item.classList.toggle('active', overdue);
+        } else {
+            item.classList.toggle('active', !overdue && itemStatus === statusFilter);
+        }
+    });
+
+    // Reset button to default
+    btn.className = 'btn btn-sm btn-outline-secondary dropdown-toggle';
+    icon.className = 'bi bi-list-ul';
+
+    if (effectiveStatus && STATUS_CONFIG[effectiveStatus]) {
+        const cfg = STATUS_CONFIG[effectiveStatus];
+        label.textContent = APP_CONFIG.messages[cfg.msgKey] || effectiveStatus;
+        icon.className = `bi ${cfg.icon}`;
+        btn.className = `btn btn-sm ${cfg.btnCss} dropdown-toggle`;
+    } else {
+        label.textContent = baseLabel;
+    }
 }
 
 // ── Priority filter (clickable badges on cards/rows) ──
@@ -494,40 +548,6 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.value = '';
         updateClearBtn();
         searchInput.focus();
-        doSearch(true);
-    });
-
-    // Status filter button click handlers
-    document.querySelectorAll('[id^="status-filter-"]').forEach(button => {
-        button.addEventListener('click', function() {
-            document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
-                btn.classList.remove('active'));
-            this.classList.add('active');
-            document.getElementById('current-status-filter').value =
-                this.id.replace('status-filter-', '');
-            // Clear overdue when switching status filters
-            document.getElementById('current-overdue-filter').value = 'false';
-            document.getElementById('overdue-filter').classList.remove('active');
-            doSearch(true);
-        });
-    });
-
-    // Overdue filter button click handler
-    document.getElementById('overdue-filter').addEventListener('click', function() {
-        const isActive = this.classList.contains('active');
-        if (isActive) {
-            // Toggle off: clear overdue, keep current status filter
-            this.classList.remove('active');
-            document.getElementById('current-overdue-filter').value = 'false';
-        } else {
-            // Toggle on: set status to All + activate overdue
-            document.querySelectorAll('[id^="status-filter-"]').forEach(btn =>
-                btn.classList.remove('active'));
-            document.getElementById('status-filter-ALL').classList.add('active');
-            document.getElementById('current-status-filter').value = 'ALL';
-            this.classList.add('active');
-            document.getElementById('current-overdue-filter').value = 'true';
-        }
         doSearch(true);
     });
 

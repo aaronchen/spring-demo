@@ -15,7 +15,7 @@ public record DashboardStats(
         long myOverdue,
         long myTotal,
         List<Task> myRecentTasks,
-        List<Task> dueThisWeek,
+        List<Task> dueSoon,
 
         // Per-project summaries
         List<ProjectSummary> projectSummaries,

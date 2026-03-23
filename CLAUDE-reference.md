@@ -150,7 +150,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `resolveDisplayNames(Map, MessageSource, Locale)` — maps raw field keys to human-readable names via `audit.field.{key}` message keys; falls back to raw key if no message found
 
 - `audit/AuditEventListener.java` - `@EventListener` that persists `AuditEvent` → `AuditLog`
-- `audit/AuthAuditListener.java` - `@EventListener` for Spring's `AuthenticationSuccessEvent`/`AuthenticationFailureBadCredentialsEvent`; converts to `AuditEvent` for persistence
+- `audit/AuthAuditListener.java` - `@EventListener` for Spring's `AuthenticationSuccessEvent`/`AuthenticationFailureBadCredentialsEvent`; saves directly to `AuditLogRepository` with `@Transactional` (cannot use `ApplicationEventPublisher` → `@TransactionalEventListener` because Spring Security auth events fire outside Spring-managed transactions)
 
 ### Event Package
 - `event/TaskAssignedEvent.java` - Record published when a task is assigned to someone; fields: `task` (Task), `actor` (User)
@@ -187,6 +187,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `findAll()`: `{"tags", "user", "project"}` — REST API mapper accesses these
     - `findByStatusNotIn()`, `findByTitleContaining...()`: `{"tags", "user"}` — list queries
     - `findAll(Specification, Pageable)`: `{"tags", "user", "project"}` — paginated task list (cards/table/calendar)
+    - `findTop5ByUserOrderByCreatedAtDesc()`: `{"project"}` — dashboard recent tasks display project name
+    - `findByUserAndDueDateBetweenAndStatusNotIn()`: `{"project"}` — dashboard due-this-week tasks display project name
     - `findByDueDateAndStatusNotIn()`: `{"user"}` — scheduled reminders access task.getUser()
   - `JpaSpecificationExecutor` used by `searchAndFilterTasks()` for paginated filtering
 
@@ -352,7 +354,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Personal stats: `myOpen`, `myInProgress`, `myInReview`, `myCompleted`, `myOverdue`, `myTotal`
   - Per-project summaries: `projectSummaries` (`List<ProjectSummary>`)
   - System stats (admin only): `totalTasks`, `totalOpen`, `totalCompleted`, `totalOverdue`, `onlineCount`
-  - Lists: `myRecentTasks` (`List<Task>`), `dueThisWeek` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
+  - Lists: `myRecentTasks` (`List<Task>`), `dueSoon` (`List<Task>`), `recentActivity` (`List<AuditLog>`), `activityTaskTitles` (`Map<Long, String>`)
   - `editableProjects` (`List<Project>`) — for "New Task" button visibility
   - Immutable record — built by `DashboardService.buildStats()`
 
@@ -432,6 +434,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getProjectsForUser(Long userId)` — active projects where user is a member
   - `getProjectsForUser(Long userId, boolean includeArchived, String sort)` — user's projects with sort/archive filter
   - `getAccessibleProjectIds(Long userId)` — returns IDs of active projects for a user; used by controllers for project-scoped queries
+  - `getEditableProjectsForUser(Long userId)` — returns active projects where user is EDITOR or OWNER, sorted by name; used by `TaskController.addEditableProjects()` and `DashboardService` for "New Task" button project dropdown
   - `createProject(Project, User)` — creator becomes OWNER via cascaded `ProjectMember`; publishes `PROJECT_CREATED` audit event
   - `updateProject(Long, Project)` — updates name/description with diff tracking; publishes `PROJECT_UPDATED` if changed
   - `archiveProject(Long)` — sets status to ARCHIVED; publishes `PROJECT_ARCHIVED`
@@ -444,7 +447,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `ApplicationEventPublisher`, `Messages` (uses service layer instead of direct repository access for tags and users)
   - Single-project queries: `searchAndFilterTasks(projectId, ...)` and `searchAndFilterTasksForProject(projectId, ...)` — for `/projects/{id}` views; both with and without date range overloads
   - Cross-project queries: `searchAndFilterTasksForProjects(accessibleProjectIds, ...)` — for `/tasks`, `/api/tasks` views; null = admin sees all; with and without date range overloads
-  - Project-scoped counts: `countForProjects`, `countByStatusForProjects`, `countOverdueForProjects` — for dashboard team stats
+  - Cross-project counts: `countForProjects`, `countByStatusForProjects`, `countOverdueForProjects` — for dashboard team stats
+  - Single-project counts: `countForProject(Long)`, `countByStatusForProject(Long, TaskStatus)`, `countOverdueForProject(Long)` — for per-project dashboard summaries (use `TaskSpecifications`)
+  - System counts: `countAll()`, `countByStatus(TaskStatus)`, `countOverdue()` — admin-only system overview
+  - Personal counts: `countByUserAndStatus(User, TaskStatus)`, `countByUserOverdue(User)` — personal dashboard stats
+  - `getRecentTasksByUser(User)` — top 5 recent tasks for dashboard
+  - `getDueSoon(User)` — tasks due within 7 days for dashboard
+  - `getTitlesByIds(List<Long>)` — bulk title lookup for activity feed
   - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
   - `updateTask` — two overloads (with/without checklist); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
   - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
@@ -664,8 +673,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Three view modes: cards, table, calendar — resolved via URL `view` param or user preference
   - Calendar view: accepts `month` param (YearMonth), queries tasks with dates in visible grid range (unpaged), builds `CalendarDay` grid via `buildCalendarWeeks()`; no pagination
   - `GET /tasks/{id}` — show task in view (read-only) mode; supports HTMX modal
-  - `GET /tasks/new?projectId=N` — requires `projectId` param; checks edit access; accepts optional `dueDate` param (ISO date) to pre-fill
-  - `POST /tasks` — create task; requires `projectId`; accepts `TaskFormRequest` + separate `@RequestParam` for `tagIds`, `assigneeId`, checklist arrays
+  - `GET /tasks/new` — optional `projectId` param; if provided, checks edit access and pre-selects project; if omitted, adds `editableProjects` list for project dropdown; accepts optional `dueDate` param (ISO date) to pre-fill
+  - `POST /tasks` — create task; requires `projectId`; accepts `TaskFormRequest` + separate `@RequestParam` for `tagIds`, `assigneeId`, checklist arrays; on validation error re-render, adds `editableProjects` to model
   - `GET /tasks/{id}/edit` — edit form; checks `projectAccessGuard.requireEditAccess()`
   - `POST /tasks/{id}` — update task; checks edit access; accepts `TaskFormRequest`
   - `DELETE /tasks/{id}` — delete via `requireDeleteAccess()`: admin OR task creator OR project owner
@@ -676,6 +685,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); uses `CsvWriter` with `Messages`-resolved column headers; works independently of view mode
   - Task list is scoped to accessible projects via `searchAndFilterTasksForProjects(accessibleProjectIds, ...)`; admin sees all (null bypass)
   - `addProjectEditPermissions()` — builds `projectEditMap` (Map<Long, Boolean>) for cross-project views; admin short-circuits to `canEditProject=true`
+  - `addEditableProjects()` — private helper; adds `editableProjects` list to model (admin gets all active projects, regular users get EDITOR/OWNER projects); used by task list, create form, and validation error re-render
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - **Security**: uses `ProjectAccessGuard` for task create/edit/delete/toggle; `OwnershipGuard` for comment delete
 
@@ -845,7 +855,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
   - 4 projects: Platform Engineering, Product Development, Security & Compliance, Operations — each with 5-7 members (OWNER/EDITOR/VIEWER)
   - 12 tasks per project, each assigned to an actual project member (not round-robin); uses all 6 statuses (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED)
-  - Tags use orthogonal dimensions: domain (Work/Personal/Home), priority (Urgent/Someday), type (Meeting/Research/Errand)
+  - Tags use software development categories: Bug, Feature, DevOps, Security, Documentation, Spike, Blocked, Tech Debt
   - Meaningful comments between actual project teammates; @mentions between collaborators
   - Checklists on ~30% of tasks with project-relevant items
   - `seedDemoInteractions()` — creates 8 curated tasks between Alice, Bob, Carol, David, Eva with comments (@mentions), checklists, notifications (assigned, comment, mention, overdue, due reminder), and audit logs for a realistic demo experience
@@ -875,18 +885,19 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Task Views
 - `templates/tasks/tasks.html` - Main cross-project task list page
+  - "New Task" button (`btn-lg`) in page header; links to `/tasks/new` (opens modal via HTMX)
   - Includes `task-list-fragment.html` via `th:replace` for all filter/sort/view controls
   - All state managed in JS (`tasks.js`) — synced to URL params and cookies
   - Loads `task-form.js` page-specifically for checklist management functions
 
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
-- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 6-state status badge and toggle button (Backlog/Open/In Progress/In Review/Completed/Cancelled with distinct icons and colors); checklist progress bar (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` (project-scoped) or `projectEditMap` (cross-project) or ownership fallback
+- `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 6-state status badge and toggle button (Backlog/Open/In Progress/In Review/Completed/Cancelled with distinct icons and colors); project name link in card body; checklist progress bar (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` (project-scoped) or `projectEditMap` (cross-project) or ownership fallback
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
 - `templates/tasks/task-list-fragment.html` - Shared task list controls fragment — used by both `tasks.html` (cross-project) and `project.html` (single project)
   - Reads from model context: `view`, `selectedUserId`, `filterUserName`, `allTags`, `taskPage`, `calendarWeeks`, `calendarMonth`, `undatedCount`
   - Optional `canEditProject` attribute — when set, controls task edit/delete visibility for project-scoped views
   - Stale-data banner (`#stale-banner`) — hidden by default; shown by JS on WebSocket task change events
-  - Search input (live search), status filter buttons (All/Open/In Progress/Completed/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown, tag filter dropdown with pills, view toggle (cards/table/calendar)
+  - Search input (live search, `autocomplete="off"`), status filter dropdown (All/Backlog/Open/In Progress/In Review/Completed/Cancelled/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown, tag filter dropdown with pills, view toggle (cards/table/calendar)
   - Task list container with conditional `th:replace` for table, calendar, or cards view
   - Two shared modal shells: `#task-modal` (create/edit form via HTMX) and `#task-delete-modal` (delete confirmation populated via JS `show.bs.modal` event)
 - `templates/tasks/task-calendar.html` - Calendar view fragment (`grid` fragment)
@@ -897,7 +908,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Scrollable chip container per cell (no max chip limit)
   - "+" button on hover to create task with pre-filled due date
   - Undated tasks info banner when tasks without dates exist in current filters
-- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 6-state status badge and toggle button; checklist progress display (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` or `projectEditMap` or ownership fallback
+- `templates/tasks/task-table-row.html` - Single table row fragment (`row` fragment); 6-state status badge and toggle button; project name link; checklist progress display (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` or `projectEditMap` or ownership fallback
 - `templates/tasks/task-activity.html` - Unified activity timeline template (replaces task-comments.html and task-audit.html)
   - Merges comments and audit history into a single chronological list; uses `TimelineEntry.type` to discriminate between comment and audit entries
   - `:: list` fragment selector — returns timeline list only (used by `task.html` and `task-modal.html` during page render via `task-layout.html`)
@@ -906,7 +917,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Audit entries show action badge, principal, and field-level change details
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
-  - `fields` fragment — hidden `version` and `projectId` inputs, title, description, status radio buttons (6-state: Backlog/Open/In Progress/In Review/Completed/Cancelled with icons and colors, shown on edit/view only), priority radio buttons (with reception bar icons), start date picker, due date picker, read-only completedAt/updatedAt (on edit/view), user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
+  - `fields` fragment — hidden `version` input; project selector dropdown (shown in create mode when `editableProjects` available, hidden field fallback when project is pre-set); title, description, status radio buttons (6-state: Backlog/Open/In Progress/In Review/Completed/Cancelled with icons and colors, shown on edit/view only), priority radio buttons (with reception bar icons), start date picker, due date picker, read-only completedAt/updatedAt (on edit/view), user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
   - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove/reorder via `task-form.js`; each item has a drag handle for reordering
   - `mode` attribute controls field state: `'create'` hides status; `'view'` disables all inputs; `'edit'` shows everything editable
   - No `<form>` tag; `th:object` is set by the including template (binds to `TaskFormRequest`)
@@ -917,8 +928,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Comment input uses `div` + HTMX (not nested `<form>`) to avoid form-in-form issues; Enter key guarded by `isMentionMenuActive()` to prevent submission while selecting @mentions
   - `data-mention` attribute on comment input for Tribute.js @mention autocomplete
   - Stale-data banner and WebSocket subscription logic shared across both consumers
-- `templates/tasks/task.html` - Full-page create/edit form; uses shared `task-layout.html` fragment for two-column layout with flex-grow; stale-data banner via WebSocket when another user modifies the same task; live activity auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
-- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); uses shared `task-layout.html` fragment; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live activity auto-refresh via WebSocket; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
+- `templates/tasks/task.html` - Full-page create/edit form; uses shared `task-layout.html` fragment for two-column layout with flex-grow; project subtitle hidden in create mode (user picks project from dropdown instead); stale-data banner via WebSocket when another user modifies the same task; live activity auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
+- `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); uses shared `task-layout.html` fragment; project subtitle hidden in create mode; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live activity auto-refresh via WebSocket; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
 
 ### Project Views
 - `templates/projects/projects.html` - Project list page with sort controls (Name/Newest) and archived toggle
@@ -958,8 +969,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Listens to custom DOM events (`notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`) for real-time updates
 
 ### Dashboard Views
-- `templates/dashboard/dashboard.html` - Dashboard page with welcome banner, quick action buttons, and `th:replace` of `dashboard-stats.html`; subscribes to `/topic/tasks` and `/topic/presence` via WebSocket; refreshes stats fragment via `htmx.ajax()` on any task or presence change (no self-filtering — dashboard should reflect own actions from other tabs)
-- `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); contains My Tasks stats (5 cards), System Overview (4 cards), My Recent Tasks list, Due This Week list, and Recent Activity feed with action badges and resolved task titles; detail card bodies use `dashboard-scroll` class (max-height with overflow scroll) to prevent unbounded growth; returned whole-file for HTMX refresh or via `th:replace` for full page
+- `templates/dashboard/dashboard.html` - Dashboard page with welcome banner, `btn-lg` quick action buttons ("New Task" conditional on editable projects, "My Tasks" links to `/tasks?selectedUserId=`), and `th:replace` of `dashboard-stats.html`; subscribes to `/topic/tasks` and `/topic/presence` via WebSocket; refreshes stats fragment via `htmx.ajax()` on any task or presence change (no self-filtering — dashboard should reflect own actions from other tabs)
+- `templates/dashboard/dashboard-stats.html` - Bare fragment (`<div id="dashboard-stats">`); three sections: My Tasks stats (6 cards including In Review), per-project summary cards (open/in-progress/in-review/completed/overdue per project with progress bar), admin-only System Overview (5 cards: total/open/completed/overdue/online); "At a Glance" section with My Recent Tasks, Due This Week, and Recent Activity feed; detail card bodies use `dashboard-scroll` class (max-height with overflow scroll) to prevent unbounded growth; returned whole-file for HTMX refresh or via `th:replace` for full page
 
 ### Profile Views
 - `templates/profile/profile.html` - User profile page with three cards in two-column layout
@@ -993,7 +1004,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state
-- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, active state styles for 3 status filter buttons, two-column layout styles, timeline entry styles)
+- `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, two-column layout styles, timeline entry styles)
 - `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
@@ -1027,7 +1038,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Drag-and-drop reordering via native HTML Drag and Drop API: `checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`; reordering DOM elements naturally updates the parallel arrays on form submission
   - Loaded page-specifically on task pages (via `tasks.html` script block)
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED); filter button IDs use enum names; task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
+- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `STATUS_CONFIG` maps each status to label/icon/color; `renderStatusButton()` builds status filter dropdown items; `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED); task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - `static/tribute/tribute.min.js` - Tribute.js library for @mention autocomplete; loaded globally in `base.html`
@@ -1039,7 +1050,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Namespace conventions:
     - `action.*` — generic actions; `pagination.*` — pagination controls
     - `nav.*`, `footer.*`, `page.title.*` — layout strings
-    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
+    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
+    - `dashboard.*` — Dashboard feature (includes `dashboard.my.inReview`, `dashboard.projects.heading`, `dashboard.glance.heading`, `dashboard.system.heading`, `dashboard.system.*` stat labels)
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
     - `home.feature.*` — Home page feature cards (rest, security, ui, data, realtime, lifecycle, admin, production)

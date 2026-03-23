@@ -22,6 +22,7 @@
         <input type="text"
                id="search-input"
                class="form-control"
+               autocomplete="off"
                th:placeholder="#{task.search.placeholder}">
         <button id="search-clear-btn"
                 class="d-none position-absolute top-50 end-0 translate-middle-y"
@@ -60,33 +61,75 @@
         </button>
     </div>
 
-    <!-- Status Filter Buttons -->
-    <div class="btn-group btn-group-sm" role="group" aria-label="Task filters">
-        <button type="button"
-                class="btn btn-outline-light border-secondary text-dark active fw-bold"
-                id="status-filter-ALL">
-            <i class="bi bi-list-ul"></i> <span th:text="#{task.filter.all}">All</span>
+    <!-- Status Filter Dropdown -->
+    <div class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                id="statusDropdown"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            <i class="bi bi-list-ul"></i> <span id="status-filter-label" th:text="#{task.field.status}">Status</span>
         </button>
-        <button type="button"
-                class="btn btn-outline-light border-secondary text-secondary fw-bold"
-                id="status-filter-OPEN">
-            <i class="bi bi-circle"></i> <span th:text="#{task.filter.open}">Open</span>
-        </button>
-        <button type="button"
-                class="btn btn-outline-light border-secondary text-warning fw-bold"
-                id="status-filter-IN_PROGRESS">
-            <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.filter.inProgress}">In Progress</span>
-        </button>
-        <button type="button"
-                class="btn btn-outline-light border-secondary text-success fw-bold"
-                id="status-filter-COMPLETED">
-            <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.filter.completed}">Completed</span>
-        </button>
-        <button type="button"
-                class="btn btn-outline-light border-secondary text-danger fw-bold"
-                id="overdue-filter">
-            <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
-        </button>
+        <ul class="dropdown-menu" aria-labelledby="statusDropdown">
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="BACKLOG"
+                   onclick="setStatusFilter('BACKLOG')">
+                    <span class="badge bg-light text-dark"><i class="bi bi-inbox"></i></span>
+                    <span th:text="#{task.filter.backlog}">Backlog</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="OPEN"
+                   onclick="setStatusFilter('OPEN')">
+                    <span class="badge bg-secondary"><i class="bi bi-circle"></i></span>
+                    <span th:text="#{task.filter.open}">Open</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_PROGRESS"
+                   onclick="setStatusFilter('IN_PROGRESS')">
+                    <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i></span>
+                    <span th:text="#{task.filter.inProgress}">In Progress</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_REVIEW"
+                   onclick="setStatusFilter('IN_REVIEW')">
+                    <span class="badge bg-info text-white"><i class="bi bi-eye-fill"></i></span>
+                    <span th:text="#{task.filter.inReview}">In Review</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="COMPLETED"
+                   onclick="setStatusFilter('COMPLETED')">
+                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i></span>
+                    <span th:text="#{task.filter.completed}">Completed</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="CANCELLED"
+                   onclick="setStatusFilter('CANCELLED')">
+                    <span class="badge bg-dark"><i class="bi bi-x-circle-fill"></i></span>
+                    <span th:text="#{task.filter.cancelled}">Cancelled</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="OVERDUE"
+                   onclick="setStatusFilter('OVERDUE')">
+                    <span class="badge bg-danger"><i class="bi bi-exclamation-circle-fill"></i></span>
+                    <span th:text="#{task.dueDate.overdue}">Overdue</span>
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status=""
+                   onclick="setStatusFilter('')">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <span th:text="#{task.filter.all}">All</span>
+                </a>
+            </li>
+        </ul>
     </div>
     <input type="hidden" id="current-overdue-filter" value="false">
     <input type="hidden" id="current-priority-filter" value="">

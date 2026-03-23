@@ -97,7 +97,7 @@ public class DashboardService {
                 myOverdue,
                 myTotal,
                 taskService.getRecentTasksByUser(user),
-                taskService.getDueThisWeek(user),
+                taskService.getDueSoon(user),
                 projectSummaries,
                 totalTasks,
                 totalOpen,

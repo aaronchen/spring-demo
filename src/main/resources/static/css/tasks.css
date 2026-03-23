@@ -12,45 +12,6 @@
 #search-clear-btn:hover { color: #343a40; }
 #search-input { padding-right: 2.25rem; }
 
-/* Status filter button (All): grey active state */
-[id^="status-filter-"] {
-    --bs-btn-active-bg: rgba(108, 117, 125, 0.35);
-    --bs-btn-active-border-color: #6c757d;
-    --bs-btn-active-color: inherit;
-}
-
-/* Status filter button (Open): secondary color when active */
-#status-filter-OPEN {
-    --bs-btn-active-bg: var(--bs-secondary, #6c757d);
-    --bs-btn-active-border-color: var(--bs-secondary, #6c757d);
-    --bs-btn-active-color: #fff;
-}
-#status-filter-OPEN.active { color: #fff !important; }
-
-/* Status filter button (In Progress): warning color when active */
-#status-filter-IN_PROGRESS {
-    --bs-btn-active-bg: var(--bs-warning, #ffc107);
-    --bs-btn-active-border-color: var(--bs-warning, #ffc107);
-    --bs-btn-active-color: var(--theme-warning-text, #000);
-}
-#status-filter-IN_PROGRESS.active { color: var(--theme-warning-text, #000) !important; }
-
-/* Status filter button (Completed): success color when active */
-#status-filter-COMPLETED {
-    --bs-btn-active-bg: var(--bs-success, #198754);
-    --bs-btn-active-border-color: var(--bs-success, #198754);
-    --bs-btn-active-color: var(--theme-success-text, #fff);
-}
-#status-filter-COMPLETED.active { color: var(--theme-success-text, #fff) !important; }
-
-/* Overdue filter button: danger color when active */
-#overdue-filter {
-    --bs-btn-active-bg: var(--bs-danger, #dc3545);
-    --bs-btn-active-border-color: var(--bs-danger, #dc3545);
-    --bs-btn-active-color: #fff;
-}
-#overdue-filter.active { color: #fff !important; }
-
 /* User filter: grey for "All Users", blue for "Mine" / specific user */
 #user-filter-all {
     --bs-btn-active-bg: rgba(108, 117, 125, 0.35);

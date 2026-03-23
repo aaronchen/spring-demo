@@ -27,7 +27,7 @@
                         th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{task.create.heading})">
                         Task Form
                     </h1>
-                    <small th:if="${task.project != null && mode != 'create'}" class="text-muted">
+                    <small th:if="${task.project != null && (mode != 'create' || editableProjects == null)}" class="text-muted">
                         <i class="bi bi-folder"></i>
                         <a th:href="@{/projects/{id}(id=${task.project.id})}"
                            class="text-muted text-decoration-none project-link"
