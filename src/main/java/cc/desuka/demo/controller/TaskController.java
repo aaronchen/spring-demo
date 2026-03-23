@@ -7,7 +7,9 @@ import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.TaskStatusFilter;
+import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
@@ -18,9 +20,7 @@ import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
-import cc.desuka.demo.util.CsvWriter;
 import cc.desuka.demo.util.HtmxUtils;
-import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -57,7 +56,7 @@ public class TaskController {
     private final TimelineService timelineService;
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
-    private final Messages messages;
+    private final TaskReport taskReport;
 
     public TaskController(
             TaskService taskService,
@@ -68,7 +67,7 @@ public class TaskController {
             TimelineService timelineService,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
-            Messages messages) {
+            TaskReport taskReport) {
         this.taskService = taskService;
         this.projectService = projectService;
         this.tagService = tagService;
@@ -77,7 +76,7 @@ public class TaskController {
         this.timelineService = timelineService;
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
-        this.messages = messages;
+        this.taskReport = taskReport;
     }
 
     // GET /tasks - Display task list (full page or HTMX fragment)
@@ -161,6 +160,29 @@ public class TaskController {
             return "tasks/tasks";
         }
 
+        if (UserPreferences.VIEW_BOARD.equals(resolvedView)) {
+            Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_CREATED_AT));
+            List<Task> tasks =
+                    taskService
+                            .searchAndFilterTasksForProjects(
+                                    accessibleProjectIds,
+                                    search,
+                                    statusFilter,
+                                    overdue,
+                                    priority,
+                                    selectedUserId,
+                                    tags,
+                                    unpaged)
+                            .getContent();
+            model.addAttribute("tasksByStatus", taskService.groupByStatus(tasks));
+            model.addAttribute("statuses", TaskStatus.values());
+            addProjectEditPermissions(tasks, currentDetails, model);
+            if (HtmxUtils.isHtmxRequest(request)) {
+                return "tasks/task-board :: grid";
+            }
+            return "tasks/tasks";
+        }
+
         if (!request.getParameterMap().containsKey("size")) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
         }
@@ -220,46 +242,7 @@ public class TaskController {
                                 unpaged)
                         .getContent();
 
-        String[] headers = {
-            messages.get("task.field.title"),
-            messages.get("task.field.status"),
-            messages.get("task.field.priority"),
-            messages.get("task.field.startDate"),
-            messages.get("task.field.dueDate"),
-            messages.get("task.field.completedAt"),
-            messages.get("task.field.user"),
-            messages.get("task.field.tags"),
-            messages.get("task.field.createdAt"),
-            messages.get("task.field.updatedAt"),
-        };
-        CsvWriter.write(
-                response,
-                "tasks.csv",
-                headers,
-                tasks,
-                task ->
-                        new String[] {
-                            task.getTitle(),
-                            task.getStatus() != null ? task.getStatus().name() : "",
-                            task.getPriority() != null ? task.getPriority().name() : "",
-                            task.getStartDate() != null ? task.getStartDate().toString() : "",
-                            task.getDueDate() != null ? task.getDueDate().toString() : "",
-                            task.getCompletedAt() != null
-                                    ? task.getCompletedAt().toLocalDate().toString()
-                                    : "",
-                            task.getUser() != null ? task.getUser().getName() : "",
-                            task.getTags() != null
-                                    ? task.getTags().stream()
-                                            .map(t -> t.getName())
-                                            .collect(Collectors.joining("; "))
-                                    : "",
-                            task.getCreatedAt() != null
-                                    ? task.getCreatedAt().toLocalDate().toString()
-                                    : "",
-                            task.getUpdatedAt() != null
-                                    ? task.getUpdatedAt().toLocalDate().toString()
-                                    : ""
-                        });
+        taskReport.exportCsv(response, "tasks.csv", tasks);
     }
 
     // GET /tasks/{id} - Show task in view (read-only) mode
@@ -492,6 +475,41 @@ public class TaskController {
             return "tasks/task-activity";
         }
         return new RedirectView("/tasks/" + id);
+    }
+
+    // PATCH /tasks/{id}/field - Inline edit a single field (used by table view inline editing)
+    @PatchMapping("/{id}/field")
+    public String updateField(
+            @PathVariable Long id,
+            @RequestParam String field,
+            @RequestParam(required = false) String value,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        Task existing = taskService.getTaskById(id);
+        projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
+        Task task = taskService.updateField(id, field, value);
+        model.addAttribute("task", task);
+        addProjectEditPermissions(List.of(task), currentDetails, model);
+        return "tasks/task-table-row :: row";
+    }
+
+    // POST /tasks/{id}/status - Set explicit status (used by Kanban drag-and-drop)
+    @PostMapping("/{id}/status")
+    public Object setStatus(
+            @PathVariable Long id,
+            @RequestParam TaskStatus status,
+            @RequestParam(required = false, defaultValue = "board") String view,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            HttpServletRequest request,
+            Model model) {
+        Task existing = taskService.getTaskById(id);
+        projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
+        taskService.setStatus(id, status);
+
+        if (HtmxUtils.isHtmxRequest(request)) {
+            return HtmxUtils.triggerEvent("taskSaved");
+        }
+        return "redirect:/tasks";
     }
 
     // POST /tasks/{id}/toggle - Advance status (OPEN → IN_PROGRESS → COMPLETED → OPEN)

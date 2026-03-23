@@ -329,6 +329,32 @@ Content-Type: application/json
 
 
 ### ============================================================
+### Saved Views
+### ============================================================
+
+### List my saved views
+GET {{baseUrl}}/api/views
+Cookie: JSESSIONID={{sessionId}}
+
+###
+
+### Save current view
+POST {{baseUrl}}/api/views
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+  "name": "My Open Tasks",
+  "filters": "{\"statusFilter\":\"OPEN\",\"view\":\"table\"}"
+}
+
+###
+
+### Delete saved view (replace 1 with actual ID)
+DELETE {{baseUrl}}/api/views/1
+Cookie: JSESSIONID={{sessionId}}
+
+### ============================================================
 ### OpenAPI / Swagger (public, no auth needed)
 ### ============================================================
 

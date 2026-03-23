@@ -28,7 +28,7 @@
                 <select name="role" class="form-select">
                     <option th:each="r : ${projectRoles}"
                             th:value="${r}"
-                            th:text="#{${'project.role.' + r.name().toLowerCase()}}"
+                            th:text="#{${r.messageKey}}"
                             th:selected="${r.name() == 'EDITOR'}">Role</option>
                 </select>
             </div>
@@ -74,13 +74,13 @@
                                     style="min-width: 5.5rem;"
                                     type="button"
                                     data-bs-toggle="dropdown">
-                                <span th:text="#{${'project.role.' + member.role.name().toLowerCase()}}">Role</span>
+                                <span th:text="#{${member.role.messageKey}}">Role</span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li th:each="r : ${projectRoles}">
                                     <button type="button"
                                             th:class="${r == member.role ? 'dropdown-item active' : 'dropdown-item'}"
-                                            th:text="#{${'project.role.' + r.name().toLowerCase()}}"
+                                            th:text="#{${r.messageKey}}"
                                             th:attr="hx-patch=@{/projects/{pId}/members/{uId}/role(pId=${project.id}, uId=${member.user.id}, role=${r.name()})}"
                                             hx-target="#member-management-content"
                                             hx-swap="outerHTML">Role</button>

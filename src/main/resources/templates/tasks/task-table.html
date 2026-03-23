@@ -58,18 +58,6 @@
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
                         </th>
-                        <!-- Created column -->
-                        <th th:with="ord=${taskPage.pageable.sort.getOrderFor('createdAt')},
-                                     nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"
-                            style="cursor: pointer; user-select: none; white-space: nowrap;"
-                            data-sort-field="createdAt"
-                            th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
-                            <span th:text="#{task.table.column.created}">Created</span>
-                            <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
-                            <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
-                            <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
-                        </th>
                         <!-- Description column -->
                         <th th:with="ord=${taskPage.pageable.sort.getOrderFor('description')},
                                      nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"
@@ -82,8 +70,28 @@
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
                         </th>
-                        <!-- Actions column -->
-                        <th style="white-space: nowrap;" th:text="#{task.table.column.actions}">Actions</th>
+                        <!-- Created column -->
+                        <th th:with="ord=${taskPage.pageable.sort.getOrderFor('createdAt')},
+                                     nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"
+                            style="cursor: pointer; user-select: none; white-space: nowrap;"
+                            data-sort-field="createdAt"
+                            th:attr="data-sort-dir=${nextDir}"
+                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            <span th:text="#{task.table.column.created}">Created</span>
+                            <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
+                            <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
+                            <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
+                        </th>
+                        <!-- Actions column with edit mode toggle -->
+                        <th style="white-space: nowrap; vertical-align: middle;">
+                            <span th:text="#{task.table.column.actions}">Actions</span>
+                            <a id="edit-mode-btn" href="#"
+                               class="ms-2 text-muted"
+                               onclick="toggleEditMode(); return false;"
+                               th:title="#{task.editMode.tooltip}">
+                                <i class="bi bi-pencil-square" style="font-size: 1.2em;"></i>
+                            </a>
+                        </th>
                     </tr>
                 </thead>
                 <tbody>

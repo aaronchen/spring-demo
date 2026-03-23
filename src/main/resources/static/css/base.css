@@ -136,3 +136,13 @@ body {
     z-index: 100;
 }
 
+/* Keyboard shortcut badges */
+#keyboard-help-modal kbd {
+    background: var(--bs-gray-200, #e9ecef);
+    border: 1px solid var(--bs-gray-400, #ced4da);
+    border-radius: 0.25rem;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.85rem;
+    color: var(--bs-body-color, #212529);
+}
+

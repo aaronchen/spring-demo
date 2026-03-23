@@ -34,9 +34,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `isTerminal()` — returns true for COMPLETED and CANCELLED (done states)
   - `terminalStatuses()` — returns `List.of(COMPLETED, CANCELLED)`; used by overdue checks, incomplete counts, and due reminders
   - CANCELLED is not part of the advance cycle — it's set explicitly via the status radio buttons
+  - Implements `Translatable`; `getMessageKey()` returns corresponding `task.status.*` message key
 
 - `model/Priority.java` - Enum for task priority levels: `LOW`, `MEDIUM`, `HIGH`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Task
+  - Implements `Translatable`; `getMessageKey()` returns corresponding `task.priority.*` message key
 
 - `model/Comment.java` - Comment entity; implements `OwnedEntity` and `Auditable`
   - Fields: id, text, createdAt, task, user
@@ -48,8 +50,20 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `model/OwnedEntity.java` - Marker interface for entities that have an owner
   - Single method: `User getUser()` — returns owner or null if unassigned
-  - Implemented by `Task` and `Comment`; enables generic ownership checks via `AuthExpressions` and `OwnershipGuard`
+  - Implemented by `Task`, `Comment`, and `SavedView`; enables generic ownership checks via `AuthExpressions` and `OwnershipGuard`
   - Future entities with ownership can implement this for automatic access control
+
+- `model/Translatable.java` - Interface for enums with externalized display names
+  - Single method: `String getMessageKey()` — returns the `messages.properties` key for this enum value
+  - Implemented by `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`
+  - Enables generic translation via `Messages.get(Translatable)` without enum-specific switch logic
+
+- `model/SavedView.java` - Entity for user-saved filter views; implements `OwnedEntity`
+  - Fields: id, user (ManyToOne), name (max 100), filters (JSON string, max 2000), createdAt
+  - `filters` — serialized JSON string of filter state (search, status, priority, etc.); opaque to the backend
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
+  - `@PrePersist` sets `createdAt`
+  - Manual getters/setters (no Lombok on entities)
 
 - `model/Project.java` - Project entity; implements `Auditable`
   - Fields: id, name, description, status, createdBy, createdAt, updatedAt, members, tasks
@@ -66,10 +80,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `model/ProjectStatus.java` - Enum for project lifecycle: `ACTIVE`, `ARCHIVED`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Project
+  - Implements `Translatable`; `getMessageKey()` returns corresponding `project.status.*` message key
 
 - `model/ProjectRole.java` - Enum for project membership roles: `VIEWER`, `EDITOR`, `OWNER`
   - Stored as string via `@Enumerated(EnumType.STRING)` on ProjectMember
   - VIEWER = read-only; EDITOR = read/write tasks; OWNER = full project control
+  - Implements `Translatable`; `getMessageKey()` returns corresponding `project.role.*` message key
 
 - `model/ProjectMember.java` - Project membership entity (user + role per project)
   - Fields: id, project, user, role, createdAt
@@ -83,6 +99,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `model/Role.java` - Enum with two values: `USER`, `ADMIN`
   - Stored as string in database via `@Enumerated(EnumType.STRING)` on User
   - Defaults to `USER` for new registrations and API-created users
+  - Implements `Translatable`; `getMessageKey()` returns corresponding `role.*` message key
 
 - `model/Tag.java` - Tag entity
   - Fields: id, name (unique, max 50 chars)
@@ -271,6 +288,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `findByUserId(Long)` — all preferences for a user
   - `findByUserIdAndKey(Long, String)` — single preference lookup (upsert in service)
 
+- `repository/SavedViewRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<SavedView, Long>`
+  - `findByUserIdOrderByNameAsc(Long userId)` — all saved views for a user, sorted alphabetically
+
 - `repository/AuditLogSpecifications.java` - JPA Specifications for dynamic audit queries
   - `withCategory(String)` — validates against `AuditEvent.CATEGORIES` list, then uses LIKE pattern (`"AUTH"` → `AUTH_%`, `"TASK"` → `TASK_%`)
   - `withSearch(String)` — case-insensitive LIKE on principal and details
@@ -377,6 +398,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
   - Lombok `@Data`
 
+- `dto/SavedViewRequest.java` - Saved view input DTO (REST API create)
+  - Fields: `name` (required, `@NotBlank`, max 100), `filters` (required, `@NotBlank` — JSON string of filter state)
+  - Record DTO
+
+- `dto/SavedViewResponse.java` - Saved view output DTO
+  - Fields: `id`, `name`, `filters` (JSON string), `createdAt`
+  - Record DTO
+
 ### Mapper Layer
 - `mapper/TaskMapper.java` - MapStruct mapper interface
   - `@Mapper(componentModel = "spring", uses = {TagMapper.class, UserMapper.class})` — auto-discovers nested converters
@@ -457,6 +486,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
   - `updateTask` — two overloads (with/without checklist); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
   - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
+  - `setStatus(id, TaskStatus)` — sets status directly (for kanban drop); publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
+  - `updateField(id, fieldName, value)` — updates a single named field (title, description, priority, status, dueDate) in-place; used by inline editing in table view; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
+  - `groupByStatus(List<Task>)` — groups a list of tasks into a `Map<TaskStatus, List<Task>>`; preserves all statuses (empty list for statuses with no tasks); used by the kanban board view
   - `deleteTask` — blocks deletion of COMPLETED tasks; publishes `TaskChangeEvent("deleted")`
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
   - `getIncompleteTasks()` — uses `findByStatusNotIn(terminalStatuses())` instead of single-status exclusion
@@ -515,10 +547,21 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Computes `canDelete` per comment entry using `AuthExpressions.isAdmin()` and owner check
   - Used by `TaskController` to populate the activity panel on task detail/modal pages
 
+- `report/TaskReport.java` - `@Service` for task CSV export
+  - Constructor injection: `Messages`
+  - `exportCsv(HttpServletResponse, String filename, List<Task>)` — writes CSV to the response; uses `Messages.get(Translatable)` for translated column headers and enum values (priority, status)
+  - Used by both `TaskController` (cross-project export at `GET /tasks/export`) and `ProjectController` (per-project export at `GET /projects/{id}/export`); replaces the inline `CsvWriter` call that was previously only in `TaskController`
+
 - `service/ScheduledTaskService.java` - Centralized home for all `@Scheduled` jobs
   - Constructor injection: `TaskService`, `NotificationService`, `NotificationRepository`, `UserPreferenceService`, `SettingService`, `MessageSource`
   - `sendDueReminders()` — `@Scheduled(cron = "0 0 8 * * *")`; finds tasks due tomorrow, sends `TASK_DUE_REMINDER` notifications to assigned users who have the `dueReminder` preference enabled
   - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; reads `notificationPurgeDays` from `Settings`, deletes notifications older than that
+
+- `service/SavedViewService.java` - Saved view CRUD; `@Transactional` class-level
+  - Constructor injection: `SavedViewRepository`
+  - `getViewsForUser(Long userId)` — returns all saved views for a user, sorted by name ascending
+  - `createView(SavedView)` — persists a new saved view; associates with the given user
+  - `deleteView(Long id)` — deletes the view by ID (caller must have already checked ownership via `OwnershipGuard`)
 
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
   - Constructor injection: `TaskService`, `ProjectService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
@@ -571,6 +614,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `PATCH /api/notifications/read-all` — mark all as read (204)
   - `DELETE /api/notifications` — clear all (204)
   - All endpoints scoped to current user via `@AuthenticationPrincipal`
+
+- `controller/api/SavedViewController.java` - Saved views REST API
+  - `@RestController` with `/api/views` base path
+  - Constructor injection: `SavedViewService`, `OwnershipGuard`
+  - `GET /api/views` — returns all saved views for the current user (name + filters JSON)
+  - `POST /api/views` (201) — creates a new saved view for the current user; accepts `SavedViewRequest`, returns `SavedViewResponse`
+  - `DELETE /api/views/{id}` (204) — deletes a saved view; owner or admin only via `OwnershipGuard.requireAccess()`
 
 - `controller/NotificationController.java` - Notifications web page
   - `@Controller` with `/notifications` base path
@@ -654,7 +704,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `POST /projects/{id}/unarchive` — restore archived project (owner/admin only)
   - Member management: `POST /{id}/members` (add), `PATCH /{id}/members/{userId}/role` (change role), `DELETE /{id}/members/{userId}` (remove) — all return `member-table` fragment
   - Task filtering scoped to single project via `searchAndFilterTasksForProject(projectId, ...)`
-  - Supports cards, table, and calendar view modes with user preferences
+  - Supports cards, table, calendar, and board view modes with user preferences
+  - Board view: when `view=board`, groups tasks by status via `TaskService.groupByStatus()` and returns `task-board.html` (no pagination in board view)
+  - `GET /projects/{id}/export` — per-project CSV download of filtered tasks; delegates to `TaskReport.exportCsv()`
   - `buildCalendarWeeks()` — private helper for project-scoped calendar view
 
 - `controller/DashboardController.java` - Dashboard page and HTMX stats fragment
@@ -682,7 +734,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `POST /{id}/comments` — add comment to task; returns `task-activity` template (whole file for hx-swap-oob count updates)
   - `DELETE /{id}/comments/{commentId}` — delete comment (owner or admin); returns `task-activity` template
   - `POST /tasks/{id}/toggle` — advance status; checks edit access; returns card/row/trigger based on view mode
-  - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); uses `CsvWriter` with `Messages`-resolved column headers; works independently of view mode
+  - `GET /tasks/export` — CSV download of filtered tasks (same filter params as `listTasks`, unpaged); delegates to `TaskReport.exportCsv()`; works independently of view mode
+  - Board view: when `view=board`, groups tasks by status via `TaskService.groupByStatus()` and returns `task-board.html` (no pagination in board view)
+  - `PATCH /tasks/{id}/field` — inline field edit endpoint; accepts `fieldName` + `value` params, delegates to `TaskService.updateField()`; returns updated card or row fragment for the active view
+  - `POST /tasks/{id}/status` — kanban drop endpoint; accepts `status` param, delegates to `TaskService.setStatus()`; returns 200 on success
   - Task list is scoped to accessible projects via `searchAndFilterTasksForProjects(accessibleProjectIds, ...)`; admin sees all (null bypass)
   - `addProjectEditPermissions()` — builds `projectEditMap` (Map<Long, Boolean>) for cross-project views; admin short-circuits to `canEditProject=true`
   - `addEditableProjects()` — private helper; adds `editableProjects` list to model (admin gets all active projects, regular users get EDITOR/OWNER projects); used by task list, create form, and validation error re-render
@@ -831,7 +886,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Constructor injection: `MessageSource`
   - `get(String key)` — resolves message with default locale, no args
   - `get(String key, Object... args)` — resolves message with default locale and arguments
-  - Used by `ProjectService`, `TaskService`, and `TaskController` (replaces direct `MessageSource` + `Locale` boilerplate)
+  - `get(Translatable)` — convenience overload; calls `get(translatable.getMessageKey())` for type-safe enum translation
+  - Used by `ProjectService`, `TaskService`, `TaskController`, and `TaskReport` (replaces direct `MessageSource` + `Locale` boilerplate)
 
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
@@ -886,19 +942,20 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Task Views
 - `templates/tasks/tasks.html` - Main cross-project task list page
   - "New Task" button (`btn-lg`) in page header; links to `/tasks/new` (opens modal via HTMX)
-  - Includes `task-list-fragment.html` via `th:replace` for all filter/sort/view controls
-  - All state managed in JS (`tasks.js`) — synced to URL params and cookies
-  - Loads `task-form.js` page-specifically for checklist management functions
+  - Includes `task-workspace.html` via `th:replace` for all filter/sort/view controls
+  - All state managed in JS (`tasks/tasks.js`) — synced to URL params and cookies
+  - Loads `tasks/task-form.js`, `tasks/inline-edit.js`, `tasks/kanban.js`, `tasks/keyboard-shortcuts.js` page-specifically
 
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
 - `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 6-state status badge and toggle button (Backlog/Open/In Progress/In Review/Completed/Cancelled with distinct icons and colors); project name link in card body; checklist progress bar (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` (project-scoped) or `projectEditMap` (cross-project) or ownership fallback
 - `templates/tasks/task-table.html` - Table view fragment (`grid` fragment)
-- `templates/tasks/task-list-fragment.html` - Shared task list controls fragment — used by both `tasks.html` (cross-project) and `project.html` (single project)
-  - Reads from model context: `view`, `selectedUserId`, `filterUserName`, `allTags`, `taskPage`, `calendarWeeks`, `calendarMonth`, `undatedCount`
+- `templates/tasks/task-workspace.html` - Shared task list controls fragment — used by both `tasks.html` (cross-project) and `project.html` (single project); renamed from `task-list-fragment.html` in Phase 8
+  - Reads from model context: `view`, `selectedUserId`, `filterUserName`, `allTags`, `taskPage`, `calendarWeeks`, `calendarMonth`, `undatedCount`, `tasksByStatus` (kanban board)
   - Optional `canEditProject` attribute — when set, controls task edit/delete visibility for project-scoped views
   - Stale-data banner (`#stale-banner`) — hidden by default; shown by JS on WebSocket task change events
-  - Search input (live search, `autocomplete="off"`), status filter dropdown (All/Backlog/Open/In Progress/In Review/Completed/Cancelled/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown, tag filter dropdown with pills, view toggle (cards/table/calendar)
-  - Task list container with conditional `th:replace` for table, calendar, or cards view
+  - Search input (live search, `autocomplete="off"`), status filter dropdown (All/Backlog/Open/In Progress/In Review/Completed/Cancelled/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown, tag filter dropdown with pills, view toggle (cards/table/calendar/board)
+  - Saved views dropdown — lists user's saved views; load button applies stored filter state; save button POSTs current filter state to `/api/views`; delete removes via `DELETE /api/views/{id}`
+  - Task list container with conditional `th:replace` for table, calendar, cards, or board view
   - Two shared modal shells: `#task-modal` (create/edit form via HTMX) and `#task-delete-modal` (delete confirmation populated via JS `show.bs.modal` event)
 - `templates/tasks/task-calendar.html` - Calendar view fragment (`grid` fragment)
   - Monthly grid (Monday start); reads `${calendarWeeks}` (List<List<CalendarDay>>), `${calendarMonth}` (YearMonth), `${undatedCount}` (long)
@@ -915,6 +972,17 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Whole-file return — includes timeline list + `hx-swap-oob` spans for activity count updates (used by controller for HTMX add/delete responses)
   - Comment entries rendered with `MentionUtils.renderHtml()` for styled @mention spans; delete buttons use `hx-delete` with `hx-confirm` and `data-confirm-*` attributes
   - Audit entries show action badge, principal, and field-level change details
+
+- `templates/tasks/task-board.html` - Kanban board view fragment (`grid` fragment)
+  - Reads `${tasksByStatus}` — `Map<TaskStatus, List<Task>>` built by `TaskService.groupByStatus()`
+  - One column per `TaskStatus` (6 columns: Backlog/Open/In Progress/In Review/Completed/Cancelled)
+  - Draggable cards with title, priority badge, assignee initials circle, due date chip; drag handle via `draggable="true"`
+  - Powered by `kanban.js` — native HTML5 Drag and Drop (`dragstart`/`dragover`/`drop`/`dragend` handlers); on drop POSTs to `POST /tasks/{id}/status`
+  - Column headers show status label and task count badge
+
+- `templates/tasks/keyboard-help-modal.html` - Modal fragment showing keyboard shortcut reference table
+  - Bare fragment (no HTML wrapper); loaded into a static modal shell in `task-workspace.html`
+  - Two-column table: shortcut key and action description; all strings from `messages.properties`
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
   - `fields` fragment — hidden `version` input; project selector dropdown (shown in create mode when `editableProjects` available, hidden field fallback when project is pre-set); title, description, status radio buttons (6-state: Backlog/Open/In Progress/In Review/Completed/Cancelled with icons and colors, shown on edit/view only), priority radio buttons (with reception bar icons), start date picker, due date picker, read-only completedAt/updatedAt (on edit/view), user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
@@ -939,9 +1007,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/projects/project.html` - Project home page with task list (single-project scope)
   - Project header: name, description, archived badge, settings link (owner/admin only)
   - Members bar: inline member names with role badges
-  - Includes `task-list-fragment.html` for full task filtering/sorting/view controls
+  - Includes `task-workspace.html` for full task filtering/sorting/view controls
   - Sets `TASKS_BASE_OVERRIDE` JS variable for project-scoped task API calls
-  - Loads `task-form.js` and `tasks.js` page scripts
+  - Loads `tasks/task-form.js`, `tasks/tasks.js`, `tasks/inline-edit.js`, `tasks/kanban.js`, `tasks/keyboard-shortcuts.js` page scripts
 - `templates/projects/project-form.html` - Create project form (full page, centered card)
   - Name (required) and description fields with validation
   - Posts to `/projects`
@@ -1031,14 +1099,32 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Atomic backspace: `keydown` handler removes entire `@Name` token when cursor is inside a mention
   - Auto-encodes on both HTMX requests (`htmx:configRequest`) and regular form submissions (`submit` event)
   - Auto-initializes on `DOMContentLoaded` and `htmx:afterSwap`
-- `static/js/task-form.js` - Checklist management for task create/edit forms
-  - `addChecklistItem()` — adds a new checklist row (drag handle + checkbox + text input + remove button) to the container
-  - `removeChecklistItem(btn)` — removes a checklist row; shows empty state if no items remain
-  - `updateChecklistHeading()` — updates the checklist section heading with current item count via `APP_CONFIG.messages`
-  - Drag-and-drop reordering via native HTML Drag and Drop API: `checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`; reordering DOM elements naturally updates the parallel arrays on form submission
+- `static/js/tasks/tasks.js` - Main task list page logic (search, filters, pagination, view switching, saved views); moved from `static/js/tasks.js` in Phase 8
+  - `STATUS_CONFIG` maps each status to label/icon/color; `renderStatusButton()` builds status filter dropdown items; `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED)
+  - Task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner
+  - User filter variable: `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
+  - Saved views: `loadView(filters)` restores filter state from stored JSON; `saveCurrentView(name)` POSTs current state to `POST /api/views`; `deleteView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown
+- `static/js/tasks/task-form.js` - Task form logic (checklist management, date handling); moved from `static/js/task-form.js` in Phase 8
+  - `addChecklistItem()`, `removeChecklistItem(btn)`, `updateChecklistHeading()`, drag-and-drop reorder handlers (`checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`)
   - Loaded page-specifically on task pages (via `tasks.html` script block)
+- `static/js/tasks/inline-edit.js` - Toggle-based inline editing for table view
+  - `toggleEditMode()` — activates/deactivates inline edit mode for the table; in edit mode, renders editable inputs (text, select, date) in place of static cell content
+  - Supports fields: title (text input), description (text input), priority (select), status (select), dueDate (date input)
+  - On save: sends `PATCH /tasks/{id}/field` with field name and new value; reverts on error
+  - Edit mode toggle controlled by the `e` keyboard shortcut (via `keyboard-shortcuts.js`)
+- `static/js/tasks/kanban.js` - Kanban board drag-and-drop via native HTML5 Drag and Drop API
+  - `dragstart` — sets transfer data (task ID); adds dragging styles
+  - `dragover` — highlights drop target column; prevents default to allow drop
+  - `drop` — reads task ID from transfer data; POSTs to `POST /tasks/{id}/status` with target column's status
+  - `dragend` — clears dragging styles regardless of outcome
+  - Updates card position in DOM optimistically; reverts on server error
+- `static/js/tasks/keyboard-shortcuts.js` - Keyboard shortcut handler for task pages
+  - `h` — open keyboard help modal; `n` — open new task modal; `s` / `/` — focus search input
+  - `1` / `2` / `3` / `4` — switch to cards / table / calendar / board view
+  - `e` — toggle inline edit mode (table view only; no-op in other views)
+  - `Escape` — close open modal or cancel inline edit mode
+  - All shortcuts suppressed when focus is in an input, textarea, or select element
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/tasks.js` - Task list page logic (sort, filters, search, pagination, modal wiring); `STATUS_CONFIG` maps each status to label/icon/color; `renderStatusButton()` builds status filter dropdown items; `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED); task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner (shows banner when another user modifies a task); user filter variable renamed from `currentUserId` to `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - `static/tribute/tribute.min.js` - Tribute.js library for @mention autocomplete; loaded globally in `base.html`

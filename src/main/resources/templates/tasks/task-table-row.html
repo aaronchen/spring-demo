@@ -17,7 +17,8 @@
              isCancelled=${task.status.name() == 'CANCELLED'},
              isTerminal=${isCompleted || isCancelled},
              overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
-    <td>
+    <td th:data-editable="${canEdit ? 'true' : null}" data-field="title"
+        th:data-task-id="${task.id}" th:data-value="${task.title}">
         <div class="d-flex align-items-center flex-wrap gap-1">
             <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark">
                 <i class="bi bi-check2-square"></i>
@@ -51,7 +52,8 @@
                th:text="${task.user.name}">User</a>
         </small>
     </td>
-    <td style="white-space: nowrap;">
+    <td style="white-space: nowrap;" th:data-editable="${canEdit ? 'true' : null}"
+        data-field="priority" th:data-task-id="${task.id}" th:data-value="${task.priority.name()}">
         <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
            onclick="setPriorityFilter('HIGH'); return false;">
             <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>
@@ -65,7 +67,8 @@
             <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
         </a>
     </td>
-    <td style="white-space: nowrap;">
+    <td style="white-space: nowrap;" th:data-editable="${canEdit ? 'true' : null}"
+        data-field="status" th:data-task-id="${task.id}" th:data-value="${task.status.name()}">
         <a href="#" th:if="${isCompleted}" class="badge bg-success text-decoration-none text-white"
            onclick="setStatusFilter('COMPLETED'); return false;">
             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
@@ -95,17 +98,21 @@
             <i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span>
         </a>
     </td>
-    <td style="white-space: nowrap;">
+    <td style="white-space: nowrap;" th:data-editable="${canEdit ? 'true' : null}"
+        data-field="dueDate" th:data-task-id="${task.id}"
+        th:data-value="${task.dueDate != null ? #temporals.format(task.dueDate, 'yyyy-MM-dd') : ''}">
         <th:block th:if="${task.dueDate != null}">
             <small th:classappend="${overdue} ? 'text-danger fw-semibold' : 'text-muted'"
                    th:text="${#temporals.format(task.dueDate, 'MMM dd, yyyy')}">Date</small>
         </th:block>
     </td>
+    <td class="text-truncate" style="max-width: 280px;"
+        th:data-editable="${canEdit ? 'true' : null}" data-field="description"
+        th:data-task-id="${task.id}" th:data-value="${task.description}">
+        <span class="text-muted small" th:text="${task.description} ?: #{task.noDescription}">Description</span>
+    </td>
     <td style="white-space: nowrap;">
         <small class="text-muted" th:text="${#temporals.format(task.createdAt, 'MMM dd, yyyy')}">Date</small>
-    </td>
-    <td class="text-truncate" style="max-width: 280px;">
-        <span class="text-muted small" th:text="${task.description} ?: #{task.noDescription}">Description</span>
     </td>
     <td>
         <div class="btn-group btn-group-sm">

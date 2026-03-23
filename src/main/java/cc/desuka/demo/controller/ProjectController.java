@@ -7,7 +7,9 @@ import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.Task;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.TaskStatusFilter;
+import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
@@ -17,7 +19,9 @@ import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -45,18 +49,21 @@ public class ProjectController {
     private final TagService tagService;
     private final UserService userService;
     private final ProjectAccessGuard projectAccessGuard;
+    private final TaskReport taskReport;
 
     public ProjectController(
             ProjectService projectService,
             TaskService taskService,
             TagService tagService,
             UserService userService,
-            ProjectAccessGuard projectAccessGuard) {
+            ProjectAccessGuard projectAccessGuard,
+            TaskReport taskReport) {
         this.projectService = projectService;
         this.taskService = taskService;
         this.tagService = tagService;
         this.userService = userService;
         this.projectAccessGuard = projectAccessGuard;
+        this.taskReport = taskReport;
     }
 
     // GET /projects - List projects the current user belongs to
@@ -203,6 +210,28 @@ public class ProjectController {
             return "projects/project";
         }
 
+        if (UserPreferences.VIEW_BOARD.equals(resolvedView)) {
+            Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_CREATED_AT));
+            List<Task> tasks =
+                    taskService
+                            .searchAndFilterTasksForProject(
+                                    id,
+                                    search,
+                                    statusFilter,
+                                    overdue,
+                                    priority,
+                                    selectedUserId,
+                                    tags,
+                                    unpaged)
+                            .getContent();
+            model.addAttribute("tasksByStatus", taskService.groupByStatus(tasks));
+            model.addAttribute("statuses", TaskStatus.values());
+            if (HtmxUtils.isHtmxRequest(request)) {
+                return "tasks/task-board :: grid";
+            }
+            return "projects/project";
+        }
+
         if (!request.getParameterMap().containsKey("size")) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
         }
@@ -224,6 +253,41 @@ public class ProjectController {
                     : "tasks/task-cards :: grid";
         }
         return "projects/project";
+    }
+
+    // GET /projects/{id}/export - Download CSV of project tasks (same filters as project view)
+    @GetMapping("/{id}/export")
+    public void exportProjectTasks(
+            @PathVariable Long id,
+            @RequestParam(required = false, defaultValue = "") String search,
+            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT)
+                    TaskStatusFilter statusFilter,
+            @RequestParam(required = false, defaultValue = "false") boolean overdue,
+            @RequestParam(required = false) Priority priority,
+            @RequestParam(required = false) Long selectedUserId,
+            @RequestParam(required = false) List<Long> tags,
+            @PageableDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC)
+                    Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            HttpServletResponse response)
+            throws IOException {
+        projectAccessGuard.requireViewAccess(id, currentDetails);
+        Project project = projectService.getProjectById(id);
+        Pageable unpaged = Pageable.unpaged(pageable.getSort());
+        List<Task> tasks =
+                taskService
+                        .searchAndFilterTasksForProject(
+                                id,
+                                search,
+                                statusFilter,
+                                overdue,
+                                priority,
+                                selectedUserId,
+                                tags,
+                                unpaged)
+                        .getContent();
+
+        taskReport.exportCsv(response, project.getName() + "-tasks.csv", tasks);
     }
 
     // GET /projects/{id}/settings - Project settings (owner or admin only)

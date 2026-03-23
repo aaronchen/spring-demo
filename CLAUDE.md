@@ -45,6 +45,8 @@ The application provides **two interfaces** for the same backend:
    - HTMX for dynamic updates without full page reloads
    - Bootstrap for responsive styling
 
+**Shared report logic** — `report/` package contains services used by multiple controllers (e.g., CSV export). Controllers delegate to report services rather than duplicating export code.
+
 ## Key Files and Structure
 
 Detailed per-file documentation is in [CLAUDE-reference.md](CLAUDE-reference.md). Read it when you need specifics about a particular class, template, or resource file.
@@ -310,7 +312,7 @@ Per-user preferences stored in the `user_preferences` table as key/value rows. M
 - **`UserPreferenceService.load(userId)`** — reads all rows for a user into a `UserPreferences` object; missing keys keep defaults
 
 `GlobalModelAttributes` exposes `${userPreferences}` to all templates. Current preferences:
-- `taskView` — `"cards"` (default), `"table"`, or `"calendar"` — default view mode for task list
+- `taskView` — `"cards"` (default), `"table"`, `"calendar"`, or `"board"` — default view mode for task list
 - `defaultUserFilter` — `"mine"` (default) or `"all"` — default user filter on task list
 
 ### Profile Controller Pattern
@@ -375,6 +377,34 @@ public interface OwnedEntity {
 ```
 Unassigned-entity rules are business decisions — handled in controllers (skip `requireAccess()` when `getUser() == null`) and templates (`${#auth.canEdit(task) || task.user == null}`), not in the generic auth utilities.
 `Task` and `Comment` implement `OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
+
+### Translatable Enum Pattern
+
+Enums whose display names are user-facing implement the `Translatable` interface in `model/`:
+```java
+public interface Translatable {
+    String getMessageKey();
+}
+```
+
+Each constant stores its own message key:
+```java
+public enum TaskStatus implements Translatable {
+    BACKLOG("task.status.backlog"),
+    OPEN("task.status.open"),
+    // ...
+    private final String messageKey;
+}
+```
+
+`Messages.get(Translatable)` is a convenience method that resolves the key via `MessageSource`. Templates use `#{${enum.messageKey}}` instead of fragile `name().toLowerCase()` ternary chains:
+```html
+<span th:text="#{${task.status.messageKey}}">Status</span>
+```
+
+Currently implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`.
+
+`TaskStatusFilter` is excluded — it is a query parameter enum used internally and has no display keys of its own.
 
 ### HTMX Out-of-Band Swap Pattern
 
@@ -484,6 +514,7 @@ Event-related code is organized by domain concern, not by technical role:
 - `audit/` — audit events, listeners, service, utilities
 - `event/` — domain events, notification listener, WebSocket listener
 - `presence/` — presence service and session lifecycle listener
+- `report/` — shared report/export logic used by multiple controllers
 
 Controllers always stay in `controller/` (layer package) — never move them into feature packages. Feature packages are for internal infrastructure only.
 
@@ -650,6 +681,7 @@ Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for read
 
 - **`base.css`** — styles used on every page; included by `base.html`
 - **`tasks.css`** — styles only needed on task pages; passed to `head(title, cssFile)` parameter
+- Task-specific JavaScript files live in `static/js/tasks/` subfolder (e.g., `tasks/tasks.js`, `tasks/task-board.js`)
 - For btn-outline active state overrides, use Bootstrap CSS custom properties (`--bs-btn-active-bg`, etc.) rather than class overrides
 - Bootstrap utility classes use `!important` — override with `!important` if needed
 
@@ -830,7 +862,7 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `http://localhost:8080/projects/new` - Create project
 - `http://localhost:8080/projects/{id}` - Project home with task filtering
 - `http://localhost:8080/projects/{id}/settings` - Project settings and member management (owner/admin)
-- `http://localhost:8080/tasks` - Cross-project task list (cards, table, or calendar view)
+- `http://localhost:8080/tasks` - Cross-project task list (cards, table, calendar, or board view)
 - `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
 - `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
 - `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
@@ -880,6 +912,11 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `PATCH /api/notifications/{id}/read` - Mark one as read (204 No Content)
 - `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
 - `DELETE /api/notifications` - Clear all notifications (204 No Content)
+
+**REST API — Saved Views** (requires login; CSRF exempt):
+- `GET /api/views` - List saved views for current user
+- `POST /api/views` - Save current filters as a named view
+- `DELETE /api/views/{id}` - Delete saved view (owner or admin)
 
 **REST API — Presence** (no authentication required):
 - `GET /api/presence` - Online users (`{"users": [...], "count": n}`)
@@ -1111,6 +1148,14 @@ CREATE TABLE user_preferences (
     pref_key   VARCHAR(100) NOT NULL,
     pref_value VARCHAR(500),
     UNIQUE (user_id, pref_key)
+);
+
+CREATE TABLE saved_views (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    name       VARCHAR(100) NOT NULL,
+    filters    VARCHAR(2000) NOT NULL,
+    created_at TIMESTAMP
 );
 
 -- Join table for the @ManyToMany between Task and Tag.

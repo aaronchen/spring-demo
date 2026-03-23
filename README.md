@@ -30,7 +30,11 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Web Interface
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
-- **Card, Table & Calendar Views** - Toggle between card grid, sortable table, and monthly calendar; preference persisted via user preferences
+- **Card, Table, Calendar & Board Views** - Toggle between card grid, sortable table, monthly calendar, and Kanban board; preference persisted via user preferences
+- **Kanban Board** - Drag-and-drop tasks between status columns; cards show title, priority badge, assignee initials, and due date
+- **Inline Editing** - Toggle edit mode in table view to click-to-edit title, description, priority, status, and due date in place
+- **Keyboard Shortcuts** - `h` (help), `n` (new task), `s`/`/` (search), `1-4` (switch views), `e` (edit mode in table), `Escape` (close/cancel)
+- **Saved Views** - Save current filter/sort/view combinations as named views; recall from dropdown
 - **CSV Export** - Download filtered tasks as CSV; respects all active filters (search, status, priority, tags, user, overdue)
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
 - **Filter Buttons** - All / Open / In Progress / Completed / Overdue with color-coded active states
@@ -122,7 +126,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Notification persistence with DB-first pattern (save then push) — offline users see notifications on login
 - Auto-purge of old notifications via `@Scheduled` cron (admin-configurable retention period, default 30 days)
 - Central user-resolution helpers in `SecurityUtils` (replaces duplicated patterns across services, dialects, and listeners)
-- Split JS: `utils.js` (global) + page-specific (`tasks.js`, `audit.js`) + WebSocket (`websocket.js`, `presence.js`, `notifications.js`)
+- `Translatable` enum interface — enums store their own `messages.properties` key; `Messages.get(Translatable)` resolves display names; templates use `#{${enum.messageKey}}`
+- Split JS: `utils.js` (global) + page-specific (`js/tasks/*.js`, `audit.js`) + WebSocket (`websocket.js`, `presence.js`, `notifications.js`)
 - Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
 - Styled confirm dialog via `showConfirm()` in `utils.js` (Bootstrap 5 modal, replaces native `confirm()`)
 - All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
@@ -218,7 +223,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 - **Search** — type to filter tasks by title or description in real time
 - **Filter buttons** — All / Backlog / Open / In Progress / In Review / Completed / Cancelled / Overdue
 - **Sort dropdown** — sort by title, created date, or description
-- **View toggle** — switch between card grid, table, and calendar view
+- **View toggle** — switch between card grid, table, calendar, and Kanban board view
 - **Page size** — choose 10 / 25 / 50 / 100 tasks per page
 
 #### Creating a Task
@@ -293,6 +298,14 @@ POST auto-assigns tasks to the caller. Admins can optionally specify `userId` in
 | PATCH | `/api/notifications/{id}/read` | Any user | Mark single notification as read (204) |
 | PATCH | `/api/notifications/read-all` | Any user | Mark all as read (204) |
 | DELETE | `/api/notifications` | Any user | Clear all notifications (204) |
+
+#### Saved View Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/api/views` | Any user | List saved views for current user |
+| POST | `/api/views` | Any user | Save current filters as named view |
+| DELETE | `/api/views/{id}` | Owner/Admin | Delete saved view (204) |
 
 #### Presence Endpoint
 
@@ -383,6 +396,7 @@ spring-demo/
 │   │   │   │   ├── CommentApiController.java # Comment REST API (nested under tasks)
 │   │   │   │   ├── NotificationApiController.java # Notification REST API
 │   │   │   │   ├── PresenceApiController.java # GET /api/presence (online users)
+│   │   │   │   ├── SavedViewController.java  # Saved views REST API (GET/POST/DELETE)
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
 │   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
@@ -409,6 +423,8 @@ spring-demo/
 │   │   │   ├── ProfileRequest.java    # Profile edit form DTO
 │   │   │   ├── ProjectRequest.java   # Project create/edit form DTO
 │   │   │   ├── RegistrationRequest.java # Registration form DTO
+│   │   │   ├── SavedViewRequest.java  # Saved view create DTO (record)
+│   │   │   ├── SavedViewResponse.java # Saved view output DTO (record)
 │   │   │   ├── TagRequest.java
 │   │   │   ├── TagResponse.java
 │   │   │   ├── TaskFormRequest.java     # Web form DTO (parallel array checklist binding)
@@ -443,16 +459,18 @@ spring-demo/
 │   │   │   ├── Notification.java       # Notification entity (@ManyToOne to User)
 │   │   │   ├── NotificationType.java   # TASK_ASSIGNED, TASK_UPDATED, COMMENT_ADDED, COMMENT_MENTIONED, TASK_DUE_REMINDER, TASK_OVERDUE, SYSTEM
 │   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
-│   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum
+│   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum (Translatable)
+│   │   │   ├── Translatable.java       # Interface for enums with i18n message keys
 │   │   │   ├── Project.java             # Project entity (Auditable)
 │   │   │   ├── ProjectMember.java       # Project membership (user + role)
-│   │   │   ├── ProjectRole.java         # VIEWER / EDITOR / OWNER enum
-│   │   │   ├── ProjectStatus.java       # ACTIVE / ARCHIVED enum
-│   │   │   ├── Role.java                # USER / ADMIN enum
+│   │   │   ├── ProjectRole.java         # VIEWER / EDITOR / OWNER enum (Translatable)
+│   │   │   ├── ProjectStatus.java       # ACTIVE / ARCHIVED enum (Translatable)
+│   │   │   ├── Role.java                # USER / ADMIN enum (Translatable)
+│   │   │   ├── SavedView.java          # Saved filter view entity (OwnedEntity)
 │   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
 │   │   │   ├── Task.java                # Implements OwnedEntity (belongs to Project)
-│   │   │   ├── TaskStatus.java          # BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED enum
+│   │   │   ├── TaskStatus.java          # BACKLOG / OPEN / ... / CANCELLED enum (Translatable)
 │   │   │   ├── TaskStatusFilter.java    # ALL / BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED enum
 │   │   │   ├── User.java                # Auth fields: password, role
 │   │   │   └── UserPreference.java      # Per-user key/value preference entity
@@ -463,6 +481,7 @@ spring-demo/
 │   │   │   ├── NotificationRepository.java
 │   │   │   ├── ProjectRepository.java
 │   │   │   ├── ProjectMemberRepository.java
+│   │   │   ├── SavedViewRepository.java
 │   │   │   ├── SettingRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
@@ -480,12 +499,15 @@ spring-demo/
 │   │   ├── presence/
 │   │   │   ├── PresenceEventListener.java # WebSocket connect/disconnect → presence broadcast
 │   │   │   └── PresenceService.java       # Online user tracking (ConcurrentHashMap)
+│   │   ├── report/
+│   │   │   └── TaskReport.java        # Shared CSV export (used by TaskController + ProjectController)
 │   │   ├── service/
 │   │   │   ├── CommentQueryService.java # Read-only comment lookups (breaks circular deps)
 │   │   │   ├── CommentService.java      # Comment CRUD with domain event publishing
 │   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
 │   │   │   ├── NotificationService.java # Create, mark read, clear (DB + WebSocket push)
 │   │   │   ├── ProjectService.java      # Project CRUD, member management, access checks
+│   │   │   ├── SavedViewService.java   # Saved view CRUD (per-user)
 │   │   │   ├── ScheduledTaskService.java # Centralized @Scheduled jobs (reminders, purge)
 │   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
 │   │   │   ├── TagService.java
@@ -512,8 +534,13 @@ spring-demo/
 │       │   │   └── theme.css           # Theme overrides (Workshop, Indigo)
 │       │   ├── js/
 │       │   │   ├── audit.js            # Audit page logic
-│       │   │   ├── utils.js            # Shared utilities (cookies, CSRF for HTMX)
-│       │   │   └── tasks.js            # Task list page logic
+│       │   │   ├── utils.js            # Shared utilities (cookies, CSRF, toasts, confirm)
+│       │   │   └── tasks/              # Task page scripts
+│       │   │       ├── tasks.js        # Task list logic (search, filters, saved views)
+│       │   │       ├── task-form.js    # Task form logic (checklist, dates)
+│       │   │       ├── inline-edit.js  # Toggle-based inline editing (table view)
+│       │   │       ├── kanban.js       # Drag-and-drop for Kanban board
+│       │   │       └── keyboard-shortcuts.js # Keyboard shortcut handler
 │       │   ├── tribute/
 │       │   │   └── tribute.min.js      # Tribute.js @mention autocomplete
 │       │   ├── favicon.svg             # SVG favicon
@@ -553,7 +580,9 @@ spring-demo/
 │       │   │   ├── task-card.html      # Single card fragment
 │       │   │   ├── task-table.html     # Table grid fragment
 │       │   │   ├── task-table-row.html # Single table row fragment
-│       │   │   └── task-list-fragment.html # Shared task list controls fragment
+│       │   │   ├── task-board.html    # Kanban board grid fragment
+│       │   │   ├── task-workspace.html # Shared task list controls (search, filters, views)
+│       │   │   └── keyboard-help-modal.html # Keyboard shortcut reference modal
 │       │   ├── users/
 │       │   │   ├── users.html          # User list page with search
 │       │   │   └── user-table.html     # User table fragment (HTMX partial)
