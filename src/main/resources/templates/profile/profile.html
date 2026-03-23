@@ -149,6 +149,15 @@
                                             <span th:text="#{profile.preferences.taskView.calendar}">Calendar</span>
                                         </label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                               name="taskView" id="pref-view-board" value="board"
+                                               th:checked="${userPreferences.taskView == 'board'}">
+                                        <label class="form-check-label" for="pref-view-board">
+                                            <i class="bi bi-kanban me-1"></i>
+                                            <span th:text="#{profile.preferences.taskView.board}">Board</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 

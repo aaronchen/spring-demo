@@ -45,9 +45,11 @@ function buildUrl(page) {
     const priority = document.getElementById('current-priority-filter').value;
     if (priority) params.set('priority', priority);
     activeSorts.forEach(s => params.append('sort', `${s.field},${s.direction}`));
-    // Calendar view: no pagination, use month param instead
+    // Calendar and board views: no pagination
     if (currentView === 'calendar') {
         if (currentMonth) params.set('month', currentMonth);
+    } else if (currentView === 'board') {
+        // Board view fetches all tasks unpaged — no size/page params
     } else {
         params.set('size', pageSize);
         if (page > 0) params.set('page', page);
@@ -83,7 +85,7 @@ function exportTasks() {
     if (activeSorts.length > 0) {
         params.set('sort', `${activeSorts[0].field},${activeSorts[0].direction}`);
     }
-    window.location.href = `${APP_CONFIG.routes.tasks}/export?${params.toString()}`;
+    window.location.href = `${TASKS_BASE}/export?${params.toString()}`;
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
@@ -113,6 +115,10 @@ function onPageSizeChange(newSize) {
 
 // Switch between card and table views
 function switchView(view) {
+    // Turn off edit mode when leaving table view
+    if (currentView === 'table' && view !== 'table' && typeof editModeActive !== 'undefined' && editModeActive) {
+        toggleEditMode();
+    }
     currentView = view;
     renderViewToggle();
     doSearch(false);
@@ -123,6 +129,7 @@ function renderViewToggle() {
     document.getElementById('view-cards').classList.toggle('active', currentView === 'cards');
     document.getElementById('view-table').classList.toggle('active', currentView === 'table');
     document.getElementById('view-calendar').classList.toggle('active', currentView === 'calendar');
+    document.getElementById('view-board').classList.toggle('active', currentView === 'board');
 }
 
 
@@ -206,6 +213,8 @@ function initFromUrl() {
     // View: URL param takes precedence; otherwise read from server-rendered active state
     if (params.has('view')) {
         currentView = params.get('view');
+    } else if (document.getElementById('view-board')?.classList.contains('active')) {
+        currentView = 'board';
     } else if (document.getElementById('view-calendar')?.classList.contains('active')) {
         currentView = 'calendar';
     } else if (document.getElementById('view-table')?.classList.contains('active')) {
@@ -507,6 +516,140 @@ function highlightActiveTags() {
     });
 }
 
+// ── Saved Views ──
+
+function loadSavedViews() {
+    fetch(`${APP_CONFIG.routes.api}/views`)
+        .then(r => r.json())
+        .then(views => renderSavedViewsList(views))
+        .catch(() => {});
+}
+
+function renderSavedViewsList(views) {
+    const container = document.getElementById('saved-views-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (views.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'dropdown-item-text text-muted small';
+        empty.textContent = APP_CONFIG.messages['task.views.empty'] || 'No saved views';
+        container.appendChild(empty);
+        return;
+    }
+
+    views.forEach(view => {
+        const item = document.createElement('div');
+        item.className = 'd-flex align-items-center';
+
+        const link = document.createElement('a');
+        link.className = 'dropdown-item flex-grow-1 text-truncate';
+        link.href = '#';
+        link.textContent = view.name;
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            applySavedView(view);
+        });
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-sm text-danger border-0 px-2';
+        deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
+        deleteBtn.title = APP_CONFIG.messages['task.views.delete'] || 'Delete';
+        deleteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            deleteSavedView(view.id);
+        });
+
+        item.appendChild(link);
+        item.appendChild(deleteBtn);
+        container.appendChild(item);
+    });
+}
+
+function applySavedView(view) {
+    const filters = JSON.parse(view.filters);
+
+    // Apply all filter values
+    document.getElementById('search-input').value = filters.search || '';
+    document.getElementById('current-status-filter').value = filters.statusFilter || 'ALL';
+    document.getElementById('current-overdue-filter').value = filters.overdue || 'false';
+    document.getElementById('current-priority-filter').value = filters.priority || '';
+    selectedUserId = filters.selectedUserId || null;
+    selectedTagIds = filters.tags || [];
+    if (filters.view) currentView = filters.view;
+    if (filters.sort) {
+        activeSorts = filters.sort;
+    }
+
+    renderStatusButton();
+    renderPriorityButton();
+    renderViewToggle();
+    renderTagFilter();
+    renderUserFilter();
+    renderSorts();
+
+    // Close dropdown
+    const dd = document.getElementById('savedViewsDropdown');
+    if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
+
+    doSearch(true);
+}
+
+function saveCurrentView() {
+    // Close the saved-views dropdown first
+    const dd = document.getElementById('savedViewsDropdown');
+    if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
+
+    const promptLabel = APP_CONFIG.messages['task.views.name.prompt'] || 'View name:';
+    const inputId = 'save-view-name-input';
+
+    showConfirm({
+        title: APP_CONFIG.messages['task.views.save'] || 'Save Current View',
+        message: `<label for="${inputId}" class="form-label">${promptLabel}</label>
+                  <input type="text" id="${inputId}" class="form-control" maxlength="80" autocomplete="off" autofocus>`,
+        confirmText: APP_CONFIG.messages['admin.settings.save'] || 'Save',
+        confirmClass: 'btn btn-primary',
+        headerClass: 'bg-primary text-white',
+    }, function () {
+        const input = document.getElementById(inputId);
+        const name = input ? input.value.trim() : '';
+        if (!name) {
+            if (input) input.classList.add('is-invalid');
+            return false; // keep modal open
+        }
+
+        const filters = {
+            search: document.getElementById('search-input').value || '',
+            statusFilter: document.getElementById('current-status-filter').value || 'ALL',
+            overdue: document.getElementById('current-overdue-filter').value || 'false',
+            priority: document.getElementById('current-priority-filter').value || '',
+            selectedUserId: selectedUserId || null,
+            tags: selectedTagIds.slice(),
+            view: currentView,
+            sort: activeSorts.slice(),
+        };
+
+        fetch(`${APP_CONFIG.routes.api}/views`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, filters: JSON.stringify(filters) }),
+        }).then(r => {
+            if (r.ok) {
+                loadSavedViews();
+                showToast(APP_CONFIG.messages['toast.view.saved'] || 'View saved', 'success');
+            }
+        }).catch(() => {});
+    });
+}
+
+function deleteSavedView(id) {
+    fetch(`${APP_CONFIG.routes.api}/views/${id}`, { method: 'DELETE' })
+        .then(r => {
+            if (r.ok) loadSavedViews();
+        })
+        .catch(() => {});
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Store default label and read initial user filter from server-rendered active state
     const mineBtn = document.getElementById('user-filter-mine');
@@ -589,6 +732,9 @@ document.addEventListener('DOMContentLoaded', function() {
         initFromUrl();
         doSearch(false);
     });
+
+    // Load saved views
+    loadSavedViews();
 
     // ── Live task updates via WebSocket ──────────────────────────────────
     const currentUserId = document.querySelector('meta[name="_userId"]')?.content;

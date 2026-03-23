@@ -32,6 +32,7 @@ public class Task implements OwnedEntity, Auditable {
     public static final String FIELD_PROJECT = "project";
     public static final String FIELD_TAGS = "tags";
     public static final String FIELD_USER = "user";
+    public static final String FIELD_USER_ID = "userId";
     public static final String FIELD_COMMENTS = "comments";
     public static final String FIELD_CHECKLIST_ITEMS = "checklistItems";
     public static final String FIELD_CHECKLIST_TOTAL = "checklistTotal";

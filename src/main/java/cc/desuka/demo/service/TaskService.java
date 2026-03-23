@@ -19,6 +19,8 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -90,7 +92,8 @@ public class TaskService {
                         AuditDetails.toJson(saved.toAuditSnapshot())));
         User actor = SecurityUtils.getCurrentUser();
         eventPublisher.publishEvent(new TaskAssignedEvent(saved, actor));
-        eventPublisher.publishEvent(new TaskChangeEvent("created", saved.getId(), actorId(actor)));
+        eventPublisher.publishEvent(
+                new TaskChangeEvent(TaskChangeEvent.ACTION_CREATED, saved.getId(), actorId(actor)));
         return saved;
     }
 
@@ -156,7 +159,8 @@ public class TaskService {
         if (!changes.isEmpty()) {
             eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
         }
-        eventPublisher.publishEvent(new TaskChangeEvent("updated", saved.getId(), actorId(actor)));
+        eventPublisher.publishEvent(
+                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
         return saved;
     }
 
@@ -177,7 +181,10 @@ public class TaskService {
                         SecurityUtils.getCurrentPrincipal(),
                         snapshot));
         eventPublisher.publishEvent(
-                new TaskChangeEvent("deleted", id, actorId(SecurityUtils.getCurrentUser())));
+                new TaskChangeEvent(
+                        TaskChangeEvent.ACTION_DELETED,
+                        id,
+                        actorId(SecurityUtils.getCurrentUser())));
     }
 
     public List<Task> getIncompleteTasks() {
@@ -417,6 +424,79 @@ public class TaskService {
                 .collect(Collectors.toMap(Task::getId, Task::getTitle));
     }
 
+    public Task updateField(Long id, String field, String value) {
+        Task task = getTaskById(id);
+        Map<String, Object> before = task.toAuditSnapshot();
+
+        switch (field) {
+            case Task.FIELD_TITLE -> task.setTitle(value);
+            case Task.FIELD_DESCRIPTION ->
+                    task.setDescription(value != null && !value.isBlank() ? value : null);
+            case Task.FIELD_PRIORITY -> task.setPriority(Priority.valueOf(value));
+            case Task.FIELD_STATUS -> {
+                TaskStatus previousStatus = task.getStatus();
+                task.setStatus(TaskStatus.valueOf(value));
+                updateCompletedAt(task, previousStatus);
+            }
+            case Task.FIELD_DUE_DATE ->
+                    task.setDueDate(
+                            value != null && !value.isBlank() ? LocalDate.parse(value) : null);
+            case Task.FIELD_USER_ID ->
+                    task.setUser(
+                            value != null && !value.isBlank()
+                                    ? userService.findUserById(Long.valueOf(value))
+                                    : null);
+            default ->
+                    throw new IllegalArgumentException(
+                            messages.get("task.field.notEditable", field));
+        }
+
+        Task saved = taskRepository.save(task);
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.TASK_UPDATED,
+                            Task.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+            User actor = SecurityUtils.getCurrentUser();
+            eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
+            eventPublisher.publishEvent(
+                    new TaskChangeEvent(
+                            TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+        }
+        return saved;
+    }
+
+    public Task setStatus(Long id, TaskStatus newStatus) {
+        Task task = getTaskById(id);
+        if (task.getStatus() == newStatus) {
+            return task;
+        }
+        Map<String, Object> before = task.toAuditSnapshot();
+        TaskStatus previousStatus = task.getStatus();
+        task.setStatus(newStatus);
+        updateCompletedAt(task, previousStatus);
+        Task saved = taskRepository.save(task);
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.TASK_UPDATED,
+                            Task.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+        }
+        User actor = SecurityUtils.getCurrentUser();
+        eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
+        eventPublisher.publishEvent(
+                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+        return saved;
+    }
+
     // Advance status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN
     // CANCELLED is not part of the cycle — it's a separate action.
     public Task advanceStatus(Long id) {
@@ -444,7 +524,8 @@ public class TaskService {
                         AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
         User actor = SecurityUtils.getCurrentUser();
         eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
-        eventPublisher.publishEvent(new TaskChangeEvent("updated", saved.getId(), actorId(actor)));
+        eventPublisher.publishEvent(
+                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
         return saved;
     }
 
@@ -472,5 +553,16 @@ public class TaskService {
         } else if (task.getStatus() != TaskStatus.COMPLETED) {
             task.setCompletedAt(null);
         }
+    }
+
+    public Map<TaskStatus, List<Task>> groupByStatus(List<Task> tasks) {
+        Map<TaskStatus, List<Task>> map = new LinkedHashMap<>();
+        for (TaskStatus status : TaskStatus.values()) {
+            map.put(status, new ArrayList<>());
+        }
+        for (Task task : tasks) {
+            map.get(task.getStatus()).add(task);
+        }
+        return map;
     }
 }

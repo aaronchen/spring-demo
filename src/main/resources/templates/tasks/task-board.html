@@ -1,0 +1,94 @@
+<!--/* Kanban board view fragment — tasks grouped by status in draggable columns.
+     Reads ${tasksByStatus} (Map<TaskStatus, List<Task>>) and ${statuses} (TaskStatus[]) from the model. */-->
+<div th:fragment="grid" xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Kanban Board -->
+    <div class="kanban-board">
+        <th:block th:each="status : ${statuses}">
+            <div class="kanban-column"
+                 th:data-status="${status.name()}"
+                 ondragover="kanbanDragOver(event)"
+                 ondragenter="kanbanDragEnter(event)"
+                 ondragleave="kanbanDragLeave(event)"
+                 ondrop="kanbanDrop(event)">
+                <!-- Column Header -->
+                <div class="kanban-column-header">
+                    <span class="kanban-column-header-label">
+                        <span class="badge me-1"
+                              th:classappend="${status.name() == 'BACKLOG' ? 'bg-light text-dark' :
+                                               (status.name() == 'OPEN' ? 'bg-secondary' :
+                                               (status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' :
+                                               (status.name() == 'IN_REVIEW' ? 'bg-info text-white' :
+                                               (status.name() == 'COMPLETED' ? 'bg-success' : 'bg-dark'))))}">
+                            <i class="bi"
+                               th:classappend="${status.name() == 'BACKLOG' ? 'bi-inbox' :
+                                                (status.name() == 'OPEN' ? 'bi-circle' :
+                                                (status.name() == 'IN_PROGRESS' ? 'bi-play-circle-fill' :
+                                                (status.name() == 'IN_REVIEW' ? 'bi-eye-fill' :
+                                                (status.name() == 'COMPLETED' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'))))}"></i>
+                        </span>
+                        <span th:text="#{${status.messageKey}}">Status</span>
+                    </span>
+                    <span class="badge bg-light text-dark kanban-count"
+                          th:text="${tasksByStatus.get(status).size()}">0</span>
+                </div>
+
+                <!-- Column Body -->
+                <div class="kanban-column-body">
+                    <th:block th:each="task : ${tasksByStatus.get(status)}">
+                        <div class="kanban-card"
+                             draggable="true"
+                             th:data-task-id="${task.id}"
+                             th:data-status="${task.status.name()}"
+                             ondragstart="kanbanDragStart(event)"
+                             ondragend="kanbanDragEnd(event)"
+                             th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
+                                      isOverdue=${!task.status.isTerminal() && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+
+                            <!-- Card Title -->
+                            <a href="#"
+                               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                               hx-target="#task-modal-content"
+                               hx-swap="innerHTML"
+                               class="kanban-card-title text-decoration-none"
+                               th:text="${task.title}">Task Title</a>
+
+                            <!-- Card Meta -->
+                            <div class="kanban-card-meta">
+                                <!-- Priority -->
+                                <span class="badge"
+                                      th:classappend="${task.priority.name() == 'HIGH' ? 'bg-danger' :
+                                                       (task.priority.name() == 'MEDIUM' ? 'bg-warning text-dark' : 'bg-success')}"
+                                      th:text="#{${task.priority.messageKey}}">Medium</span>
+
+                                <!-- Due Date -->
+                                <span th:if="${task.dueDate != null}"
+                                      class="kanban-card-due small"
+                                      th:classappend="${isOverdue ? 'text-danger fw-bold' : 'text-muted'}"
+                                      th:text="${#temporals.format(task.dueDate, 'MMM d')}">Mar 15</span>
+
+                                <!-- Assignee Initial -->
+                                <span th:if="${task.user != null}"
+                                      class="kanban-card-user"
+                                      th:text="${task.user.name.substring(0,1)}"
+                                      th:title="${task.user.name}">A</span>
+                            </div>
+
+                            <!-- Checklist Progress -->
+                            <div th:if="${task.checklistTotal > 0}" class="kanban-card-checklist small text-muted">
+                                <i class="bi bi-check2-square"></i>
+                                <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/3</span>
+                            </div>
+                        </div>
+                    </th:block>
+
+                    <!-- Empty Column -->
+                    <div th:if="${tasksByStatus.get(status).isEmpty()}" class="kanban-empty text-muted small text-center py-3">
+                        <span th:text="#{task.board.empty}">No tasks</span>
+                    </div>
+                </div>
+            </div>
+        </th:block>
+    </div>
+
+</div>

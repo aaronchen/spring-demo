@@ -1,0 +1,56 @@
+<!--/* Keyboard shortcut help modal — included in tasks.html and project.html */-->
+<div class="modal fade" id="keyboard-help-modal" tabindex="-1" aria-hidden="true"
+     xmlns:th="http://www.thymeleaf.org">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-keyboard"></i> <span th:text="#{keyboard.help.title}">Keyboard Shortcuts</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr>
+                            <td><kbd>h</kbd></td>
+                            <td th:text="#{keyboard.shortcut.help}">Show this help</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>n</kbd></td>
+                            <td th:text="#{keyboard.shortcut.newTask}">New task</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>s</kbd></td>
+                            <td th:text="#{keyboard.shortcut.search}">Focus search</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>1</kbd></td>
+                            <td th:text="#{keyboard.shortcut.viewCards}">Cards view</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>2</kbd></td>
+                            <td th:text="#{keyboard.shortcut.viewTable}">Table view</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>3</kbd></td>
+                            <td th:text="#{keyboard.shortcut.viewCalendar}">Calendar view</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>4</kbd></td>
+                            <td th:text="#{keyboard.shortcut.viewBoard}">Board view</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>e</kbd></td>
+                            <td th:text="#{keyboard.shortcut.editMode}">Toggle edit mode (table view)</td>
+                        </tr>
+                        <tr>
+                            <td><kbd>Esc</kbd></td>
+                            <td th:text="#{keyboard.shortcut.escape}">Close modal / cancel</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

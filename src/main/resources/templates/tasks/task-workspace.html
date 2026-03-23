@@ -305,8 +305,29 @@
         </ul>
     </div>
 
+    <!-- Saved Views -->
+    <div class="dropdown ms-auto">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                type="button"
+                id="savedViewsDropdown"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="outside"
+                aria-expanded="false">
+            <i class="bi bi-bookmark"></i> <span id="saved-views-label" th:text="#{task.views.saved}">Views</span>
+        </button>
+        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="savedViewsDropdown" style="min-width: 220px;">
+            <div id="saved-views-list">
+                <!--/* Populated by JS */-->
+            </div>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="#" onclick="saveCurrentView(); return false;">
+                <i class="bi bi-plus-circle me-1"></i> <span th:text="#{task.views.save}">Save current view</span>
+            </a>
+        </div>
+    </div>
+
     <!-- View Toggle -->
-    <div class="btn-group btn-group-sm ms-auto" role="group" aria-label="View toggle">
+    <div class="btn-group btn-group-sm" role="group" aria-label="View toggle">
         <button type="button"
                 class="btn btn-outline-secondary"
                 th:classappend="${view == 'cards' ? 'active' : ''}"
@@ -331,6 +352,14 @@
                 onclick="switchView('calendar')">
             <i class="bi bi-calendar3"></i>
         </button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                th:classappend="${view == 'board' ? 'active' : ''}"
+                id="view-board"
+                th:title="#{task.view.board}"
+                onclick="switchView('board')">
+            <i class="bi bi-kanban"></i>
+        </button>
     </div>
 </div>
 
@@ -350,7 +379,10 @@
     <th:block th:if="${view == 'calendar'}">
         <div th:replace="~{tasks/task-calendar :: grid}"></div>
     </th:block>
-    <th:block th:if="${view != 'table' && view != 'calendar'}">
+    <th:block th:if="${view == 'board'}">
+        <div th:replace="~{tasks/task-board :: grid}"></div>
+    </th:block>
+    <th:block th:if="${view != 'table' && view != 'calendar' && view != 'board'}">
         <div th:replace="~{tasks/task-cards :: grid}"></div>
     </th:block>
 </div>
