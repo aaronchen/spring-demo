@@ -387,3 +387,30 @@ td.inline-edit-active:hover {
     --bs-btn-color: var(--theme-secondary, #6c757d);
     --bs-btn-border-color: var(--theme-secondary, #6c757d);
 }
+
+/* ── Bulk Actions ── */
+
+.bulk-action-bar {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bs-dark, #212529);
+    color: #fff;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    z-index: 1050;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    min-width: 400px;
+}
+
+.bulk-action-bar .dropdown-toggle { border-color: rgba(255, 255, 255, 0.3); }
+.bulk-action-bar .dropdown-toggle:hover { border-color: rgba(255, 255, 255, 0.6); }
+
+/* Checkbox column: minimal width */
+.bulk-select-cell { width: 1px; white-space: nowrap; }
+.bulk-select-cell .form-check-input { cursor: pointer; }
+#bulk-select-all { cursor: pointer; }

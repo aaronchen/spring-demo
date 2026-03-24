@@ -1,4 +1,42 @@
-// Task form — checklist management (shared by task list modal and full-page task view)
+// Task form — project-aware assignee list + checklist management
+// (shared by task list modal and full-page task view)
+
+// When the project dropdown changes, update the assignee searchable-select
+// to fetch members from the new project instead of all users.
+document.addEventListener('DOMContentLoaded', function () {
+    bindProjectChange();
+});
+document.addEventListener('htmx:afterSwap', function (evt) {
+    if (evt.detail.target && evt.detail.target.id === 'task-modal-content') {
+        bindProjectChange();
+    }
+});
+
+function bindProjectChange() {
+    const projectSelect = document.getElementById('projectId');
+    if (!projectSelect) return;
+    projectSelect.addEventListener('change', function () {
+        const assigneeSelect = document.getElementById('assigneeId');
+        if (!assigneeSelect) return;
+        const projectId = this.value;
+        if (projectId) {
+            assigneeSelect._src = `${APP_CONFIG.routes.api}/projects/${projectId}/members/assignable`;
+        } else {
+            assigneeSelect._src = `${APP_CONFIG.routes.api}/users`;
+        }
+        assigneeSelect._cache = null;
+        // Clear current selection since user may not be in the new project
+        if (assigneeSelect._selectedValue) {
+            assigneeSelect._selectedValue = '';
+            assigneeSelect._selectedText = '';
+            if (assigneeSelect._hidden) assigneeSelect._hidden.value = '';
+            if (assigneeSelect._input) {
+                assigneeSelect._input.value = '';
+                assigneeSelect._input.placeholder = assigneeSelect.getAttribute('placeholder') || '';
+            }
+        }
+    });
+}
 
 function addChecklistItem() {
     const container = document.getElementById('checklist-container');

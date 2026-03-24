@@ -27,6 +27,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository memberRepository;
     private final UserService userService;
+    private final TaskQueryService taskQueryService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -34,11 +35,13 @@ public class ProjectService {
             ProjectRepository projectRepository,
             ProjectMemberRepository memberRepository,
             UserService userService,
+            TaskQueryService taskQueryService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
         this.memberRepository = memberRepository;
         this.userService = userService;
+        this.taskQueryService = taskQueryService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -271,6 +274,13 @@ public class ProjectService {
         Map<String, Object> before = member.toAuditSnapshot();
         if (member.getRole() != newRole) {
             member.setRole(newRole);
+
+            // Demoting to VIEWER — unassign non-terminal tasks in this project
+            if (newRole == ProjectRole.VIEWER) {
+                User user = userService.getUserById(userId);
+                taskQueryService.unassignTasksInProject(user, projectId);
+            }
+
             Map<String, Object> changes = AuditDetails.diff(before, member.toAuditSnapshot());
             eventPublisher.publishEvent(
                     new AuditEvent(

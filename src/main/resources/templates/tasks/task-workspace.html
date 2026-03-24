@@ -387,6 +387,71 @@
     </th:block>
 </div>
 
+<!-- Bulk Action Bar (floating, shown when tasks are selected in table view) -->
+<div id="bulk-action-bar" class="bulk-action-bar d-none">
+    <span id="bulk-selected-count" class="fw-bold me-3"></span>
+    <!-- Status -->
+    <div class="dropdown d-inline-block">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-list-ul"></i> <span th:text="#{task.bulk.status}">Set Status</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li th:each="status : ${T(cc.desuka.demo.model.TaskStatus).values()}">
+                <a class="dropdown-item" href="#"
+                   th:data-value="${status.name()}"
+                   onclick="executeBulkAction('STATUS', this.dataset.value); return false;"
+                   th:text="#{${status.messageKey}}">Status</a>
+            </li>
+        </ul>
+    </div>
+    <!-- Priority -->
+    <div class="dropdown d-inline-block">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-reception-2"></i> <span th:text="#{task.bulk.priority}">Set Priority</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li th:each="p : ${T(cc.desuka.demo.model.Priority).values()}">
+                <a class="dropdown-item" href="#"
+                   th:data-value="${p.name()}"
+                   onclick="executeBulkAction('PRIORITY', this.dataset.value); return false;"
+                   th:text="#{${p.messageKey}}">Priority</a>
+            </li>
+        </ul>
+    </div>
+    <!-- Assign (only shown when all selected tasks are in the same project) -->
+    <div id="bulk-assign-container" class="dropdown d-inline-block d-none">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                id="bulkAssignDropdown"
+                data-bs-toggle="dropdown"
+                data-bs-auto-close="outside"
+                aria-expanded="false">
+            <i class="bi bi-person"></i> <span th:text="#{task.bulk.assign}">Assign</span>
+        </button>
+        <div class="dropdown-menu p-2" style="min-width: 220px;">
+            <input type="text" class="form-control form-control-sm mb-2"
+                   id="bulk-assign-search"
+                   autocomplete="off"
+                   th:placeholder="#{task.field.user.placeholder}"
+                   oninput="filterBulkAssignUsers(this.value)">
+            <div id="bulk-assign-list" style="max-height: 200px; overflow-y: auto;">
+                <!--/* Populated by JS */-->
+            </div>
+        </div>
+    </div>
+    <!-- Delete -->
+    <button class="btn btn-sm btn-danger ms-2"
+            onclick="executeBulkDelete()">
+        <i class="bi bi-trash"></i> <span th:text="#{task.bulk.delete}">Delete</span>
+    </button>
+    <!-- Clear selection -->
+    <button class="btn btn-sm btn-outline-light ms-auto"
+            onclick="clearBulkSelection()">
+        <i class="bi bi-x-lg"></i>
+    </button>
+</div>
+
 <!-- Task Modal -->
 <div class="modal fade" id="task-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered task-modal-dialog">

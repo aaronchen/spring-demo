@@ -398,6 +398,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
   - Lombok `@Data`
 
+- `dto/BulkTaskRequest.java` - Bulk action input DTO (web controller `POST /tasks/bulk`)
+  - Fields: `taskIds` (required, `@NotEmpty`, `List<Long>`), `action` (required, `@NotBlank`), `value` (optional)
+  - Action constants: `ACTION_STATUS`, `ACTION_PRIORITY`, `ACTION_ASSIGN`, `ACTION_DELETE`
+  - Lombok `@Data`
+
 - `dto/SavedViewRequest.java` - Saved view input DTO (REST API create)
   - Fields: `name` (required, `@NotBlank`, max 100), `filters` (required, `@NotBlank` — JSON string of filter state)
   - Record DTO
@@ -448,6 +453,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `countByUserAndStatus(user, status)` — used by `UserService.countCompletedTasks()`
   - `countAssignedTasks(user)` — used by `UserService.countAssignedTasks()`
   - `unassignTasks(user)` — sets user to null on all user's tasks, resets non-completed to OPEN; used by `UserService` when disabling/deleting users
+  - `unassignTasksInProject(user, projectId)` — unassigns non-terminal tasks for a user within a specific project; used by `ProjectService` when demoting a member to VIEWER
 
 - `service/CommentQueryService.java` - Read-only comment lookups for cross-service use
   - Constructor injection: `CommentRepository`
@@ -455,7 +461,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `countByUserId(userId)` — used by `UserService.countComments()`
 
 - `service/ProjectService.java` - Project business logic with audit event publishing
-  - Constructor injection: `ProjectRepository`, `ProjectMemberRepository`, `UserService`, `ApplicationEventPublisher`, `Messages`
+  - Constructor injection: `ProjectRepository`, `ProjectMemberRepository`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
   - `getProjectById(Long)` — throws `EntityNotFoundException` if not found
   - `getActiveProjects()` — returns ACTIVE projects sorted by name
   - `getActiveProjectsByNewest()` — ACTIVE projects sorted by newest first
@@ -469,7 +475,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `archiveProject(Long)` — sets status to ARCHIVED; publishes `PROJECT_ARCHIVED`
   - `unarchiveProject(Long)` — restores to ACTIVE; publishes `PROJECT_UNARCHIVED`
   - `deleteProject(Long)` — only if no COMPLETED tasks (cancelled tasks don't block); publishes `PROJECT_DELETED`
-  - Member management: `getMembers(Long)`, `addMember` (rejects duplicates), `removeMember` (prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role)
+  - Member management: `getMembers(Long)`, `addMember` (rejects duplicates), `removeMember` (prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role; demoting to VIEWER unassigns non-terminal tasks in the project)
   - Access checks: `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
 
 - `service/TaskService.java` - Business logic layer with audit and domain event publishing
@@ -615,6 +621,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `DELETE /api/notifications` — clear all (204)
   - All endpoints scoped to current user via `@AuthenticationPrincipal`
 
+- `controller/api/ProjectApiController.java` - Project REST API endpoints
+  - `@RestController` with `/api/projects` base path
+  - Constructor injection: `ProjectService`, `UserMapper`
+  - `GET /api/projects/{id}/members` — all enabled members of a project (returns `List<UserResponse>`)
+  - `GET /api/projects/{id}/members/assignable` — editors and owners only, excludes VIEWERs (for task assignment dropdowns)
+
 - `controller/api/SavedViewController.java` - Saved views REST API
   - `@RestController` with `/api/views` base path
   - Constructor injection: `SavedViewService`, `OwnershipGuard`
@@ -716,7 +728,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/TaskController.java` - Task web UI endpoints (cross-project task views)
   - `@Controller` with `/tasks` base path
-  - Constructor injection: `TaskService`, `ProjectService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `Messages`
+  - Constructor injection: `TaskService`, `ProjectService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `Messages` (Messages added for bulk action error messages)
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
@@ -738,6 +750,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Board view: when `view=board`, groups tasks by status via `TaskService.groupByStatus()` and returns `task-board.html` (no pagination in board view)
   - `PATCH /tasks/{id}/field` — inline field edit endpoint; accepts `fieldName` + `value` params, delegates to `TaskService.updateField()`; returns updated card or row fragment for the active view
   - `POST /tasks/{id}/status` — kanban drop endpoint; accepts `status` param, delegates to `TaskService.setStatus()`; returns 200 on success
+  - `POST /tasks/bulk` — bulk action endpoint; `@ResponseBody` returns JSON; accepts `BulkTaskRequest` (taskIds, action, value); validates edit access per project (cached), delete access per task; loops over existing service methods for proper audit/event publishing; actions: STATUS, PRIORITY, ASSIGN, DELETE
   - Task list is scoped to accessible projects via `searchAndFilterTasksForProjects(accessibleProjectIds, ...)`; admin sees all (null bypass)
   - `addProjectEditPermissions()` — builds `projectEditMap` (Map<Long, Boolean>) for cross-project views; admin short-circuits to `canEditProject=true`
   - `addEditableProjects()` — private helper; adds `editableProjects` list to model (admin gets all active projects, regular users get EDITOR/OWNER projects); used by task list, create form, and validation error re-render
@@ -1104,9 +1117,20 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner
   - User filter variable: `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
   - Saved views: `loadView(filters)` restores filter state from stored JSON; `saveCurrentView(name)` POSTs current state to `POST /api/views`; `deleteView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown
-- `static/js/tasks/task-form.js` - Task form logic (checklist management, date handling); moved from `static/js/task-form.js` in Phase 8
+- `static/js/tasks/task-form.js` - Task form logic (checklist management, project-aware assignee list); moved from `static/js/task-form.js` in Phase 8
+  - `bindProjectChange()` — updates assignee searchable-select `_src` to `/api/projects/{id}/members/assignable` when project dropdown changes; clears cache and current selection; binds on DOMContentLoaded and htmx:afterSwap (for modal)
   - `addChecklistItem()`, `removeChecklistItem(btn)`, `updateChecklistHeading()`, drag-and-drop reorder handlers (`checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`)
   - Loaded page-specifically on task pages (via `tasks.html` script block)
+- `static/js/tasks/bulk-actions.js` - Cross-page bulk selection and actions for table view
+  - `bulkSelectedIds` Set + `bulkSelectedProjectIds` Map (taskId→projectId) — persists selection across HTMX page swaps
+  - `onBulkSelectChange(checkbox)`, `toggleSelectAll(checked)`, `clearBulkSelection()` — selection management
+  - `recheckVisibleBoxes()` — restores checkbox state after HTMX page navigation; `updateSelectAllState()` — handles indeterminate state
+  - `getCommonProjectId()` — returns single project ID if all selected tasks share one project, else null
+  - `renderBulkBar()` — shows/hides floating action bar; toggles assign button based on common project
+  - `executeBulkAction(action, value)` — sends JSON POST to `/tasks/bulk` with CSRF token from meta tags
+  - `executeBulkDelete()` — shows `showConfirm()` dialog before executing
+  - `loadBulkAssignUsers()` / `filterBulkAssignUsers(query)` / `renderBulkAssignList(users)` — assign dropdown with project-scoped user list from `/api/projects/{id}/members/assignable`; cached per project
+  - Loaded page-specifically on task pages (via `tasks.html` and `project.html` script blocks)
 - `static/js/tasks/inline-edit.js` - Toggle-based inline editing for table view
   - `toggleEditMode()` — activates/deactivates inline edit mode for the table; in edit mode, renders editable inputs (text, select, date) in place of static cell content
   - Supports fields: title (text input), description (text input), priority (select), status (select), dueDate (date input)
@@ -1136,7 +1160,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Namespace conventions:
     - `action.*` — generic actions; `pagination.*` — pagination controls
     - `nav.*`, `footer.*`, `page.title.*` — layout strings
-    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
+    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`, `task.bulk.*` for bulk action UI); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
     - `dashboard.*` — Dashboard feature (includes `dashboard.my.inReview`, `dashboard.projects.heading`, `dashboard.glance.heading`, `dashboard.system.heading`, `dashboard.system.*` stat labels)
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
@@ -1154,7 +1178,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `test/java/.../service/TagServiceTest.java` - 6 unit tests (Mockito): CRUD, audit event publishing (`any(AuditEvent.class)` for correct overload matching)
 - `test/java/.../service/CommentServiceTest.java` - 14 unit tests (Mockito): CRUD, event publishing, subscriber/mention ID extraction, deduplication
 - `test/java/.../service/UserServiceTest.java` - 20 unit tests (Mockito): CRUD, find/get, search, canDelete logic, enable/disable + unassign, profile update with diff, role change, password change
-- `test/java/.../service/ProjectServiceTest.java` - 21 unit tests (Mockito): CRUD, archive, delete (with/without completed tasks), member management (add/remove/role change), last-owner protection, access checks
+- `test/java/.../service/ProjectServiceTest.java` - 22 unit tests (Mockito): CRUD, archive, delete (with/without completed tasks), member management (add/remove/role change), last-owner protection, access checks, viewer demotion unassigns tasks
 - `test/java/.../service/NotificationServiceTest.java` - 8 unit tests (Mockito): DB-first create + WebSocket push, unread count, pagination, mark-as-read, mark-all, clear-all
 - `test/java/.../audit/AuditEventListenerTest.java` - 2 unit tests (Mockito): persists audit log, skips system principal
 - `test/java/.../event/NotificationEventListenerTest.java` - 8 unit tests (Mockito): task assigned/updated/comment notification routing, self-exclusion, deduplication across groups

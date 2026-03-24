@@ -90,7 +90,11 @@ function exportTasks() {
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
 function doSearch(resetPage) {
-    if (resetPage) currentPage = 0;
+    if (resetPage) {
+        currentPage = 0;
+        // Clear bulk selection when filters/search/sort change
+        if (typeof clearBulkSelection === 'function') clearBulkSelection();
+    }
     const url = buildUrl(currentPage);
     htmx.ajax('GET', url, {target: '#tasks-view', swap: 'innerHTML'});
     window.history.replaceState({}, '', url);
@@ -119,6 +123,8 @@ function switchView(view) {
     if (currentView === 'table' && view !== 'table' && typeof editModeActive !== 'undefined' && editModeActive) {
         toggleEditMode();
     }
+    // Clear bulk selection when switching views
+    if (typeof clearBulkSelection === 'function') clearBulkSelection();
     currentView = view;
     renderViewToggle();
     doSearch(false);

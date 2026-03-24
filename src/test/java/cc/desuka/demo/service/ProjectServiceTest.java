@@ -35,6 +35,7 @@ class ProjectServiceTest {
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectMemberRepository memberRepository;
     @Mock private UserService userService;
+    @Mock private TaskQueryService taskQueryService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Messages messages;
 
@@ -228,6 +229,20 @@ class ProjectServiceTest {
         projectService.updateMemberRole(1L, 2L, ProjectRole.EDITOR);
 
         assertThat(memberShip.getRole()).isEqualTo(ProjectRole.EDITOR);
+        verify(taskQueryService, never()).unassignTasksInProject(any(), any());
+    }
+
+    @Test
+    void updateMemberRole_demoteToViewer_unassignsTasks() {
+        ProjectMember memberShip = new ProjectMember(project, bob, ProjectRole.EDITOR);
+        project.getMembers().add(memberShip);
+        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(userService.getUserById(2L)).thenReturn(bob);
+
+        projectService.updateMemberRole(1L, 2L, ProjectRole.VIEWER);
+
+        assertThat(memberShip.getRole()).isEqualTo(ProjectRole.VIEWER);
+        verify(taskQueryService).unassignTasksInProject(bob, 1L);
     }
 
     // ── Access checks ─────────────────────────────────────────────────────

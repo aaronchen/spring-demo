@@ -329,6 +329,19 @@ Content-Type: application/json
 
 
 ### ============================================================
+### Project Members (any authenticated user)
+### ============================================================
+
+### Get all members of a project
+GET {{baseUrl}}/api/projects/1/members
+Cookie: JSESSIONID={{sessionId}}
+
+### Get assignable members (editors and owners only — for task assignment)
+GET {{baseUrl}}/api/projects/1/members/assignable
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
 ### Saved Views
 ### ============================================================
 

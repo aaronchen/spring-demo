@@ -51,4 +51,20 @@ public class TaskQueryService {
         }
         taskRepository.saveAll(tasks);
     }
+
+    /**
+     * Unassign non-terminal tasks for a user within a specific project. Used when demoting a member
+     * to VIEWER — terminal tasks keep their assignee as historical record.
+     */
+    @Transactional
+    public void unassignTasksInProject(User user, Long projectId) {
+        List<Task> tasks =
+                taskRepository.findByUserAndProjectIdAndStatusNotIn(
+                        user, projectId, TaskStatus.terminalStatuses());
+        for (Task task : tasks) {
+            task.setUser(null);
+            task.setStatus(TaskStatus.OPEN);
+        }
+        taskRepository.saveAll(tasks);
+    }
 }

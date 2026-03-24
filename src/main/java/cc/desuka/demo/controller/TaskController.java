@@ -1,6 +1,7 @@
 package cc.desuka.demo.controller;
 
 import cc.desuka.demo.config.UserPreferences;
+import cc.desuka.demo.dto.BulkTaskRequest;
 import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.model.Comment;
@@ -21,6 +22,7 @@ import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
+import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -30,13 +32,16 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -57,6 +62,7 @@ public class TaskController {
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
+    private final Messages messages;
 
     public TaskController(
             TaskService taskService,
@@ -67,7 +73,8 @@ public class TaskController {
             TimelineService timelineService,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
-            TaskReport taskReport) {
+            TaskReport taskReport,
+            Messages messages) {
         this.taskService = taskService;
         this.projectService = projectService;
         this.tagService = tagService;
@@ -77,6 +84,7 @@ public class TaskController {
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
+        this.messages = messages;
     }
 
     // GET /tasks - Display task list (full page or HTMX fragment)
@@ -534,6 +542,74 @@ public class TaskController {
                     : "tasks/task-card :: card";
         }
         return "redirect:/tasks";
+    }
+
+    // POST /tasks/bulk - Bulk update or delete tasks (JSON request/response)
+    @PostMapping("/bulk")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> bulkAction(
+            @Valid @RequestBody BulkTaskRequest request,
+            @AuthenticationPrincipal CustomUserDetails currentDetails) {
+
+        List<Long> taskIds = request.getTaskIds();
+        String action = request.getAction();
+        String value = request.getValue();
+
+        // Load all tasks and verify access (fail-fast)
+        List<Task> tasks = new ArrayList<>(taskIds.size());
+        Set<Long> checkedProjectIds = new HashSet<>();
+        for (Long taskId : taskIds) {
+            Task task = taskService.getTaskById(taskId);
+            Long projectId = task.getProject().getId();
+            if (BulkTaskRequest.ACTION_DELETE.equals(action)) {
+                // Delete requires per-task check (creator, project OWNER, or admin)
+                requireDeleteAccess(task, currentDetails);
+            } else if (checkedProjectIds.add(projectId)) {
+                // Edit requires project-level EDITOR/OWNER check (cache per project)
+                projectAccessGuard.requireEditAccess(projectId, currentDetails);
+            }
+            tasks.add(task);
+        }
+
+        int count = 0;
+        switch (action) {
+            case BulkTaskRequest.ACTION_STATUS -> {
+                TaskStatus newStatus = TaskStatus.valueOf(value);
+                for (Task task : tasks) {
+                    taskService.setStatus(task.getId(), newStatus);
+                    count++;
+                }
+            }
+            case BulkTaskRequest.ACTION_PRIORITY -> {
+                Priority newPriority = Priority.valueOf(value);
+                for (Task task : tasks) {
+                    taskService.updateField(task.getId(), "priority", newPriority.name());
+                    count++;
+                }
+            }
+            case BulkTaskRequest.ACTION_ASSIGN -> {
+                for (Task task : tasks) {
+                    taskService.updateField(task.getId(), "userId", value);
+                    count++;
+                }
+            }
+            case BulkTaskRequest.ACTION_DELETE -> {
+                for (Task task : tasks) {
+                    try {
+                        taskService.deleteTask(task.getId());
+                        count++;
+                    } catch (IllegalStateException ignored) {
+                        // Skip completed tasks that cannot be deleted
+                    }
+                }
+            }
+            default -> {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("error", messages.get("task.bulk.invalidAction")));
+            }
+        }
+
+        return ResponseEntity.ok(Map.of("count", count));
     }
 
     private void addProjectEditPermissions(
