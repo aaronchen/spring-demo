@@ -17,6 +17,12 @@
              isCancelled=${task.status.name() == 'CANCELLED'},
              isTerminal=${isCompleted || isCancelled},
              overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+    <td class="bulk-select-cell">
+        <input type="checkbox" class="form-check-input bulk-select-checkbox"
+               th:data-task-id="${task.id}"
+               th:data-project-id="${task.project.id}"
+               onchange="onBulkSelectChange(this)">
+    </td>
     <td th:data-editable="${canEdit ? 'true' : null}" data-field="title"
         th:data-task-id="${task.id}" th:data-value="${task.title}">
         <div class="d-flex align-items-center flex-wrap gap-1">

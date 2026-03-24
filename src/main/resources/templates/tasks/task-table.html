@@ -20,6 +20,12 @@
             <table class="table table-hover align-middle">
                 <thead class="table-light">
                     <tr>
+                        <!-- Select all checkbox -->
+                        <th style="width: 1px; white-space: nowrap;">
+                            <input type="checkbox" class="form-check-input" id="bulk-select-all"
+                                   onchange="toggleSelectAll(this.checked)"
+                                   th:title="#{task.bulk.selected('0')}">
+                        </th>
                         <!-- Title column -->
                         <th th:with="ord=${taskPage.pageable.sort.getOrderFor('title')},
                                      nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"

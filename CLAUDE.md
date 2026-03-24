@@ -913,6 +913,10 @@ DevTools detects the new `.class` files from `target/` and automatically restart
 - `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
 - `DELETE /api/notifications` - Clear all notifications (204 No Content)
 
+**REST API — Project Members** (requires login):
+- `GET /api/projects/{id}/members` - All enabled members of a project
+- `GET /api/projects/{id}/members/assignable` - Editors and owners only (for task assignment)
+
 **REST API — Saved Views** (requires login; CSRF exempt):
 - `GET /api/views` - List saved views for current user
 - `POST /api/views` - Save current filters as a named view
@@ -950,7 +954,7 @@ The project includes `rest.http` for testing REST API endpoints with VS Code RES
 ./mvnw test
 ```
 
-206 tests across 23 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
+207 tests across 23 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
 
 ### Test Properties (`application-test.properties`)
 

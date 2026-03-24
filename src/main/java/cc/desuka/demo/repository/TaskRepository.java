@@ -29,6 +29,9 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     List<Task> findByUser(User user);
 
+    List<Task> findByUserAndProjectIdAndStatusNotIn(
+            User user, Long projectId, Collection<TaskStatus> statuses);
+
     @EntityGraph(attributePaths = {"tags", "user"})
     List<Task> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
             String title, String description);

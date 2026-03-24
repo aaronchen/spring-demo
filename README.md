@@ -35,6 +35,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Inline Editing** - Toggle edit mode in table view to click-to-edit title, description, priority, status, and due date in place
 - **Keyboard Shortcuts** - `h` (help), `n` (new task), `s`/`/` (search), `1-4` (switch views), `e` (edit mode in table), `Escape` (close/cancel)
 - **Saved Views** - Save current filter/sort/view combinations as named views; recall from dropdown
+- **Bulk Actions** - Select tasks in table view with checkboxes (cross-page selection persists); floating action bar for batch status, priority, assign (project-scoped member list), and delete operations; selection clears on filter/search/sort/view change
 - **CSV Export** - Download filtered tasks as CSV; respects all active filters (search, status, priority, tags, user, overdue)
 - **Real-time Search** - Filter tasks as you type (debounced, 300ms); clear button appears on input
 - **Filter Buttons** - All / Open / In Progress / Completed / Overdue with color-coded active states
@@ -135,7 +136,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
 - Spotless + google-java-format (AOSP style, 4-space indent) enforced at compile time
-- 204 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
+- 207 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
 - CI pipeline: GitHub Actions runs `./mvnw verify` on every push to main and PR
 - Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding), `prod` (PostgreSQL, Flyway migrations)
 - Flyway schema migrations for production (PostgreSQL); dev/test use Hibernate `create-drop`
@@ -183,7 +184,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    ```bash
    ./mvnw test
    ```
-   206 tests across 23 test classes (unit, repository, integration, validation, security).
+   207 tests across 23 test classes (unit, repository, integration, validation, security).
 
 ### Build for Production
 
@@ -299,6 +300,13 @@ POST auto-assigns tasks to the caller. Admins can optionally specify `userId` in
 | PATCH | `/api/notifications/read-all` | Any user | Mark all as read (204) |
 | DELETE | `/api/notifications` | Any user | Clear all notifications (204) |
 
+#### Project Member Endpoints
+
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | `/api/projects/{id}/members` | Any user | All enabled members of a project |
+| GET | `/api/projects/{id}/members/assignable` | Any user | Editors and owners only (for task assignment) |
+
 #### Saved View Endpoints
 
 | Method | Path | Access | Description |
@@ -396,6 +404,7 @@ spring-demo/
 │   │   │   │   ├── CommentApiController.java # Comment REST API (nested under tasks)
 │   │   │   │   ├── NotificationApiController.java # Notification REST API
 │   │   │   │   ├── PresenceApiController.java # GET /api/presence (online users)
+│   │   │   │   ├── ProjectApiController.java # Project REST API (members, assignable)
 │   │   │   │   ├── SavedViewController.java  # Saved views REST API (GET/POST/DELETE)
 │   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
 │   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
@@ -413,6 +422,7 @@ spring-demo/
 │   │   │   └── UserController.java          # Public user list with search (/users)
 │   │   ├── dto/
 │   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
+│   │   │   ├── BulkTaskRequest.java   # Bulk action input DTO (taskIds, action, value)
 │   │   │   ├── ChangePasswordRequest.java # Password change form DTO
 │   │   │   ├── CalendarDay.java        # Calendar view day cell record
 │   │   │   ├── CommentRequest.java   # Comment creation form DTO
@@ -537,7 +547,8 @@ spring-demo/
 │       │   │   ├── utils.js            # Shared utilities (cookies, CSRF, toasts, confirm)
 │       │   │   └── tasks/              # Task page scripts
 │       │   │       ├── tasks.js        # Task list logic (search, filters, saved views)
-│       │   │       ├── task-form.js    # Task form logic (checklist, dates)
+│       │   │       ├── task-form.js    # Task form logic (checklist, project-aware assignee)
+│       │   │       ├── bulk-actions.js # Cross-page bulk selection and actions
 │       │   │       ├── inline-edit.js  # Toggle-based inline editing (table view)
 │       │   │       ├── kanban.js       # Drag-and-drop for Kanban board
 │       │   │       └── keyboard-shortcuts.js # Keyboard shortcut handler
@@ -632,7 +643,7 @@ spring-demo/
 │   │   ├── service/
 │   │   │   ├── CommentServiceTest.java           # Comment service tests (13)
 │   │   │   ├── NotificationServiceTest.java      # Notification service tests (8)
-│   │   │   ├── ProjectServiceTest.java           # Project service tests (21)
+│   │   │   ├── ProjectServiceTest.java           # Project service tests (22)
 │   │   │   ├── TagServiceTest.java               # Tag service tests (6)
 │   │   │   ├── TaskServiceTest.java              # Task service tests (16)
 │   │   │   └── UserServiceTest.java              # User service tests (20)
@@ -718,7 +729,7 @@ Currently runs with the `dev` profile (H2 in-memory). To switch to PostgreSQL: c
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and PR targeting `main`:
 1. Sets up JDK 25
 2. Caches Maven dependencies
-3. Runs `./mvnw verify` (compile + 206 tests)
+3. Runs `./mvnw verify` (compile + 207 tests)
 
 ## Troubleshooting
 
