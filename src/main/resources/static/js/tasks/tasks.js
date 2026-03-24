@@ -9,6 +9,8 @@ const SORT_LABELS = {
     'priorityOrder,desc': 'Priority ↓',
     'dueDate,asc':      'Due Date ↑',
     'dueDate,desc':     'Due Date ↓',
+    'updatedAt,asc':    'Updated ↑',
+    'updatedAt,desc':   'Updated ↓',
     'description,asc':  'Desc ↑',
     'description,desc': 'Desc ↓',
 };
@@ -30,6 +32,7 @@ let currentView = 'cards';
 let currentMonth = null;
 let selectedUserId = null;
 let selectedTagIds = [];
+let activeViewName = null;
 // Project pages override this to /projects/{id} for search/filter/pagination
 const TASKS_BASE = window.TASKS_BASE_OVERRIDE || APP_CONFIG.routes.tasks;
 
@@ -89,11 +92,17 @@ function exportTasks() {
 }
 
 // Fetch grid fragment via HTMX and update the URL (replaces history — no back entry)
+let _keepActiveView = false;
 function doSearch(resetPage) {
     if (resetPage) {
         currentPage = 0;
         // Clear bulk selection when filters/search/sort change
         if (typeof clearBulkSelection === 'function') clearBulkSelection();
+    }
+    if (_keepActiveView) {
+        _keepActiveView = false;
+    } else if (resetPage) {
+        clearActiveView();
     }
     const url = buildUrl(currentPage);
     htmx.ajax('GET', url, {target: '#tasks-view', swap: 'innerHTML'});
@@ -572,6 +581,31 @@ function renderSavedViewsList(views) {
     });
 }
 
+function renderActiveViewLabel() {
+    const label = document.getElementById('saved-views-label');
+    const btn = document.getElementById('savedViewsDropdown');
+    const icon = btn?.querySelector('i.bi');
+    if (!label) return;
+
+    const defaultText = APP_CONFIG.messages['task.views.saved'] || 'Views';
+    if (activeViewName) {
+        label.textContent = activeViewName;
+        btn?.classList.replace('btn-outline-secondary', 'btn-primary');
+        icon?.classList.replace('bi-bookmark', 'bi-bookmark-fill');
+    } else {
+        label.textContent = defaultText;
+        btn?.classList.replace('btn-primary', 'btn-outline-secondary');
+        icon?.classList.replace('bi-bookmark-fill', 'bi-bookmark');
+    }
+}
+
+function clearActiveView() {
+    if (activeViewName) {
+        activeViewName = null;
+        renderActiveViewLabel();
+    }
+}
+
 function applySavedView(view) {
     const filters = JSON.parse(view.filters);
 
@@ -587,17 +621,21 @@ function applySavedView(view) {
         activeSorts = filters.sort;
     }
 
+    activeViewName = view.name;
+
     renderStatusButton();
     renderPriorityButton();
     renderViewToggle();
     renderTagFilter();
     renderUserFilter();
     renderSorts();
+    renderActiveViewLabel();
 
     // Close dropdown
     const dd = document.getElementById('savedViewsDropdown');
     if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
 
+    _keepActiveView = true;
     doSearch(true);
 }
 
@@ -641,6 +679,8 @@ function saveCurrentView() {
             body: JSON.stringify({ name: name, filters: JSON.stringify(filters) }),
         }).then(r => {
             if (r.ok) {
+                activeViewName = name;
+                renderActiveViewLabel();
                 loadSavedViews();
                 showToast(APP_CONFIG.messages['toast.view.saved'] || 'View saved', 'success');
             }
@@ -651,7 +691,10 @@ function saveCurrentView() {
 function deleteSavedView(id) {
     fetch(`${APP_CONFIG.routes.api}/views/${id}`, { method: 'DELETE' })
         .then(r => {
-            if (r.ok) loadSavedViews();
+            if (r.ok) {
+                clearActiveView();
+                loadSavedViews();
+            }
         })
         .catch(() => {});
 }

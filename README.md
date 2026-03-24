@@ -223,7 +223,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 
 - **Search** — type to filter tasks by title or description in real time
 - **Filter buttons** — All / Backlog / Open / In Progress / In Review / Completed / Cancelled / Overdue
-- **Sort dropdown** — sort by title, created date, or description
+- **Sort dropdown** — sort by title, created date, priority, due date, updated date, or description
 - **View toggle** — switch between card grid, table, calendar, and Kanban board view
 - **Page size** — choose 10 / 25 / 50 / 100 tasks per page
 

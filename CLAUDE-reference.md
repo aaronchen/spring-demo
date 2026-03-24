@@ -918,7 +918,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
-- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **20 users**, **8 tags**, **4 projects**, **56 tasks** (48 project-specific + 8 curated demo interactions)
+- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **20 users**, **8 tags**, **4 projects**, **56 tasks** (48 project-specific + 8 curated demo interactions), **6 saved views** (3 per Alice/Bob)
   - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
   - All passwords: `"password"` (BCrypt-encoded once, reused for all 20 users for speed)
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
@@ -966,8 +966,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Reads from model context: `view`, `selectedUserId`, `filterUserName`, `allTags`, `taskPage`, `calendarWeeks`, `calendarMonth`, `undatedCount`, `tasksByStatus` (kanban board)
   - Optional `canEditProject` attribute — when set, controls task edit/delete visibility for project-scoped views
   - Stale-data banner (`#stale-banner`) — hidden by default; shown by JS on WebSocket task change events
-  - Search input (live search, `autocomplete="off"`), status filter dropdown (All/Backlog/Open/In Progress/In Review/Completed/Cancelled/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown, tag filter dropdown with pills, view toggle (cards/table/calendar/board)
-  - Saved views dropdown — lists user's saved views; load button applies stored filter state; save button POSTs current filter state to `/api/views`; delete removes via `DELETE /api/views/{id}`
+  - Search input (live search, `autocomplete="off"`), status filter dropdown (All/Backlog/Open/In Progress/In Review/Completed/Cancelled/Overdue), user filter (All Users / Mine), priority dropdown filter, sort dropdown (title, createdAt, priorityOrder, dueDate, updatedAt, description), tag filter dropdown with pills, view toggle (cards/table/calendar/board)
+  - Saved views dropdown — lists user's saved views; load button applies stored filter state; save button POSTs current filter state to `/api/views`; delete removes via `DELETE /api/views/{id}`. Active saved view name shown on button (filled bookmark icon, primary color); clears when user manually changes filters
   - Task list container with conditional `th:replace` for table, calendar, cards, or board view
   - Two shared modal shells: `#task-modal` (create/edit form via HTMX) and `#task-delete-modal` (delete confirmation populated via JS `show.bs.modal` event)
 - `templates/tasks/task-calendar.html` - Calendar view fragment (`grid` fragment)
@@ -1116,7 +1116,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `STATUS_CONFIG` maps each status to label/icon/color; `renderStatusButton()` builds status filter dropdown items; `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED)
   - Task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner
   - User filter variable: `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
-  - Saved views: `loadView(filters)` restores filter state from stored JSON; `saveCurrentView(name)` POSTs current state to `POST /api/views`; `deleteView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown
+  - Saved views: `applySavedView(view)` restores filter state from stored JSON and sets `activeViewName`; `saveCurrentView()` POSTs current state to `POST /api/views`; `deleteSavedView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown. `renderActiveViewLabel()` updates button text/style/icon; `clearActiveView()` resets to default. `_keepActiveView` flag prevents `doSearch` from clearing the label when called from `applySavedView`
+  - Sort entries use `{field, direction}` objects in `activeSorts` array; `SORT_LABELS` maps `"field,direction"` keys to display labels
 - `static/js/tasks/task-form.js` - Task form logic (checklist management, project-aware assignee list); moved from `static/js/task-form.js` in Phase 8
   - `bindProjectChange()` — updates assignee searchable-select `_src` to `/api/projects/{id}/members/assignable` when project dropdown changes; clears cache and current selection; binds on DOMContentLoaded and htmx:afterSwap (for modal)
   - `addChecklistItem()`, `removeChecklistItem(btn)`, `updateChecklistHeading()`, drag-and-drop reorder handlers (`checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`)

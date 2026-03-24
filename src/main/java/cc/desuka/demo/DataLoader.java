@@ -13,6 +13,7 @@ import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.Role;
+import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.model.Setting;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
@@ -23,6 +24,7 @@ import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.NotificationRepository;
 import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
+import cc.desuka.demo.repository.SavedViewRepository;
 import cc.desuka.demo.repository.SettingRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
@@ -51,6 +53,7 @@ public class DataLoader implements CommandLineRunner {
     private final AuditLogRepository auditLogRepository;
     private final ProjectRepository projectRepository;
     private final ProjectMemberRepository projectMemberRepository;
+    private final SavedViewRepository savedViewRepository;
     private final SettingRepository settingRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -63,6 +66,7 @@ public class DataLoader implements CommandLineRunner {
             AuditLogRepository auditLogRepository,
             ProjectRepository projectRepository,
             ProjectMemberRepository projectMemberRepository,
+            SavedViewRepository savedViewRepository,
             SettingRepository settingRepository,
             PasswordEncoder passwordEncoder) {
         this.taskRepository = taskRepository;
@@ -73,6 +77,7 @@ public class DataLoader implements CommandLineRunner {
         this.auditLogRepository = auditLogRepository;
         this.projectRepository = projectRepository;
         this.projectMemberRepository = projectMemberRepository;
+        this.savedViewRepository = savedViewRepository;
         this.settingRepository = settingRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -2071,6 +2076,72 @@ public class DataLoader implements CommandLineRunner {
                         now.minusDays(1).plusHours(6)));
 
         auditLogRepository.saveAll(auditLogs);
+
+        // ── Saved Views ──────────────────────────────────────────────────────
+        String sortPriorityDesc = "[{\"field\":\"priorityOrder\",\"direction\":\"desc\"}]";
+        String sortDueDateAsc = "[{\"field\":\"dueDate\",\"direction\":\"asc\"}]";
+        String sortCreatedAtDesc = "[{\"field\":\"createdAt\",\"direction\":\"desc\"}]";
+        String sortUpdatedAtDesc = "[{\"field\":\"updatedAt\",\"direction\":\"desc\"}]";
+
+        savedViewRepository.saveAll(
+                List.of(
+                        new SavedView(
+                                alice,
+                                "My High Priority",
+                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
+                                        + ",\"priority\":\"HIGH\",\"selectedUserId\":\""
+                                        + alice.getId()
+                                        + "\",\"tags\":[],\"view\":\"table\""
+                                        + ",\"sort\":"
+                                        + sortPriorityDesc
+                                        + "}"),
+                        new SavedView(
+                                alice,
+                                "Overdue Tasks",
+                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"true\""
+                                        + ",\"priority\":\"\",\"selectedUserId\":null,\"tags\":[]"
+                                        + ",\"view\":\"cards\""
+                                        + ",\"sort\":"
+                                        + sortDueDateAsc
+                                        + "}"),
+                        new SavedView(
+                                alice,
+                                "Board View — In Progress",
+                                "{\"search\":\"\",\"statusFilter\":\"IN_PROGRESS\""
+                                        + ",\"overdue\":\"false\",\"priority\":\"\""
+                                        + ",\"selectedUserId\":null,\"tags\":[]"
+                                        + ",\"view\":\"board\""
+                                        + ",\"sort\":"
+                                        + sortCreatedAtDesc
+                                        + "}"),
+                        new SavedView(
+                                bob,
+                                "My Open Tasks",
+                                "{\"search\":\"\",\"statusFilter\":\"OPEN\",\"overdue\":\"false\""
+                                        + ",\"priority\":\"\",\"selectedUserId\":\""
+                                        + bob.getId()
+                                        + "\",\"tags\":[],\"view\":\"calendar\""
+                                        + ",\"sort\":"
+                                        + sortDueDateAsc
+                                        + "}"),
+                        new SavedView(
+                                bob,
+                                "Critical & High Priority",
+                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
+                                        + ",\"priority\":\"HIGH\",\"selectedUserId\":null"
+                                        + ",\"tags\":[],\"view\":\"cards\""
+                                        + ",\"sort\":"
+                                        + sortPriorityDesc
+                                        + "}"),
+                        new SavedView(
+                                bob,
+                                "Recently Updated",
+                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
+                                        + ",\"priority\":\"\",\"selectedUserId\":null,\"tags\":[]"
+                                        + ",\"view\":\"board\""
+                                        + ",\"sort\":"
+                                        + sortUpdatedAtDesc
+                                        + "}")));
     }
 
     private Task task(
