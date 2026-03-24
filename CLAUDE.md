@@ -180,7 +180,7 @@ Every task belongs to a project. `ProjectAccessGuard` enforces view/edit/owner a
 
 ### Cross-Service Dependency Rule
 
-Services use their own repository, delegate to other services for other domains. `TaskQueryService` and `CommentQueryService` break circular dependencies (read-only + `unassignTasks()`).
+Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads.
 
 ### Transactional Boundaries
 
@@ -242,7 +242,7 @@ Chart.js 4.5.1 (via WebJar) renders 6 charts: status/priority doughnuts, workloa
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 207 tests, 23 test classes
+./mvnw test                               # 207 tests, 25 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 

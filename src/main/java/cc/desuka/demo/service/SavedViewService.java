@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.dto.SavedViewData;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.model.User;
@@ -28,8 +29,8 @@ public class SavedViewService {
                 .orElseThrow(() -> new EntityNotFoundException(SavedView.class, id));
     }
 
-    public SavedView createView(User user, String name, String filters) {
-        SavedView view = new SavedView(user, name, filters);
+    public SavedView createView(User user, String name, SavedViewData data) {
+        SavedView view = new SavedView(user, name, data.toJson());
         return savedViewRepository.save(view);
     }
 

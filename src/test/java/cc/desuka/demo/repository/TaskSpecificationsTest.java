@@ -2,6 +2,7 @@ package cc.desuka.demo.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Tag;
@@ -62,6 +63,10 @@ class TaskSpecificationsTest {
         return em.persist(task);
     }
 
+    private TaskSearchCriteria criteria() {
+        return new TaskSearchCriteria();
+    }
+
     // ── Status filter ───────────────────────────────────────────────────
 
     @Test
@@ -70,11 +75,11 @@ class TaskSpecificationsTest {
         createTask("Completed Task", TaskStatus.COMPLETED, Priority.MEDIUM, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setStatusFilter(TaskStatusFilter.OPEN);
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null, TaskStatusFilter.OPEN, false, null, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Open Task");
     }
@@ -86,10 +91,7 @@ class TaskSpecificationsTest {
         em.flush();
 
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null, TaskStatusFilter.ALL, false, null, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(criteria()), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).hasSize(2);
     }
@@ -102,11 +104,11 @@ class TaskSpecificationsTest {
         createTask("Add dashboard", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setKeyword("login");
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                "login", TaskStatusFilter.ALL, false, null, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Fix login bug");
     }
@@ -116,11 +118,11 @@ class TaskSpecificationsTest {
         createTask("Fix LOGIN Bug", TaskStatus.OPEN, Priority.HIGH, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setKeyword("login");
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                "login", TaskStatusFilter.ALL, false, null, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).hasSize(1);
     }
@@ -133,11 +135,11 @@ class TaskSpecificationsTest {
         createTask("Bob Task", TaskStatus.OPEN, Priority.MEDIUM, bob, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setUserId(alice.getId());
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null, TaskStatusFilter.ALL, false, null, alice.getId(), null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Alice Task");
     }
@@ -150,11 +152,11 @@ class TaskSpecificationsTest {
         createTask("Low Task", TaskStatus.OPEN, Priority.LOW, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setPriority(Priority.HIGH);
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null, TaskStatusFilter.ALL, false, Priority.HIGH, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("High Task");
     }
@@ -174,11 +176,11 @@ class TaskSpecificationsTest {
                 LocalDate.now().minusDays(1));
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setOverdue(true);
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null, TaskStatusFilter.ALL, true, null, null, null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Overdue");
     }
@@ -192,16 +194,11 @@ class TaskSpecificationsTest {
         createTask("No Tags", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setTagIds(List.of(workTag.getId()));
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null,
-                                TaskStatusFilter.ALL,
-                                false,
-                                null,
-                                null,
-                                List.of(workTag.getId())),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Work Only");
     }
@@ -213,16 +210,11 @@ class TaskSpecificationsTest {
         createTask("No Tags", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setTagIds(List.of(workTag.getId(), personalTag.getId()));
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null,
-                                TaskStatusFilter.ALL,
-                                false,
-                                null,
-                                null,
-                                List.of(workTag.getId(), personalTag.getId())),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent())
                 .extracting(Task::getTitle)
@@ -239,16 +231,13 @@ class TaskSpecificationsTest {
         createTask("Wrong Priority", TaskStatus.OPEN, Priority.LOW, alice, null);
         em.flush();
 
+        TaskSearchCriteria c = criteria();
+        c.setStatusFilter(TaskStatusFilter.OPEN);
+        c.setPriority(Priority.HIGH);
+        c.setUserId(alice.getId());
+
         Page<Task> result =
-                taskRepository.findAll(
-                        TaskSpecifications.build(
-                                null,
-                                TaskStatusFilter.OPEN,
-                                false,
-                                Priority.HIGH,
-                                alice.getId(),
-                                null),
-                        PageRequest.of(0, 10));
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Match");
     }

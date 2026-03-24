@@ -5,28 +5,20 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.event.TaskUpdatedEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
-import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
-import cc.desuka.demo.repository.TaskSpecifications;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TaskService {
 
     private final TaskRepository taskRepository;
+    private final TaskQueryService taskQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
@@ -42,25 +35,17 @@ public class TaskService {
 
     public TaskService(
             TaskRepository taskRepository,
+            TaskQueryService taskQueryService,
             TagService tagService,
             UserService userService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.taskRepository = taskRepository;
+        this.taskQueryService = taskQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
-    }
-
-    public List<Task> getAllTasks() {
-        return taskRepository.findAll();
-    }
-
-    public Task getTaskById(Long id) {
-        return taskRepository
-                .findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
     }
 
     // tagIds and assigneeId come from the caller (API or web controller).
@@ -110,7 +95,7 @@ public class TaskService {
             Long expectedVersion,
             List<String> checklistTexts,
             List<Boolean> checklistChecked) {
-        Task task = getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
             throw new StaleDataException(Task.class, id);
         }
@@ -165,7 +150,7 @@ public class TaskService {
     }
 
     public void deleteTask(Long id) {
-        Task task = getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
 
         if (task.getStatus() == TaskStatus.COMPLETED) {
             throw new IllegalStateException(messages.get("task.delete.completed"));
@@ -187,245 +172,8 @@ public class TaskService {
                         actorId(SecurityUtils.getCurrentUser())));
     }
 
-    public List<Task> getIncompleteTasks() {
-        return taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
-    }
-
-    public List<Task> searchTasks(String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return taskRepository.findAll();
-        }
-        return taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                keyword, keyword);
-    }
-
-    // ── Single-project queries (for /projects/{id}) ─────────────────────
-
-    public Page<Task> searchAndFilterTasks(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable) {
-        return taskRepository.findAll(
-                TaskSpecifications.build(
-                        projectId,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds),
-                pageable);
-    }
-
-    public Page<Task> searchAndFilterTasks(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable,
-            LocalDate dueDateFrom,
-            LocalDate dueDateTo) {
-        return taskRepository.findAll(
-                TaskSpecifications.build(
-                        projectId,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds,
-                        dueDateFrom,
-                        dueDateTo),
-                pageable);
-    }
-
-    // ── Single-project queries (for /projects/{id}) ────────────────────
-
-    public Page<Task> searchAndFilterTasksForProject(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable) {
-        return taskRepository.findAll(
-                TaskSpecifications.build(
-                        projectId,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds),
-                pageable);
-    }
-
-    public Page<Task> searchAndFilterTasksForProject(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable,
-            LocalDate dueDateFrom,
-            LocalDate dueDateTo) {
-        return taskRepository.findAll(
-                TaskSpecifications.build(
-                        projectId,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds,
-                        dueDateFrom,
-                        dueDateTo),
-                pageable);
-    }
-
-    // ── Cross-project queries (for /tasks, /api/tasks) ─────────────────
-
-    public Page<Task> searchAndFilterTasksForProjects(
-            List<Long> accessibleProjectIds,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable) {
-        return taskRepository.findAll(
-                TaskSpecifications.buildForProjects(
-                        accessibleProjectIds,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds),
-                pageable);
-    }
-
-    public Page<Task> searchAndFilterTasksForProjects(
-            List<Long> accessibleProjectIds,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            Pageable pageable,
-            LocalDate dueDateFrom,
-            LocalDate dueDateTo) {
-        return taskRepository.findAll(
-                TaskSpecifications.buildForProjects(
-                        accessibleProjectIds,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds,
-                        dueDateFrom,
-                        dueDateTo),
-                pageable);
-    }
-
-    public long countByUserAndStatus(User user, TaskStatus status) {
-        return taskRepository.countByUserAndStatus(user, status);
-    }
-
-    public long countByUserOverdue(User user) {
-        return taskRepository.countByUserAndDueDateBeforeAndStatusNotIn(
-                user, LocalDate.now(), TaskStatus.terminalStatuses());
-    }
-
-    public long countByStatus(TaskStatus status) {
-        return taskRepository.countByStatus(status);
-    }
-
-    public long countOverdue() {
-        return taskRepository.countByDueDateBeforeAndStatusNotIn(
-                LocalDate.now(), TaskStatus.terminalStatuses());
-    }
-
-    public long countAll() {
-        return taskRepository.count();
-    }
-
-    // ── Project-scoped counts (for dashboard team stats) ─────────────────
-
-    public long countForProjects(List<Long> projectIds) {
-        return taskRepository.count(TaskSpecifications.withProjectIds(projectIds));
-    }
-
-    public long countByStatusForProjects(List<Long> projectIds, TaskStatus status) {
-        return taskRepository.count(
-                TaskSpecifications.withProjectIds(projectIds)
-                        .and(
-                                TaskSpecifications.withStatusFilter(
-                                        TaskStatusFilter.valueOf(status.name()))));
-    }
-
-    public long countOverdueForProjects(List<Long> projectIds) {
-        return taskRepository.count(
-                TaskSpecifications.withProjectIds(projectIds)
-                        .and(TaskSpecifications.withOverdue(true)));
-    }
-
-    public long countForProject(Long projectId) {
-        return taskRepository.count(TaskSpecifications.withProjectId(projectId));
-    }
-
-    public long countByStatusForProject(Long projectId, TaskStatus status) {
-        return taskRepository.count(
-                TaskSpecifications.withProjectId(projectId)
-                        .and(
-                                TaskSpecifications.withStatusFilter(
-                                        TaskStatusFilter.valueOf(status.name()))));
-    }
-
-    public long countOverdueForProject(Long projectId) {
-        return taskRepository.count(
-                TaskSpecifications.withProjectId(projectId)
-                        .and(TaskSpecifications.withOverdue(true)));
-    }
-
-    public List<Task> getRecentTasksByUser(User user) {
-        return taskRepository.findTop5ByUserOrderByCreatedAtDesc(user);
-    }
-
-    public List<Task> getDueSoon(User user) {
-        LocalDate today = LocalDate.now();
-        LocalDate endOfWeek = today.plusDays(7);
-        return taskRepository.findByUserAndDueDateBetweenAndStatusNotIn(
-                user, today, endOfWeek, TaskStatus.terminalStatuses());
-    }
-
-    public List<Task> getTasksDueOn(LocalDate date) {
-        return taskRepository.findByDueDateAndStatusNotIn(date, TaskStatus.terminalStatuses());
-    }
-
-    public Map<Long, String> getTitlesByIds(List<Long> ids) {
-        if (ids.isEmpty()) return Map.of();
-        return taskRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(Task::getId, Task::getTitle));
-    }
-
     public Task updateField(Long id, String field, String value) {
-        Task task = getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         Map<String, Object> before = task.toAuditSnapshot();
 
         switch (field) {
@@ -471,7 +219,7 @@ public class TaskService {
     }
 
     public Task setStatus(Long id, TaskStatus newStatus) {
-        Task task = getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         if (task.getStatus() == newStatus) {
             return task;
         }
@@ -500,7 +248,7 @@ public class TaskService {
     // Advance status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN
     // CANCELLED is not part of the cycle — it's a separate action.
     public Task advanceStatus(Long id) {
-        Task task = getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         Map<String, Object> before = task.toAuditSnapshot();
         TaskStatus previousStatus = task.getStatus();
         TaskStatus next =
@@ -553,16 +301,5 @@ public class TaskService {
         } else if (task.getStatus() != TaskStatus.COMPLETED) {
             task.setCompletedAt(null);
         }
-    }
-
-    public Map<TaskStatus, List<Task>> groupByStatus(List<Task> tasks) {
-        Map<TaskStatus, List<Task>> map = new LinkedHashMap<>();
-        for (TaskStatus status : TaskStatus.values()) {
-            map.put(status, new ArrayList<>());
-        }
-        for (Task task : tasks) {
-            map.get(task.getStatus()).add(task);
-        }
-        return map;
     }
 }

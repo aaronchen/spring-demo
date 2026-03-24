@@ -3,6 +3,8 @@ package cc.desuka.demo;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.config.Settings;
+import cc.desuka.demo.dto.SavedViewData;
+import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
@@ -18,6 +20,7 @@ import cc.desuka.demo.model.Setting;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
+import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.AuditLogRepository;
 import cc.desuka.demo.repository.CommentRepository;
@@ -2078,70 +2081,49 @@ public class DataLoader implements CommandLineRunner {
         auditLogRepository.saveAll(auditLogs);
 
         // ── Saved Views ──────────────────────────────────────────────────────
-        String sortPriorityDesc = "[{\"field\":\"priorityOrder\",\"direction\":\"desc\"}]";
-        String sortDueDateAsc = "[{\"field\":\"dueDate\",\"direction\":\"asc\"}]";
-        String sortCreatedAtDesc = "[{\"field\":\"createdAt\",\"direction\":\"desc\"}]";
-        String sortUpdatedAtDesc = "[{\"field\":\"updatedAt\",\"direction\":\"desc\"}]";
+        var sortPriorityDesc = List.of(new SavedViewData.SortField("priorityOrder", "desc"));
+        var sortDueDateAsc = List.of(new SavedViewData.SortField("dueDate", "asc"));
+        var sortCreatedAtDesc = List.of(new SavedViewData.SortField("createdAt", "desc"));
+        var sortUpdatedAtDesc = List.of(new SavedViewData.SortField("updatedAt", "desc"));
 
         savedViewRepository.saveAll(
                 List.of(
-                        new SavedView(
+                        savedView(
                                 alice,
                                 "My High Priority",
-                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
-                                        + ",\"priority\":\"HIGH\",\"selectedUserId\":\""
-                                        + alice.getId()
-                                        + "\",\"tags\":[],\"view\":\"table\""
-                                        + ",\"sort\":"
-                                        + sortPriorityDesc
-                                        + "}"),
-                        new SavedView(
+                                taskQuery(null, Priority.HIGH, alice.getId()),
+                                "table",
+                                sortPriorityDesc),
+                        savedView(
                                 alice,
                                 "Overdue Tasks",
-                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"true\""
-                                        + ",\"priority\":\"\",\"selectedUserId\":null,\"tags\":[]"
-                                        + ",\"view\":\"cards\""
-                                        + ",\"sort\":"
-                                        + sortDueDateAsc
-                                        + "}"),
-                        new SavedView(
+                                taskQuery(null, null, null, true),
+                                "cards",
+                                sortDueDateAsc),
+                        savedView(
                                 alice,
                                 "Board View — In Progress",
-                                "{\"search\":\"\",\"statusFilter\":\"IN_PROGRESS\""
-                                        + ",\"overdue\":\"false\",\"priority\":\"\""
-                                        + ",\"selectedUserId\":null,\"tags\":[]"
-                                        + ",\"view\":\"board\""
-                                        + ",\"sort\":"
-                                        + sortCreatedAtDesc
-                                        + "}"),
-                        new SavedView(
+                                taskQuery(TaskStatusFilter.IN_PROGRESS, null, null),
+                                "board",
+                                sortCreatedAtDesc),
+                        savedView(
                                 bob,
                                 "My Open Tasks",
-                                "{\"search\":\"\",\"statusFilter\":\"OPEN\",\"overdue\":\"false\""
-                                        + ",\"priority\":\"\",\"selectedUserId\":\""
-                                        + bob.getId()
-                                        + "\",\"tags\":[],\"view\":\"calendar\""
-                                        + ",\"sort\":"
-                                        + sortDueDateAsc
-                                        + "}"),
-                        new SavedView(
+                                taskQuery(TaskStatusFilter.OPEN, null, bob.getId()),
+                                "calendar",
+                                sortDueDateAsc),
+                        savedView(
                                 bob,
                                 "Critical & High Priority",
-                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
-                                        + ",\"priority\":\"HIGH\",\"selectedUserId\":null"
-                                        + ",\"tags\":[],\"view\":\"cards\""
-                                        + ",\"sort\":"
-                                        + sortPriorityDesc
-                                        + "}"),
-                        new SavedView(
+                                taskQuery(null, Priority.HIGH, null),
+                                "cards",
+                                sortPriorityDesc),
+                        savedView(
                                 bob,
                                 "Recently Updated",
-                                "{\"search\":\"\",\"statusFilter\":\"ALL\",\"overdue\":\"false\""
-                                        + ",\"priority\":\"\",\"selectedUserId\":null,\"tags\":[]"
-                                        + ",\"view\":\"board\""
-                                        + ",\"sort\":"
-                                        + sortUpdatedAtDesc
-                                        + "}")));
+                                taskQuery(null, null, null),
+                                "board",
+                                sortUpdatedAtDesc)));
     }
 
     private Task task(
@@ -2210,5 +2192,33 @@ public class DataLoader implements CommandLineRunner {
         Notification n = new Notification(user, actor, type, message, link);
         n.setCreatedAt(createdAt);
         return n;
+    }
+
+    private TaskListQuery taskQuery(
+            TaskStatusFilter statusFilter, Priority priority, Long selectedUserId) {
+        return taskQuery(statusFilter, priority, selectedUserId, false);
+    }
+
+    private TaskListQuery taskQuery(
+            TaskStatusFilter statusFilter,
+            Priority priority,
+            Long selectedUserId,
+            boolean overdue) {
+        TaskListQuery q = new TaskListQuery();
+        if (statusFilter != null) q.setStatusFilter(statusFilter);
+        q.setPriority(priority);
+        q.setSelectedUserId(selectedUserId);
+        q.setOverdue(overdue);
+        return q;
+    }
+
+    private SavedView savedView(
+            User user,
+            String name,
+            TaskListQuery query,
+            String view,
+            List<SavedViewData.SortField> sort) {
+        SavedViewData data = SavedViewData.ofTask(query, view, sort);
+        return new SavedView(user, name, data.toJson());
     }
 }

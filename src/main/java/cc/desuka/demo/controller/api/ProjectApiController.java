@@ -8,7 +8,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.AnalyticsService;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,17 +17,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/projects")
 public class ProjectApiController {
 
-    private final ProjectService projectService;
+    private final ProjectQueryService projectQueryService;
     private final UserMapper userMapper;
     private final AnalyticsService analyticsService;
     private final ProjectAccessGuard projectAccessGuard;
 
     public ProjectApiController(
-            ProjectService projectService,
+            ProjectQueryService projectQueryService,
             UserMapper userMapper,
             AnalyticsService analyticsService,
             ProjectAccessGuard projectAccessGuard) {
-        this.projectService = projectService;
+        this.projectQueryService = projectQueryService;
         this.userMapper = userMapper;
         this.analyticsService = analyticsService;
         this.projectAccessGuard = projectAccessGuard;
@@ -37,7 +37,7 @@ public class ProjectApiController {
     @GetMapping("/{id}/members")
     public List<UserResponse> getProjectMembers(@PathVariable Long id) {
         List<User> members =
-                projectService.getMembers(id).stream()
+                projectQueryService.getMembers(id).stream()
                         .map(m -> m.getUser())
                         .filter(User::isEnabled)
                         .toList();
@@ -48,7 +48,7 @@ public class ProjectApiController {
     @GetMapping("/{id}/members/assignable")
     public List<UserResponse> getAssignableMembers(@PathVariable Long id) {
         List<User> members =
-                projectService.getMembers(id).stream()
+                projectQueryService.getMembers(id).stream()
                         .filter(m -> m.getRole() != ProjectRole.VIEWER)
                         .map(m -> m.getUser())
                         .filter(User::isEnabled)

@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ScheduledTaskService {
 
-    private final TaskService taskService;
+    private final TaskQueryService taskQueryService;
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final UserPreferenceService userPreferenceService;
@@ -28,13 +28,13 @@ public class ScheduledTaskService {
     private final Messages messages;
 
     public ScheduledTaskService(
-            TaskService taskService,
+            TaskQueryService taskQueryService,
             NotificationService notificationService,
             NotificationRepository notificationRepository,
             UserPreferenceService userPreferenceService,
             SettingService settingService,
             Messages messages) {
-        this.taskService = taskService;
+        this.taskQueryService = taskQueryService;
         this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
         this.userPreferenceService = userPreferenceService;
@@ -49,7 +49,7 @@ public class ScheduledTaskService {
     @Scheduled(cron = "0 0 8 * * *")
     public void sendDueReminders() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
-        List<Task> tasks = taskService.getTasksDueOn(tomorrow);
+        List<Task> tasks = taskQueryService.getTasksDueOn(tomorrow);
 
         for (Task task : tasks) {
             if (task.getUser() == null) continue;

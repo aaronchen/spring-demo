@@ -4,7 +4,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.DashboardService;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -15,11 +15,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class DashboardController {
 
     private final DashboardService dashboardService;
-    private final ProjectService projectService;
+    private final ProjectQueryService projectQueryService;
 
-    public DashboardController(DashboardService dashboardService, ProjectService projectService) {
+    public DashboardController(
+            DashboardService dashboardService, ProjectQueryService projectQueryService) {
         this.dashboardService = dashboardService;
-        this.projectService = projectService;
+        this.projectQueryService = projectQueryService;
     }
 
     // GET /dashboard - Personal dashboard
@@ -30,7 +31,7 @@ public class DashboardController {
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentUser)
                         ? null
-                        : projectService.getAccessibleProjectIds(currentUser.getId());
+                        : projectQueryService.getAccessibleProjectIds(currentUser.getId());
         model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
         return "dashboard/dashboard";
     }
@@ -43,7 +44,7 @@ public class DashboardController {
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentUser)
                         ? null
-                        : projectService.getAccessibleProjectIds(currentUser.getId());
+                        : projectQueryService.getAccessibleProjectIds(currentUser.getId());
         model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
         return "dashboard/dashboard-stats";
     }

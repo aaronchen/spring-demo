@@ -9,7 +9,6 @@ import static org.mockito.Mockito.*;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
@@ -22,7 +21,6 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +34,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class TaskServiceTest {
 
     @Mock private TaskRepository taskRepository;
+    @Mock private TaskQueryService taskQueryService;
     @Mock private TagService tagService;
     @Mock private UserService userService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -65,25 +64,6 @@ class TaskServiceTest {
         task.setProject(project);
         task.setStatus(TaskStatus.OPEN);
         task.setPriority(Priority.MEDIUM);
-    }
-
-    // ── getTaskById ─────────────────────────────────────────────────────
-
-    @Test
-    void getTaskById_found() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
-
-        Task result = taskService.getTaskById(1L);
-
-        assertThat(result).isEqualTo(task);
-    }
-
-    @Test
-    void getTaskById_notFound_throwsEntityNotFoundException() {
-        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> taskService.getTaskById(99L))
-                .isInstanceOf(EntityNotFoundException.class);
     }
 
     // ── createTask ──────────────────────────────────────────────────────
@@ -152,7 +132,7 @@ class TaskServiceTest {
 
     @Test
     void updateTask_optimisticLock_throwsStaleDataException() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
 
         assertThatThrownBy(() -> taskService.updateTask(1L, task, List.of(), 1L, 999L))
                 .isInstanceOf(StaleDataException.class);
@@ -162,7 +142,7 @@ class TaskServiceTest {
     void updateTask_reassignInProgress_resetsToOpen() {
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setUser(alice);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(tagService.findAllByIds(anyList())).thenReturn(List.of());
         when(userService.findUserById(2L)).thenReturn(bob);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -187,7 +167,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_deletesTaskAndPublishesEvents() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
@@ -205,7 +185,7 @@ class TaskServiceTest {
     @Test
     void advanceStatus_openToInProgress() {
         task.setStatus(TaskStatus.OPEN);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -221,7 +201,7 @@ class TaskServiceTest {
     @Test
     void advanceStatus_inReviewToCompleted_setsCompletedAt() {
         task.setStatus(TaskStatus.IN_REVIEW);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -239,7 +219,7 @@ class TaskServiceTest {
     void advanceStatus_completedToOpen_clearsCompletedAt() {
         task.setStatus(TaskStatus.COMPLETED);
         task.setCompletedAt(java.time.LocalDateTime.now());
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -253,57 +233,12 @@ class TaskServiceTest {
         }
     }
 
-    // ── getAllTasks / getIncompleteTasks ─────────────────────────────────
-
-    @Test
-    void getAllTasks_delegatesToRepository() {
-        when(taskRepository.findAll()).thenReturn(List.of(task));
-
-        List<Task> result = taskService.getAllTasks();
-
-        assertThat(result).containsExactly(task);
-    }
-
-    @Test
-    void getIncompleteTasks_excludesCompleted() {
-        when(taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses()))
-                .thenReturn(List.of(task));
-
-        List<Task> result = taskService.getIncompleteTasks();
-
-        assertThat(result).containsExactly(task);
-        verify(taskRepository).findByStatusNotIn(TaskStatus.terminalStatuses());
-    }
-
-    // ── searchTasks ─────────────────────────────────────────────────────
-
-    @Test
-    void searchTasks_blankKeyword_returnsAll() {
-        when(taskRepository.findAll()).thenReturn(List.of(task));
-
-        List<Task> result = taskService.searchTasks("  ");
-
-        assertThat(result).containsExactly(task);
-        verify(taskRepository).findAll();
-    }
-
-    @Test
-    void searchTasks_withKeyword_searchesTitleAndDescription() {
-        when(taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
-                        "test", "test"))
-                .thenReturn(List.of(task));
-
-        List<Task> result = taskService.searchTasks("test");
-
-        assertThat(result).containsExactly(task);
-    }
-
-    // ── deleteTask ───────────────────────────────────────────────────────
+    // ── deleteTask (completed) ─────────────────────────────────────────
 
     @Test
     void deleteTask_completedTask_throwsIllegalStateException() {
         task.setStatus(TaskStatus.COMPLETED);
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
 
         assertThatThrownBy(() -> taskService.deleteTask(1L))
                 .isInstanceOf(IllegalStateException.class);
@@ -311,7 +246,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_openTask_deletesAndPublishesEvents() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");

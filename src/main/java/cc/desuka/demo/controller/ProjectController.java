@@ -2,20 +2,22 @@ package cc.desuka.demo.controller;
 
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.CalendarDay;
+import cc.desuka.demo.dto.ProjectListQuery;
 import cc.desuka.demo.dto.ProjectRequest;
-import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.dto.TaskListQuery;
+import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
-import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.ProjectService;
 import cc.desuka.demo.service.TagService;
-import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +47,8 @@ import org.springframework.web.servlet.view.RedirectView;
 public class ProjectController {
 
     private final ProjectService projectService;
-    private final TaskService taskService;
+    private final ProjectQueryService projectQueryService;
+    private final TaskQueryService taskQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final ProjectAccessGuard projectAccessGuard;
@@ -53,13 +56,15 @@ public class ProjectController {
 
     public ProjectController(
             ProjectService projectService,
-            TaskService taskService,
+            ProjectQueryService projectQueryService,
+            TaskQueryService taskQueryService,
             TagService tagService,
             UserService userService,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport) {
         this.projectService = projectService;
-        this.taskService = taskService;
+        this.projectQueryService = projectQueryService;
+        this.taskQueryService = taskQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.projectAccessGuard = projectAccessGuard;
@@ -69,32 +74,24 @@ public class ProjectController {
     // GET /projects - List projects the current user belongs to
     @GetMapping
     public String listProjects(
-            @RequestParam(required = false, defaultValue = "name") String sort,
-            @RequestParam(required = false, defaultValue = "false") boolean showArchived,
+            @ModelAttribute ProjectListQuery query,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
         List<Project> projects;
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
-            if (showArchived) {
-                projects =
-                        "newest".equals(sort)
-                                ? projectService.getAllProjectsByNewest()
-                                : projectService.getAllProjects();
-            } else {
-                projects =
-                        "newest".equals(sort)
-                                ? projectService.getActiveProjectsByNewest()
-                                : projectService.getActiveProjects();
-            }
+            projects =
+                    projectQueryService.getAdminProjects(query.isShowArchived(), query.getSort());
         } else {
             projects =
-                    projectService.getProjectsForUser(
-                            currentDetails.getUser().getId(), showArchived, sort);
+                    projectQueryService.getProjectsForUser(
+                            currentDetails.getUser().getId(),
+                            query.isShowArchived(),
+                            query.getSort());
         }
         model.addAttribute("projects", projects);
-        model.addAttribute("sort", sort);
-        model.addAttribute("showArchived", showArchived);
+        model.addAttribute("sort", query.getSort());
+        model.addAttribute("showArchived", query.isShowArchived());
 
         if (HtmxUtils.isHtmxRequest(request)) {
             return "projects/project-grid :: grid";
@@ -132,13 +129,7 @@ public class ProjectController {
     @GetMapping("/{id}")
     public String showProject(
             @PathVariable Long id,
-            @RequestParam(required = false, defaultValue = "") String search,
-            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT)
-                    TaskStatusFilter statusFilter,
-            @RequestParam(required = false, defaultValue = "false") boolean overdue,
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) Long selectedUserId,
-            @RequestParam(required = false) List<Long> tags,
+            @ModelAttribute TaskListQuery query,
             @RequestParam(required = false) String view,
             @RequestParam(required = false) YearMonth month,
             @CookieValue(name = "pageSize", required = false, defaultValue = "25")
@@ -153,18 +144,18 @@ public class ProjectController {
             Model model) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
 
-        Project project = projectService.getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
-        model.addAttribute("projectMembers", projectService.getMembers(id));
+        model.addAttribute("projectMembers", projectQueryService.getMembers(id));
 
         // Check if current user can edit in this project
         boolean canEditProject =
                 AuthExpressions.isAdmin(currentDetails.getUser())
-                        || projectService.isEditor(id, currentDetails.getUser().getId());
+                        || projectQueryService.isEditor(id, currentDetails.getUser().getId());
         model.addAttribute("canEditProject", canEditProject);
         boolean isProjectOwner =
                 AuthExpressions.isAdmin(currentDetails.getUser())
-                        || projectService.isOwner(id, currentDetails.getUser().getId());
+                        || projectQueryService.isOwner(id, currentDetails.getUser().getId());
         model.addAttribute("isProjectOwner", isProjectOwner);
 
         // Resolve view mode from user preferences
@@ -177,10 +168,11 @@ public class ProjectController {
                                 : UserPreferences.VIEW_CARDS);
         model.addAttribute("allTags", tagService.getAllTags());
         model.addAttribute("view", resolvedView);
-        model.addAttribute("selectedUserId", selectedUserId);
+        model.addAttribute("selectedUserId", query.getSelectedUserId());
 
         // Resolve filtered user's name
         Long currentId = currentDetails.getUser().getId();
+        Long selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
             try {
                 model.addAttribute(
@@ -189,19 +181,12 @@ public class ProjectController {
             }
         }
 
+        TaskSearchCriteria criteria = query.toCriteria(id);
+
         if (UserPreferences.VIEW_CALENDAR.equals(resolvedView)) {
             YearMonth calendarMonth = (month != null) ? month : YearMonth.now();
             List<List<CalendarDay>> calendarWeeks =
-                    buildCalendarWeeks(
-                            id,
-                            calendarMonth,
-                            search,
-                            statusFilter,
-                            overdue,
-                            priority,
-                            selectedUserId,
-                            tags,
-                            model);
+                    buildCalendarWeeks(calendarMonth, criteria, model);
             model.addAttribute("calendarWeeks", calendarWeeks);
             model.addAttribute("calendarMonth", calendarMonth);
             if (HtmxUtils.isHtmxRequest(request)) {
@@ -212,19 +197,8 @@ public class ProjectController {
 
         if (UserPreferences.VIEW_BOARD.equals(resolvedView)) {
             Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_CREATED_AT));
-            List<Task> tasks =
-                    taskService
-                            .searchAndFilterTasksForProject(
-                                    id,
-                                    search,
-                                    statusFilter,
-                                    overdue,
-                                    priority,
-                                    selectedUserId,
-                                    tags,
-                                    unpaged)
-                            .getContent();
-            model.addAttribute("tasksByStatus", taskService.groupByStatus(tasks));
+            List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
+            model.addAttribute("tasksByStatus", taskQueryService.groupByStatus(tasks));
             model.addAttribute("statuses", TaskStatus.values());
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-board :: grid";
@@ -235,16 +209,7 @@ public class ProjectController {
         if (!request.getParameterMap().containsKey("size")) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
         }
-        Page<Task> taskPage =
-                taskService.searchAndFilterTasksForProject(
-                        id,
-                        search,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tags,
-                        pageable);
+        Page<Task> taskPage = taskQueryService.searchTasks(criteria, pageable);
         model.addAttribute("taskPage", taskPage);
 
         if (HtmxUtils.isHtmxRequest(request)) {
@@ -259,33 +224,18 @@ public class ProjectController {
     @GetMapping("/{id}/export")
     public void exportProjectTasks(
             @PathVariable Long id,
-            @RequestParam(required = false, defaultValue = "") String search,
-            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT)
-                    TaskStatusFilter statusFilter,
-            @RequestParam(required = false, defaultValue = "false") boolean overdue,
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) Long selectedUserId,
-            @RequestParam(required = false) List<Long> tags,
+            @ModelAttribute TaskListQuery query,
             @PageableDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC)
                     Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletResponse response)
             throws IOException {
         projectAccessGuard.requireViewAccess(id, currentDetails);
-        Project project = projectService.getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
+        TaskSearchCriteria criteria = query.toCriteria(id);
+
         Pageable unpaged = Pageable.unpaged(pageable.getSort());
-        List<Task> tasks =
-                taskService
-                        .searchAndFilterTasksForProject(
-                                id,
-                                search,
-                                statusFilter,
-                                overdue,
-                                priority,
-                                selectedUserId,
-                                tags,
-                                unpaged)
-                        .getContent();
+        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
 
         taskReport.exportCsv(response, project.getName() + "-tasks.csv", tasks);
     }
@@ -297,10 +247,10 @@ public class ProjectController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
-        Project project = projectService.getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
         model.addAttribute("projectRequest", ProjectRequest.fromEntity(project));
-        model.addAttribute("projectMembers", projectService.getMembers(id));
+        model.addAttribute("projectMembers", projectQueryService.getMembers(id));
         model.addAttribute("projectRoles", ProjectRole.values());
 
         return "projects/project-settings";
@@ -317,8 +267,8 @@ public class ProjectController {
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         if (result.hasErrors()) {
-            model.addAttribute("project", projectService.getProjectById(id));
-            model.addAttribute("projectMembers", projectService.getMembers(id));
+            model.addAttribute("project", projectQueryService.getProjectById(id));
+            model.addAttribute("projectMembers", projectQueryService.getMembers(id));
             model.addAttribute("projectRoles", ProjectRole.values());
             return "projects/project-settings";
         }
@@ -420,48 +370,29 @@ public class ProjectController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
-        Project project = projectService.getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
         model.addAttribute("apiUrl", "/api/projects/" + id + "/analytics");
         return "analytics/analytics";
     }
 
     private void populateMemberModel(Long projectId, Model model) {
-        model.addAttribute("project", projectService.getProjectById(projectId));
-        model.addAttribute("projectMembers", projectService.getMembers(projectId));
+        model.addAttribute("project", projectQueryService.getProjectById(projectId));
+        model.addAttribute("projectMembers", projectQueryService.getMembers(projectId));
         model.addAttribute("projectRoles", ProjectRole.values());
     }
 
     private List<List<CalendarDay>> buildCalendarWeeks(
-            Long projectId,
-            YearMonth month,
-            String search,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tags,
-            Model model) {
+            YearMonth month, TaskSearchCriteria criteria, Model model) {
         LocalDate firstOfMonth = month.atDay(1);
         LocalDate lastOfMonth = month.atEndOfMonth();
         LocalDate gridStart = firstOfMonth.with(DayOfWeek.MONDAY);
         LocalDate gridEnd = lastOfMonth.with(DayOfWeek.SUNDAY);
 
+        criteria.setDueDateFrom(gridStart);
+        criteria.setDueDateTo(gridEnd);
         Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_DUE_DATE));
-        List<Task> tasks =
-                taskService
-                        .searchAndFilterTasksForProject(
-                                projectId,
-                                search,
-                                statusFilter,
-                                overdue,
-                                priority,
-                                selectedUserId,
-                                tags,
-                                unpaged,
-                                gridStart,
-                                gridEnd)
-                        .getContent();
+        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
 
         Map<LocalDate, List<Task>> tasksByDate = new java.util.LinkedHashMap<>();
         long undatedCount = 0;

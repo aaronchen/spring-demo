@@ -4,20 +4,22 @@ import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.BulkTaskRequest;
 import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.TaskFormRequest;
+import cc.desuka.demo.dto.TaskListQuery;
+import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
-import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.TagService;
+import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
@@ -54,7 +56,8 @@ import org.springframework.web.servlet.view.RedirectView;
 public class TaskController {
 
     private final TaskService taskService;
-    private final ProjectService projectService;
+    private final TaskQueryService taskQueryService;
+    private final ProjectQueryService projectQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final CommentService commentService;
@@ -66,7 +69,8 @@ public class TaskController {
 
     public TaskController(
             TaskService taskService,
-            ProjectService projectService,
+            TaskQueryService taskQueryService,
+            ProjectQueryService projectQueryService,
             TagService tagService,
             UserService userService,
             CommentService commentService,
@@ -76,7 +80,8 @@ public class TaskController {
             TaskReport taskReport,
             Messages messages) {
         this.taskService = taskService;
-        this.projectService = projectService;
+        this.taskQueryService = taskQueryService;
+        this.projectQueryService = projectQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.commentService = commentService;
@@ -90,13 +95,7 @@ public class TaskController {
     // GET /tasks - Display task list (full page or HTMX fragment)
     @GetMapping
     public String listTasks(
-            @RequestParam(required = false, defaultValue = "") String search,
-            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT)
-                    TaskStatusFilter statusFilter,
-            @RequestParam(required = false, defaultValue = "false") boolean overdue,
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) Long selectedUserId,
-            @RequestParam(required = false) List<Long> tags,
+            @ModelAttribute TaskListQuery query,
             @RequestParam(required = false) String view,
             @RequestParam(required = false) YearMonth month,
             @CookieValue(name = "pageSize", required = false, defaultValue = "25")
@@ -113,10 +112,11 @@ public class TaskController {
         UserPreferences userPreferences = (UserPreferences) model.getAttribute("userPreferences");
         // Default user filter on first visit (no userId param):
         // "mine" preference → current user's tasks; "all" preference → all users.
-        if (selectedUserId == null && !request.getParameterMap().containsKey("selectedUserId")) {
+        if (query.getSelectedUserId() == null
+                && !request.getParameterMap().containsKey("selectedUserId")) {
             if (userPreferences == null
                     || UserPreferences.FILTER_MINE.equals(userPreferences.getDefaultUserFilter())) {
-                selectedUserId = currentDetails.getUser().getId();
+                query.setSelectedUserId(currentDetails.getUser().getId());
             }
         }
         // View mode: URL param overrides preference default
@@ -130,15 +130,17 @@ public class TaskController {
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
-                        : projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
+                        : projectQueryService.getAccessibleProjectIds(
+                                currentDetails.getUser().getId());
 
         model.addAttribute("allTags", tagService.getAllTags());
         model.addAttribute("view", resolvedView);
-        model.addAttribute("selectedUserId", selectedUserId);
+        model.addAttribute("selectedUserId", query.getSelectedUserId());
         addEditableProjects(model, currentDetails);
 
         // Resolve filtered user's name for the user filter button label
         Long currentId = currentDetails.getUser().getId();
+        Long selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
             try {
                 model.addAttribute(
@@ -147,19 +149,12 @@ public class TaskController {
             }
         }
 
+        TaskSearchCriteria criteria = query.toCriteria(accessibleProjectIds);
+
         if (UserPreferences.VIEW_CALENDAR.equals(resolvedView)) {
             YearMonth calendarMonth = (month != null) ? month : YearMonth.now();
             List<List<CalendarDay>> calendarWeeks =
-                    buildCalendarWeeks(
-                            calendarMonth,
-                            accessibleProjectIds,
-                            search,
-                            statusFilter,
-                            overdue,
-                            priority,
-                            selectedUserId,
-                            tags,
-                            model);
+                    buildCalendarWeeks(calendarMonth, criteria, model);
             model.addAttribute("calendarWeeks", calendarWeeks);
             model.addAttribute("calendarMonth", calendarMonth);
             if (HtmxUtils.isHtmxRequest(request)) {
@@ -170,19 +165,8 @@ public class TaskController {
 
         if (UserPreferences.VIEW_BOARD.equals(resolvedView)) {
             Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_CREATED_AT));
-            List<Task> tasks =
-                    taskService
-                            .searchAndFilterTasksForProjects(
-                                    accessibleProjectIds,
-                                    search,
-                                    statusFilter,
-                                    overdue,
-                                    priority,
-                                    selectedUserId,
-                                    tags,
-                                    unpaged)
-                            .getContent();
-            model.addAttribute("tasksByStatus", taskService.groupByStatus(tasks));
+            List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
+            model.addAttribute("tasksByStatus", taskQueryService.groupByStatus(tasks));
             model.addAttribute("statuses", TaskStatus.values());
             addProjectEditPermissions(tasks, currentDetails, model);
             if (HtmxUtils.isHtmxRequest(request)) {
@@ -194,16 +178,7 @@ public class TaskController {
         if (!request.getParameterMap().containsKey("size")) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageSizeCookie, pageable.getSort());
         }
-        Page<Task> taskPage =
-                taskService.searchAndFilterTasksForProjects(
-                        accessibleProjectIds,
-                        search,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tags,
-                        pageable);
+        Page<Task> taskPage = taskQueryService.searchTasks(criteria, pageable);
         model.addAttribute("taskPage", taskPage);
         addProjectEditPermissions(taskPage.getContent(), currentDetails, model);
 
@@ -215,17 +190,10 @@ public class TaskController {
         return "tasks/tasks";
     }
 
-    // GET /tasks/export - Download CSV of filtered tasks
     // GET /tasks/export - Download CSV of filtered tasks (same filters as listTasks, unpaged)
     @GetMapping("/export")
     public void exportTasks(
-            @RequestParam(required = false, defaultValue = "") String search,
-            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT)
-                    TaskStatusFilter statusFilter,
-            @RequestParam(required = false, defaultValue = "false") boolean overdue,
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) Long selectedUserId,
-            @RequestParam(required = false) List<Long> tags,
+            @ModelAttribute TaskListQuery query,
             @PageableDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC)
                     Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -235,20 +203,12 @@ public class TaskController {
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
-                        : projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
+                        : projectQueryService.getAccessibleProjectIds(
+                                currentDetails.getUser().getId());
+        TaskSearchCriteria criteria = query.toCriteria(accessibleProjectIds);
+
         Pageable unpaged = Pageable.unpaged(pageable.getSort());
-        List<Task> tasks =
-                taskService
-                        .searchAndFilterTasksForProjects(
-                                accessibleProjectIds,
-                                search,
-                                statusFilter,
-                                overdue,
-                                priority,
-                                selectedUserId,
-                                tags,
-                                unpaged)
-                        .getContent();
+        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
 
         taskReport.exportCsv(response, "tasks.csv", tasks);
     }
@@ -260,7 +220,7 @@ public class TaskController {
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
@@ -290,7 +250,7 @@ public class TaskController {
         task.setUser(currentDetails.getUser());
         if (projectId != null) {
             projectAccessGuard.requireEditAccess(projectId, currentDetails);
-            Project project = projectService.getProjectById(projectId);
+            Project project = projectQueryService.getProjectById(projectId);
             task.setProject(project);
         } else {
             addEditableProjects(model, currentDetails);
@@ -327,7 +287,7 @@ public class TaskController {
             HttpServletRequest request,
             Model model) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
-        Project project = projectService.getProjectById(projectId);
+        Project project = projectQueryService.getProjectById(projectId);
         if (result.hasErrors()) {
             Task task = new Task();
             task.setProject(project);
@@ -359,7 +319,7 @@ public class TaskController {
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
@@ -387,7 +347,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task existing = taskService.getTaskById(id);
+        Task existing = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         if (result.hasErrors()) {
             model.addAttribute("task", existing);
@@ -421,7 +381,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         requireDeleteAccess(task, currentDetails);
         taskService.deleteTask(id);
         if (HtmxUtils.isHtmxRequest(request)) {
@@ -436,7 +396,7 @@ public class TaskController {
             @PathVariable Long id,
             Model model,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         addTimelineAttributes(model, id, currentDetails);
@@ -452,11 +412,11 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         commentService.createComment(text, id, currentDetails.getUser().getId());
         if (HtmxUtils.isHtmxRequest(request)) {
-            model.addAttribute("task", taskService.getTaskById(id));
+            model.addAttribute("task", taskQueryService.getTaskById(id));
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
@@ -478,7 +438,7 @@ public class TaskController {
         }
         commentService.deleteComment(commentId);
         if (HtmxUtils.isHtmxRequest(request)) {
-            model.addAttribute("task", taskService.getTaskById(id));
+            model.addAttribute("task", taskQueryService.getTaskById(id));
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
@@ -493,7 +453,7 @@ public class TaskController {
             @RequestParam(required = false) String value,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
-        Task existing = taskService.getTaskById(id);
+        Task existing = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         Task task = taskService.updateField(id, field, value);
         model.addAttribute("task", task);
@@ -510,7 +470,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task existing = taskService.getTaskById(id);
+        Task existing = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         taskService.setStatus(id, status);
 
@@ -528,7 +488,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task existing = taskService.getTaskById(id);
+        Task existing = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         Task task = taskService.advanceStatus(id);
 
@@ -559,7 +519,7 @@ public class TaskController {
         List<Task> tasks = new ArrayList<>(taskIds.size());
         Set<Long> checkedProjectIds = new HashSet<>();
         for (Long taskId : taskIds) {
-            Task task = taskService.getTaskById(taskId);
+            Task task = taskQueryService.getTaskById(taskId);
             Long projectId = task.getProject().getId();
             if (BulkTaskRequest.ACTION_DELETE.equals(action)) {
                 // Delete requires per-task check (creator, project OWNER, or admin)
@@ -623,7 +583,8 @@ public class TaskController {
         Map<Long, Boolean> editByProject = new java.util.HashMap<>();
         for (Task task : tasks) {
             Long projectId = task.getProject().getId();
-            editByProject.computeIfAbsent(projectId, pid -> projectService.isEditor(pid, userId));
+            editByProject.computeIfAbsent(
+                    projectId, pid -> projectQueryService.isEditor(pid, userId));
         }
         model.addAttribute("projectEditMap", editByProject);
     }
@@ -636,15 +597,7 @@ public class TaskController {
     }
 
     private List<List<CalendarDay>> buildCalendarWeeks(
-            YearMonth month,
-            List<Long> accessibleProjectIds,
-            String search,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tags,
-            Model model) {
+            YearMonth month, TaskSearchCriteria criteria, Model model) {
         LocalDate firstOfMonth = month.atDay(1);
         LocalDate lastOfMonth = month.atEndOfMonth();
 
@@ -654,21 +607,10 @@ public class TaskController {
         LocalDate gridEnd = lastOfMonth.with(DayOfWeek.SUNDAY);
 
         // Query tasks with dates overlapping the visible grid range
+        criteria.setDueDateFrom(gridStart);
+        criteria.setDueDateTo(gridEnd);
         Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_DUE_DATE));
-        List<Task> tasks =
-                taskService
-                        .searchAndFilterTasksForProjects(
-                                accessibleProjectIds,
-                                search,
-                                statusFilter,
-                                overdue,
-                                priority,
-                                selectedUserId,
-                                tags,
-                                unpaged,
-                                gridStart,
-                                gridEnd)
-                        .getContent();
+        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
 
         // Place each task on one date: due date if present, otherwise start date.
         // Tasks with neither date are counted but not shown on the grid.
@@ -709,10 +651,11 @@ public class TaskController {
     private void addEditableProjects(Model model, CustomUserDetails currentDetails) {
         List<Project> editableProjects;
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
-            editableProjects = projectService.getActiveProjects();
+            editableProjects = projectQueryService.getActiveProjects();
         } else {
             editableProjects =
-                    projectService.getEditableProjectsForUser(currentDetails.getUser().getId());
+                    projectQueryService.getEditableProjectsForUser(
+                            currentDetails.getUser().getId());
         }
         model.addAttribute("editableProjects", editableProjects);
     }

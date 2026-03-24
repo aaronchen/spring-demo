@@ -39,7 +39,7 @@ public class SavedViewController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         SavedView view =
                 savedViewService.createView(
-                        currentDetails.getUser(), request.name(), request.filters());
+                        currentDetails.getUser(), request.name(), request.data());
         return ResponseEntity.status(HttpStatus.CREATED).body(SavedViewResponse.fromEntity(view));
     }
 

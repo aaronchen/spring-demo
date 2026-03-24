@@ -2,18 +2,15 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.ProjectStatus;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.context.ApplicationEventPublisher;
@@ -25,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
-    private final ProjectMemberRepository memberRepository;
+    private final ProjectQueryService projectQueryService;
     private final UserService userService;
     private final TaskQueryService taskQueryService;
     private final ApplicationEventPublisher eventPublisher;
@@ -33,82 +30,17 @@ public class ProjectService {
 
     public ProjectService(
             ProjectRepository projectRepository,
-            ProjectMemberRepository memberRepository,
+            ProjectQueryService projectQueryService,
             UserService userService,
             TaskQueryService taskQueryService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
-        this.memberRepository = memberRepository;
+        this.projectQueryService = projectQueryService;
         this.userService = userService;
         this.taskQueryService = taskQueryService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
-    }
-
-    public Project getProjectById(Long id) {
-        return projectRepository
-                .findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(Project.class, id));
-    }
-
-    public List<Project> getActiveProjects() {
-        return projectRepository.findByStatusOrderByNameAsc(ProjectStatus.ACTIVE);
-    }
-
-    public List<Project> getActiveProjectsByNewest() {
-        return projectRepository.findByStatusOrderByCreatedAtDesc(ProjectStatus.ACTIVE);
-    }
-
-    public List<Project> getAllProjects() {
-        return projectRepository.findAllByOrderByNameAsc();
-    }
-
-    public List<Project> getAllProjectsByNewest() {
-        return projectRepository.findAllByOrderByCreatedAtDesc();
-    }
-
-    public List<Project> getProjectsForUser(Long userId) {
-        return memberRepository.findByUserId(userId).stream()
-                .map(ProjectMember::getProject)
-                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
-                .toList();
-    }
-
-    public List<Project> getProjectsForUser(Long userId, boolean includeArchived, String sort) {
-        java.util.Comparator<Project> comparator =
-                "newest".equals(sort)
-                        ? java.util.Comparator.comparing(
-                                Project::getCreatedAt, java.util.Comparator.reverseOrder())
-                        : java.util.Comparator.comparing(
-                                Project::getName, String.CASE_INSENSITIVE_ORDER);
-        return memberRepository.findByUserId(userId).stream()
-                .map(ProjectMember::getProject)
-                .filter(p -> includeArchived || p.getStatus() == ProjectStatus.ACTIVE)
-                .sorted(comparator)
-                .toList();
-    }
-
-    public List<Long> getAccessibleProjectIds(Long userId) {
-        return memberRepository.findByUserId(userId).stream()
-                .map(ProjectMember::getProject)
-                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
-                .map(Project::getId)
-                .toList();
-    }
-
-    public List<Project> getEditableProjectsForUser(Long userId) {
-        return memberRepository.findByUserId(userId).stream()
-                .filter(
-                        m ->
-                                m.getProject().getStatus() == ProjectStatus.ACTIVE
-                                        && (m.getRole() == ProjectRole.EDITOR
-                                                || m.getRole() == ProjectRole.OWNER))
-                .map(ProjectMember::getProject)
-                .sorted(
-                        java.util.Comparator.comparing(
-                                Project::getName, String.CASE_INSENSITIVE_ORDER))
-                .toList();
     }
 
     public Project createProject(Project project, User creator) {
@@ -133,7 +65,7 @@ public class ProjectService {
     }
 
     public Project updateProject(Long id, Project projectDetails) {
-        Project project = getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         Map<String, Object> before = project.toAuditSnapshot();
 
         project.setName(projectDetails.getName());
@@ -156,7 +88,7 @@ public class ProjectService {
     }
 
     public void archiveProject(Long id) {
-        Project project = getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         project.setStatus(ProjectStatus.ARCHIVED);
         projectRepository.save(project);
 
@@ -170,7 +102,7 @@ public class ProjectService {
     }
 
     public void unarchiveProject(Long id) {
-        Project project = getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
         project.setStatus(ProjectStatus.ACTIVE);
         projectRepository.save(project);
 
@@ -188,7 +120,7 @@ public class ProjectService {
      * archived instead. Cancelled tasks don't block deletion — they represent abandoned work.
      */
     public void deleteProject(Long id) {
-        Project project = getProjectById(id);
+        Project project = projectQueryService.getProjectById(id);
 
         boolean hasCompletedTasks =
                 project.getTasks().stream().anyMatch(t -> t.getStatus() == TaskStatus.COMPLETED);
@@ -210,13 +142,8 @@ public class ProjectService {
 
     // ── Member management ─────────────────────────────────────────────────
 
-    public List<ProjectMember> getMembers(Long projectId) {
-        Project project = getProjectById(projectId);
-        return project.getMembers();
-    }
-
     public ProjectMember addMember(Long projectId, Long userId, ProjectRole role) {
-        Project project = getProjectById(projectId);
+        Project project = projectQueryService.getProjectById(projectId);
         User user = userService.getUserById(userId);
 
         if (findMember(project, userId).isPresent()) {
@@ -238,10 +165,13 @@ public class ProjectService {
     }
 
     public void removeMember(Long projectId, Long userId) {
-        Project project = getProjectById(projectId);
+        Project project = projectQueryService.getProjectById(projectId);
         ProjectMember member =
                 findMember(project, userId)
-                        .orElseThrow(() -> new EntityNotFoundException(ProjectMember.class, null));
+                        .orElseThrow(
+                                () ->
+                                        new cc.desuka.demo.exception.EntityNotFoundException(
+                                                ProjectMember.class, null));
 
         if (member.getRole() == ProjectRole.OWNER && countOwners(project) <= 1) {
             throw new IllegalStateException(messages.get("project.member.lastOwner.remove"));
@@ -260,10 +190,13 @@ public class ProjectService {
     }
 
     public void updateMemberRole(Long projectId, Long userId, ProjectRole newRole) {
-        Project project = getProjectById(projectId);
+        Project project = projectQueryService.getProjectById(projectId);
         ProjectMember member =
                 findMember(project, userId)
-                        .orElseThrow(() -> new EntityNotFoundException(ProjectMember.class, null));
+                        .orElseThrow(
+                                () ->
+                                        new cc.desuka.demo.exception.EntityNotFoundException(
+                                                ProjectMember.class, null));
 
         if (member.getRole() == ProjectRole.OWNER
                 && newRole != ProjectRole.OWNER
@@ -290,30 +223,6 @@ public class ProjectService {
                             SecurityUtils.getCurrentPrincipal(),
                             AuditDetails.toJson(changes)));
         }
-    }
-
-    // ── Access checks ─────────────────────────────────────────────────────
-
-    public boolean isMember(Long projectId, Long userId) {
-        return memberRepository.existsByProjectIdAndUserId(projectId, userId);
-    }
-
-    public Optional<ProjectRole> getMemberRole(Long projectId, Long userId) {
-        return memberRepository
-                .findByProjectIdAndUserId(projectId, userId)
-                .map(ProjectMember::getRole);
-    }
-
-    public boolean isOwner(Long projectId, Long userId) {
-        return getMemberRole(projectId, userId)
-                .map(role -> role == ProjectRole.OWNER)
-                .orElse(false);
-    }
-
-    public boolean isEditor(Long projectId, Long userId) {
-        return getMemberRole(projectId, userId)
-                .map(role -> role == ProjectRole.OWNER || role == ProjectRole.EDITOR)
-                .orElse(false);
     }
 
     // ── Private helpers ─────────────────────────────────────────────────

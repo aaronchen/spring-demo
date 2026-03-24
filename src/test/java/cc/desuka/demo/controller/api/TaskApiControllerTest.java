@@ -18,7 +18,8 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
+import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,8 @@ class TaskApiControllerTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private TaskService taskService;
-    @MockitoBean private ProjectService projectService;
+    @MockitoBean private TaskQueryService taskQueryService;
+    @MockitoBean private ProjectQueryService projectQueryService;
     @MockitoBean private TaskMapper taskMapper;
     @MockitoBean private ProjectAccessGuard projectAccessGuard;
 
@@ -87,16 +89,8 @@ class TaskApiControllerTest {
 
     @Test
     void getTasks_returnsPaginatedResults() throws Exception {
-        when(projectService.getAccessibleProjectIds(2L)).thenReturn(List.of(1L));
-        when(taskService.searchAndFilterTasksForProjects(
-                        any(),
-                        any(),
-                        any(),
-                        anyBoolean(),
-                        any(),
-                        any(),
-                        any(),
-                        any(Pageable.class)))
+        when(projectQueryService.getAccessibleProjectIds(2L)).thenReturn(List.of(1L));
+        when(taskQueryService.searchTasks(any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(task)));
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
@@ -116,7 +110,7 @@ class TaskApiControllerTest {
 
     @Test
     void getTaskById_found_returnsJson() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskMapper.toResponse(task)).thenReturn(taskResponse);
 
         mockMvc.perform(get("/api/tasks/1").with(user(regularDetails)))
@@ -126,7 +120,8 @@ class TaskApiControllerTest {
 
     @Test
     void getTaskById_notFound_returns404() throws Exception {
-        when(taskService.getTaskById(99L)).thenThrow(new EntityNotFoundException(Task.class, 99L));
+        when(taskQueryService.getTaskById(99L))
+                .thenThrow(new EntityNotFoundException(Task.class, 99L));
 
         mockMvc.perform(get("/api/tasks/99").with(user(regularDetails)))
                 .andExpect(status().isNotFound());
@@ -136,7 +131,7 @@ class TaskApiControllerTest {
 
     @Test
     void createTask_validRequest_returns201() throws Exception {
-        when(projectService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("New Task", null));
         when(taskService.createTask(any(Task.class), any(), eq(2L))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
@@ -166,7 +161,7 @@ class TaskApiControllerTest {
 
     @Test
     void createTask_adminCanAssignToOtherUser() throws Exception {
-        when(projectService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("Admin Task", null));
         when(taskService.createTask(any(), any(), eq(2L))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
@@ -187,7 +182,7 @@ class TaskApiControllerTest {
 
     @Test
     void createTask_regularUserCannotAssignToOtherUser() throws Exception {
-        when(projectService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("My Task", null));
         when(taskService.createTask(any(), any(), eq(2L))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
@@ -211,7 +206,7 @@ class TaskApiControllerTest {
 
     @Test
     void updateTask_owner_succeeds() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
         when(taskService.updateTask(eq(1L), any(), any(), any(), any())).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
@@ -228,7 +223,7 @@ class TaskApiControllerTest {
 
     @Test
     void updateTask_notEditor_returns403() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(projectAccessGuard)
                 .requireEditAccess(eq(1L), any(CustomUserDetails.class));
@@ -245,7 +240,7 @@ class TaskApiControllerTest {
 
     @Test
     void updateTask_staleVersion_returns409() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
         when(taskService.updateTask(eq(1L), any(), any(), any(), any()))
                 .thenThrow(new StaleDataException(Task.class, 1L));
@@ -264,7 +259,7 @@ class TaskApiControllerTest {
 
     @Test
     void deleteTask_owner_returns204() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
 
         mockMvc.perform(delete("/api/tasks/1").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
@@ -279,7 +274,7 @@ class TaskApiControllerTest {
         User adminUser = new User("Alice", "alice@example.com", "password", Role.ADMIN);
         adminUser.setId(1L);
         task.setUser(adminUser);
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(projectAccessGuard)
                 .requireOwnerAccess(eq(1L), any(CustomUserDetails.class));
@@ -294,7 +289,7 @@ class TaskApiControllerTest {
 
     @Test
     void advanceStatus_returnsUpdatedTask() throws Exception {
-        when(taskService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(1L)).thenReturn(task);
         task.setStatus(TaskStatus.IN_PROGRESS);
         when(taskService.advanceStatus(1L)).thenReturn(task);
         taskResponse.setStatus(TaskStatus.IN_PROGRESS);
@@ -309,7 +304,7 @@ class TaskApiControllerTest {
 
     @Test
     void searchTasks_returnsFilteredResults() throws Exception {
-        when(taskService.searchTasks("test")).thenReturn(List.of(task));
+        when(taskQueryService.searchTasks("test")).thenReturn(List.of(task));
         when(taskMapper.toResponseList(anyList())).thenReturn(List.of(taskResponse));
 
         mockMvc.perform(

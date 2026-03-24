@@ -33,11 +33,11 @@ GET {{baseUrl}}/api/tasks?page=1&size=10
 Cookie: JSESSIONID={{sessionId}}
 
 ### Get tasks — filtered by status and priority
-GET {{baseUrl}}/api/tasks?status=OPEN&priority=HIGH
+GET {{baseUrl}}/api/tasks?statusFilter=OPEN&priority=HIGH
 Cookie: JSESSIONID={{sessionId}}
 
 ### Get tasks — search with filters
-GET {{baseUrl}}/api/tasks?search=bug&status=OPEN&overdue=true&sort=dueDate,asc
+GET {{baseUrl}}/api/tasks?search=bug&statusFilter=OPEN&overdue=true&sort=dueDate,asc
 Cookie: JSESSIONID={{sessionId}}
 
 ### Get task by ID
@@ -358,7 +358,14 @@ Content-Type: application/json
 
 {
   "name": "My Open Tasks",
-  "filters": "{\"statusFilter\":\"OPEN\",\"view\":\"table\"}"
+  "data": {
+    "type": "task",
+    "query": {
+      "statusFilter": "OPEN"
+    },
+    "view": "table",
+    "sort": [{"field": "createdAt", "direction": "desc"}]
+  }
 }
 
 ###
