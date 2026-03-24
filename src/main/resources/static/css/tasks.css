@@ -355,10 +355,30 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 
 /* ── Inline Editing ── */
 
-/* Edit mode toggle — icon link in table header */
-#edit-mode-btn { text-decoration: none; color: #20c997 !important; -webkit-text-stroke: 0.5px; }
-#edit-mode-btn:hover { color: #dc3545 !important; }
-#edit-mode-btn.active { color: #dc3545 !important; }
+/* Edit mode toggle — pill button in table header */
+.edit-mode-toggle {
+    --bs-btn-padding-y: 0.15rem;
+    --bs-btn-padding-x: 0.5rem;
+    --bs-btn-font-size: 0.75rem;
+    font-weight: 700;
+    border-width: 2px;
+    --bs-btn-color: var(--bs-primary);
+    --bs-btn-border-color: var(--bs-primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--bs-primary);
+    --bs-btn-hover-border-color: var(--bs-primary);
+}
+.edit-mode-toggle.active {
+    --bs-btn-bg: #20c997;
+    --bs-btn-border-color: #20c997;
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: #1baa80;
+    --bs-btn-hover-border-color: #199b75;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #199b75;
+    --bs-btn-active-border-color: #178d6b;
+    --bs-btn-active-color: #fff;
+}
 
 /* Editable cells in edit mode — subtle highlight + pointer */
 td.inline-edit-active {
