@@ -1,11 +1,16 @@
 package cc.desuka.demo.controller.api;
 
+import cc.desuka.demo.dto.AnalyticsResponse;
 import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.mapper.UserMapper;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.AnalyticsService;
 import cc.desuka.demo.service.ProjectService;
 import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,10 +19,18 @@ public class ProjectApiController {
 
     private final ProjectService projectService;
     private final UserMapper userMapper;
+    private final AnalyticsService analyticsService;
+    private final ProjectAccessGuard projectAccessGuard;
 
-    public ProjectApiController(ProjectService projectService, UserMapper userMapper) {
+    public ProjectApiController(
+            ProjectService projectService,
+            UserMapper userMapper,
+            AnalyticsService analyticsService,
+            ProjectAccessGuard projectAccessGuard) {
         this.projectService = projectService;
         this.userMapper = userMapper;
+        this.analyticsService = analyticsService;
+        this.projectAccessGuard = projectAccessGuard;
     }
 
     // GET /api/projects/{id}/members — all enabled members
@@ -41,5 +54,13 @@ public class ProjectApiController {
                         .filter(User::isEnabled)
                         .toList();
         return userMapper.toResponseList(members);
+    }
+
+    // GET /api/projects/{id}/analytics — project analytics data
+    @GetMapping("/{id}/analytics")
+    public AnalyticsResponse getProjectAnalytics(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        projectAccessGuard.requireViewAccess(id, currentDetails);
+        return analyticsService.getProjectAnalytics(id);
     }
 }

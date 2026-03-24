@@ -368,6 +368,23 @@ DELETE {{baseUrl}}/api/views/1
 Cookie: JSESSIONID={{sessionId}}
 
 ### ============================================================
+### Analytics
+### ============================================================
+
+### Cross-project analytics (all accessible projects)
+GET {{baseUrl}}/api/analytics
+Cookie: JSESSIONID={{sessionId}}
+
+### Cross-project analytics filtered to specific projects
+GET {{baseUrl}}/api/analytics?projectIds=1&projectIds=2
+Cookie: JSESSIONID={{sessionId}}
+
+### Project-scoped analytics
+GET {{baseUrl}}/api/projects/1/analytics
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
 ### OpenAPI / Swagger (public, no auth needed)
 ### ============================================================
 

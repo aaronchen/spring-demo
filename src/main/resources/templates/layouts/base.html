@@ -82,6 +82,11 @@
                            th:classappend="${currentPath != null && currentPath == '/users' ? 'active' : ''}"
                            th:href="@{/users}" th:text="#{nav.users}">Users</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold nav-link-bright"
+                           th:classappend="${currentPath != null && currentPath == '/analytics' ? 'active' : ''}"
+                           th:href="@{/analytics}" th:text="#{nav.analytics}">Analytics</a>
+                    </li>
                 </ul>
                 <!-- Online Users Indicator -->
                 <ul class="navbar-nav me-3" sec:authorize="isAuthenticated()">
