@@ -52,8 +52,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function toggleEditMode() {
     editModeActive = !editModeActive;
     const btn = document.getElementById('edit-mode-btn');
+    const icon = btn?.querySelector('i.bi');
     if (btn) {
         btn.classList.toggle('active', editModeActive);
+    }
+    if (icon) {
+        icon.classList.toggle('bi-pencil-square', !editModeActive);
+        icon.classList.toggle('bi-pencil-fill', editModeActive);
     }
     if (editModeActive) {
         applyEditModeStyles();

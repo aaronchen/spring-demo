@@ -1133,7 +1133,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `loadBulkAssignUsers()` / `filterBulkAssignUsers(query)` / `renderBulkAssignList(users)` — assign dropdown with project-scoped user list from `/api/projects/{id}/members/assignable`; cached per project
   - Loaded page-specifically on task pages (via `tasks.html` and `project.html` script blocks)
 - `static/js/tasks/inline-edit.js` - Toggle-based inline editing for table view
-  - `toggleEditMode()` — activates/deactivates inline edit mode for the table; in edit mode, renders editable inputs (text, select, date) in place of static cell content
+  - `toggleEditMode()` — activates/deactivates inline edit mode via pill button in table header (primary outline → green fill when active, icon swaps pencil-square/pencil-fill); in edit mode, renders editable inputs (text, select, date) in place of static cell content
   - Supports fields: title (text input), description (text input), priority (select), status (select), dueDate (date input)
   - On save: sends `PATCH /tasks/{id}/field` with field name and new value; reverts on error
   - Edit mode toggle controlled by the `e` keyboard shortcut (via `keyboard-shortcuts.js`)

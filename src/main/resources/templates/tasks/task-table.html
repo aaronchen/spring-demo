@@ -90,13 +90,13 @@
                         </th>
                         <!-- Actions column with edit mode toggle -->
                         <th style="white-space: nowrap; vertical-align: middle;">
-                            <span th:text="#{task.table.column.actions}">Actions</span>
-                            <a id="edit-mode-btn" href="#"
-                               class="ms-2 text-muted"
-                               onclick="toggleEditMode(); return false;"
-                               th:title="#{task.editMode.tooltip}">
-                                <i class="bi bi-pencil-square" style="font-size: 1.2em;"></i>
-                            </a>
+                            <button id="edit-mode-btn" type="button"
+                                    class="btn edit-mode-toggle"
+                                    onclick="toggleEditMode();"
+                                    th:title="#{task.editMode.tooltip}">
+                                <i class="bi bi-pencil-square"></i>
+                                <span id="edit-mode-label" th:text="#{task.editMode}">Edit Mode</span>
+                            </button>
                         </th>
                     </tr>
                 </thead>
