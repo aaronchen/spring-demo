@@ -1238,3 +1238,261 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `.github/workflows/daily-redeploy.yml` - Render deploy trigger
   - Cron: 6 AM UTC+8 daily
   - Pings Render deploy hook URL
+
+---
+
+## Reference Appendix
+
+The following sections were moved from CLAUDE.md. They are reference material derivable from source files but kept here for quick lookup.
+
+### Available URLs
+
+**Authentication:**
+- `http://localhost:8080/login` - Login page (email + password)
+- `http://localhost:8080/register` - Self-registration (creates `USER` role)
+
+**Web UI** (requires login):
+- `http://localhost:8080/` - Home page
+- `http://localhost:8080/projects` - Project list
+- `http://localhost:8080/projects/new` - Create project
+- `http://localhost:8080/projects/{id}` - Project home with task filtering
+- `http://localhost:8080/projects/{id}/settings` - Project settings and member management (owner/admin)
+- `http://localhost:8080/tasks` - Cross-project task list (cards, table, calendar, or board view)
+- `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
+- `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
+- `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
+- `http://localhost:8080/dashboard` - Per-project dashboard (real-time stats, recent tasks, activity feed); admins see additional system overview section
+- `http://localhost:8080/tags` - Tag list
+- `http://localhost:8080/users` - User list with search
+- `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)
+- `http://localhost:8080/admin/tags` - Tag management: create/delete with task counts (admin only)
+- `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
+- `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
+- `http://localhost:8080/notifications` - Notification inbox (paginated, mark-read, clear-all)
+- `http://localhost:8080/profile` - User profile: edit name/email, change password, preferences
+
+**REST API — Tasks** (requires login; CSRF exempt):
+- `GET /api/tasks` - Paginated task list (default: page=0, size=20, sort=createdAt,desc)
+  - Filter params: `search`, `status` (ALL/BACKLOG/OPEN/IN_PROGRESS/IN_REVIEW/COMPLETED/CANCELLED), `overdue`, `priority`, `userId`, `tags`
+  - Pagination params: `page`, `size`, `sort` (Spring Data standard)
+- `GET /api/tasks/{id}` - Get task by ID
+- `POST /api/tasks` - Create task (auto-assigned to caller; admins can specify `userId`)
+- `PUT /api/tasks/{id}` - Update task (owner or admin; requires `version` for optimistic locking)
+- `DELETE /api/tasks/{id}` - Delete task (owner or admin)
+- `PATCH /api/tasks/{id}/toggle` - Toggle completion (any authenticated user)
+- `GET /api/tasks/search?keyword=...` - Search by title/description
+- `GET /api/tasks/incomplete` - Get incomplete tasks only
+
+**REST API — Comments** (requires login; CSRF exempt):
+- `GET /api/tasks/{taskId}/comments` - List comments for a task
+- `POST /api/tasks/{taskId}/comments` - Add comment (201 Created; body: `{"text": "..."}`)
+- `DELETE /api/tasks/{taskId}/comments/{id}` - Delete comment (owner or admin, 204 No Content)
+
+**REST API — Tags** (requires login):
+- `GET /api/tags` - List all tags
+- `GET /api/tags/{id}` - Get tag by ID
+- `POST /api/tags` - Create tag (admin only, 201 Created)
+- `DELETE /api/tags/{id}` - Delete tag (admin only, 204 No Content)
+
+**REST API — Users** (requires login):
+- `GET /api/users` - List all users (sorted A-Z)
+- `GET /api/users?q=ali` - Search users by name (case-insensitive substring)
+- `GET /api/users/{id}` - Get user by ID
+- `POST /api/users` - Create user (admin only, 201 Created)
+- `DELETE /api/users/{id}` - Delete user (admin only, 204 No Content)
+
+**REST API — Notifications** (requires login; CSRF exempt):
+- `GET /api/notifications` - Paginated list (default: page=0, size=10)
+- `GET /api/notifications/unread-count` - Unread badge count (`{"count": n}`)
+- `PATCH /api/notifications/{id}/read` - Mark one as read (204 No Content)
+- `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
+- `DELETE /api/notifications` - Clear all notifications (204 No Content)
+
+**REST API — Project Members** (requires login):
+- `GET /api/projects/{id}/members` - All enabled members of a project
+- `GET /api/projects/{id}/members/assignable` - Editors and owners only (for task assignment)
+
+**REST API — Saved Views** (requires login; CSRF exempt):
+- `GET /api/views` - List saved views for current user
+- `POST /api/views` - Save current filters as a named view
+- `DELETE /api/views/{id}` - Delete saved view (owner or admin)
+
+**REST API — Presence** (no authentication required):
+- `GET /api/presence` - Online users (`{"users": [...], "count": n}`)
+
+**WebSocket** (STOMP over SockJS):
+- Endpoint: `ws://localhost:8080/ws`
+- Subscribe: `/user/queue/notifications` — real-time notification push
+- Subscribe: `/topic/presence` — online user list broadcast
+
+**API Documentation** (public, no auth needed):
+- `http://localhost:8080/swagger-ui.html` - Swagger UI (interactive API explorer)
+- `http://localhost:8080/api-docs` - OpenAPI 3.1 spec (JSON)
+
+**Monitoring (public, no auth needed):**
+- `http://localhost:8080/actuator/health` - Application health status
+- `http://localhost:8080/actuator/info` - Application info
+
+**Dev Tools:**
+- `http://localhost:8080/h2-console` - H2 database console (JDBC URL: `jdbc:h2:mem:taskdb` / Username: `sa` / Password: empty)
+
+### Test Categories
+
+| Test class | Type | What it tests |
+|---|---|---|
+| `TaskServiceTest` | Unit (Mockito) | Service CRUD, optimistic locking, status transitions, assignment |
+| `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
+| `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
+| `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
+| `ProjectServiceTest` | Unit (Mockito) | Project CRUD, member management, access checks, last-owner protection |
+| `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
+| `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
+| `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |
+| `NotificationEventListenerTest` | Unit (Mockito) | Task assigned/updated/comment routing, self-exclusion, dedup |
+| `WebSocketEventListenerTest` | Unit (Mockito) | Broadcasts to correct STOMP topics |
+| `MentionUtilsTest` | Unit | Extract IDs, render HTML links, XSS escaping |
+| `TaskSpecificationsTest` | `@DataJpaTest` | JPA Specifications: status/keyword/user/priority/overdue/tag filters |
+| `AuditLogSpecificationsTest` | `@DataJpaTest` | Category/search/date-range filters, combined build |
+| `UniqueValidatorTest` | `@DataJpaTest` + validation | `@Unique` annotation: uniqueness, case-insensitive, self-exclusion |
+| `TaskApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: JSON CRUD, auth, validation, ownership, optimistic locking |
+| `CommentApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: GET/POST/DELETE, auth, ownership |
+| `TagApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE |
+| `UserApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE, self-delete prevention |
+| `NotificationApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: paginated list, unread count, mark-read, clear |
+| `AuditApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: admin-only access |
+| `PresenceApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: online users + count |
+| `SecurityConfigTest` | `@SpringBootTest` + MockMvc | URL security: public/auth/admin access, CSRF behavior |
+| `DemoApplicationTests` | `@SpringBootTest` | Context loads successfully |
+
+### Database Schema
+
+```sql
+CREATE TABLE users (
+    id       BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL,
+    email    VARCHAR(150) NOT NULL UNIQUE,
+    password VARCHAR(72),                       -- BCrypt hash; nullable for API-created users
+    role     VARCHAR(255) NOT NULL DEFAULT 'USER', -- 'USER' or 'ADMIN' (@Enumerated STRING)
+    enabled  BOOLEAN NOT NULL DEFAULT TRUE      -- disabled users cannot log in
+);
+
+CREATE TABLE projects (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    description VARCHAR(500),
+    status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE / ARCHIVED
+    created_by  BIGINT NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMP,
+    updated_at  TIMESTAMP
+);
+
+CREATE TABLE project_members (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    project_id  BIGINT NOT NULL REFERENCES projects(id),
+    user_id     BIGINT NOT NULL REFERENCES users(id),
+    role        VARCHAR(50) NOT NULL DEFAULT 'EDITOR',  -- VIEWER / EDITOR / OWNER
+    created_at  TIMESTAMP,
+    UNIQUE (project_id, user_id)
+);
+
+CREATE TABLE tasks (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    version      BIGINT,                         -- @Version optimistic locking
+    title        VARCHAR(100) NOT NULL,
+    description  VARCHAR(500),
+    status       VARCHAR(255) DEFAULT 'OPEN',   -- BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED (@Enumerated STRING)
+    priority     VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
+    start_date   DATE,                           -- nullable; when work begins
+    due_date     DATE,                           -- nullable; overdue = non-terminal + past due
+    completed_at TIMESTAMP,                      -- set automatically when status → COMPLETED
+    created_at   TIMESTAMP,
+    updated_at   TIMESTAMP,
+    project_id   BIGINT NOT NULL REFERENCES projects(id),  -- every task belongs to a project
+    user_id      BIGINT REFERENCES users(id),   -- nullable FK; @ManyToOne owning side
+    parent_id    BIGINT REFERENCES tasks(id)    -- nullable FK; subtask support
+);
+
+CREATE TABLE task_checklist_items (
+    task_id  BIGINT NOT NULL REFERENCES tasks(id),
+    text     VARCHAR(255) NOT NULL,
+    checked  BOOLEAN NOT NULL DEFAULT FALSE,
+    position INT NOT NULL                       -- @OrderColumn preserves list order
+);
+
+CREATE TABLE tags (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE audit_logs (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    action      VARCHAR(255) NOT NULL,          -- e.g. TASK_CREATED, LOGIN_SUCCESS
+    entity_type VARCHAR(255),                   -- e.g. Task, User, Tag
+    entity_id   BIGINT,
+    principal   VARCHAR(255),                   -- username who performed the action
+    details     TEXT,                            -- JSON snapshot or diff
+    timestamp   TIMESTAMP
+);
+
+CREATE TABLE settings (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    setting_key   VARCHAR(100) NOT NULL UNIQUE,    -- e.g. 'theme', 'siteName'
+    setting_value VARCHAR(500)                     -- nullable; null = use default
+);
+
+CREATE TABLE notifications (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),  -- recipient
+    actor_id   BIGINT REFERENCES users(id),           -- who triggered it (nullable for system)
+    type       VARCHAR(255) NOT NULL,                 -- TASK_ASSIGNED / COMMENT_ADDED / TASK_OVERDUE / SYSTEM
+    message    VARCHAR(500) NOT NULL,
+    link       VARCHAR(500),                          -- e.g. /tasks/5
+    is_read    BOOLEAN NOT NULL DEFAULT FALSE,        -- 'read' is SQL reserved word
+    created_at TIMESTAMP
+);
+
+CREATE TABLE comments (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    text       VARCHAR(500) NOT NULL,
+    created_at TIMESTAMP,
+    task_id    BIGINT NOT NULL REFERENCES tasks(id),  -- @ManyToOne; cascade delete via service
+    user_id    BIGINT NOT NULL REFERENCES users(id)   -- @ManyToOne; comment author
+);
+
+CREATE TABLE user_preferences (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    pref_key   VARCHAR(100) NOT NULL,
+    pref_value VARCHAR(500),
+    UNIQUE (user_id, pref_key)
+);
+
+CREATE TABLE saved_views (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    name       VARCHAR(100) NOT NULL,
+    filters    VARCHAR(2000) NOT NULL,
+    created_at TIMESTAMP
+);
+
+-- Join table: singular owning entity + plural inverse entity
+CREATE TABLE task_tags (
+    task_id BIGINT NOT NULL REFERENCES tasks(id),
+    tag_id  BIGINT NOT NULL REFERENCES tags(id),
+    PRIMARY KEY (task_id, tag_id)
+);
+```
+
+### Maven Dependencies
+
+Key dependencies (see `pom.xml` for versions):
+- `spring-boot-starter-web`, `spring-boot-starter-data-jpa`, `spring-boot-starter-thymeleaf`, `spring-boot-starter-security`, `spring-boot-starter-validation`, `spring-boot-starter-actuator`, `spring-boot-starter-websocket`
+- `thymeleaf-extras-springsecurity7` — `sec:authorize` in templates
+- `spring-boot-starter-flyway` + `flyway-database-postgresql` — DB migrations (prod)
+- `postgresql` (runtime), `h2` (dev/test)
+- `spring-boot-devtools` — hot reload
+- `bootstrap` (WebJar 5.3.3), `htmx.org` (WebJar 2.0.4), `stomp-websocket` (WebJar 2.3.4)
+- `lombok` — boilerplate reduction (not used on entities)
+- `mapstruct` (1.6.3) + `mapstruct-processor` (after Lombok in annotation processor paths)
+- `springdoc-openapi-starter-webmvc-ui` (3.0.2) — OpenAPI 3.1 + Swagger UI
+- `spotless-maven-plugin` (2.44.5) — `google-java-format` AOSP style, auto-formats at compile phase

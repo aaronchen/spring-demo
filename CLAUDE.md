@@ -35,1158 +35,247 @@
 ### Dual Interface Pattern
 The application provides **two interfaces** for the same backend:
 
-1. **REST API** (`TaskApiController`) - `/api/tasks/*`
-   - JSON-based CRUD operations
-   - Accepts `TaskRequest` DTO for input; returns `TaskResponse` DTO for output
-   - `TaskMapper` (MapStruct) handles all entity ↔ DTO conversion; `TaskMapperImpl` is generated at compile time
+1. **REST API** (`TaskApiController`) - `/api/tasks/*` — JSON CRUD with `TaskRequest`/`TaskResponse` DTOs, `TaskMapper` (MapStruct) for conversion
+2. **Web UI** (`TaskWebController`) - `/tasks/*` — Thymeleaf + HTMX + Bootstrap
 
-2. **Web UI** (`TaskWebController`) - `/tasks/*`
-   - Server-side rendered with Thymeleaf
-   - HTMX for dynamic updates without full page reloads
-   - Bootstrap for responsive styling
-
-**Shared report logic** — `report/` package contains services used by multiple controllers (e.g., CSV export). Controllers delegate to report services rather than duplicating export code.
+**Shared report logic** — `report/` package contains services used by multiple controllers (e.g., CSV export).
 
 ## Key Files and Structure
 
 Detailed per-file documentation is in [CLAUDE-reference.md](CLAUDE-reference.md). Read it when you need specifics about a particular class, template, or resource file.
 
+For database schema, available URLs, config properties, Maven dependencies, and test class listings, see the **Reference Appendix** section at the end of [CLAUDE-reference.md](CLAUDE-reference.md).
+
 ## Important Patterns and Conventions
 
 ### Thymeleaf Fragment Pattern
 
-**Bare fragment files (no HTML wrapper):**
-```html
-<!-- task-modal.html — whole file is the response content -->
-<div class="modal-header" xmlns:th="http://www.thymeleaf.org">...</div>
-<form ...>...</form>
-```
-Controller returns `"tasks/task-modal"` — no `::` fragment selector needed.
-
-**Fragment files with HTML wrapper (need `::` selector):**
-```html
-<!-- task-card.html — full HTML document, fragment is an inner element -->
-<div th:fragment="card" ...>...</div>
-```
-Controller returns `"tasks/task-card :: card"`.
-
-**Non-parameterized fragments reading from context:**
-```html
-<div th:fragment="card" class="col">
-    <!-- Reads ${task} from context set by th:each or model -->
-</div>
-```
-Use this pattern because controller return strings cannot use `${}` expressions in fragment parameters.
+Three fragment styles:
+- **Bare fragment** (no HTML wrapper) — controller returns `"tasks/task-modal"` (no `::` selector)
+- **Fragment in HTML wrapper** — controller returns `"tasks/task-card :: card"` (needs `::` selector)
+- **Non-parameterized** — fragments read `${task}` from model context, not fragment parameters (controller return strings cannot use `${}` expressions)
 
 ### Template Comment Convention
 
-Two types of HTML comments serve different purposes:
-
-**Regular comments (`<!-- -->`)** — structural landmarks visible in browser DevTools. Use for short section/component labels that help navigate the DOM:
-```html
-<!-- Navigation -->
-<!-- Card Header -->
-<!-- Footer -->
-<!-- Empty State -->
-```
-
-**Parser comments (`<!--/* */-->`)** — developer documentation stripped by Thymeleaf before rendering. Use for implementation notes, usage instructions, and explanations:
-```html
-<!--/* Shared fragment. Reads ${task} from model context.
-     Two usage modes: ... */-->
-<!--/* th:action causes Thymeleaf to inject the _csrf hidden input automatically */-->
-```
-
-**Rule of thumb:** if it's a 1–4 word label for a section, keep it regular so it shows in DevTools. If it explains *why* or *how*, make it a parser comment so it doesn't bloat the response.
+- **Regular comments (`<!-- -->`)** — short section labels visible in DevTools (1-4 words)
+- **Parser comments (`<!--/* */-->`)** — developer docs stripped by Thymeleaf (explains *why* or *how*)
 
 ### Message Source Pattern
 
-All user-facing UI strings are externalized to `messages.properties`. Reference them in Thymeleaf with `#{key}`:
-
-```html
-<label th:text="#{task.field.title}">Title</label>
-<span th:text="#{task.status.completed}">Completed</span>
-```
-
-The static fallback text inside the tag (e.g., `Title`) is shown in IDE preview but replaced at runtime.
-
-**Parameterized messages** use `{0}`, `{1}`, ... placeholders (Java `MessageFormat`):
-
-```properties
-# messages.properties
-pagination.showing=Showing {0}–{1} of {2} {3}
-pagination.perPage={0} / page
-```
-
-```html
-<small th:text="#{pagination.showing(${start}, ${end}, ${total}, #{task.pagination.label})}">Showing 1–25 of 300 tasks</small>
-<option th:text="#{pagination.perPage(10)}">10 / page</option>
-```
-
-**Conditional with message keys** — when a ternary picks between two `#{...}` expressions, use the *outer* conditional form (not inside `${}`):
-
-```html
-<!-- Correct: #{...} expressions go outside ${} in a conditional -->
-<span th:text="${isEdit} ? #{task.edit.heading} : #{action.newTask}">Task</span>
-
-<!-- Only use the inner form for string literals inside SpEL -->
-<div th:classappend="${task.completed ? 'border-success' : 'border-warning'}">
-```
-
-**Validation error messages** reference `ValidationMessages.properties` with `{key}` (curly braces, not `${key}`) in constraint annotations. Hibernate Validator resolves `{min}` / `{max}` from the annotation's own attributes:
-
-```java
-@NotBlank(message = "{task.title.notBlank}")
-@Size(min = 1, max = 100, message = "{task.title.size}")
-```
-
-```properties
-# ValidationMessages.properties
-task.title.notBlank=Title is required
-task.title.size=Title must be between {min} and {max} characters
-```
+All user-facing strings go in `messages.properties`. Key rules:
+- `#{key}` in Thymeleaf, with static fallback text in the tag for IDE preview
+- Parameterized: `#{pagination.showing(${start}, ${end}, ${total}, #{task.pagination.label})}`
+- Conditional with message keys — use *outer* form: `th:text="${isEdit} ? #{task.edit.heading} : #{action.newTask}"`
+- Validation messages in `ValidationMessages.properties` use `{key}` (curly braces, not `${key}`); `{min}`/`{max}` resolved from annotation attributes
 
 ### Thymeleaf Ternary Operator Syntax
 
-**Correct:**
-```html
-th:classappend="${task.completed ? 'border-success' : 'border-warning'}"
-```
-
-**Incorrect (will fail to parse):**
-```html
-th:classappend="${task.completed} ? 'border-success' : 'border-warning'"
-```
-
-The ternary operator `? :` must be **inside** the `${}` expression when both branches are string literals. For message key branches, use the outer conditional form shown in the Message Source Pattern section above.
+Ternary `? :` must be **inside** `${}` for string literals: `th:classappend="${condition ? 'a' : 'b'}"`. Outside `${}` is only for `#{}` message key branches.
 
 ### `th:object` Propagation to Fragments
 
-`th:object` set on a `<form>` propagates into included fragments, so `*{field}` expressions work inside `task-form :: fields` even though the `<form>` tag is in the parent template. This enables the shared fields fragment pattern.
+`th:object` on a `<form>` propagates into included fragments — `*{field}` works in `task-form :: fields` even though the `<form>` tag is in the parent template.
 
-### HTMX Fragment Pattern
+### HTMX Patterns
 
-Controller detects HTMX request and returns a fragment:
-```java
-if (HtmxUtils.isHtmxRequest(request)) {
-    model.addAttribute("task", task);
-    return "tasks/task-card :: card";
-}
-return "redirect:/tasks";
-```
+**Fragment return** — controller detects HTMX via `HtmxUtils.isHtmxRequest(request)` and returns a fragment instead of redirect.
 
-### HTMX Event Trigger Pattern
+**Event triggers** — `HtmxUtils.triggerEvent("taskSaved")` returns a ResponseEntity with `HX-Trigger` header. JS listens on `document.body`. Active events: `taskSaved`, `taskDeleted`.
 
-For actions that need client-side side effects after success (close modal, refresh grid):
-```java
-// Controller fires a named event
-return HtmxUtils.triggerEvent("taskSaved");
-// → ResponseEntity 200 with header: HX-Trigger: taskSaved
-```
+**Single shared modal** — one modal shell in `tasks.html`, content loaded dynamically via HTMX (`hx-get` for forms) or JS data attributes (`data-task-id`, `data-task-title` for delete confirmation). Call `htmx.process(element)` after dynamic `hx-*` attribute assignment.
 
-```javascript
-// JavaScript listens for the event
-document.body.addEventListener('taskSaved', function() {
-    bootstrap.Modal.getInstance(...).hide();
-    showToast(APP_CONFIG.messages['toast.task.saved'], 'success');
-    doSearch(false);
-});
-```
-Active events: `taskSaved` (create/update), `taskDeleted` (delete).
-
-### Single Shared Modal Pattern
-
-One modal shell in `tasks.html` serves all tasks. Populated dynamically:
-
-**Task form modal** — content loaded via HTMX:
-```html
-<button hx-get="/tasks/new" hx-target="#task-modal-content" hx-swap="innerHTML">
-```
-`htmx:afterSwap` fires Bootstrap `modal.show()` when `#task-modal-content` is populated.
-
-**Delete confirmation modal** — content populated via JS:
-```javascript
-document.getElementById('task-delete-modal').addEventListener('show.bs.modal', function(e) {
-    const btn = e.relatedTarget; // the triggering delete button
-    document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
-    const confirmBtn = document.getElementById('delete-confirm-btn');
-    confirmBtn.setAttribute('hx-delete', TASKS_BASE + '/' + btn.dataset.taskId);
-    htmx.process(confirmBtn); // re-process after dynamic hx-delete assignment
-});
-```
-Delete buttons carry `data-task-id` and `data-task-title` attributes.
+**Out-of-band swaps** — `hx-swap-oob="true"` for updating multiple page areas from one response. Template uses `:: list` fragment for page renders, whole-file return (no `::`) for HTMX responses with OOB spans.
 
 ### Frontend Route Configuration Pattern
 
-Route base paths are defined once in `application.properties` and flow to two consumers:
+Routes defined in `application.properties`, exposed two ways:
+- **Templates**: `GlobalModelAttributes` → `${appRoutes}`. Use `@{}` for `th:href`/`th:action` (context-path-aware). Use `${appRoutes.tasks + ...}` only for HTMX `th:attr` values where `@{}` doesn't work.
+- **JavaScript**: `FrontendConfigController` → `/config.js` → `window.APP_CONFIG.routes` and `APP_CONFIG.messages`
 
-**Thymeleaf templates** — via `GlobalModelAttributes` which exposes `appRoutes` as a model attribute on every request:
-```html
-<!-- Use @{} for th:href and th:action — it's context-path-aware -->
-<a th:href="@{/tasks}">Tasks</a>
-<a th:href="@{/tasks/{id}/edit(id=${task.id})}">Edit</a>
-<form th:action="${isEdit} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}">
-
-<!-- Use ${appRoutes.tasks + ...} only for HTMX th:attr — @{} doesn't work there -->
-<button th:attr="hx-get=${appRoutes.tasks + '/new'}">New</button>
-<button th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle'}">Toggle</button>
-```
-
-**JavaScript** — via `FrontendConfigController` which serves `/config.js`, loaded before all page scripts:
-```js
-// In the browser after /config.js loads:
-window.APP_CONFIG = {
-  routes: { tasks: '/tasks', api: '/api', audit: '/admin/audit' },
-  messages: { "toast.task.saved": "Task saved successfully.", ... }  // all messages.properties keys
-};
-
-// Page scripts read routes and messages as plain globals:
-const TASKS_BASE = APP_CONFIG.routes.tasks;
-showToast(APP_CONFIG.messages['toast.task.saved'], 'success');
-```
-
-**Key rule:** use `@{}` for `th:href` / `th:action` — it adds the server's context path automatically. Use `${appRoutes.tasks + ...}` only where `@{}` cannot be used (HTMX `th:attr` values). Never use `${appRoutes.tasks}` inside a `th:href` — it bypasses context-path handling.
+**Key rule:** never use `${appRoutes.tasks}` inside `th:href` — it bypasses context-path handling.
 
 ### Constructor Injection Pattern
 
-Always use constructor injection:
-```java
-private final TaskService taskService;
-
-public TaskWebController(TaskService taskService) {
-    this.taskService = taskService;
-}
-```
-Not `@Autowired` field injection.
+Always use constructor injection, not `@Autowired` field injection.
 
 ### `@Unique` Validation Pattern
 
-Generic class-level annotation for field uniqueness, used on DTOs (not entities):
-```java
-@Unique(entity = User.class, field = User.FIELD_EMAIL, message = "{user.email.unique}")
-public class AdminUserRequest {
-    private Long id;  // null on create, set on edit — used to exclude self
-    // ...
-}
-```
-- Lives on DTOs only — Spring MVC `@Valid` has full Spring DI for the `EntityManager`
-- Entities use `@Column(unique = true)` for DB-level enforcement instead
-- `@Repeatable` — supports multiple unique fields on one DTO
-- `idField` defaults to `"id"` — validator reads it from the validated object to exclude self on update
+Class-level annotation on DTOs (not entities) for field uniqueness. `@Repeatable`, `idField` defaults to `"id"` for self-exclusion on update. Entities use `@Column(unique = true)` for DB-level enforcement.
 
 ### Global String Trimming
 
-`GlobalBindingConfig` (`@ControllerAdvice`) registers `StringTrimmerEditor(true)` — trims all form-bound strings and converts blank to null:
-- Applies to `@ModelAttribute`, `@RequestParam`, `@PathVariable`
-- Does NOT apply to `@RequestBody` (JSON)
-- `@NotBlank` catches null values naturally — no manual trim calls needed
+`GlobalBindingConfig` registers `StringTrimmerEditor(true)` — trims all form-bound strings, converts blank to null. Applies to `@ModelAttribute`/`@RequestParam`/`@PathVariable`, NOT `@RequestBody` (JSON).
 
 ### User Enable/Disable Pattern
 
-Users can be disabled instead of deleted when they have completed tasks or comments:
-- `User.enabled` field (default true); disabled users can't log in (`CustomUserDetails.isEnabled()`)
-- Disabled users hidden from assignment dropdowns and public user lists (`searchEnabledUsers()`)
-- `UserService.canDelete(id)` — true only if no completed tasks and no comments
-- Disabling unassigns open/in-progress tasks (resets to OPEN)
-- Admin user management shows delete vs disable confirmation based on `canDelete` result
+Users disabled (not deleted) when they have completed tasks or comments. `UserService.canDelete(id)` checks. Disabled users can't log in, hidden from assignment dropdowns. Disabling unassigns open/in-progress tasks.
 
 ### Site Settings Pattern
 
-Admin-managed settings stored in the `settings` table as key/value rows. The system has three layers:
+`Setting` entity → `Settings` POJO (defaults + `BeanWrapper` auto-mapping) → `SettingService.load()`. `GlobalModelAttributes` exposes `${settings}`.
 
-- **`Setting`** (entity in `model/`) — JPA entity for DB row (`setting_key` / `setting_value`)
-- **`Settings`** (typed POJO in `config/`) — single source of truth for all settings with defaults. DB keys must match field names exactly. `BeanWrapper` auto-maps DB rows to fields with type conversion (String → boolean, etc.)
-- **`SettingService.load()`** — reads all DB rows into a `Settings` object; missing keys keep field defaults
-
-`GlobalModelAttributes` exposes `${settings}` to all templates. To add a new setting:
-1. Add a field with its default in `Settings.java`
-2. Add a `KEY_*` constant whose value matches the field name
-3. Add `audit.field.<key>` to `messages.properties`
+To add a setting: (1) field + default in `Settings.java`, (2) `KEY_*` constant matching field name, (3) `audit.field.<key>` in `messages.properties`.
 
 ### User Preferences Pattern
 
-Per-user preferences stored in the `user_preferences` table as key/value rows. Mirrors the Site Settings pattern:
-
-- **`UserPreference`** (entity in `model/`) — JPA entity for DB row (`pref_key` / `pref_value`), unique per user+key
-- **`UserPreferences`** (typed POJO in `config/`) — defaults for all preferences. `BeanWrapper` auto-maps DB rows to fields
-- **`UserPreferenceService.load(userId)`** — reads all rows for a user into a `UserPreferences` object; missing keys keep defaults
-
-`GlobalModelAttributes` exposes `${userPreferences}` to all templates. Current preferences:
-- `taskView` — `"cards"` (default), `"table"`, `"calendar"`, or `"board"` — default view mode for task list
-- `defaultUserFilter` — `"mine"` (default) or `"all"` — default user filter on task list
+Mirrors Site Settings: `UserPreference` entity → `UserPreferences` POJO → `UserPreferenceService.load(userId)`. `GlobalModelAttributes` exposes `${userPreferences}`. Current prefs: `taskView` (cards/table/calendar/board), `defaultUserFilter` (mine/all).
 
 ### Profile Controller Pattern
 
-Three controllers handle User-related concerns:
-- **`UserController`** (`/users`) — public user list, visible to all authenticated users
-- **`ProfileController`** (`/profile`) — self-service: edit name/email, change password, manage preferences
-- **`UserManagementController`** (`/admin/users`) — admin: create/edit/delete/disable/enable users
-
-`ProfileRequest` DTO uses `@Unique` validation (same as admin user forms) with a hidden `id` field for self-exclusion on update.
+Three controllers for User concerns: `UserController` (`/users` — public list), `ProfileController` (`/profile` — self-service), `UserManagementController` (`/admin/users` — admin CRUD).
 
 ### Theme System
 
-Custom color schemes activated via `data-theme` attribute on `<html>`. Without it, stock Bootstrap renders.
+Custom color schemes via `data-theme` attribute on `<html>`. Palette tokens in `theme.css` mapped to Bootstrap `--bs-*` variables.
 
-- **`Settings.java`** — `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` constants; default theme stored as `"default"` (not null)
-- **`theme.css`** — palette tokens (`--theme-*`) per theme, mapped to Bootstrap `--bs-*` variables in shared `[data-theme]` rules
-- **`SettingsController`** — theme picker UI with color swatch cards; `ThemeOption` record holds preview colors (duplicated from CSS — unavoidable since CSS is client-side); validates theme against known `THEMES` list
-- FOUC prevention: `<meta name="_theme">` + inline JS in `<head>` sets `data-theme` before CSS renders
-- Adding a new theme: (1) add `THEME_*` constant in `Settings.java`, (2) add `[data-theme="name"]` palette in `theme.css`, (3) add `ThemeOption` in `SettingsController.THEMES`, (4) add `admin.settings.theme.<name>.{name,description}` to `messages.properties`
+To add a theme: (1) `THEME_*` constant in `Settings.java`, (2) `[data-theme="name"]` palette in `theme.css`, (3) `ThemeOption` in `SettingsController.THEMES`, (4) `admin.settings.theme.<name>.{name,description}` in `messages.properties`.
 
 ### Security Authorization Patterns
 
-Security is enforced at **three layers** — any one can block access:
-
-**1. URL-level (SecurityConfig)** — coarse-grained, role-based:
-```java
-.requestMatchers("/admin/**").hasRole(Role.ADMIN.name())
-.requestMatchers(HttpMethod.POST, "/api/tags").hasRole(Role.ADMIN.name())
-.anyRequest().authenticated()
-```
-Use for endpoints where the entire operation is role-restricted (admin panel, tag/user mutations).
-
-**2. Controller-level (ProjectAccessGuard / OwnershipGuard)** — fine-grained, project-role-based or ownership-based:
-```java
-// Project-scoped access (for task CRUD within projects):
-projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
-
-// Entity ownership (for comments):
-ownershipGuard.requireAccess(comment, currentDetails);
-```
-`ProjectAccessGuard` checks project membership and role (VIEWER/EDITOR/OWNER); admin bypasses all.
-`OwnershipGuard` checks entity ownership for non-project-scoped entities like comments.
-
-**3. Template-level** — UI visibility only (not a security boundary):
-```html
-<!-- canEdit: owner OR admin OR unassigned (task-specific business rule) -->
-<div th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
-    <button th:if="${canEdit}">Edit</button>
-</div>
-<li sec:authorize="hasRole('ADMIN')">Admin Panel</li>
-```
-`${#auth}` is the custom expression object; `sec:authorize` is Spring Security's Thymeleaf dialect.
+Three layers — any can block access:
+1. **URL-level (SecurityConfig)** — role-based (`hasRole(ADMIN)`, `.authenticated()`)
+2. **Controller-level** — `ProjectAccessGuard` (project membership: VIEWER/EDITOR/OWNER, admin bypasses) and `OwnershipGuard` (entity ownership for comments)
+3. **Template-level** — UI visibility only, not a security boundary. `${#auth}` custom expressions, `sec:authorize` Spring Security dialect
 
 ### OwnedEntity Pattern
 
-Entities that have an owner implement `OwnedEntity`:
-```java
-public interface OwnedEntity {
-    User getUser(); // null = unassigned
-}
-```
-Unassigned-entity rules are business decisions — handled in controllers (skip `requireAccess()` when `getUser() == null`) and templates (`${#auth.canEdit(task) || task.user == null}`), not in the generic auth utilities.
-`Task` and `Comment` implement `OwnedEntity` — enables generic ownership checks via `OwnershipGuard.requireAccess()` and `AuthExpressions.canEdit()`. Future owned entities just implement the interface.
+Entities with an owner implement `OwnedEntity` (`getUser()`, null = unassigned). Unassigned-entity rules are business decisions in controllers/templates, not in generic auth utilities. Implemented by `Task` and `Comment`.
 
 ### Translatable Enum Pattern
 
-Enums whose display names are user-facing implement the `Translatable` interface in `model/`:
-```java
-public interface Translatable {
-    String getMessageKey();
-}
-```
-
-Each constant stores its own message key:
-```java
-public enum TaskStatus implements Translatable {
-    BACKLOG("task.status.backlog"),
-    OPEN("task.status.open"),
-    // ...
-    private final String messageKey;
-}
-```
-
-`Messages.get(Translatable)` is a convenience method that resolves the key via `MessageSource`. Templates use `#{${enum.messageKey}}` instead of fragile `name().toLowerCase()` ternary chains:
-```html
-<span th:text="#{${task.status.messageKey}}">Status</span>
-```
-
-Currently implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`.
-
-`TaskStatusFilter` is excluded — it is a query parameter enum used internally and has no display keys of its own.
-
-### HTMX Out-of-Band Swap Pattern
-
-For updating multiple areas of the page from a single HTMX response (e.g., refreshing comment counts after add/delete), use `hx-swap-oob`:
-
-**Template with dual usage** — fragment selector for page renders, whole-file return for HTMX responses:
-```html
-<th:block>
-    <!-- Primary swap target — selected by :: list -->
-    <div th:fragment="list" id="task-activity">
-        ...activity timeline...
-    </div>
-    <!-- OOB spans — only included when whole file is returned (HTMX response) -->
-    <span id="task-activity-panel-heading" hx-swap-oob="true"
-          th:text="#{activity.heading(${activityCount})}">Activity (0)</span>
-</th:block>
-```
-
-- `th:replace="~{tasks/task-activity :: list}"` — returns only the fragment (page render)
-- Controller returns `"tasks/task-activity"` (no `::`) — returns fragment + OOB spans (HTMX response)
-
-This replaces JS-based count updates with server-driven updates. No client-side counting logic needed.
+Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`. `TaskStatusFilter` is excluded (internal query param enum).
 
 ### Confirm Dialog Pattern
 
-`showConfirm(options, onConfirm)` in `utils.js` — reusable styled Bootstrap modal replacing native `window.confirm()`. The modal is created fresh each call and destroyed on hide (avoids Bootstrap backdrop stacking issues with nested modals).
-
-**Options** (only `message` is required):
-```javascript
-showConfirm({
-    message: 'Do you want to delete this?',  // body text
-    title: 'Delete Item',                     // header title
-    confirmText: 'Delete',                    // confirm button label
-    cancelText: 'Cancel',                     // cancel button label
-    headerClass: 'bg-danger text-white',      // header CSS classes
-    confirmClass: 'btn btn-danger',           // confirm button CSS classes
-    width: '420px',                           // modal width
-}, () => { /* on confirm */ });
-```
-
-**HTMX integration** — automatically intercepts `htmx:confirm` events. Use `data-confirm-*` attributes for per-element customization:
-```html
-<button hx-delete="/tasks/1/comments/5"
-        hx-confirm="Do you want to delete this comment?"
-        data-confirm-title="Delete Comment"
-        data-confirm-text="Delete">
-```
+`showConfirm(options, onConfirm)` in `utils.js` — Bootstrap modal replacing `window.confirm()`. Created fresh per call, destroyed on hide. HTMX integration via `htmx:confirm` interception with `data-confirm-*` attributes.
 
 ### WebSocket + STOMP Pattern
 
-Real-time features use Spring WebSocket with STOMP protocol:
+- `/ws` endpoint (SockJS fallback), broker on `/topic` (broadcast) and `/queue` (user-specific)
+- `PresenceService` — `ConcurrentHashMap` tracks online users by session
+- `NotificationService.create()` — DB-first, then pushes via `SimpMessagingTemplate`
+- Live update banners — clients subscribe to `/topic/tasks`, show banner on changes by other users, "Refresh" re-fetches. Self-filtering via `<meta name="_userId">`
+- Notification event bus (`notifications.js`) — custom DOM events (`notification:received/read/allRead/cleared`) decouple producers from consumers
 
-- **`WebSocketConfig`** — `/ws` endpoint with SockJS fallback; simple broker on `/topic` (broadcast) and `/queue` (user-specific)
-- **`presence/PresenceService`** — `ConcurrentHashMap` tracks online users by WebSocket session
-- **`presence/PresenceEventListener`** — listens for `SessionConnectEvent`/`SessionDisconnectEvent`, broadcasts presence changes to `/topic/presence`
-- **`NotificationService.create()`** — saves to DB first, then pushes to user via `SimpMessagingTemplate.convertAndSendToUser(email, "/queue/notifications", payload)`
-- **`event/WebSocketEventListener`** — broadcasts `TaskChangeEvent` to `/topic/tasks` and `CommentChangeEvent` to `/topic/tasks/{id}/comments`; clients show stale-data banners
-
-**Live task update banner** — when another user modifies a task, viewers see an info banner with a "Refresh" link:
-- Task list page: subscribes to `/topic/tasks`, shows banner for any task change, "Refresh" re-runs current filters via `doSearch()`
-- Task detail page: subscribes to `/topic/tasks`, filters by specific task ID, "Refresh" reloads page
-- Task modal: subscribes on open, unsubscribes on close, "Refresh" re-fetches modal content via HTMX
-- Self-filtering: `<meta name="_userId">` exposes current user ID; own changes are ignored
-
-**Client-side connection** (`websocket.js`):
-```javascript
-// Shared connection — multiple scripts register callbacks before connect
-window.stompClient = { onConnect: function(cb) { callbacks.push(cb); } };
-// After STOMP connects, each callback receives the client for subscribing
-```
-
-**Notification event bus** (`notifications.js`) — custom DOM events decouple producers from consumers:
-```javascript
-// Events: notification:received, notification:read, notification:allRead, notification:cleared
-// Three consumers: badge, dropdown, notifications page — all listen independently
-document.dispatchEvent(new CustomEvent('notification:received', { detail: data }));
-```
-
-`window.notificationHelpers` exposes `getIcon()`, `formatTime()`, `escapeHtml()`, `fire()` for the notifications page to reuse.
-
-**WebSocket payload convention:** payloads shared by multiple classes (e.g., `PresenceResponse` used by both REST API and WebSocket broadcast) go in `dto/`. Event records that are both Spring events and WebSocket payloads go in `event/` (e.g., `TaskChangeEvent`, `CommentChangeEvent`). Naming: `*Response` for data returned to clients, `*Event` for push-only broadcasts.
+**Payload convention:** `*Response` in `dto/` for data returned to clients, `*Event` in `event/` for push-only broadcasts.
 
 ### Event-Driven Side Effects Pattern
 
-Services publish domain events via `ApplicationEventPublisher`; three independent listeners handle all side effects:
+Services publish domain events via `ApplicationEventPublisher`. Three listeners:
+- `AuditEventListener` (audit/) — persists audit logs (DB)
+- `NotificationEventListener` (event/) — routes notifications (DB + WebSocket)
+- `WebSocketEventListener` (event/) — broadcasts ephemeral events (WebSocket only)
 
-| Listener | Package | What it does | Persistence |
-|---|---|---|---|
-| `AuditEventListener` | `audit/` | Persists audit logs | DB |
-| `NotificationEventListener` | `event/` | Routes persistent notifications to recipients | DB + WebSocket push |
-| `WebSocketEventListener` | `event/` | Broadcasts ephemeral stale-data/comment events | WebSocket only |
+Domain events: `TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent` (`actor` field). WebSocket events: `TaskChangeEvent`, `CommentChangeEvent` (`userId` field).
 
-**Domain events** (consumed by Java listeners only, `actor` field naming):
-- `TaskAssignedEvent(task, actor)` — task assigned to someone new
-- `TaskUpdatedEvent(task, actor)` — task fields changed
-- `CommentAddedEvent(comment, task, actor)` — comment created
-
-**WebSocket events** (serialized to JSON for JS clients, `userId` field naming):
-- `TaskChangeEvent(action, taskId, userId)` — task created/updated/deleted
-- `CommentChangeEvent(action, taskId, commentId, userId)` — comment created/deleted
-
-Services only do business logic + `eventPublisher.publishEvent()` — no `SimpMessagingTemplate`, `NotificationService`, or `MessageSource` dependencies. Scheduled jobs (`ScheduledTaskService`) still call `NotificationService` directly since cron-triggered actions don't fit the event pattern.
+Services never depend on `SimpMessagingTemplate`, `NotificationService`, or `MessageSource` — only `eventPublisher`. Exception: `ScheduledTaskService` calls `NotificationService` directly (cron doesn't fit event pattern).
 
 ### Package-by-Concern Organization
 
-Event-related code is organized by domain concern, not by technical role:
-- `audit/` — audit events, listeners, service, utilities
-- `event/` — domain events, notification listener, WebSocket listener
-- `presence/` — presence service and session lifecycle listener
-- `report/` — shared report/export logic used by multiple controllers
-
-Controllers always stay in `controller/` (layer package) — never move them into feature packages. Feature packages are for internal infrastructure only.
+Feature packages for internal infrastructure: `audit/`, `event/`, `presence/`, `report/`. Controllers always stay in `controller/` — never move them into feature packages.
 
 ### Project Access Pattern
 
-Every task belongs to a project. Access is controlled via `ProjectAccessGuard` at the controller level:
-- **View access** — any project member (VIEWER, EDITOR, OWNER) or admin
-- **Edit access** — EDITOR or OWNER role, or admin
-- **Owner access** — OWNER role only, or admin
-
-Cross-project views (`/tasks`, `/api/tasks`) use `accessibleProjectIds`:
-```java
-List<Long> accessibleProjectIds = AuthExpressions.isAdmin(user)
-    ? null  // admin sees all
-    : projectService.getAccessibleProjectIds(user.getId());
-taskService.searchAndFilterTasksForProjects(accessibleProjectIds, ...);
-```
-`null` means "no project filter" (admin bypass). Non-null filters to only accessible projects.
+Every task belongs to a project. `ProjectAccessGuard` enforces view/edit/owner access at controller level. Cross-project views use `accessibleProjectIds` (`null` = admin bypass, non-null = filtered list).
 
 ### Cross-Service Dependency Rule
 
-A service uses its own repository for its own domain and delegates to other services for other domains. Never call another domain's repository directly — business logic in the owning service would be bypassed.
-
-`TaskQueryService` and `CommentQueryService` exist to break circular dependencies while respecting this rule:
-- `TaskQueryService` — read-only task lookups + `unassignTasks()`; used by `CommentService` and `UserService`
-- `CommentQueryService` — read-only comment lookups; used by `UserService`
+Services use their own repository, delegate to other services for other domains. `TaskQueryService` and `CommentQueryService` break circular dependencies (read-only + `unassignTasks()`).
 
 ### Transactional Boundaries
 
-**OSIV is disabled** (`spring.jpa.open-in-view=false`). Lazy associations must be loaded within a transaction — either via `@EntityGraph` on repository methods or within a `@Transactional` service method.
-
-**Class-level `@Transactional`** on services with write methods (`TaskService`, `UserService`, `ProjectService`, `CommentService`, `TagService`, `SettingService`, `UserPreferenceService`). Method-level `@Transactional` for isolated write methods in otherwise read-only services (e.g., `ScheduledTaskService.purgeOldNotifications()`).
-
-**`@EntityGraph`** on repository methods whose results are used outside the service transaction (e.g., mapped by MapStruct in controllers):
-```java
-@EntityGraph(attributePaths = {"tags", "user", "checklistItems"})
-Optional<Task> findById(Long id);
-
-@EntityGraph(attributePaths = {"tags", "user"})
-List<Task> findAll();
-```
-Only include the associations that callers actually access. `findById` includes `checklistItems` (needed by edit form); list queries include only `tags` and `user` (used by mapper/cards).
-
-**`@TransactionalEventListener`** on all event listeners (replaces `@EventListener`). Fires after the publishing transaction commits. `AuditEventListener` uses `@Transactional(propagation = Propagation.REQUIRES_NEW)` because it writes to its own table in a new transaction.
-
-**Exception: `AuthAuditListener`** uses `@EventListener` (not `@TransactionalEventListener`) and saves directly to `AuditLogRepository`. Spring Security publishes auth events outside any Spring-managed transaction, so `@TransactionalEventListener` would never fire. This listener manages its own `@Transactional` boundary.
+- **OSIV disabled** — lazy associations must load within `@Transactional` or via `@EntityGraph`
+- **Class-level `@Transactional`** on write services; method-level for isolated writes in read-only services
+- **`@EntityGraph`** on repo methods used outside service transactions (MapStruct mapping). Only include associations callers access
+- **`@TransactionalEventListener`** on all event listeners (fires after commit). `AuditEventListener` uses `REQUIRES_NEW`. Exception: `AuthAuditListener` uses `@EventListener` because Spring Security auth events fire outside managed transactions
 
 ### SecurityUtils Pattern
 
-Central utility for resolving the current user from `SecurityContextHolder`:
-```java
-SecurityUtils.getCurrentUser()        // → User entity or null
-SecurityUtils.getCurrentUserDetails() // → CustomUserDetails or null
-SecurityUtils.getUserFrom(principal)  // → User entity from Principal (for WebSocket events)
-```
-All other classes (`GlobalModelAttributes`, `AuthDialect`, `PresenceEventListener`, services) delegate here instead of duplicating resolution logic.
+Central utility: `SecurityUtils.getCurrentUser()`, `.getCurrentUserDetails()`, `.getUserFrom(principal)`. All other classes delegate here.
 
 ### CSRF Token Pattern for HTMX
 
-Thymeleaf auto-injects CSRF into `<form th:action>` tags. For standalone HTMX buttons (not inside a form), `utils.js` reads `<meta>` tags and adds the token header:
-```javascript
-document.body.addEventListener('htmx:configRequest', function(e) {
-    e.detail.headers['X-CSRF-TOKEN'] = document.querySelector('meta[name="_csrf"]').content;
-});
-```
-The `<meta>` tags are set in `base.html`'s `<head>`. REST API (`/api/**`) is CSRF-exempt.
+`utils.js` reads `<meta>` CSRF tags and adds token header via `htmx:configRequest`. REST API (`/api/**`) is CSRF-exempt.
 
 ### Audit Event Categories
 
-`AuditEvent.CATEGORIES` is the single source of truth for audit filter categories. Every event constant must be prefixed with one of these categories (e.g., `TASK_CREATED`, `AUTH_SUCCESS`, `PROFILE_UPDATED`).
-
-- **`AuditLogSpecifications.withCategory()`** — derives `LIKE` prefix from `CATEGORIES` list (no hardcoded switch)
-- **`AuditController`** — passes `CATEGORIES` to model
-- **`audit.html`** — generates filter buttons dynamically via `th:each`
-
-To add a new audit category: add the prefix to `CATEGORIES`, define event constants with that prefix, add `admin.audit.filter.<name>` message key. Filter and UI update automatically.
+`AuditEvent.CATEGORIES` is the single source of truth. Every constant must be prefixed with a category. To add: add prefix to `CATEGORIES`, define constants, add `admin.audit.filter.<name>` message key.
 
 ### CSV Export Pattern
 
-`CsvWriter` utility in `util/` — generic CSV writer that takes headers, a list of any type, and a row mapper lambda:
-```java
-CsvWriter.write(response, "tasks.csv", headers, tasks, task -> new String[]{...});
-```
-Handles escaping (commas, quotes, newlines), sets `Content-Type` and `Content-Disposition` headers. Reusable for any entity export.
-
-The task export endpoint (`GET /tasks/export`) accepts the same filter params as the task list, uses `Pageable.unpaged(sort)` to bypass pagination, and delegates to the same `searchAndFilterTasks` service method.
+`CsvWriter.write(response, filename, headers, items, rowMapper)` — generic, handles escaping and headers. Export endpoint uses same filters as list, with `Pageable.unpaged(sort)`.
 
 ### ProblemDetail Error Response Pattern
 
-REST API errors use RFC 9457 `ProblemDetail` format (`application/problem+json`). `ApiExceptionHandler` extends `ResponseEntityExceptionHandler` and handles:
-
-| Exception | Status | Detail |
-|---|---|---|
-| `MethodArgumentNotValidException` | 400 | "Validation failed" + `errors` map |
-| `EntityNotFoundException` | 404 | Exception message |
-| `StaleDataException` | 409 | Exception message |
-| `AccessDeniedException` | 403 | "Access denied" |
-| `Exception` (catch-all) | 500 | "An unexpected error occurred" |
-
-```json
-{"type":"about:blank","title":"Not Found","status":404,"detail":"Task not found with id: 99"}
-```
-
-Validation errors include field-level details via `ProblemDetail.setProperty("errors", fieldErrors)`. Scoped to `cc.desuka.demo.controller.api` — web UI errors handled separately by `WebExceptionHandler`.
+REST API uses RFC 9457 `ProblemDetail` via `ApiExceptionHandler` (scoped to `controller.api`). Web UI errors handled separately by `WebExceptionHandler`.
 
 ### @Mention Pattern
 
-Comments support @mentions via Tribute.js autocomplete. The system has three layers:
-
-**Client-side (`mentions.js`):**
-- Attaches to any element with `[data-mention]` attribute (input or textarea)
-- Tribute.js with `positionMenu: false` — CSS-only positioning (above input via `bottom: 100%`)
-- Shows clean `@Bob Smith` in the input; tracks name→ID mapping in a `WeakMap`
-- Encodes to `@[Bob Smith](userId:2)` before submission via `htmx:configRequest` and form `submit` listeners
-- Atomic backspace/delete — `@Bob Smith` is deleted as a single token
-- `isMentionMenuActive()` — prevents Enter-to-post while dropdown is open
-
-**Server-side (`MentionUtils`):**
-- `@Component("mentionUtils")` for Thymeleaf `@beanName` access
-- `extractMentionedUserIds(text)` — static, returns `List<Long>` from encoded tokens
-- `renderHtml(text)` — instance method, converts tokens to `<span class="mention">` with HTML escaping
-- Pattern: `@[Display Name](userId:N)`
-
-**Notification subscription:**
-- @Mentioned users get `COMMENT_MENTIONED` notification on the mentioning comment
-- Being mentioned subscribes you to the conversation — all future comments on that task notify you
-- `CommentService.findPreviouslyMentionedUserIds()` parses all comment texts for a task
-
-To add @mentions to a new field: add `data-mention` attribute to the input/textarea element.
+Tribute.js autocomplete on `[data-mention]` elements. Client encodes `@[Name](userId:N)`, server `MentionUtils` extracts IDs and renders HTML. Mentioned users get `COMMENT_MENTIONED` notification and subscribe to conversation. To add mentions to a new field: add `data-mention` attribute.
 
 ### Shared Task Layout Pattern
 
-`task-layout.html` contains the two-column layout fragment (`columns`) shared by both `task-modal.html` and `task.html`:
-- Left column: form fields (scrollable)
-- Right column: checklist (top 50%) + activity timeline (bottom 50%)
-- Checklist add button in header (always visible above scroll)
-- Activity comment input pinned at bottom via flexbox
-
-The comment input uses a `<div>` instead of `<form>` to avoid invalid nested forms (the outer task `<form>` wraps the layout). HTMX `hx-post` on the button with `hx-include="#comment-text"` replaces the inner form.
+`task-layout.html` — two-column layout shared by modal and full page. Comment input uses `<div>` (not `<form>`) to avoid nested forms; HTMX `hx-post` with `hx-include` replaces inner form.
 
 ### Checklist Pattern
 
-Tasks have an embedded checklist via `@ElementCollection`:
-```java
-@ElementCollection
-@CollectionTable(name = "task_checklist_items", joinColumns = @JoinColumn(name = "task_id"))
-@OrderColumn(name = "position")
-private List<ChecklistItem> checklistItems;
-```
-
-`ChecklistItem` is an `@Embeddable` with `text` and `checked` fields. Form binding uses parallel arrays (`checklistTexts[]` + `checklistChecked[]`). Checklist progress shown on cards/table rows via `@Formula` computed columns.
-
-Checklist items support drag-and-drop reordering via native HTML Drag and Drop API. Each item has a grip handle (`bi-grip-vertical`). Reordering DOM elements naturally updates the parallel arrays on form submission — no extra position tracking needed.
-
-Checklist is audited in `Task.toAuditSnapshot()` using `[x]/[ ]` format for readable diffs.
+`@ElementCollection` with `@OrderColumn`. `ChecklistItem` embeddable (`text` + `checked`). Form binding via parallel arrays. Drag-and-drop reordering via native HTML DnD API. Audited in `toAuditSnapshot()` with `[x]/[ ]` format.
 
 ### Activity Timeline Pattern
 
-`TimelineService` merges comments and audit history into a single chronological stream of `TimelineEntry` records. Each entry has a `type()` ("comment" or "audit") and type-specific accessor methods.
-
-`task-activity.html` renders the timeline with visual timeline dots (colored by action type) and connecting lines. Uses the dual-usage template pattern: `:: list` for page includes, whole-file for HTMX responses with OOB count swaps.
+`TimelineService` merges comments and audit history into chronological `TimelineEntry` stream. `task-activity.html` uses dual-usage template pattern for page includes vs HTMX responses.
 
 ### CSS Organization
 
-- **`base.css`** — styles used on every page; included by `base.html`
-- **`tasks.css`** — styles only needed on task pages; passed to `head(title, cssFile)` parameter
-- Task-specific JavaScript files live in `static/js/tasks/` subfolder (e.g., `tasks/tasks.js`, `tasks/task-board.js`)
-- For btn-outline active state overrides, use Bootstrap CSS custom properties (`--bs-btn-active-bg`, etc.) rather than class overrides
-- Bootstrap utility classes use `!important` — override with `!important` if needed
-
-### Page-Specific CSS via Head Fragment
-
-```html
-<!-- base.html head fragment accepts optional cssFile -->
-<head th:fragment="head(title, cssFile)">
-    <link rel="stylesheet" th:href="@{/css/base.css}">
-    <link th:if="${cssFile != null}" rel="stylesheet" th:href="@{${cssFile}}">
-</head>
-
-<!-- tasks.html passes a message key for the title -->
-<head th:replace="~{layouts/base :: head(#{page.title.tasks}, '/css/tasks.css')}"></head>
-
-<!-- task.html: conditional title using message keys -->
-<head th:replace="~{layouts/base :: head(${isEdit} ? #{page.title.task.edit} : #{page.title.task.create}, '/css/tasks.css')}"></head>
-
-<!-- Future non-task pages pass null for no page-specific CSS -->
-<head th:replace="~{layouts/base :: head(#{page.title.some.page}, null)}"></head>
-```
-
-## Configuration
-
-### Spring Profiles
-
-The application uses Spring profiles to separate environment-specific configuration:
-
-- **`dev`** (default) — H2 in-memory database, demo data seeding, SQL logging, H2 console
-- **`prod`** — PostgreSQL, Flyway migrations, no demo data, no SQL logging, Swagger UI disabled
-- **`test`** — H2 in-memory (separate `testdb`), no SQL logging, Flyway disabled
-
-`spring.profiles.active=dev` is set in `application.properties`. In production, override via environment variable: `SPRING_PROFILES_ACTIVE=prod`.
-
-**Profile-gated components:**
-- `DataLoader` — `@Profile("dev")` — seeds 20 demo users, project-specific tasks, tags, comments
-- `H2DevConfig` — `@Profile("dev")` — H2 web server (port 8082) + H2 console servlet
-- `DevSecurityConfig` — `@Profile("dev")` — permits `/h2-console/**`, disables CSRF and relaxes frame options for H2 console only
-
-### Application Properties (`application.properties`)
-
-Shared across all profiles:
-```properties
-spring.application.name=demo
-spring.profiles.active=dev
-
-spring.jpa.open-in-view=false
-spring.mvc.problemdetails.enabled=true
-
-spring.data.web.pageable.serialization-mode=via-dto
-
-spring.web.resources.chain.strategy.content.enabled=true
-spring.web.resources.chain.strategy.content.paths=/**
-
-springdoc.api-docs.path=/api-docs
-springdoc.swagger-ui.path=/swagger-ui.html
-springdoc.swagger-ui.operations-sorter=method
-
-management.endpoints.web.exposure.include=health,info
-management.endpoint.health.show-details=when-authorized
-management.info.env.enabled=true
-```
-
-### Dev Properties (`application-dev.properties`)
-
-```properties
-# H2 in-memory database
-spring.datasource.url=jdbc:h2:mem:taskdb
-spring.datasource.driver-class-name=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-
-# JPA / Hibernate — dev settings
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.show-sql=true
-spring.jpa.properties.hibernate.format_sql=true
-
-# H2 Console: http://localhost:8080/h2-console
-spring.h2.console.enabled=true
-
-# Flyway disabled — dev uses ddl-auto=create-drop
-spring.flyway.enabled=false
-```
-
-### Prod Properties (`application-prod.properties`)
-
-```properties
-# PostgreSQL — configured via environment variables
-spring.datasource.url=${DATABASE_URL}
-spring.datasource.driver-class-name=org.postgresql.Driver
-
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.show-sql=false
-
-spring.flyway.enabled=true
-spring.flyway.locations=classpath:db/migration
-
-spring.h2.console.enabled=false
-springdoc.api-docs.enabled=false
-springdoc.swagger-ui.enabled=false
-```
-
-`app.routes.*` properties are **not** listed here — their defaults live in `AppRoutesProperties.java` (the single source of truth). Only add them to `application.properties` when overriding the defaults.
-
-### Maven Dependencies (pom.xml)
-
-Key dependencies:
-- `spring-boot-starter-web` - REST API support
-- `spring-boot-starter-data-jpa` - JPA/Hibernate
-- `spring-boot-starter-thymeleaf` - Template engine
-- `spring-boot-starter-security` - Authentication and authorization
-- `thymeleaf-extras-springsecurity7` - `sec:authorize` attributes in Thymeleaf templates
-- `spring-boot-starter-validation` - Bean validation
-- `spring-boot-starter-actuator` - Health and metrics endpoints
-- `spring-boot-starter-flyway` - Flyway database migrations (Spring Boot 4 requires the starter, not raw `flyway-core`)
-- `flyway-database-postgresql` - Flyway PostgreSQL dialect support
-- `postgresql` (runtime) - PostgreSQL JDBC driver
-- `spring-boot-devtools` - Hot reload during development
-- `bootstrap` (WebJar 5.3.3) - CSS framework
-- `htmx.org` (WebJar 2.0.4) - AJAX library
-- `h2` (2.4.240) - In-memory database (dev/test)
-- `lombok` - Boilerplate reduction (not used on entities)
-- `mapstruct` (1.6.3) - Compile-time DTO mapping code generation
-  - `mapstruct-processor` in `annotationProcessorPaths` (after Lombok — order matters)
-- `spring-boot-starter-websocket` - WebSocket + STOMP support
-- `stomp-websocket` (WebJar 2.3.4) - STOMP.js client library
-- `springdoc-openapi-starter-webmvc-ui` (3.0.2) - OpenAPI 3.1 spec + Swagger UI
-- `spotless-maven-plugin` (2.44.5) - Code formatting enforcement
-  - `google-java-format` (1.30.0) AOSP style (4-space indent)
-  - Runs `apply` goal at `compile` phase — auto-formats on every build
-  - Manual check: `./mvnw spotless:check`
+- `base.css` for every page, `tasks.css` for task pages (via `head(title, cssFile)` fragment parameter)
+- Task JS files in `static/js/tasks/` subfolder
+- Bootstrap active state overrides: use CSS custom properties (`--bs-btn-active-bg`). Bootstrap utilities use `!important` — override with `!important`
 
 ## Development Workflow
 
 ### Running the Application
 
 ```bash
-./mvnw spring-boot:run
-```
-Application runs on: `http://localhost:8080`
-
-**With remote debugging** (port 5005):
-```bash
-./mvnw spring-boot:run -Pdebug
+./mvnw spring-boot:run                    # http://localhost:8080
+./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
+./mvnw test                               # 207 tests, 23 test classes
+./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 
-### Development Workflow with MapStruct
+Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
 
-MapStruct generates `TaskMapperImpl` at **compile time** via the annotation processor.
-DevTools hot-reload handles most code changes automatically, but not annotation processor output.
+### MapStruct Workflow
 
-| Change type | Action needed |
-|---|---|
-| Controller, service, template, JS, CSS | Nothing — DevTools hot-reloads automatically |
-| `TaskMapper.java` (the interface) | Run `./mvnw compile` in a second terminal |
-| Added a new dependency to `pom.xml` | Restart the app (`Ctrl+C`, then `./mvnw spring-boot:run`) |
+DevTools hot-reloads most changes. MapStruct mapper changes require `./mvnw compile` in a second terminal — DevTools picks up the new classes automatically.
 
-**Two-terminal dev setup (recommended when actively editing mappers):**
-```bash
-# Terminal 1 — keep running
-./mvnw spring-boot:run
+### Spring Profiles
 
-# Terminal 2 — run after changing TaskMapper.java
-./mvnw compile
-```
-DevTools detects the new `.class` files from `target/` and automatically restarts the context.
+- **`dev`** (default) — H2, demo data seeding, SQL logging, H2 console
+- **`prod`** — PostgreSQL, Flyway migrations, no demo data, Swagger UI disabled
+- **`test`** — H2 (`testdb`), no SQL logging, Flyway disabled
 
-### Available URLs
-
-**Authentication:**
-- `http://localhost:8080/login` - Login page (email + password)
-- `http://localhost:8080/register` - Self-registration (creates `USER` role)
-- Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
-
-**Web UI** (requires login):
-- `http://localhost:8080/` - Home page
-- `http://localhost:8080/projects` - Project list
-- `http://localhost:8080/projects/new` - Create project
-- `http://localhost:8080/projects/{id}` - Project home with task filtering
-- `http://localhost:8080/projects/{id}/settings` - Project settings and member management (owner/admin)
-- `http://localhost:8080/tasks` - Cross-project task list (cards, table, calendar, or board view)
-- `http://localhost:8080/tasks/new` - Create task (full page; modal preferred)
-- `http://localhost:8080/tasks/{id}/edit` - Edit task (full page; modal preferred)
-- `http://localhost:8080/tasks/export` - CSV export of filtered tasks (respects current filters/sort)
-- `http://localhost:8080/dashboard` - Per-project dashboard (real-time stats, recent tasks, activity feed); admins see additional system overview section
-- `http://localhost:8080/tags` - Tag list
-- `http://localhost:8080/users` - User list with search
-- `http://localhost:8080/admin/users` - User management: create/edit/delete/disable/enable (admin only)
-- `http://localhost:8080/admin/tags` - Tag management: create/delete with task counts (admin only)
-- `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
-- `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
-- `http://localhost:8080/notifications` - Notification inbox (paginated, mark-read, clear-all)
-- `http://localhost:8080/profile` - User profile: edit name/email, change password, preferences
-
-**REST API — Tasks** (requires login; CSRF exempt):
-- `GET /api/tasks` - Paginated task list (default: page=0, size=20, sort=createdAt,desc)
-  - Filter params: `search`, `status` (ALL/BACKLOG/OPEN/IN_PROGRESS/IN_REVIEW/COMPLETED/CANCELLED), `overdue`, `priority`, `userId`, `tags`
-  - Pagination params: `page`, `size`, `sort` (Spring Data standard)
-- `GET /api/tasks/{id}` - Get task by ID
-- `POST /api/tasks` - Create task (auto-assigned to caller; admins can specify `userId`)
-- `PUT /api/tasks/{id}` - Update task (owner or admin; requires `version` for optimistic locking)
-- `DELETE /api/tasks/{id}` - Delete task (owner or admin)
-- `PATCH /api/tasks/{id}/toggle` - Toggle completion (any authenticated user)
-- `GET /api/tasks/search?keyword=...` - Search by title/description
-- `GET /api/tasks/incomplete` - Get incomplete tasks only
-
-**REST API — Comments** (requires login; CSRF exempt):
-- `GET /api/tasks/{taskId}/comments` - List comments for a task
-- `POST /api/tasks/{taskId}/comments` - Add comment (201 Created; body: `{"text": "..."}`)
-- `DELETE /api/tasks/{taskId}/comments/{id}` - Delete comment (owner or admin, 204 No Content)
-
-**REST API — Tags** (requires login):
-- `GET /api/tags` - List all tags
-- `GET /api/tags/{id}` - Get tag by ID
-- `POST /api/tags` - Create tag (admin only, 201 Created)
-- `DELETE /api/tags/{id}` - Delete tag (admin only, 204 No Content)
-
-**REST API — Users** (requires login):
-- `GET /api/users` - List all users (sorted A-Z)
-- `GET /api/users?q=ali` - Search users by name (case-insensitive substring)
-- `GET /api/users/{id}` - Get user by ID
-- `POST /api/users` - Create user (admin only, 201 Created)
-- `DELETE /api/users/{id}` - Delete user (admin only, 204 No Content)
-
-**REST API — Notifications** (requires login; CSRF exempt):
-- `GET /api/notifications` - Paginated list (default: page=0, size=10)
-- `GET /api/notifications/unread-count` - Unread badge count (`{"count": n}`)
-- `PATCH /api/notifications/{id}/read` - Mark one as read (204 No Content)
-- `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
-- `DELETE /api/notifications` - Clear all notifications (204 No Content)
-
-**REST API — Project Members** (requires login):
-- `GET /api/projects/{id}/members` - All enabled members of a project
-- `GET /api/projects/{id}/members/assignable` - Editors and owners only (for task assignment)
-
-**REST API — Saved Views** (requires login; CSRF exempt):
-- `GET /api/views` - List saved views for current user
-- `POST /api/views` - Save current filters as a named view
-- `DELETE /api/views/{id}` - Delete saved view (owner or admin)
-
-**REST API — Presence** (no authentication required):
-- `GET /api/presence` - Online users (`{"users": [...], "count": n}`)
-
-**WebSocket** (STOMP over SockJS):
-- Endpoint: `ws://localhost:8080/ws`
-- Subscribe: `/user/queue/notifications` — real-time notification push
-- Subscribe: `/topic/presence` — online user list broadcast
-
-**API Documentation** (public, no auth needed):
-- `http://localhost:8080/swagger-ui.html` - Swagger UI (interactive API explorer)
-- `http://localhost:8080/api-docs` - OpenAPI 3.1 spec (JSON)
-
-**Monitoring (public, no auth needed):**
-- `http://localhost:8080/actuator/health` - Application health status
-- `http://localhost:8080/actuator/info` - Application info
-
-**Dev Tools:**
-- `http://localhost:8080/h2-console` - H2 database console
-  - JDBC URL: `jdbc:h2:mem:taskdb` / Username: `sa` / Password: (empty)
-
-### Testing with rest.http
-
-The project includes `rest.http` for testing REST API endpoints with VS Code REST Client extension. CSRF is disabled for `/api/**`, so only a valid session cookie is needed. Log in via browser, copy your `JSESSIONID` from DevTools, and paste it in the `@sessionId` variable.
-
-## Testing
-
-### Running Tests
-
-```bash
-./mvnw test
-```
-
-207 tests across 23 test classes. All use the `test` profile (`@ActiveProfiles("test")`).
-
-### Test Properties (`application-test.properties`)
-
-```properties
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.datasource.driver-class-name=org.h2.Driver
-spring.datasource.username=sa
-spring.datasource.password=
-spring.jpa.hibernate.ddl-auto=create-drop
-spring.jpa.show-sql=false
-```
-
-Separate H2 database (`testdb` vs `taskdb`) so tests don't collide with a running dev instance.
-
-### Test Categories
-
-| Test class | Type | What it tests |
-|---|---|---|
-| `TaskServiceTest` | Unit (Mockito) | Service CRUD, optimistic locking, status transitions, assignment |
-| `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
-| `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
-| `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
-| `ProjectServiceTest` | Unit (Mockito) | Project CRUD, member management, access checks, last-owner protection |
-| `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
-| `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
-| `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |
-| `NotificationEventListenerTest` | Unit (Mockito) | Task assigned/updated/comment routing, self-exclusion, dedup |
-| `WebSocketEventListenerTest` | Unit (Mockito) | Broadcasts to correct STOMP topics |
-| `MentionUtilsTest` | Unit | Extract IDs, render HTML links, XSS escaping |
-| `TaskSpecificationsTest` | `@DataJpaTest` | JPA Specifications: status/keyword/user/priority/overdue/tag filters |
-| `AuditLogSpecificationsTest` | `@DataJpaTest` | Category/search/date-range filters, combined build |
-| `UniqueValidatorTest` | `@DataJpaTest` + validation | `@Unique` annotation: uniqueness, case-insensitive, self-exclusion |
-| `TaskApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: JSON CRUD, auth, validation, ownership, optimistic locking |
-| `CommentApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: GET/POST/DELETE, auth, ownership |
-| `TagApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE |
-| `UserApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: CRUD, admin-only POST/DELETE, self-delete prevention |
-| `NotificationApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: paginated list, unread count, mark-read, clear |
-| `AuditApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: admin-only access |
-| `PresenceApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: online users + count |
-| `SecurityConfigTest` | `@SpringBootTest` + MockMvc | URL security: public/auth/admin access, CSRF behavior |
-| `DemoApplicationTests` | `@SpringBootTest` | Context loads successfully |
+Profile-gated: `DataLoader` (dev), `H2DevConfig` (dev), `DevSecurityConfig` (dev)
 
 ### Test Patterns
 
-**`@SpringBootTest` + `@AutoConfigureMockMvc`** — used for controller and security tests. Full application context with mocked service layer via `@MockitoBean`. Preferred over `@WebMvcTest` because Spring Security 7's `@AuthenticationPrincipal` resolution requires the full security filter chain.
-
-**`@DataJpaTest`** — used for repository and specification tests. Slim context with only JPA infrastructure. For validation tests, add `@Import(ValidationAutoConfiguration.class)` to get the `Validator` bean.
-
-**Mock authentication** — use `SecurityMockMvcRequestPostProcessors.user(CustomUserDetails)` to set the authenticated user in MockMvc requests.
-
-**`@MockitoBean`** for `ApplicationEventPublisher` — use `verify(eventPublisher).publishEvent(any(AuditEvent.class))` (not bare `any()`) to match the correct `publishEvent` overload.
+- **`@SpringBootTest` + `@AutoConfigureMockMvc`** for controller/security tests (full context, `@MockitoBean` services). Preferred over `@WebMvcTest` — Spring Security 7 needs full filter chain
+- **`@DataJpaTest`** for repo/spec tests. Add `@Import(ValidationAutoConfiguration.class)` for validation
+- **Mock auth**: `SecurityMockMvcRequestPostProcessors.user(CustomUserDetails)`
+- **`@MockitoBean` for `ApplicationEventPublisher`**: use `verify(eventPublisher).publishEvent(any(AuditEvent.class))` (not bare `any()`)
 
 ## Common Issues and Solutions
 
-### Thymeleaf Template Parsing Errors
-
-**Problem:** `Could not parse as expression`
-
-**Solution:** Ensure ternary operators are inside `${}`:
-```html
-th:classappend="${condition ? 'class1' : 'class2'}"   <!-- correct -->
-th:classappend="${condition} ? 'class1' : 'class2'"   <!-- wrong -->
-```
-
-### Fragment Parameter Errors
-
-**Problem:** `Parameters in a view specification must be named (non-synthetic)`
-
-**Solution:** Don't use `${}` in controller return strings. Put data in model:
-```java
-model.addAttribute("task", task);
-return "tasks/task-card :: card";   // correct
-return "tasks/task-card :: card(${task})";  // wrong
-```
-
-### HTMX dynamic attribute not firing
-
-**Problem:** Dynamically set `hx-post` (via `setAttribute`) doesn't fire
-
-**Solution:** Call `htmx.process(element)` after setting the attribute to re-initialize HTMX on that element.
-
-### HTMX Not Working
-
-**Problem:** HTMX requests returning full page instead of fragment
-
-**Solution:** Check controller uses `HtmxUtils.isHtmxRequest(request)` to detect HTMX and return fragment instead of redirect.
-
-### Bootstrap Active State Color Not Applying
-
-**Problem:** CSS custom property override for `--bs-btn-active-color` ignored
-
-**Solution:** Bootstrap utility classes use `!important`. Override with `!important` on the active selector:
-```css
-#filter-completed.active { color: #fff !important; }
-```
-
-## Database Schema
-
-```sql
-CREATE TABLE users (
-    id       BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name     VARCHAR(100) NOT NULL,
-    email    VARCHAR(150) NOT NULL UNIQUE,
-    password VARCHAR(72),                       -- BCrypt hash; nullable for API-created users
-    role     VARCHAR(255) NOT NULL DEFAULT 'USER', -- 'USER' or 'ADMIN' (@Enumerated STRING)
-    enabled  BOOLEAN NOT NULL DEFAULT TRUE      -- disabled users cannot log in
-);
-
-CREATE TABLE projects (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    description VARCHAR(500),
-    status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE / ARCHIVED
-    created_by  BIGINT NOT NULL REFERENCES users(id),
-    created_at  TIMESTAMP,
-    updated_at  TIMESTAMP
-);
-
-CREATE TABLE project_members (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    project_id  BIGINT NOT NULL REFERENCES projects(id),
-    user_id     BIGINT NOT NULL REFERENCES users(id),
-    role        VARCHAR(50) NOT NULL DEFAULT 'EDITOR',  -- VIEWER / EDITOR / OWNER
-    created_at  TIMESTAMP,
-    UNIQUE (project_id, user_id)
-);
-
-CREATE TABLE tasks (
-    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
-    version      BIGINT,                         -- @Version optimistic locking
-    title        VARCHAR(100) NOT NULL,
-    description  VARCHAR(500),
-    status       VARCHAR(255) DEFAULT 'OPEN',   -- BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED (@Enumerated STRING)
-    priority     VARCHAR(255) DEFAULT 'MEDIUM',  -- LOW / MEDIUM / HIGH (@Enumerated STRING)
-    start_date   DATE,                           -- nullable; when work begins
-    due_date     DATE,                           -- nullable; overdue = non-terminal + past due
-    completed_at TIMESTAMP,                      -- set automatically when status → COMPLETED
-    created_at   TIMESTAMP,
-    updated_at   TIMESTAMP,
-    project_id   BIGINT NOT NULL REFERENCES projects(id),  -- every task belongs to a project
-    user_id      BIGINT REFERENCES users(id),   -- nullable FK; @ManyToOne owning side
-    parent_id    BIGINT REFERENCES tasks(id)    -- nullable FK; subtask support
-);
-
-CREATE TABLE task_checklist_items (
-    task_id  BIGINT NOT NULL REFERENCES tasks(id),
-    text     VARCHAR(255) NOT NULL,
-    checked  BOOLEAN NOT NULL DEFAULT FALSE,
-    position INT NOT NULL                       -- @OrderColumn preserves list order
-);
-
-CREATE TABLE tags (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE
-);
-
-CREATE TABLE audit_logs (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    action      VARCHAR(255) NOT NULL,          -- e.g. TASK_CREATED, LOGIN_SUCCESS
-    entity_type VARCHAR(255),                   -- e.g. Task, User, Tag
-    entity_id   BIGINT,
-    principal   VARCHAR(255),                   -- username who performed the action
-    details     TEXT,                            -- JSON snapshot or diff
-    timestamp   TIMESTAMP
-);
-
-CREATE TABLE settings (
-    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
-    setting_key   VARCHAR(100) NOT NULL UNIQUE,    -- e.g. 'theme', 'siteName'
-    setting_value VARCHAR(500)                     -- nullable; null = use default
-);
-
-CREATE TABLE notifications (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id    BIGINT NOT NULL REFERENCES users(id),  -- recipient
-    actor_id   BIGINT REFERENCES users(id),           -- who triggered it (nullable for system)
-    type       VARCHAR(255) NOT NULL,                 -- TASK_ASSIGNED / COMMENT_ADDED / TASK_OVERDUE / SYSTEM
-    message    VARCHAR(500) NOT NULL,
-    link       VARCHAR(500),                          -- e.g. /tasks/5
-    is_read    BOOLEAN NOT NULL DEFAULT FALSE,        -- 'read' is SQL reserved word
-    created_at TIMESTAMP
-);
-
-CREATE TABLE comments (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    text       VARCHAR(500) NOT NULL,
-    created_at TIMESTAMP,
-    task_id    BIGINT NOT NULL REFERENCES tasks(id),  -- @ManyToOne; cascade delete via service
-    user_id    BIGINT NOT NULL REFERENCES users(id)   -- @ManyToOne; comment author
-);
-
-CREATE TABLE user_preferences (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id    BIGINT NOT NULL REFERENCES users(id),
-    pref_key   VARCHAR(100) NOT NULL,
-    pref_value VARCHAR(500),
-    UNIQUE (user_id, pref_key)
-);
-
-CREATE TABLE saved_views (
-    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id    BIGINT NOT NULL REFERENCES users(id),
-    name       VARCHAR(100) NOT NULL,
-    filters    VARCHAR(2000) NOT NULL,
-    created_at TIMESTAMP
-);
-
--- Join table for the @ManyToMany between Task and Tag.
--- Task is the owning side (@JoinTable lives on Task); Tag is the inverse side (mappedBy = "tags").
-CREATE TABLE task_tags (
-    task_id BIGINT NOT NULL REFERENCES tasks(id),
-    tag_id  BIGINT NOT NULL REFERENCES tags(id),
-    PRIMARY KEY (task_id, tag_id)
-);
-```
-
-### Join Table Naming Convention
-
-`task_tags` follows the pattern **singular owning entity + plural inverse entity**.
-
-- Owning side (`Task`) → singular: `task`
-- Inverse side (`Tag`) → plural: `tags`
-- Result: `task_tags` — reads naturally as "a task's tags"
-
-This is the most common Spring/JPA community style. Hibernate's auto-generated name (without `@JoinTable(name=...)`) would be `task_tag` (both singular). Rails uses alphabetical + both plural. There is no enforced standard — consistency within the project is what matters.
+| Problem | Solution |
+|---|---|
+| `Could not parse as expression` | Ternary must be inside `${}`: `"${cond ? 'a' : 'b'}"` not `"${cond} ? 'a' : 'b'"` |
+| `Parameters in a view specification must be named` | Don't use `${}` in controller return strings; put data in model |
+| HTMX dynamic attribute not firing | Call `htmx.process(element)` after `setAttribute` |
+| HTMX returns full page instead of fragment | Check controller uses `HtmxUtils.isHtmxRequest(request)` |
+| Bootstrap active state color ignored | Use `!important` — Bootstrap utilities use `!important` |
 
 ## Git Workflow
 
-- `main` - Production-ready code
-- `feature/*` - New features
-- `fix/*` - Bug fixes
-- `refactor/*` - Code improvements
+- `main` — production-ready | `feature/*` — new features | `fix/*` — bug fixes | `refactor/*` — improvements
 
 Always ask before committing. Never auto-commit.
 
