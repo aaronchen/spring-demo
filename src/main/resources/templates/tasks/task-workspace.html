@@ -254,6 +254,22 @@
                     <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.dueDate.desc}">Due Date (Latest)</span>
                 </a>
             </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="updatedAt" data-sort-dir="asc"
+                   onclick="toggleSort('updatedAt','asc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-down"></i> <span th:text="#{task.sort.updatedAt.asc}">Updated (Oldest)</span>
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="#"
+                   data-sort-field="updatedAt" data-sort-dir="desc"
+                   onclick="toggleSort('updatedAt','desc'); return false;">
+                    <i class="bi bi-check-lg sort-check"></i>
+                    <i class="bi bi-sort-numeric-up"></i> <span th:text="#{task.sort.updatedAt.desc}">Updated (Latest)</span>
+                </a>
+            </li>
             <li><hr class="dropdown-divider"></li>
             <li>
                 <a class="dropdown-item d-flex align-items-center gap-2" href="#"
