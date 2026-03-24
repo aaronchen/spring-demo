@@ -1,0 +1,303 @@
+(function () {
+    'use strict';
+
+    const apiUrl = document.querySelector('meta[name="_analyticsApi"]')?.content;
+    if (!apiUrl) return;
+
+    const msg = window.APP_CONFIG?.messages || {};
+
+    const STATUS_COLORS = {
+        BACKLOG: '#6c757d',
+        OPEN: '#0d6efd',
+        IN_PROGRESS: '#ffc107',
+        IN_REVIEW: '#0dcaf0',
+        COMPLETED: '#198754',
+        CANCELLED: '#dc3545'
+    };
+
+    const PRIORITY_COLORS = {
+        LOW: '#198754',
+        MEDIUM: '#ffc107',
+        HIGH: '#dc3545'
+    };
+
+    // Track chart instances for cleanup on re-render
+    const charts = {};
+
+    function statusLabel(key) {
+        return msg[`task.status.${statusKeyToMessageSuffix(key)}`] || key;
+    }
+
+    function statusKeyToMessageSuffix(key) {
+        const map = {
+            BACKLOG: 'backlog',
+            OPEN: 'open',
+            IN_PROGRESS: 'inProgress',
+            IN_REVIEW: 'inReview',
+            COMPLETED: 'completed',
+            CANCELLED: 'cancelled'
+        };
+        return map[key] || key.toLowerCase();
+    }
+
+    function priorityLabel(key) {
+        const map = { LOW: 'low', MEDIUM: 'medium', HIGH: 'high' };
+        return msg[`task.priority.${map[key]}`] || key;
+    }
+
+    // ── Project Filter ───────────────────────────────────────────────────
+
+
+    function getSelectedProjectIds() {
+        const checkboxes = document.querySelectorAll('.project-filter-checkbox');
+        if (checkboxes.length === 0) return null; // No filter UI (project-scoped page)
+        const selected = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) selected.push(cb.value);
+        });
+        return selected;
+    }
+
+    function buildFetchUrl() {
+        const projectIds = getSelectedProjectIds();
+        if (projectIds === null) return apiUrl; // Project-scoped page
+        if (projectIds.length === 0) return null; // Nothing selected
+
+        const params = new URLSearchParams();
+        projectIds.forEach(id => params.append('projectIds', id));
+        return `${apiUrl}?${params.toString()}`;
+    }
+
+    function initFilterListeners() {
+        const checkboxes = document.querySelectorAll('.project-filter-checkbox');
+        if (checkboxes.length === 0) return;
+
+        const selectAll = document.getElementById('filter-select-all');
+
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', () => {
+                // Sync "Select All" checkbox with individual state
+                if (selectAll) {
+                    selectAll.checked = [...checkboxes].every(c => c.checked);
+                }
+                fetchAndRender();
+            });
+        });
+
+        if (selectAll) {
+            selectAll.addEventListener('change', () => {
+                checkboxes.forEach(cb => { cb.checked = selectAll.checked; });
+                fetchAndRender();
+            });
+        }
+    }
+
+    // ── Fetch & Render ───────────────────────────────────────────────────
+
+    function destroyCharts() {
+        Object.values(charts).forEach(chart => chart.destroy());
+        Object.keys(charts).forEach(key => delete charts[key]);
+    }
+
+    function fetchAndRender() {
+        const url = buildFetchUrl();
+
+        destroyCharts();
+
+        if (url === null) {
+            // No projects selected — clear canvases
+            return;
+        }
+
+        fetch(url, {
+            headers: { 'Accept': 'application/json' }
+        })
+            .then(response => response.json())
+            .then(data => {
+                renderStatusChart(data.statusBreakdown);
+                renderPriorityChart(data.priorityBreakdown);
+                renderWorkloadChart(data.workloadDistribution);
+                renderBurndownChart(data.burndown);
+                renderVelocityChart(data.velocity);
+                renderOverdueChart(data.overdueAnalysis);
+            });
+    }
+
+    // ── Chart Renderers ──────────────────────────────────────────────────
+
+    function renderStatusChart(breakdown) {
+        const ctx = document.getElementById('statusChart');
+        const labels = Object.keys(breakdown.counts).map(statusLabel);
+        const values = Object.values(breakdown.counts);
+        const colors = Object.keys(breakdown.counts).map(k => STATUS_COLORS[k] || '#999');
+
+        charts.status = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    }
+
+    function renderPriorityChart(breakdown) {
+        const ctx = document.getElementById('priorityChart');
+        const labels = Object.keys(breakdown.counts).map(priorityLabel);
+        const values = Object.values(breakdown.counts);
+        const colors = Object.keys(breakdown.counts).map(k => PRIORITY_COLORS[k] || '#999');
+
+        charts.priority = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+    }
+
+    function renderWorkloadChart(distribution) {
+        const ctx = document.getElementById('workloadChart');
+        const datasets = Object.entries(distribution.statusCounts).map(([status, counts]) => ({
+            label: statusLabel(status),
+            data: counts,
+            backgroundColor: STATUS_COLORS[status] || '#999'
+        }));
+
+        charts.workload = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: distribution.assignees,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    }
+
+    function renderBurndownChart(burndown) {
+        const ctx = document.getElementById('burndownChart');
+        const labels = burndown.map(p => p.date);
+        const values = burndown.map(p => p.remaining);
+        const remaining = msg['analytics.label.remaining'] || 'Remaining Tasks';
+
+        charts.burndown = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: remaining,
+                    data: values,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderVelocityChart(velocity) {
+        const ctx = document.getElementById('velocityChart');
+        const labels = velocity.map(p => p.weekStart);
+        const values = velocity.map(p => p.completed);
+        const completed = msg['analytics.label.completed'] || 'Completed';
+
+        charts.velocity = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: completed,
+                    data: values,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderOverdueChart(overdueAnalysis) {
+        const ctx = document.getElementById('overdueChart');
+        const tasks = msg['analytics.label.tasks'] || 'Tasks';
+
+        charts.overdue = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: overdueAnalysis.assignees,
+                datasets: [{
+                    label: tasks,
+                    data: overdueAnalysis.counts,
+                    backgroundColor: '#dc3545'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────
+
+    initFilterListeners();
+    fetchAndRender();
+})();

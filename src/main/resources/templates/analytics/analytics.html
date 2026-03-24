@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layouts/base :: head(${project != null} ? #{page.title.projectAnalytics(${project.name})} : #{page.title.analytics}, '/css/analytics.css')}"></head>
+<body class="d-flex flex-column min-vh-100">
+    <div th:replace="~{layouts/base :: navbar}"></div>
+
+    <main class="container flex-grow-1 pb-4">
+        <!-- Back link (project-scoped) -->
+        <a th:if="${project != null}" th:href="@{/projects/{id}(id=${project.id})}"
+           class="text-decoration-none mb-3 d-inline-block">
+            <i class="bi bi-arrow-left"></i> <span th:text="${project.name}">Project Name</span>
+        </a>
+
+        <!-- Heading -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="display-4" th:text="${project != null} ? #{analytics.project.heading} : #{analytics.heading}">Analytics</h1>
+        </div>
+
+        <!--/* API URL for JS to fetch chart data */-->
+        <meta name="_analyticsApi" th:content="${apiUrl}">
+
+        <!--/* Project filter (cross-project page only) */-->
+        <div th:if="${project == null and projects != null}" class="card mb-4" id="project-filter">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="card-title mb-0">
+                        <i class="bi bi-funnel me-1"></i>
+                        <span th:text="#{analytics.filter.projects}">Projects</span>
+                    </h6>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="filter-select-all" checked>
+                        <label class="form-check-label" for="filter-select-all"
+                               th:text="#{analytics.filter.selectAll}">Select All</label>
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <div th:each="p : ${projects}" class="form-check form-check-inline">
+                        <input class="form-check-input project-filter-checkbox" type="checkbox"
+                               th:id="'project-' + ${p.id}" th:value="${p.id}" checked>
+                        <label class="form-check-label" th:for="'project-' + ${p.id}"
+                               th:text="${p.name}">Project Name</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 1: Status + Priority Breakdown -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.statusBreakdown}">Status Breakdown</h5>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.priorityBreakdown}">Priority Breakdown</h5>
+                        <div class="chart-container">
+                            <canvas id="priorityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Workload Distribution -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.workloadDistribution}">Workload Distribution</h5>
+                        <div class="chart-container chart-container-wide">
+                            <canvas id="workloadChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Burndown + Velocity -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4 mb-md-0">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.burndown}">Burndown Chart</h5>
+                        <div class="chart-container">
+                            <canvas id="burndownChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.velocity}">Velocity</h5>
+                        <div class="chart-container">
+                            <canvas id="velocityChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 4: Overdue Analysis -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title" th:text="#{analytics.chart.overdueAnalysis}">Overdue by Assignee</h5>
+                        <div class="chart-container chart-container-wide">
+                            <canvas id="overdueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div th:replace="~{layouts/base :: footer}"></div>
+    <div th:replace="~{layouts/base :: scripts}"></div>
+
+    <!-- Chart.js via WebJars -->
+    <script th:src="@{/webjars/chart.js/4.5.1/dist/chart.umd.min.js}"></script>
+    <script th:src="@{/js/analytics.js}"></script>
+</body>
+</html>

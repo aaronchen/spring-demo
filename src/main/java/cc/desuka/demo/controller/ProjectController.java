@@ -413,6 +413,19 @@ public class ProjectController {
         return "projects/member-table";
     }
 
+    // GET /projects/{id}/analytics - Project analytics page
+    @GetMapping("/{id}/analytics")
+    public String projectAnalytics(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireViewAccess(id, currentDetails);
+        Project project = projectService.getProjectById(id);
+        model.addAttribute("project", project);
+        model.addAttribute("apiUrl", "/api/projects/" + id + "/analytics");
+        return "analytics/analytics";
+    }
+
     private void populateMemberModel(Long projectId, Model model) {
         model.addAttribute("project", projectService.getProjectById(projectId));
         model.addAttribute("projectMembers", projectService.getMembers(projectId));

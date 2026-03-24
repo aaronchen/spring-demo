@@ -64,6 +64,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
+- **Analytics Dashboard** - Six interactive Chart.js charts: status breakdown, priority breakdown, workload distribution (stacked bar by assignee), 30-day burndown, 12-week velocity, and overdue-by-assignee; available cross-project (`/analytics` with project filter checkboxes) and per-project (`/projects/{id}/analytics`)
 - **Real-Time Dashboard** - Per-project stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, due-this-week tasks, recent tasks, and activity feed; admin-only system overview across all projects; auto-refreshes via WebSocket on task and presence changes
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention

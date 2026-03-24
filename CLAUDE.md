@@ -225,6 +225,10 @@ Tribute.js autocomplete on `[data-mention]` elements. Project-scoped via `data-p
 
 `TimelineService` merges comments and audit history into chronological `TimelineEntry` stream. `task-activity.html` uses dual-usage template pattern for page includes vs HTMX responses.
 
+### Analytics Pattern
+
+Chart.js 4.5.1 (via WebJar) renders 6 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security.
+
 ### CSS Organization
 
 - `base.css` for every page, `tasks.css` for task pages (via `head(title, cssFile)` fragment parameter)
@@ -278,10 +282,3 @@ Profile-gated: `DataLoader` (dev), `H2DevConfig` (dev), `DevSecurityConfig` (dev
 - `main` — production-ready | `feature/*` — new features | `fix/*` — bug fixes | `refactor/*` — improvements
 
 Always ask before committing. Never auto-commit.
-
-## Future Enhancement Ideas
-
-- Add reminders for due dates
-- Implement dark mode toggle
-- Export tasks to CSV/PDF
-- Implement recurring tasks

@@ -24,7 +24,8 @@ public class FrontendConfigController {
                     tasks: "%s",
                     api: "%s",
                     audit: "%s",
-                    dashboard: "%s"
+                    dashboard: "%s",
+                    analytics: "%s"
                 },
                 messages: %s
             };
@@ -35,6 +36,7 @@ public class FrontendConfigController {
                         escapeJs(appRoutes.getApi()),
                         escapeJs(appRoutes.getAudit()),
                         escapeJs(appRoutes.getDashboard()),
+                        escapeJs(appRoutes.getAnalytics()),
                         buildMessagesJson());
     }
 

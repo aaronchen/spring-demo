@@ -298,6 +298,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `withFrom(Instant)` / `withTo(Instant)` — timestamp range
   - `build(category, search, from, to)` — combines all specs
 
+- `repository/AnalyticsRepository.java` - Aggregate projection queries for analytics charts
+  - Uses `EntityManager` directly (not Spring Data) — returns `Object[]` projections, not entities
+  - Dynamic WHERE/AND clauses via `projectWhereClause()`/`projectAndClause()`/`bindProjectParams()` helpers — avoids triplicating queries for single project, project list, or all projects
+  - `countByUserAndStatus(projectId, projectIds)` — workload distribution (group by user + status)
+  - `countCreatedPerDay(projectId, projectIds, from)` — burndown: tasks created per day since date
+  - `countCompletedPerDay(projectId, projectIds, from)` — burndown/velocity: tasks completed per day
+  - `countOpenAtDate(projectId, projectIds, from, terminalStatuses)` — burndown: initial open count at start date
+  - `countOverdueByUser(projectId, projectIds, terminalStatuses)` — overdue tasks grouped by assignee
+
 ### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (REST API create and update operations)
   - Fields: `projectId` (required on create), `title` (required, 1–100 chars), `description` (optional, max 500 chars), `priority` (optional `Priority`), `startDate` (optional `LocalDate`), `dueDate` (optional `LocalDate`), `tagIds` (optional `List<Long>`), `userId` (optional `Long`), `version` (null on create, required on update for optimistic locking)
@@ -410,6 +419,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `dto/SavedViewResponse.java` - Saved view output DTO
   - Fields: `id`, `name`, `filters` (JSON string), `createdAt`
   - Record DTO
+
+- `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
+  - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
+  - `StatusBreakdown(Map<String, Long> counts)` — task count per status
+  - `PriorityBreakdown(Map<String, Long> counts)` — task count per priority
+  - `WorkloadDistribution(List<String> assignees, Map<String, List<Long>> statusCounts)` — stacked bar data: status → [count per assignee]
+  - `BurndownPoint(LocalDate date, long remaining)` — daily remaining task count
+  - `VelocityPoint(LocalDate weekStart, long completed)` — weekly completion count
+  - `OverdueAnalysis(List<String> assignees, List<Long> counts)` — overdue tasks per assignee
 
 ### Mapper Layer
 - `mapper/TaskMapper.java` - MapStruct mapper interface
@@ -569,6 +587,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `createView(SavedView)` — persists a new saved view; associates with the given user
   - `deleteView(Long id)` — deletes the view by ID (caller must have already checked ownership via `OwnershipGuard`)
 
+- `service/AnalyticsService.java` - Analytics chart data builder
+  - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
+  - `getProjectAnalytics(Long projectId)` — single-project analytics
+  - `getCrossProjectAnalytics(List<Long> accessibleProjectIds)` — cross-project; null = admin (all projects)
+  - Private builders: `buildStatusBreakdown` (spec-based counts per status), `buildPriorityBreakdown` (spec-based counts per priority), `buildWorkloadDistribution` (grouped by user + status via `AnalyticsRepository`), `buildBurndown` (30-day rolling: initial open + daily created − daily completed), `buildVelocity` (12-week completed per ISO week), `buildOverdueAnalysis` (overdue grouped by assignee)
+  - `projectScope()` helper returns `Specification` — `cb.conjunction()` for no-filter case
+
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
   - Constructor injection: `TaskService`, `ProjectService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
   - `buildStats(User, List<Long> accessibleProjectIds)` — returns `DashboardStats` record; `accessibleProjectIds` null = admin (show all), non-null = scoped to user's projects
@@ -623,9 +648,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/api/ProjectApiController.java` - Project REST API endpoints
   - `@RestController` with `/api/projects` base path
-  - Constructor injection: `ProjectService`, `UserMapper`
+  - Constructor injection: `ProjectService`, `UserMapper`, `AnalyticsService`, `ProjectAccessGuard`
   - `GET /api/projects/{id}/members` — all enabled members of a project (returns `List<UserResponse>`)
   - `GET /api/projects/{id}/members/assignable` — editors and owners only, excludes VIEWERs (for task assignment dropdowns)
+  - `GET /api/projects/{id}/analytics` — project-scoped analytics data; requires view access via `ProjectAccessGuard`
+
+- `controller/api/AnalyticsApiController.java` - Cross-project analytics REST API
+  - `@RestController` with `/api/analytics` base path
+  - Constructor injection: `AnalyticsService`, `ProjectService`
+  - `GET /api/analytics` — cross-project analytics; optional `projectIds` query param for filtering
+  - **Security**: intersects requested `projectIds` with user's accessible projects; admin can filter to any projects
 
 - `controller/api/SavedViewController.java` - Saved views REST API
   - `@RestController` with `/api/views` base path
@@ -703,6 +735,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `POST /profile/preferences` — saves task view, default user filter, and due reminder preferences via `UserPreferenceService`
   - Flash attributes trigger toast notifications on redirect
 
+- `controller/AnalyticsController.java` - Cross-project analytics web page
+  - `@Controller` with `/analytics` base path
+  - Constructor injection: `ProjectService`
+  - `GET /analytics` — analytics page; admin sees all active projects, regular users see their projects
+  - Passes `apiUrl` (`/api/analytics`) and `projects` list to template
+
 - `controller/ProjectController.java` - Project web UI endpoints
   - `@Controller` with `/projects` base path
   - Constructor injection: `ProjectService`, `TaskService`, `TagService`, `UserService`, `ProjectAccessGuard`
@@ -718,6 +756,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Task filtering scoped to single project via `searchAndFilterTasksForProject(projectId, ...)`
   - Supports cards, table, calendar, and board view modes with user preferences
   - Board view: when `view=board`, groups tasks by status via `TaskService.groupByStatus()` and returns `task-board.html` (no pagination in board view)
+  - `GET /projects/{id}/analytics` — project-scoped analytics page; requires view access; passes project and API URL to shared analytics template
   - `GET /projects/{id}/export` — per-project CSV download of filtered tasks; delegates to `TaskReport.exportCsv()`
   - `buildCalendarWeeks()` — private helper for project-scoped calendar view
 
@@ -936,7 +975,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering); loads `mentions.css` globally
   - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (`stomp.umd.min.js`, `websocket.js`, `presence.js`, `notifications.js`) — prevents connection attempts for anonymous users
   - `navbar` - navigation bar with auth-aware elements:
-    - Left nav links: Dashboard, Projects, Tasks, Tags, Users — each with `currentPath`-based active highlighting via `th:classappend`
+    - Left nav links: Dashboard, Projects, Tasks, Analytics, Tags, Users — each with `currentPath`-based active highlighting via `th:classappend`
     - Anonymous: shows Register link
     - Authenticated: user dropdown with name, email, role badge, logout button
     - Admin: additional "User Management", "Tag Management", "Audit Log", and "Settings" links in dropdown
@@ -1042,6 +1081,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Member table: name, email, role dropdown (with HTMX PATCH for instant role change), remove button with `hx-confirm` styled confirmation
   - Role dropdown color-coded: Owner (primary), Editor (success), Viewer (secondary)
 
+### Analytics Views
+- `templates/analytics/analytics.html` - Analytics page with 6 Chart.js charts in responsive grid
+  - Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views
+  - `<meta name="_analyticsApi">` passes API URL to JS (different per scope)
+  - Project filter card (cross-project only, `th:if="${project == null}"`) with per-project checkboxes and Select All
+  - Back link (project-scoped only) to project home
+  - Row 1: Status Breakdown (doughnut) + Priority Breakdown (doughnut)
+  - Row 2: Workload Distribution (stacked bar, full width)
+  - Row 3: Burndown Chart (line) + Velocity (line)
+  - Row 4: Overdue by Assignee (bar, full width)
+  - Chart.js loaded via WebJar (`/webjars/chart.js/4.5.1/dist/chart.umd.min.js`)
+
 ### Notification Views
 - `templates/notifications.html` - Full notifications page
   - List-group items with action link icons, read/unread styling
@@ -1087,6 +1138,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state
 - `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, two-column layout styles, timeline entry styles)
 - `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
+- `static/css/analytics.css` - Analytics page styles (chart container sizing: 300px default, 350px wide; responsive breakpoints at 768px)
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; themes: `workshop`, `indigo`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
@@ -1149,6 +1201,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `e` — toggle inline edit mode (table view only; no-op in other views)
   - `Escape` — close open modal or cancel inline edit mode
   - All shortcuts suppressed when focus is in an input, textarea, or select element
+- `static/js/analytics.js` - Analytics page chart rendering
+  - IIFE pattern; reads API URL from `<meta name="_analyticsApi">`
+  - `STATUS_COLORS` / `PRIORITY_COLORS` — color maps matching app-wide status/priority colors
+  - `charts` object tracks Chart.js instances for destroy/re-create on filter change
+  - `getSelectedProjectIds()` — reads project filter checkboxes; returns null if no filter UI (project-scoped page)
+  - `initFilterListeners()` — binds change events on project checkboxes and Select All; triggers re-fetch
+  - `fetchAndRender()` — fetches JSON from API, renders 6 charts: status (doughnut), priority (doughnut), workload (stacked bar), burndown (line), velocity (line), overdue (bar)
+  - Status/priority labels resolved via `APP_CONFIG.messages`
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
@@ -1162,6 +1222,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `action.*` — generic actions; `pagination.*` — pagination controls
     - `nav.*`, `footer.*`, `page.title.*` — layout strings
     - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`, `task.bulk.*` for bulk action UI); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
+    - `analytics.*` — Analytics feature (chart titles, labels, filter keys)
     - `dashboard.*` — Dashboard feature (includes `dashboard.my.inReview`, `dashboard.projects.heading`, `dashboard.glance.heading`, `dashboard.system.heading`, `dashboard.system.*` stat labels)
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
@@ -1269,6 +1330,8 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `http://localhost:8080/admin/tags` - Tag management: create/delete with task counts (admin only)
 - `http://localhost:8080/admin/audit` - Audit log with search/filters (admin only)
 - `http://localhost:8080/admin/settings` - Site settings: theme, site name, registration, maintenance banner (admin only)
+- `http://localhost:8080/analytics` - Cross-project analytics (charts: status, priority, workload, burndown, velocity, overdue)
+- `http://localhost:8080/projects/{id}/analytics` - Project-scoped analytics (same charts, single project)
 - `http://localhost:8080/notifications` - Notification inbox (paginated, mark-read, clear-all)
 - `http://localhost:8080/profile` - User profile: edit name/email, change password, preferences
 
@@ -1308,6 +1371,10 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `PATCH /api/notifications/{id}/read` - Mark one as read (204 No Content)
 - `PATCH /api/notifications/read-all` - Mark all as read (204 No Content)
 - `DELETE /api/notifications` - Clear all notifications (204 No Content)
+
+**REST API — Analytics** (requires login; CSRF exempt):
+- `GET /api/analytics` - Cross-project analytics data; optional `projectIds` param for filtering
+- `GET /api/projects/{id}/analytics` - Project-scoped analytics data
 
 **REST API — Project Members** (requires login):
 - `GET /api/projects/{id}/members` - All enabled members of a project
