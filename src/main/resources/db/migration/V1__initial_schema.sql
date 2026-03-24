@@ -106,6 +106,14 @@ CREATE TABLE user_preferences (
     UNIQUE (user_id, pref_key)
 );
 
+CREATE TABLE saved_views (
+    id         BIGSERIAL PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    name       VARCHAR(100) NOT NULL,
+    filters    VARCHAR(2000) NOT NULL,
+    created_at TIMESTAMP
+);
+
 -- Seed a default admin user for first login
 -- Password: 'password' (BCrypt encoded)
 -- Change this password after first login via the profile page

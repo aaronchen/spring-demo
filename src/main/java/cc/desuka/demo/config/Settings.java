@@ -32,7 +32,7 @@ public class Settings {
     public static final String THEME_WORKSHOP = "workshop";
     public static final String THEME_INDIGO = "indigo";
 
-    private String theme = THEME_DEFAULT;
+    private String theme = THEME_WORKSHOP;
     private String siteName = "Spring Workshop";
     private boolean registrationEnabled = true;
     private String maintenanceBanner = "";
