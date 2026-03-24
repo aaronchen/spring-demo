@@ -211,7 +211,7 @@ REST API uses RFC 9457 `ProblemDetail` via `ApiExceptionHandler` (scoped to `con
 
 ### @Mention Pattern
 
-Tribute.js autocomplete on `[data-mention]` elements. Client encodes `@[Name](userId:N)`, server `MentionUtils` extracts IDs and renders HTML. Mentioned users get `COMMENT_MENTIONED` notification and subscribe to conversation. To add mentions to a new field: add `data-mention` attribute.
+Tribute.js autocomplete on `[data-mention]` elements. Project-scoped via `data-project-id` attr — only shows project members (fetched once, cached per input). Falls back to all users when no project context. Client encodes `@[Name](userId:N)`, server `MentionUtils` extracts IDs and renders HTML. Mentioned users get `COMMENT_MENTIONED` notification and subscribe to conversation. To add mentions to a new field: add `data-mention` attribute (and `data-project-id` if project-scoped).
 
 ### Shared Task Layout Pattern
 

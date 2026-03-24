@@ -1007,7 +1007,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/task-layout.html` - Shared two-column layout fragment used by both `task-modal.html` and `task.html`
   - Contains form column (left) and activity panel column (right) with unified timeline via `task-activity.html`
   - Comment input uses `div` + HTMX (not nested `<form>`) to avoid form-in-form issues; Enter key guarded by `isMentionMenuActive()` to prevent submission while selecting @mentions
-  - `data-mention` attribute on comment input for Tribute.js @mention autocomplete
+  - `data-mention` + `data-project-id` attributes on comment input for project-scoped Tribute.js @mention autocomplete
   - Stale-data banner and WebSocket subscription logic shared across both consumers
 - `templates/tasks/task.html` - Full-page create/edit form; uses shared `task-layout.html` fragment for two-column layout with flex-grow; project subtitle hidden in create mode (user picks project from dropdown instead); stale-data banner via WebSocket when another user modifies the same task; live activity auto-refresh via WebSocket subscription to `/topic/tasks/{id}/comments`
 - `templates/tasks/task-modal.html` - HTMX modal content (bare file, split-panel layout); uses shared `task-layout.html` fragment; project subtitle hidden in create mode; footer moved outside `d-flex` for full-width; submit button uses `form="task-form"` attribute; stale-data banner via WebSocket; live activity auto-refresh via WebSocket; `.task-panels` constrains two-panel layout to 80vh with independent scrolling
@@ -1104,7 +1104,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Manages navbar badge count and dropdown notification list
   - Exposes `window.notificationHelpers` for the full notifications page to reuse rendering logic
 - `static/js/mentions.js` - @mention autocomplete via Tribute.js
-  - `initMentionInputs(root)` — attaches Tribute to any `[data-mention]` element; remote user search via `GET /api/users?q=`; uses `positionMenu: false` + CSS for dropdown positioning (Tribute's built-in caret calculation unreliable in flex/modal layouts)
+  - `initMentionInputs(root)` — attaches Tribute to any `[data-mention]` element; project-scoped via `data-project-id` attr (fetches `GET /api/projects/{id}/members` once, cached per input), falls back to `GET /api/users?q=` when no project context; uses `positionMenu: false` + CSS for dropdown positioning (Tribute's built-in caret calculation unreliable in flex/modal layouts)
   - `mentionMap` WeakMap — tracks `element → Map<name, id>` for encoding; populated by Tribute's `selectTemplate` callback
   - `isMentionMenuActive()` — returns true if any Tribute dropdown is visible; used to suppress Enter-to-post while selecting a mention
   - `encodeMentions(text, el)` — converts clean `@Name` display to encoded `@[Name](userId:N)` format before submission
