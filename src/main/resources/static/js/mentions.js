@@ -53,16 +53,30 @@ function initMentionInputs(root) {
             parent.style.position = 'relative';
         }
 
+        let cachedMembers = null;
+
         const tribute = new Tribute({
             trigger: '@',
             positionMenu: false,
             menuContainer: parent,
             values: function(text, cb) {
-                const url = `${APP_CONFIG.routes.api}/users?q=${encodeURIComponent(text)}`;
-                fetch(url, { credentials: 'same-origin' })
-                    .then(function(r) { return r.json(); })
-                    .then(function(users) { cb(users); })
-                    .catch(function() { cb([]); });
+                const projectId = el.dataset.projectId;
+                if (projectId) {
+                    // Project-scoped: fetch once, filter client-side via Tribute lookup
+                    if (cachedMembers) { cb(cachedMembers); return; }
+                    const url = `${APP_CONFIG.routes.api}/projects/${projectId}/members`;
+                    fetch(url, { credentials: 'same-origin' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(users) { cachedMembers = users; cb(users); })
+                        .catch(function() { cb([]); });
+                } else {
+                    // No project context: server-side search across all users
+                    const url = `${APP_CONFIG.routes.api}/users?q=${encodeURIComponent(text)}`;
+                    fetch(url, { credentials: 'same-origin' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(users) { cb(users); })
+                        .catch(function() { cb([]); });
+                }
             },
             lookup: 'name',
             fillAttr: 'name',
