@@ -31,25 +31,18 @@ public class AnalyticsApiController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         boolean isAdmin = AuthExpressions.isAdmin(currentDetails.getUser());
 
-        // Determine the user's full accessible set
-        List<Long> accessibleProjectIds =
-                isAdmin
-                        ? null
-                        : projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
-
         // If caller specified projectIds, intersect with accessible set for security
         List<Long> effectiveProjectIds;
-        if (projectIds != null && !projectIds.isEmpty()) {
-            if (isAdmin) {
-                // Admin can filter to any projects
-                effectiveProjectIds = projectIds;
-            } else {
-                // Non-admin: only keep IDs the user actually has access to
-                effectiveProjectIds =
-                        projectIds.stream().filter(accessibleProjectIds::contains).toList();
-            }
+        if (isAdmin) {
+            // Admin: use caller's filter or null (all projects)
+            effectiveProjectIds = (projectIds != null && !projectIds.isEmpty()) ? projectIds : null;
         } else {
-            effectiveProjectIds = accessibleProjectIds;
+            List<Long> accessibleProjectIds =
+                    projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
+            effectiveProjectIds =
+                    (projectIds != null && !projectIds.isEmpty())
+                            ? projectIds.stream().filter(accessibleProjectIds::contains).toList()
+                            : accessibleProjectIds;
         }
 
         return analyticsService.getCrossProjectAnalytics(effectiveProjectIds);
