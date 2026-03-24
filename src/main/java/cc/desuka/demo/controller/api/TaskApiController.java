@@ -1,15 +1,16 @@
 package cc.desuka.demo.controller.api;
 
+import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
+import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.mapper.TaskMapper;
-import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Task;
-import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
+import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -27,59 +28,49 @@ import org.springframework.web.bind.annotation.*;
 public class TaskApiController {
 
     private final TaskService taskService;
-    private final ProjectService projectService;
+    private final TaskQueryService taskQueryService;
+    private final ProjectQueryService projectQueryService;
     private final TaskMapper taskMapper;
     private final ProjectAccessGuard projectAccessGuard;
 
     public TaskApiController(
             TaskService taskService,
-            ProjectService projectService,
+            TaskQueryService taskQueryService,
+            ProjectQueryService projectQueryService,
             TaskMapper taskMapper,
             ProjectAccessGuard projectAccessGuard) {
         this.taskService = taskService;
-        this.projectService = projectService;
+        this.taskQueryService = taskQueryService;
+        this.projectQueryService = projectQueryService;
         this.taskMapper = taskMapper;
         this.projectAccessGuard = projectAccessGuard;
     }
 
     // GET /api/tasks
     // GET /api/tasks?page=0&size=20&sort=createdAt,desc
-    // GET /api/tasks?search=spring&status=OPEN&priority=HIGH&overdue=true&userId=1&tags=1,2
+    // GET
+    // /api/tasks?search=spring&statusFilter=OPEN&priority=HIGH&overdue=true&selectedUserId=1&tags=1,2
     @GetMapping
     public Page<TaskResponse> getTasks(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false, defaultValue = TaskStatusFilter.DEFAULT) String status,
-            @RequestParam(required = false, defaultValue = "false") boolean overdue,
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) List<Long> tags,
+            @ModelAttribute TaskListQuery query,
             @ParameterObject
                     @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
                     Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        TaskStatusFilter statusFilter = TaskStatusFilter.from(status);
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
-                        : projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
-        return taskService
-                .searchAndFilterTasksForProjects(
-                        accessibleProjectIds,
-                        search,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        userId,
-                        tags,
-                        pageable)
-                .map(taskMapper::toResponse);
+                        : projectQueryService.getAccessibleProjectIds(
+                                currentDetails.getUser().getId());
+        TaskSearchCriteria criteria = query.toCriteria(accessibleProjectIds);
+        return taskQueryService.searchTasks(criteria, pageable).map(taskMapper::toResponse);
     }
 
     // GET /api/tasks/5
     @GetMapping("/{id}")
     public TaskResponse getTaskById(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return taskMapper.toResponse(task);
     }
@@ -98,7 +89,7 @@ public class TaskApiController {
             assigneeId = request.getUserId();
         }
         Task task = taskMapper.toEntity(request);
-        task.setProject(projectService.getProjectById(request.getProjectId()));
+        task.setProject(projectQueryService.getProjectById(request.getProjectId()));
         return taskMapper.toResponse(taskService.createTask(task, request.getTagIds(), assigneeId));
     }
 
@@ -109,7 +100,7 @@ public class TaskApiController {
             @PathVariable Long id,
             @Valid @RequestBody TaskRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task existing = taskService.getTaskById(id);
+        Task existing = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         return taskMapper.toResponse(
                 taskService.updateTask(
@@ -126,7 +117,7 @@ public class TaskApiController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         requireDeleteAccess(task, currentDetails);
         taskService.deleteTask(id);
     }
@@ -134,13 +125,13 @@ public class TaskApiController {
     // GET /api/tasks/search?keyword=spring
     @GetMapping("/search")
     public List<TaskResponse> searchTasks(@RequestParam String keyword) {
-        return taskMapper.toResponseList(taskService.searchTasks(keyword));
+        return taskMapper.toResponseList(taskQueryService.searchTasks(keyword));
     }
 
     // GET /api/tasks/incomplete
     @GetMapping("/incomplete")
     public List<TaskResponse> getIncompleteTasks() {
-        return taskMapper.toResponseList(taskService.getIncompleteTasks());
+        return taskMapper.toResponseList(taskQueryService.getIncompleteTasks());
     }
 
     // PATCH /api/tasks/5/toggle
@@ -148,7 +139,7 @@ public class TaskApiController {
     @PatchMapping("/{id}/toggle")
     public TaskResponse advanceStatus(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(id);
+        Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         return taskMapper.toResponse(taskService.advanceStatus(id));
     }

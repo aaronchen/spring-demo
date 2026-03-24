@@ -412,13 +412,33 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Action constants: `ACTION_STATUS`, `ACTION_PRIORITY`, `ACTION_ASSIGN`, `ACTION_DELETE`
   - Lombok `@Data`
 
+- `dto/TaskListQuery.java` - Controller-layer binding DTO for task list query parameters (`@ModelAttribute`)
+  - Fields: `search`, `statusFilter` (default ALL), `overdue`, `priority`, `selectedUserId`, `tags`
+  - `toCriteria(List<Long> accessibleProjectIds)` — factory for cross-project searches
+  - `toCriteria(Long projectId)` — factory for project-scoped searches
+  - Lombok `@Data`
+
+- `dto/TaskSearchCriteria.java` - Service-layer query object for task searches
+  - Fields: `keyword`, `status`, `priority`, `overdue`, `userId`, `tagIds`, `projectId`, `projectIds`, `dueDateFrom`, `dueDateTo`
+  - Project scoping: single project (`projectId`) or multi-project (`projectIds`, null = admin bypass)
+  - Lombok `@Data`
+
+- `dto/ProjectListQuery.java` - Controller-layer binding DTO for project list query parameters (`@ModelAttribute`)
+  - Fields: `sort` (default "name"), `showArchived` (default false)
+
+- `dto/SavedViewData.java` - Typed wrapper for saved view persistence; replaces opaque JSON string
+  - Fields: `type` (discriminator, "task" for now), `query` (`TaskListQuery`), `view`, `sort` (list of `SortField`)
+  - `toJson()`/`fromJson(String)` for entity serialization via Jackson `ObjectMapper`
+  - `ofTask(TaskListQuery, String, List<SortField>)` — factory method
+  - Inner record `SortField(String field, String direction)`
+
 - `dto/SavedViewRequest.java` - Saved view input DTO (REST API create)
-  - Fields: `name` (required, `@NotBlank`, max 100), `filters` (required, `@NotBlank` — JSON string of filter state)
+  - Fields: `name` (required, `@NotBlank`, max 100), `data` (required, `@NotNull @Valid SavedViewData`)
   - Record DTO
 
 - `dto/SavedViewResponse.java` - Saved view output DTO
-  - Fields: `id`, `name`, `filters` (JSON string), `createdAt`
-  - Record DTO
+  - Fields: `id`, `name`, `data` (`SavedViewData`)
+  - Record DTO; `fromEntity()` deserializes JSON via `SavedViewData.fromJson()`
 
 - `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
   - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
@@ -464,12 +484,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event and `CommentChangeEvent`
 
-- `service/TaskQueryService.java` - Read-only task lookups and cross-service task operations
+- `service/TaskQueryService.java` - Read-only task queries and cross-service task operations; `@Transactional(readOnly = true)` class-level
   - Constructor injection: `TaskRepository`
   - Breaks circular dependency: `TaskService` → `UserService`/`CommentService` → `TaskService`
-  - `getTaskById(id)` — used by `CommentService` for task validation
-  - `countByUserAndStatus(user, status)` — used by `UserService.countCompletedTasks()`
-  - `countAssignedTasks(user)` — used by `UserService.countAssignedTasks()`
+  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `groupByStatus`
   - `unassignTasks(user)` — sets user to null on all user's tasks, resets non-completed to OPEN; used by `UserService` when disabling/deleting users
   - `unassignTasksInProject(user, projectId)` — unassigns non-terminal tasks for a user within a specific project; used by `ProjectService` when demoting a member to VIEWER
 
@@ -478,35 +496,28 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Breaks circular dependency: `CommentService` → `UserService` → `CommentService`
   - `countByUserId(userId)` — used by `UserService.countComments()`
 
-- `service/ProjectService.java` - Project business logic with audit event publishing
-  - Constructor injection: `ProjectRepository`, `ProjectMemberRepository`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
+- `service/ProjectQueryService.java` - Read-only project queries; `@Transactional(readOnly = true)` class-level
+  - Constructor injection: `ProjectRepository`, `ProjectMemberRepository`
   - `getProjectById(Long)` — throws `EntityNotFoundException` if not found
   - `getActiveProjects()` — returns ACTIVE projects sorted by name
-  - `getActiveProjectsByNewest()` — ACTIVE projects sorted by newest first
-  - `getAllProjects()` / `getAllProjectsByNewest()` — all projects (admin views, including archived)
+  - `getAdminProjects(boolean includeArchived, String sort)` — consolidated admin project listing
   - `getProjectsForUser(Long userId)` — active projects where user is a member
   - `getProjectsForUser(Long userId, boolean includeArchived, String sort)` — user's projects with sort/archive filter
   - `getAccessibleProjectIds(Long userId)` — returns IDs of active projects for a user; used by controllers for project-scoped queries
-  - `getEditableProjectsForUser(Long userId)` — returns active projects where user is EDITOR or OWNER, sorted by name; used by `TaskController.addEditableProjects()` and `DashboardService` for "New Task" button project dropdown
+  - `getEditableProjectsForUser(Long userId)` — returns active projects where user is EDITOR or OWNER
+  - Member queries: `getMembers(Long)`, `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
+
+- `service/ProjectService.java` - Project write operations with audit event publishing
+  - Constructor injection: `ProjectRepository`, `ProjectQueryService`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
   - `createProject(Project, User)` — creator becomes OWNER via cascaded `ProjectMember`; publishes `PROJECT_CREATED` audit event
   - `updateProject(Long, Project)` — updates name/description with diff tracking; publishes `PROJECT_UPDATED` if changed
   - `archiveProject(Long)` — sets status to ARCHIVED; publishes `PROJECT_ARCHIVED`
   - `unarchiveProject(Long)` — restores to ACTIVE; publishes `PROJECT_UNARCHIVED`
   - `deleteProject(Long)` — only if no COMPLETED tasks (cancelled tasks don't block); publishes `PROJECT_DELETED`
-  - Member management: `getMembers(Long)`, `addMember` (rejects duplicates), `removeMember` (prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role; demoting to VIEWER unassigns non-terminal tasks in the project)
-  - Access checks: `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
+  - Member management: `addMember` (rejects duplicates), `removeMember` (prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role; demoting to VIEWER unassigns non-terminal tasks in the project)
 
-- `service/TaskService.java` - Business logic layer with audit and domain event publishing
-  - Constructor injection: `TaskRepository`, `TagService`, `UserService`, `ApplicationEventPublisher`, `Messages` (uses service layer instead of direct repository access for tags and users)
-  - Single-project queries: `searchAndFilterTasks(projectId, ...)` and `searchAndFilterTasksForProject(projectId, ...)` — for `/projects/{id}` views; both with and without date range overloads
-  - Cross-project queries: `searchAndFilterTasksForProjects(accessibleProjectIds, ...)` — for `/tasks`, `/api/tasks` views; null = admin sees all; with and without date range overloads
-  - Cross-project counts: `countForProjects`, `countByStatusForProjects`, `countOverdueForProjects` — for dashboard team stats
-  - Single-project counts: `countForProject(Long)`, `countByStatusForProject(Long, TaskStatus)`, `countOverdueForProject(Long)` — for per-project dashboard summaries (use `TaskSpecifications`)
-  - System counts: `countAll()`, `countByStatus(TaskStatus)`, `countOverdue()` — admin-only system overview
-  - Personal counts: `countByUserAndStatus(User, TaskStatus)`, `countByUserOverdue(User)` — personal dashboard stats
-  - `getRecentTasksByUser(User)` — top 5 recent tasks for dashboard
-  - `getDueSoon(User)` — tasks due within 7 days for dashboard
-  - `getTitlesByIds(List<Long>)` — bulk title lookup for activity feed
+- `service/TaskService.java` - Write-only task operations with audit and domain event publishing
+  - Constructor injection: `TaskRepository`, `TaskQueryService`, `TagService`, `UserService`, `ApplicationEventPublisher`, `Messages`
   - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
   - `updateTask` — two overloads (with/without checklist); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
   - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
@@ -584,8 +595,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/SavedViewService.java` - Saved view CRUD; `@Transactional` class-level
   - Constructor injection: `SavedViewRepository`
   - `getViewsForUser(Long userId)` — returns all saved views for a user, sorted by name ascending
-  - `createView(SavedView)` — persists a new saved view; associates with the given user
-  - `deleteView(Long id)` — deletes the view by ID (caller must have already checked ownership via `OwnershipGuard`)
+  - `createView(User, String name, SavedViewData data)` — persists a new saved view; calls `data.toJson()` for entity storage
+  - `getViewById(Long id)` — returns view or throws `EntityNotFoundException`
+  - `deleteView(SavedView)` — deletes view entity (caller must have already checked ownership via `OwnershipGuard`)
 
 - `service/AnalyticsService.java` - Analytics chart data builder
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
@@ -595,7 +607,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `projectScope()` helper returns `Specification` — `cb.conjunction()` for no-filter case
 
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
-  - Constructor injection: `TaskService`, `ProjectService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
+  - Constructor injection: `TaskQueryService`, `ProjectQueryService`, `AuditLogService`, `PresenceService` (follows service-to-service convention — no direct repository access)
   - `buildStats(User, List<Long> accessibleProjectIds)` — returns `DashboardStats` record; `accessibleProjectIds` null = admin (show all), non-null = scoped to user's projects
   - Builds per-project `ProjectSummary` cards via `buildProjectSummary()` helper using single-project count methods
   - System stats (totalTasks, onlineCount, etc.) only populated for admins; null/zero for regular users
@@ -605,7 +617,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Controller Layer
 - `controller/api/TaskApiController.java` - Task REST API endpoints
   - `@RestController` with `/api/tasks` base path
-  - Constructor injection: `TaskService`, `ProjectService`, `TaskMapper`, `ProjectAccessGuard`
+  - Constructor injection: `TaskService`, `TaskQueryService`, `ProjectQueryService`, `TaskMapper`, `ProjectAccessGuard`
   - Standard HTTP methods: GET, POST, PUT, PATCH, DELETE
   - GET `/api/tasks` — paginated with filters, scoped to accessible projects via `projectService.getAccessibleProjectIds()`; admin sees all (null bypass)
   - Accepts `TaskRequest` (includes `tagIds`, `userId`, `projectId`), returns `TaskResponse` — no raw entity exposure
@@ -648,14 +660,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/api/ProjectApiController.java` - Project REST API endpoints
   - `@RestController` with `/api/projects` base path
-  - Constructor injection: `ProjectService`, `UserMapper`, `AnalyticsService`, `ProjectAccessGuard`
+  - Constructor injection: `ProjectQueryService`, `UserMapper`, `AnalyticsService`, `ProjectAccessGuard`
   - `GET /api/projects/{id}/members` — all enabled members of a project (returns `List<UserResponse>`)
   - `GET /api/projects/{id}/members/assignable` — editors and owners only, excludes VIEWERs (for task assignment dropdowns)
   - `GET /api/projects/{id}/analytics` — project-scoped analytics data; requires view access via `ProjectAccessGuard`
 
 - `controller/api/AnalyticsApiController.java` - Cross-project analytics REST API
   - `@RestController` with `/api/analytics` base path
-  - Constructor injection: `AnalyticsService`, `ProjectService`
+  - Constructor injection: `AnalyticsService`, `ProjectQueryService`
   - `GET /api/analytics` — cross-project analytics; optional `projectIds` query param for filtering
   - **Security**: intersects requested `projectIds` with user's accessible projects; admin can filter to any projects
 
@@ -737,14 +749,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/AnalyticsController.java` - Cross-project analytics web page
   - `@Controller` with `/analytics` base path
-  - Constructor injection: `ProjectService`
+  - Constructor injection: `ProjectQueryService`
   - `GET /analytics` — analytics page; admin sees all active projects, regular users see their projects
   - Passes `apiUrl` (`/api/analytics`) and `projects` list to template
 
 - `controller/ProjectController.java` - Project web UI endpoints
   - `@Controller` with `/projects` base path
-  - Constructor injection: `ProjectService`, `TaskService`, `TagService`, `UserService`, `ProjectAccessGuard`
-  - `GET /projects` — list projects; admin sees all (with sort and archived toggle); users see their projects; HTMX-aware (returns `project-grid :: grid` fragment)
+  - Constructor injection: `ProjectService`, `ProjectQueryService`, `TaskQueryService`, `TagService`, `UserService`, `ProjectAccessGuard`, `TaskReport`
+  - `GET /projects` — list projects via `@ModelAttribute ProjectListQuery`; admin sees all (with sort and archived toggle); users see their projects; HTMX-aware (returns `project-grid :: grid` fragment)
   - `GET /projects/new` — create form (returns `project-form` template)
   - `POST /projects` — create project; creator becomes OWNER; HTMX-aware (triggers `projectSaved`)
   - `GET /projects/{id}` — project home with full task filtering (search, status, priority, user, tags, overdue); uses `projectAccessGuard.requireViewAccess()`; resolves `canEditProject` and `isProjectOwner` for template
@@ -767,7 +779,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/TaskController.java` - Task web UI endpoints (cross-project task views)
   - `@Controller` with `/tasks` base path
-  - Constructor injection: `TaskService`, `ProjectService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `Messages` (Messages added for bulk action error messages)
+  - Constructor injection: `TaskService`, `TaskQueryService`, `ProjectQueryService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `TaskReport`, `Messages`
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
@@ -818,7 +830,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Wraps result in `CustomUserDetails`
 
 - `security/ProjectAccessGuard.java` - Project-scoped access control component
-  - Constructor injection: `ProjectService`
+  - Constructor injection: `ProjectQueryService`
   - `requireViewAccess(projectId, currentDetails)` — throws `AccessDeniedException` unless member or admin
   - `requireEditAccess(projectId, currentDetails)` — throws unless EDITOR/OWNER or admin
   - `requireOwnerAccess(projectId, currentDetails)` — throws unless OWNER or admin
@@ -1236,11 +1248,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `test/resources/application-test.properties` - Test profile config (separate H2 `testdb`, no SQL logging, Flyway disabled)
 - `test/java/.../DemoApplicationTests.java` - Context load smoke test (`@SpringBootTest`, `@ActiveProfiles("test")`)
+- `test/java/.../service/TaskQueryServiceTest.java` - 6 unit tests (Mockito): getTaskById, getAllTasks, getIncompleteTasks, searchTasks
 - `test/java/.../service/TaskServiceTest.java` - 14 unit tests (Mockito): CRUD, optimistic locking, status transitions, assignment rules
 - `test/java/.../service/TagServiceTest.java` - 6 unit tests (Mockito): CRUD, audit event publishing (`any(AuditEvent.class)` for correct overload matching)
 - `test/java/.../service/CommentServiceTest.java` - 14 unit tests (Mockito): CRUD, event publishing, subscriber/mention ID extraction, deduplication
 - `test/java/.../service/UserServiceTest.java` - 20 unit tests (Mockito): CRUD, find/get, search, canDelete logic, enable/disable + unassign, profile update with diff, role change, password change
-- `test/java/.../service/ProjectServiceTest.java` - 22 unit tests (Mockito): CRUD, archive, delete (with/without completed tasks), member management (add/remove/role change), last-owner protection, access checks, viewer demotion unassigns tasks
+- `test/java/.../service/ProjectQueryServiceTest.java` - 9 unit tests (Mockito): getProjectById, getProjectsForUser, access checks (isMember, isOwner, isEditor)
+- `test/java/.../service/ProjectServiceTest.java` - 13 unit tests (Mockito): CRUD, archive, delete (with/without completed tasks), member management (add/remove/role change), last-owner protection, viewer demotion unassigns tasks
 - `test/java/.../service/NotificationServiceTest.java` - 8 unit tests (Mockito): DB-first create + WebSocket push, unread count, pagination, mark-as-read, mark-all, clear-all
 - `test/java/.../audit/AuditEventListenerTest.java` - 2 unit tests (Mockito): persists audit log, skips system principal
 - `test/java/.../event/NotificationEventListenerTest.java` - 8 unit tests (Mockito): task assigned/updated/comment notification routing, self-exclusion, deduplication across groups
@@ -1408,11 +1422,13 @@ The following sections were moved from CLAUDE.md. They are reference material de
 
 | Test class | Type | What it tests |
 |---|---|---|
-| `TaskServiceTest` | Unit (Mockito) | Service CRUD, optimistic locking, status transitions, assignment |
+| `TaskQueryServiceTest` | Unit (Mockito) | Read-only task lookups: getTaskById, getAllTasks, searchTasks |
+| `TaskServiceTest` | Unit (Mockito) | Write operations: CRUD, optimistic locking, status transitions, assignment |
 | `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
 | `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
 | `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
-| `ProjectServiceTest` | Unit (Mockito) | Project CRUD, member management, access checks, last-owner protection |
+| `ProjectQueryServiceTest` | Unit (Mockito) | Read-only project lookups: getProjectById, getProjectsForUser, access checks |
+| `ProjectServiceTest` | Unit (Mockito) | Write operations: CRUD, member management, last-owner protection |
 | `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
 | `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
 | `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |

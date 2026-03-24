@@ -1,6 +1,6 @@
 package cc.desuka.demo.security;
 
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +16,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProjectAccessGuard {
 
-    private final ProjectService projectService;
+    private final ProjectQueryService projectQueryService;
 
-    public ProjectAccessGuard(ProjectService projectService) {
-        this.projectService = projectService;
+    public ProjectAccessGuard(ProjectQueryService projectQueryService) {
+        this.projectQueryService = projectQueryService;
     }
 
     /** Throws {@link AccessDeniedException} unless the user has project access or is admin. */
@@ -27,7 +27,7 @@ public class ProjectAccessGuard {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }
-        if (!projectService.isMember(projectId, currentDetails.getUser().getId())) {
+        if (!projectQueryService.isMember(projectId, currentDetails.getUser().getId())) {
             throw new AccessDeniedException("Access Denied");
         }
     }
@@ -40,7 +40,7 @@ public class ProjectAccessGuard {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }
-        if (!projectService.isEditor(projectId, currentDetails.getUser().getId())) {
+        if (!projectQueryService.isEditor(projectId, currentDetails.getUser().getId())) {
             throw new AccessDeniedException("Access Denied");
         }
     }
@@ -50,7 +50,7 @@ public class ProjectAccessGuard {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }
-        if (!projectService.isOwner(projectId, currentDetails.getUser().getId())) {
+        if (!projectQueryService.isOwner(projectId, currentDetails.getUser().getId())) {
             throw new AccessDeniedException("Access Denied");
         }
     }

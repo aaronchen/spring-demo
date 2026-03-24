@@ -4,7 +4,7 @@ import cc.desuka.demo.dto.AnalyticsResponse;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.AnalyticsService;
-import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,12 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnalyticsApiController {
 
     private final AnalyticsService analyticsService;
-    private final ProjectService projectService;
+    private final ProjectQueryService projectQueryService;
 
     public AnalyticsApiController(
-            AnalyticsService analyticsService, ProjectService projectService) {
+            AnalyticsService analyticsService, ProjectQueryService projectQueryService) {
         this.analyticsService = analyticsService;
-        this.projectService = projectService;
+        this.projectQueryService = projectQueryService;
     }
 
     @GetMapping
@@ -38,7 +38,7 @@ public class AnalyticsApiController {
             effectiveProjectIds = (projectIds != null && !projectIds.isEmpty()) ? projectIds : null;
         } else {
             List<Long> accessibleProjectIds =
-                    projectService.getAccessibleProjectIds(currentDetails.getUser().getId());
+                    projectQueryService.getAccessibleProjectIds(currentDetails.getUser().getId());
             effectiveProjectIds =
                     (projectIds != null && !projectIds.isEmpty())
                             ? projectIds.stream().filter(accessibleProjectIds::contains).toList()

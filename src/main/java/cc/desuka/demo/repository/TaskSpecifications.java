@@ -1,5 +1,6 @@
 package cc.desuka.demo.repository;
 
+import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Tag;
@@ -99,86 +100,21 @@ public class TaskSpecifications {
         };
     }
 
-    // ── Build helpers ──────────────────────────────────────────────────
+    // ── Build helper ────────────────────────────────────────────────────
 
-    public static Specification<Task> build(
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds) {
-        return build(null, keyword, statusFilter, overdue, priority, selectedUserId, tagIds);
-    }
+    public static Specification<Task> build(TaskSearchCriteria criteria) {
+        Specification<Task> scope =
+                (criteria.getProjectId() != null)
+                        ? withProjectId(criteria.getProjectId())
+                        : withProjectIds(criteria.getProjectIds());
 
-    public static Specification<Task> build(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds) {
-        return Specification.where(withProjectId(projectId))
-                .and(withStatusFilter(statusFilter))
-                .and(withOverdue(overdue))
-                .and(withPriority(priority))
-                .and(withKeyword(keyword))
-                .and(withUserId(selectedUserId))
-                .and(withTagIds(tagIds));
-    }
-
-    public static Specification<Task> build(
-            Long projectId,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            LocalDate dueDateFrom,
-            LocalDate dueDateTo) {
-        return build(projectId, keyword, statusFilter, overdue, priority, selectedUserId, tagIds)
-                .and(withDateInRange(dueDateFrom, dueDateTo));
-    }
-
-    // ── Build helpers for cross-project views (e.g. /tasks, /api/tasks) ──
-
-    public static Specification<Task> buildForProjects(
-            List<Long> accessibleProjectIds,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds) {
-        return Specification.where(withProjectIds(accessibleProjectIds))
-                .and(withStatusFilter(statusFilter))
-                .and(withOverdue(overdue))
-                .and(withPriority(priority))
-                .and(withKeyword(keyword))
-                .and(withUserId(selectedUserId))
-                .and(withTagIds(tagIds));
-    }
-
-    public static Specification<Task> buildForProjects(
-            List<Long> accessibleProjectIds,
-            String keyword,
-            TaskStatusFilter statusFilter,
-            boolean overdue,
-            Priority priority,
-            Long selectedUserId,
-            List<Long> tagIds,
-            LocalDate dueDateFrom,
-            LocalDate dueDateTo) {
-        return buildForProjects(
-                        accessibleProjectIds,
-                        keyword,
-                        statusFilter,
-                        overdue,
-                        priority,
-                        selectedUserId,
-                        tagIds)
-                .and(withDateInRange(dueDateFrom, dueDateTo));
+        return Specification.where(scope)
+                .and(withStatusFilter(criteria.getStatusFilter()))
+                .and(withOverdue(criteria.isOverdue()))
+                .and(withPriority(criteria.getPriority()))
+                .and(withKeyword(criteria.getKeyword()))
+                .and(withUserId(criteria.getUserId()))
+                .and(withTagIds(criteria.getTagIds()))
+                .and(withDateInRange(criteria.getDueDateFrom(), criteria.getDueDateTo()));
     }
 }

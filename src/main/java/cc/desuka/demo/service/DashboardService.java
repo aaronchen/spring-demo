@@ -21,18 +21,18 @@ public class DashboardService {
     private static final List<String> TASK_ACTIONS =
             List.of(AuditEvent.TASK_CREATED, AuditEvent.TASK_UPDATED, AuditEvent.TASK_DELETED);
 
-    private final TaskService taskService;
-    private final ProjectService projectService;
+    private final TaskQueryService taskQueryService;
+    private final ProjectQueryService projectQueryService;
     private final AuditLogService auditLogService;
     private final PresenceService presenceService;
 
     public DashboardService(
-            TaskService taskService,
-            ProjectService projectService,
+            TaskQueryService taskQueryService,
+            ProjectQueryService projectQueryService,
             AuditLogService auditLogService,
             PresenceService presenceService) {
-        this.taskService = taskService;
-        this.projectService = projectService;
+        this.taskQueryService = taskQueryService;
+        this.projectQueryService = projectQueryService;
         this.auditLogService = auditLogService;
         this.presenceService = presenceService;
     }
@@ -41,11 +41,11 @@ public class DashboardService {
      * @param accessibleProjectIds null = admin (show all); non-null = scoped to these projects
      */
     public DashboardStats buildStats(User user, List<Long> accessibleProjectIds) {
-        long myOpen = taskService.countByUserAndStatus(user, TaskStatus.OPEN);
-        long myInProgress = taskService.countByUserAndStatus(user, TaskStatus.IN_PROGRESS);
-        long myInReview = taskService.countByUserAndStatus(user, TaskStatus.IN_REVIEW);
-        long myCompleted = taskService.countByUserAndStatus(user, TaskStatus.COMPLETED);
-        long myOverdue = taskService.countByUserOverdue(user);
+        long myOpen = taskQueryService.countByUserAndStatus(user, TaskStatus.OPEN);
+        long myInProgress = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_PROGRESS);
+        long myInReview = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_REVIEW);
+        long myCompleted = taskQueryService.countByUserAndStatus(user, TaskStatus.COMPLETED);
+        long myOverdue = taskQueryService.countByUserOverdue(user);
         long myTotal = myOpen + myInProgress + myInReview + myCompleted;
 
         boolean isAdmin = AuthExpressions.isAdmin(user);
@@ -53,9 +53,9 @@ public class DashboardService {
         // Per-project summaries
         List<Project> userProjects;
         if (isAdmin) {
-            userProjects = projectService.getActiveProjects();
+            userProjects = projectQueryService.getActiveProjects();
         } else {
-            userProjects = projectService.getProjectsForUser(user.getId());
+            userProjects = projectQueryService.getProjectsForUser(user.getId());
         }
         List<ProjectSummary> projectSummaries =
                 userProjects.stream().map(this::buildProjectSummary).toList();
@@ -65,7 +65,7 @@ public class DashboardService {
         if (isAdmin) {
             editableProjects = userProjects;
         } else {
-            editableProjects = projectService.getEditableProjectsForUser(user.getId());
+            editableProjects = projectQueryService.getEditableProjectsForUser(user.getId());
         }
 
         // System-wide stats (admin only)
@@ -74,10 +74,10 @@ public class DashboardService {
         long totalCompleted = 0;
         long totalOverdue = 0;
         if (isAdmin) {
-            totalTasks = taskService.countAll();
-            totalOpen = taskService.countByStatus(TaskStatus.OPEN);
-            totalCompleted = taskService.countByStatus(TaskStatus.COMPLETED);
-            totalOverdue = taskService.countOverdue();
+            totalTasks = taskQueryService.countAll();
+            totalOpen = taskQueryService.countByStatus(TaskStatus.OPEN);
+            totalCompleted = taskQueryService.countByStatus(TaskStatus.COMPLETED);
+            totalOverdue = taskQueryService.countOverdue();
         }
 
         List<AuditLog> activity = auditLogService.getRecentByActions(TASK_ACTIONS);
@@ -87,7 +87,7 @@ public class DashboardService {
                         .filter(Objects::nonNull)
                         .distinct()
                         .toList();
-        Map<Long, String> activityTaskTitles = taskService.getTitlesByIds(taskIds);
+        Map<Long, String> activityTaskTitles = taskQueryService.getTitlesByIds(taskIds);
 
         return new DashboardStats(
                 myOpen,
@@ -96,8 +96,8 @@ public class DashboardService {
                 myCompleted,
                 myOverdue,
                 myTotal,
-                taskService.getRecentTasksByUser(user),
-                taskService.getDueSoon(user),
+                taskQueryService.getRecentTasksByUser(user),
+                taskQueryService.getDueSoon(user),
                 projectSummaries,
                 totalTasks,
                 totalOpen,
@@ -111,12 +111,12 @@ public class DashboardService {
 
     private ProjectSummary buildProjectSummary(Project project) {
         Long pid = project.getId();
-        long open = taskService.countByStatusForProject(pid, TaskStatus.OPEN);
-        long inProgress = taskService.countByStatusForProject(pid, TaskStatus.IN_PROGRESS);
-        long inReview = taskService.countByStatusForProject(pid, TaskStatus.IN_REVIEW);
-        long completed = taskService.countByStatusForProject(pid, TaskStatus.COMPLETED);
-        long overdue = taskService.countOverdueForProject(pid);
-        long total = taskService.countForProject(pid);
+        long open = taskQueryService.countByStatusForProject(pid, TaskStatus.OPEN);
+        long inProgress = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_PROGRESS);
+        long inReview = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_REVIEW);
+        long completed = taskQueryService.countByStatusForProject(pid, TaskStatus.COMPLETED);
+        long overdue = taskQueryService.countOverdueForProject(pid);
+        long total = taskQueryService.countForProject(pid);
         return ProjectSummary.of(project, open, inProgress, inReview, completed, overdue, total);
     }
 }

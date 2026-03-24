@@ -9,7 +9,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
-import cc.desuka.demo.service.TaskService;
+import cc.desuka.demo.service.TaskQueryService;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -24,19 +24,19 @@ public class CommentApiController {
     private final CommentMapper commentMapper;
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
-    private final TaskService taskService;
+    private final TaskQueryService taskQueryService;
 
     public CommentApiController(
             CommentService commentService,
             CommentMapper commentMapper,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
-            TaskService taskService) {
+            TaskQueryService taskQueryService) {
         this.commentService = commentService;
         this.commentMapper = commentMapper;
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
-        this.taskService = taskService;
+        this.taskQueryService = taskQueryService;
     }
 
     // GET /api/tasks/1/comments
@@ -44,7 +44,7 @@ public class CommentApiController {
     @GetMapping
     public List<CommentResponse> getComments(
             @PathVariable Long taskId, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(taskId);
+        Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return commentMapper.toResponseList(commentService.getCommentsByTaskId(taskId));
     }
@@ -57,7 +57,7 @@ public class CommentApiController {
             @PathVariable Long taskId,
             @Valid @RequestBody CommentRequest commentRequest,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(taskId);
+        Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return commentMapper.toResponse(
                 commentService.createComment(
@@ -72,7 +72,7 @@ public class CommentApiController {
             @PathVariable Long taskId,
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskService.getTaskById(taskId);
+        Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         Comment comment = commentService.getCommentById(commentId);
         ownershipGuard.requireAccess(comment, currentDetails);

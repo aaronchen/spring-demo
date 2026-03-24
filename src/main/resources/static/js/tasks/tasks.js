@@ -135,6 +135,7 @@ function switchView(view) {
     // Clear bulk selection when switching views
     if (typeof clearBulkSelection === 'function') clearBulkSelection();
     currentView = view;
+    clearActiveView();
     renderViewToggle();
     doSearch(false);
 }
@@ -607,18 +608,19 @@ function clearActiveView() {
 }
 
 function applySavedView(view) {
-    const filters = JSON.parse(view.filters);
+    const data = view.data;
+    const query = data.query || {};
 
     // Apply all filter values
-    document.getElementById('search-input').value = filters.search || '';
-    document.getElementById('current-status-filter').value = filters.statusFilter || 'ALL';
-    document.getElementById('current-overdue-filter').value = filters.overdue || 'false';
-    document.getElementById('current-priority-filter').value = filters.priority || '';
-    selectedUserId = filters.selectedUserId || null;
-    selectedTagIds = filters.tags || [];
-    if (filters.view) currentView = filters.view;
-    if (filters.sort) {
-        activeSorts = filters.sort;
+    document.getElementById('search-input').value = query.search || '';
+    document.getElementById('current-status-filter').value = query.statusFilter || 'ALL';
+    document.getElementById('current-overdue-filter').value = query.overdue ? 'true' : 'false';
+    document.getElementById('current-priority-filter').value = query.priority || '';
+    selectedUserId = query.selectedUserId || null;
+    selectedTagIds = query.tags || [];
+    if (data.view) currentView = data.view;
+    if (data.sort) {
+        activeSorts = data.sort;
     }
 
     activeViewName = view.name;
@@ -662,13 +664,18 @@ function saveCurrentView() {
             return false; // keep modal open
         }
 
-        const filters = {
-            search: document.getElementById('search-input').value || '',
-            statusFilter: document.getElementById('current-status-filter').value || 'ALL',
-            overdue: document.getElementById('current-overdue-filter').value || 'false',
-            priority: document.getElementById('current-priority-filter').value || '',
-            selectedUserId: selectedUserId || null,
-            tags: selectedTagIds.slice(),
+        const statusValue = document.getElementById('current-status-filter').value || 'ALL';
+        const priorityValue = document.getElementById('current-priority-filter').value || '';
+        const data = {
+            type: 'task',
+            query: {
+                search: document.getElementById('search-input').value || null,
+                statusFilter: statusValue !== 'ALL' ? statusValue : null,
+                overdue: document.getElementById('current-overdue-filter').value === 'true',
+                priority: priorityValue || null,
+                selectedUserId: selectedUserId || null,
+                tags: selectedTagIds.length > 0 ? selectedTagIds.slice() : null,
+            },
             view: currentView,
             sort: activeSorts.slice(),
         };
@@ -676,7 +683,7 @@ function saveCurrentView() {
         fetch(`${APP_CONFIG.routes.api}/views`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: name, filters: JSON.stringify(filters) }),
+            body: JSON.stringify({ name, data }),
         }).then(r => {
             if (r.ok) {
                 activeViewName = name;
