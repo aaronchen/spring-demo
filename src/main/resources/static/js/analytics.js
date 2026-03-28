@@ -120,6 +120,7 @@
                 renderBurndownChart(data.burndown);
                 renderVelocityChart(data.velocity);
                 renderOverdueChart(data.overdueAnalysis);
+                renderEffortChart(data.effortDistribution);
             });
     }
 
@@ -240,30 +241,55 @@
     function renderVelocityChart(velocity) {
         const ctx = document.getElementById('velocityChart');
         const labels = velocity.map(p => p.weekStart);
-        const values = velocity.map(p => p.completed);
-        const completed = msg['analytics.label.completed'] || 'Completed';
+        const completedValues = velocity.map(p => p.completed);
+        const effortValues = velocity.map(p => p.effortCompleted);
+        const completedLabel = msg['analytics.label.completed'] || 'Completed';
+        const effortLabel = msg['analytics.label.effort'] || 'Effort';
+        const hasEffort = effortValues.some(v => v !== null && v > 0);
+
+        const datasets = [{
+            label: completedLabel,
+            data: completedValues,
+            borderColor: '#198754',
+            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+            fill: true,
+            tension: 0.3,
+            yAxisID: 'y'
+        }];
+
+        if (hasEffort) {
+            datasets.push({
+                label: effortLabel,
+                data: effortValues,
+                borderColor: '#6f42c1',
+                backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                fill: true,
+                tension: 0.3,
+                yAxisID: 'y1'
+            });
+        }
+
+        const scales = {
+            y: { beginAtZero: true, ticks: { stepSize: 1 }, position: 'left' }
+        };
+        if (hasEffort) {
+            scales.y1 = {
+                beginAtZero: true,
+                position: 'right',
+                grid: { drawOnChartArea: false },
+                ticks: { stepSize: 1 }
+            };
+        }
 
         charts.velocity = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: completed,
-                    data: values,
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
+            data: { labels: labels, datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                },
+                scales: scales,
                 plugins: {
-                    legend: { display: false }
+                    legend: { display: hasEffort }
                 }
             }
         });
@@ -288,6 +314,35 @@
                 maintainAspectRatio: false,
                 scales: {
                     y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    function renderEffortChart(effortDistribution) {
+        const ctx = document.getElementById('effortChart');
+        const effortLabel = msg['analytics.label.effort'] || 'Effort';
+
+        charts.effort = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: effortDistribution.assignees,
+                datasets: [{
+                    label: effortLabel,
+                    data: effortDistribution.efforts,
+                    backgroundColor: '#6f42c1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: { beginAtZero: true, ticks: { stepSize: 1 } },
+                    y: { ticks: { autoSkip: false } }
                 },
                 plugins: {
                     legend: { display: false }

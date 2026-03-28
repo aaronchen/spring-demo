@@ -29,6 +29,8 @@ public class TaskRequest {
 
     private LocalDate dueDate;
 
+    private Short effort;
+
     // null or empty = no tags (or remove all existing tags from this task)
     private List<Long> tagIds;
 

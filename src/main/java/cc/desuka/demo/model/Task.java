@@ -39,6 +39,7 @@ public class Task implements OwnedEntity, Auditable {
     public static final String FIELD_CHECKLIST_ITEMS = "checklistItems";
     public static final String FIELD_CHECKLIST_TOTAL = "checklistTotal";
     public static final String FIELD_CHECKLIST_CHECKED = "checklistChecked";
+    public static final String FIELD_EFFORT = "effort";
     public static final String FIELD_BLOCKED_BY = "blockedBy";
     public static final String FIELD_BLOCKS = "blocks";
 
@@ -77,6 +78,9 @@ public class Task implements OwnedEntity, Auditable {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     @Column(name = "due_date")
     private LocalDate dueDate;
+
+    @Column(name = "effort")
+    private Short effort;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -262,6 +266,14 @@ public class Task implements OwnedEntity, Auditable {
         this.dueDate = dueDate;
     }
 
+    public Short getEffort() {
+        return effort;
+    }
+
+    public void setEffort(Short effort) {
+        this.effort = effort;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -364,6 +376,7 @@ public class Task implements OwnedEntity, Auditable {
         snapshot.put(FIELD_PRIORITY, priority != null ? priority.name() : null);
         snapshot.put(FIELD_START_DATE, startDate != null ? startDate.toString() : null);
         snapshot.put(FIELD_DUE_DATE, dueDate != null ? dueDate.toString() : null);
+        snapshot.put(FIELD_EFFORT, effort);
         snapshot.put(FIELD_USER, user != null ? user.getName() : null);
         snapshot.put(
                 FIELD_TAGS,

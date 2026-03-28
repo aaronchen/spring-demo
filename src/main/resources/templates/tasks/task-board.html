@@ -69,6 +69,11 @@
                                       th:classappend="${isOverdue ? 'text-danger fw-bold' : 'text-muted'}"
                                       th:text="${#temporals.format(task.dueDate, 'MMM d')}">Mar 15</span>
 
+                                <!-- Effort -->
+                                <span th:if="${task.effort != null}" class="small text-muted">
+                                    <i class="bi bi-speedometer2"></i> <span th:text="${task.effort}">0</span>
+                                </span>
+
                                 <!-- Assignee Initial -->
                                 <span th:if="${task.user != null}"
                                       class="kanban-card-user"

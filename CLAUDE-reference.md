@@ -8,8 +8,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Model Layer
 - `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
-  - Fields: id, version, title, description, status, priority, priorityOrder, startDate, dueDate, createdAt, completedAt, updatedAt, project, tags, user, checklistItems, checklistTotal, checklistChecked, blocks, blockedBy, blocked
-  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_START_DATE`, `FIELD_CREATED_AT`, `FIELD_COMPLETED_AT`, `FIELD_UPDATED_AT`, `FIELD_PROJECT`, `FIELD_TAGS`, `FIELD_USER`, `FIELD_COMMENTS`, `FIELD_CHECKLIST_ITEMS`, `FIELD_CHECKLIST_TOTAL`, `FIELD_CHECKLIST_CHECKED`, `FIELD_BLOCKS`, `FIELD_BLOCKED_BY`, `FIELD_BLOCKED`) — used in mappers, specifications, and `toAuditSnapshot()`
+  - Fields: id, version, title, description, status, priority, priorityOrder, startDate, dueDate, effort, createdAt, completedAt, updatedAt, project, tags, user, checklistItems, checklistTotal, checklistChecked, blocks, blockedBy, blocked
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_START_DATE`, `FIELD_EFFORT`, `FIELD_CREATED_AT`, `FIELD_COMPLETED_AT`, `FIELD_UPDATED_AT`, `FIELD_PROJECT`, `FIELD_TAGS`, `FIELD_USER`, `FIELD_COMMENTS`, `FIELD_CHECKLIST_ITEMS`, `FIELD_CHECKLIST_TOTAL`, `FIELD_CHECKLIST_CHECKED`, `FIELD_BLOCKS`, `FIELD_BLOCKED_BY`, `FIELD_BLOCKED`) — used in mappers, specifications, and `toAuditSnapshot()`
   - `@Version` on `version` field — JPA optimistic locking; Hibernate auto-increments on each update and throws `OptimisticLockException` on stale writes
   - `status` — `@Enumerated(EnumType.STRING)`, `TaskStatus` enum (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED), defaults to `OPEN`
   - `isCompleted()` — derived convenience method, returns `status == TaskStatus.COMPLETED` (no backing field)
@@ -313,12 +313,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### DTO Layer
 - `dto/TaskRequest.java` - API input DTO (REST API create and update operations)
-  - Fields: `projectId` (required on create), `title` (required, 1–100 chars), `description` (optional, max 500 chars), `priority` (optional `Priority`), `startDate` (optional `LocalDate`), `dueDate` (optional `LocalDate`), `tagIds` (optional `List<Long>`), `userId` (optional `Long`), `version` (null on create, required on update for optimistic locking)
+  - Fields: `projectId` (required on create), `title` (required, 1–100 chars), `description` (optional, max 500 chars), `priority` (optional `Priority`), `startDate` (optional `LocalDate`), `dueDate` (optional `LocalDate`), `effort` (optional `Short`, 0–32767), `tagIds` (optional `List<Long>`), `userId` (optional `Long`), `version` (null on create, required on update for optimistic locking)
   - Validation annotations used by `@Valid` in the controller
   - Lombok `@Data` for getters/setters/equals/hashCode
 
 - `dto/TaskFormRequest.java` - Web form input DTO (task create/edit forms)
-  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars), `status` (`TaskStatus`), `priority` (`Priority`), `startDate`, `dueDate` (both `@DateTimeFormat(iso = ISO.DATE)`), `version`
+  - Fields: `title` (required, 1–100 chars), `description` (optional, max 500 chars), `status` (`TaskStatus`), `priority` (`Priority`), `startDate`, `dueDate` (both `@DateTimeFormat(iso = ISO.DATE)`), `effort` (optional `Short`), `version`
   - `fromEntity(Task)` — static factory; populates DTO from entity for edit form pre-fill
   - `toEntity()` — creates Task entity from form data (does not set project, tags, user, or checklist — controller handles those)
   - Does NOT include `tagIds`, `assigneeId`, `projectId`, or checklist arrays — those come as separate `@RequestParam` in the controller
@@ -335,7 +335,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Lombok `@Data`
 
 - `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
-  - Fields: `id`, `title`, `description`, `status` (`TaskStatus`), `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`, `blocked` (boolean), `blockedBy` (`List<TaskDependencyResponse>`), `blocks` (`List<TaskDependencyResponse>`)
+  - Fields: `id`, `title`, `description`, `status` (`TaskStatus`), `priority` (`Priority`), `dueDate` (`LocalDate`), `effort` (`Short`, nullable), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`, `blocked` (boolean), `blockedBy` (`List<TaskDependencyResponse>`), `blocks` (`List<TaskDependencyResponse>`)
   - Lombok `@Data`
 
 - `dto/TaskDependencyResponse.java` - Lightweight dependency DTO for task relationship display
@@ -417,7 +417,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `dto/BulkTaskRequest.java` - Bulk action input DTO (web controller `POST /tasks/bulk`)
   - Fields: `taskIds` (required, `@NotEmpty`, `List<Long>`), `action` (required, `@NotBlank`), `value` (optional)
-  - Action constants: `ACTION_STATUS`, `ACTION_PRIORITY`, `ACTION_ASSIGN`, `ACTION_DELETE`
+  - Action constants: `ACTION_STATUS`, `ACTION_PRIORITY`, `ACTION_ASSIGN`, `ACTION_EFFORT`, `ACTION_DELETE`
   - Lombok `@Data`
 
 - `dto/TaskListQuery.java` - Controller-layer binding DTO for task list query parameters (`@ModelAttribute`)
@@ -619,7 +619,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
   - `getProjectAnalytics(Long projectId)` — single-project analytics
   - `getCrossProjectAnalytics(List<Long> accessibleProjectIds)` — cross-project; null = admin (all projects)
-  - Private builders: `buildStatusBreakdown` (spec-based counts per status), `buildPriorityBreakdown` (spec-based counts per priority), `buildWorkloadDistribution` (grouped by user + status via `AnalyticsRepository`), `buildBurndown` (30-day rolling: initial open + daily created − daily completed), `buildVelocity` (12-week completed per ISO week), `buildOverdueAnalysis` (overdue grouped by assignee)
+  - Private builders: `buildStatusBreakdown` (spec-based counts per status), `buildPriorityBreakdown` (spec-based counts per priority), `buildWorkloadDistribution` (grouped by user + status via `AnalyticsRepository`), `buildBurndown` (30-day rolling: initial open + daily created − daily completed), `buildVelocity` (12-week completed per ISO week, includes effort-based velocity), `buildOverdueAnalysis` (overdue grouped by assignee), `buildEffortDistribution` (total effort by assignee)
   - `projectScope()` helper returns `Specification` — `cb.conjunction()` for no-filter case
 
 - `service/DashboardService.java` - Orchestrates dashboard data via owning services
@@ -818,7 +818,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Board view: when `view=board`, groups tasks by status via `TaskService.groupByStatus()` and returns `task-board.html` (no pagination in board view)
   - `PATCH /tasks/{id}/field` — inline field edit endpoint; accepts `fieldName` + `value` params, delegates to `TaskService.updateField()`; returns updated card or row fragment for the active view
   - `POST /tasks/{id}/status` — kanban drop endpoint; accepts `status` param, delegates to `TaskService.setStatus()`; returns 200 on success
-  - `POST /tasks/bulk` — bulk action endpoint; `@ResponseBody` returns JSON; accepts `BulkTaskRequest` (taskIds, action, value); validates edit access per project (cached), delete access per task; loops over existing service methods for proper audit/event publishing; actions: STATUS, PRIORITY, ASSIGN, DELETE
+  - `POST /tasks/bulk` — bulk action endpoint; `@ResponseBody` returns JSON; accepts `BulkTaskRequest` (taskIds, action, value); validates edit access per project (cached), delete access per task; loops over existing service methods for proper audit/event publishing; actions: STATUS, PRIORITY, ASSIGN, EFFORT, DELETE
   - Task list is scoped to accessible projects via `searchAndFilterTasksForProjects(accessibleProjectIds, ...)`; admin sees all (null bypass)
   - `addProjectEditPermissions()` — builds `projectEditMap` (Map<Long, Boolean>) for cross-project views; admin short-circuits to `canEditProject=true`
   - `addEditableProjects()` — private helper; adds `editableProjects` list to model (admin gets all active projects, regular users get EDITOR/OWNER projects); used by task list, create form, and validation error re-render

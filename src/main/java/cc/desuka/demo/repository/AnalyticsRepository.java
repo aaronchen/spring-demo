@@ -104,6 +104,36 @@ public class AnalyticsRepository {
         return query.getResultList();
     }
 
+    // ── Effort by assignee ────────────────────────────────────────────────
+
+    public List<Object[]> sumEffortByUser(Long projectId, List<Long> projectIds) {
+        String jpql =
+                "SELECT t.user.id, SUM(t.effort) FROM Task t"
+                        + " WHERE t.effort IS NOT NULL"
+                        + projectAndClause(projectId, projectIds)
+                        + " GROUP BY t.user.id";
+        TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
+        bindProjectParams(query, projectId, projectIds);
+        return query.getResultList();
+    }
+
+    // ── Effort completed per day ────────────────────────────────────────
+
+    public List<Object[]> sumEffortCompletedPerDay(
+            Long projectId, List<Long> projectIds, LocalDateTime from) {
+        String jpql =
+                "SELECT CAST(t.completedAt AS LocalDate), SUM(t.effort) FROM Task t"
+                        + " WHERE t.completedAt IS NOT NULL AND t.completedAt >= :from"
+                        + " AND t.effort IS NOT NULL"
+                        + projectAndClause(projectId, projectIds)
+                        + " GROUP BY CAST(t.completedAt AS LocalDate)"
+                        + " ORDER BY CAST(t.completedAt AS LocalDate)";
+        TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
+        query.setParameter("from", from);
+        bindProjectParams(query, projectId, projectIds);
+        return query.getResultList();
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     /** Returns a WHERE clause for project scoping. Used when there is no preceding WHERE. */

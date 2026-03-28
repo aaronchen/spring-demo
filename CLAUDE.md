@@ -246,7 +246,7 @@ Tribute.js autocomplete on `[data-mention]` elements. Project-scoped via `data-p
 
 ### Analytics Pattern
 
-Chart.js 4.5.1 (via WebJar) renders 6 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security.
+Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar, effort-by-assignee horizontal bar. Velocity chart includes optional effort line (dual Y-axis) when effort data exists. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security.
 
 ### CSS Organization
 

@@ -568,6 +568,12 @@ public class TaskController {
                     count++;
                 }
             }
+            case BulkTaskRequest.ACTION_EFFORT -> {
+                for (Task task : tasks) {
+                    taskService.updateField(task.getId(), "effort", value);
+                    count++;
+                }
+            }
             case BulkTaskRequest.ACTION_DELETE -> {
                 for (Task task : tasks) {
                     try {

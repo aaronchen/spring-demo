@@ -110,6 +110,9 @@ function startInlineEdit(cell) {
         case 'status':
             showSelectInput(cell, taskId, field, currentValue, originalContent, INLINE_STATUS_OPTIONS);
             break;
+        case 'effort':
+            showNumberInput(cell, taskId, field, currentValue, originalContent);
+            break;
         case 'dueDate':
             showDateInput(cell, taskId, field, currentValue, originalContent);
             break;
@@ -205,6 +208,38 @@ function showDateInput(cell, taskId, field, currentValue, originalContent) {
 
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
+            cancelInlineEdit(cell, originalContent);
+        }
+    });
+
+    input.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (cell.contains(input)) {
+                saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            }
+        }, 150);
+    });
+}
+
+function showNumberInput(cell, taskId, field, currentValue, originalContent) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.value = currentValue;
+    input.min = '0';
+    input.max = '32767';
+    input.className = 'form-control form-control-sm inline-edit-input';
+    input.style.width = '80px';
+
+    cell.innerHTML = '';
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveInlineEdit(cell, taskId, field, input.value, originalContent);
+        } else if (e.key === 'Escape') {
             cancelInlineEdit(cell, originalContent);
         }
     });

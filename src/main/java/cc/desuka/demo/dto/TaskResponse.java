@@ -24,6 +24,7 @@ public class TaskResponse {
     private Priority priority;
     private LocalDate startDate;
     private LocalDate dueDate;
+    private Short effort;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;
