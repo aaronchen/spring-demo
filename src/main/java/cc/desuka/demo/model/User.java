@@ -4,11 +4,11 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 // Inverse side of the @OneToMany relationship — Task owns the FK column (user_id).
 // mappedBy = "user" points to the field name in Task, not a column or table name.
@@ -58,7 +58,7 @@ public class User implements Auditable {
     // No cascade: deleting a user does NOT cascade-delete their tasks.
     // UserService.deleteUser() handles reassignment (sets task.user = null) before deletion.
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-    private List<Task> tasks = new ArrayList<>();
+    private Set<Task> tasks = new LinkedHashSet<>();
 
     public User() {}
 
@@ -128,11 +128,11 @@ public class User implements Auditable {
         this.enabled = enabled;
     }
 
-    public List<Task> getTasks() {
+    public Set<Task> getTasks() {
         return tasks;
     }
 
-    public void setTasks(List<Task> tasks) {
+    public void setTasks(Set<Task> tasks) {
         this.tasks = tasks;
     }
 

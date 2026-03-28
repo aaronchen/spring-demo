@@ -14,6 +14,7 @@ import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -126,6 +127,20 @@ public class TaskApiController {
     @GetMapping("/search")
     public List<TaskResponse> searchTasks(@RequestParam String keyword) {
         return taskMapper.toResponseList(taskQueryService.searchTasks(keyword));
+    }
+
+    // GET /api/tasks/search-for-dependency?projectId=1&q=deploy&excludeTaskIds=5,10,12
+    // Lightweight search for the dependency picker — returns id + title only.
+    // excludeTaskIds: self + existing blockedBy + existing blocks (prevents duplicates/cycles in
+    // UI).
+    @GetMapping("/search-for-dependency")
+    public List<Map<String, Object>> searchForDependency(
+            @RequestParam Long projectId,
+            @RequestParam(required = false, defaultValue = "") String q,
+            @RequestParam List<Long> excludeTaskIds,
+            @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        projectAccessGuard.requireViewAccess(projectId, currentDetails);
+        return taskQueryService.searchForDependency(projectId, q, excludeTaskIds);
     }
 
     // GET /api/tasks/incomplete

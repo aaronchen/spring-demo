@@ -22,10 +22,26 @@ public class FrontendConfigController {
                 routes: {
                     projects: "%s",
                     tasks: "%s",
-                    api: "%s",
                     audit: "%s",
                     dashboard: "%s",
-                    analytics: "%s"
+                    analytics: "%s",
+                    apiTasks: "%s",
+                    apiProjects: "%s",
+                    apiUsers: "%s",
+                    apiTags: "%s",
+                    apiNotifications: "%s",
+                    apiPresence: "%s",
+                    apiAnalytics: "%s",
+                    apiViews: "%s",
+                    apiAudit: "%s",
+                    apiProjectAnalytics: "%s",
+                    apiProjectMembers: "%s",
+                    apiProjectMembersAssignable: "%s",
+                    apiNotificationRead: "%s",
+                    apiNotificationsUnreadCount: "%s",
+                    apiNotificationsReadAll: "%s",
+                    apiTaskSearchForDependency: "%s",
+                    apiViewById: "%s"
                 },
                 messages: %s
             };
@@ -33,10 +49,26 @@ public class FrontendConfigController {
                 .formatted(
                         escapeJs(appRoutes.getProjects()),
                         escapeJs(appRoutes.getTasks()),
-                        escapeJs(appRoutes.getApi()),
                         escapeJs(appRoutes.getAudit()),
                         escapeJs(appRoutes.getDashboard()),
                         escapeJs(appRoutes.getAnalytics()),
+                        escapeJs(appRoutes.getApiTasks()),
+                        escapeJs(appRoutes.getApiProjects()),
+                        escapeJs(appRoutes.getApiUsers()),
+                        escapeJs(appRoutes.getApiTags()),
+                        escapeJs(appRoutes.getApiNotifications()),
+                        escapeJs(appRoutes.getApiPresence()),
+                        escapeJs(appRoutes.getApiAnalytics()),
+                        escapeJs(appRoutes.getApiViews()),
+                        escapeJs(appRoutes.getApiAudit()),
+                        escapeJs(appRoutes.getApiProjectAnalytics()),
+                        escapeJs(appRoutes.getApiProjectMembers()),
+                        escapeJs(appRoutes.getApiProjectMembersAssignable()),
+                        escapeJs(appRoutes.getApiNotificationRead()),
+                        escapeJs(appRoutes.getApiNotificationsUnreadCount()),
+                        escapeJs(appRoutes.getApiNotificationsReadAll()),
+                        escapeJs(appRoutes.getApiTaskSearchForDependency()),
+                        escapeJs(appRoutes.getApiViewById()),
                         buildMessagesJson());
     }
 

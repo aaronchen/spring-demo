@@ -10,7 +10,7 @@ import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -84,7 +84,7 @@ class TagServiceTest {
     void deleteTag_publishesAuditEvent() {
         Tag tag = new Tag("ToDelete");
         tag.setId(1L);
-        tag.setTasks(new ArrayList<>());
+        tag.setTasks(new LinkedHashSet<>());
         when(tagRepository.findById(1L)).thenReturn(Optional.of(tag));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {

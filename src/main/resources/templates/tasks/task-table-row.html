@@ -8,6 +8,7 @@
 <tr th:fragment="row"
     th:id="'task-row-' + ${task.id}"
     th:classappend="${task.status.name() == 'COMPLETED' ? 'table-success' : (task.status.name() == 'CANCELLED' ? 'table-secondary' : '')}"
+    th:data-blocked="${task.blocked ? 'true' : null}"
     th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
              isBacklog=${task.status.name() == 'BACKLOG'},
              isOpen=${task.status.name() == 'OPEN'},
@@ -26,6 +27,10 @@
     <td th:data-editable="${canEdit ? 'true' : null}" data-field="title"
         th:data-task-id="${task.id}" th:data-value="${task.title}">
         <div class="d-flex align-items-center flex-wrap gap-1">
+            <span th:if="${task.blocked}" class="badge bg-warning text-dark"
+                  th:title="#{task.dependency.blocked.tooltip}">
+                <i class="bi bi-lock-fill"></i>
+            </span>
             <span th:if="${task.checklistTotal > 0}" class="badge bg-light text-dark">
                 <i class="bi bi-check2-square"></i>
                 <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>

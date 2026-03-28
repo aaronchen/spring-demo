@@ -56,7 +56,7 @@
     <div class="mb-3">
         <label for="assigneeId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
         <searchable-select name="assigneeId" id="assigneeId"
-                           th:src="${task.project != null ? '/api/projects/' + task.project.id + '/members/assignable' : '/api/users'}"
+                           th:src="${task.project != null ? appRoutes.getApiProjectMembersAssignable(task.project.id) : appRoutes.apiUsers}"
                            value-field="id" text-field="name"
                            th:placeholder="#{task.field.user.placeholder}"
                            th:disabled="${mode == 'view'}">

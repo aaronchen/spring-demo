@@ -51,6 +51,18 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(problem);
     }
 
+    // 400 — invalid arguments (self-reference, same project, duplicate dependency)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    // 403 — ownership or role check failed (thrown by OwnershipGuard.requireAccess)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+    }
+
     // 404 — entity not found (Task, User, Tag, etc.)
     @ExceptionHandler(EntityNotFoundException.class)
     public ProblemDetail handleNotFound(EntityNotFoundException ex) {
@@ -63,10 +75,19 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    // 403 — ownership or role check failed (thrown by OwnershipGuard.requireAccess)
-    @ExceptionHandler(AccessDeniedException.class)
-    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
+    // 409 — task has unresolved blockers
+    @ExceptionHandler(BlockedTaskException.class)
+    public ProblemDetail handleBlockedTask(BlockedTaskException ex) {
+        ProblemDetail problem =
+                ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problem.setProperty("blockers", ex.getBlockerNames());
+        return problem;
+    }
+
+    // 422 — cyclic dependency
+    @ExceptionHandler(CyclicDependencyException.class)
+    public ProblemDetail handleCyclicDependency(CyclicDependencyException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
     }
 
     // 500 — catch-all for unexpected errors; message omitted to avoid leaking internals

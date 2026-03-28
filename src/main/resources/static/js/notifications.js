@@ -39,7 +39,7 @@
     // ── Badge ───────────────────────────────────────────────────────────────
 
     function refreshBadge() {
-        fetch('/api/notifications/unread-count')
+        fetch(APP_CONFIG.routes.apiNotificationsUnreadCount)
             .then(function (res) { return res.json(); })
             .then(function (data) { updateBadge(data.count); });
     }
@@ -73,7 +73,7 @@
     // ── Dropdown list ───────────────────────────────────────────────────────
 
     function loadRecentNotifications() {
-        fetch('/api/notifications?size=10')
+        fetch(`${APP_CONFIG.routes.apiNotifications}?size=10`)
             .then(function (res) { return res.json(); })
             .then(function (data) { renderNotificationList(data.content); });
     }
@@ -140,7 +140,7 @@
 
         item.addEventListener('click', function () {
             if (!n.read) {
-                fetch(`/api/notifications/${n.id}/read`, { method: 'PATCH' })
+                fetch(resolveRoute(APP_CONFIG.routes.apiNotificationRead, { id: n.id }), { method: 'PATCH' })
                     .then(function () { fire('notification:read', { id: n.id }); });
                 item.classList.remove('fw-semibold');
                 n.read = true;
@@ -154,7 +154,7 @@
     document.getElementById('notification-mark-all-read')?.addEventListener('click', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        fetch('/api/notifications/read-all', { method: 'PATCH' })
+        fetch(APP_CONFIG.routes.apiNotificationsReadAll, { method: 'PATCH' })
             .then(function () { fire('notification:allRead'); });
     });
 

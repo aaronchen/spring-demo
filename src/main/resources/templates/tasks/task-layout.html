@@ -7,10 +7,18 @@
      Checklist add button is in the header (always visible).
      Activity comment input is pinned at the bottom. */-->
 <div th:fragment="columns" class="task-modal-columns" xmlns:th="http://www.thymeleaf.org">
-    <!-- Left Column: Form Fields -->
+    <!-- Left Column: Form Fields + Dependencies -->
     <div class="task-modal-left">
         <div class="p-3">
             <th:block th:replace="~{tasks/task-form :: fields}"></th:block>
+            <!--/* Dependencies section — only shown for existing tasks (edit/view mode) */-->
+            <th:block th:if="${mode != 'create'}">
+                <h6 class="text-muted text-uppercase small fw-semibold mt-4 mb-3 pt-3 border-top">
+                    <i class="bi bi-diagram-3"></i>
+                    <span th:text="#{task.dependency.heading}">Dependencies</span>
+                </h6>
+                <th:block th:replace="~{tasks/task-dependencies :: dependencies}"></th:block>
+            </th:block>
         </div>
     </div>
     <!-- Right Column: Checklist (top) + Activity (bottom) -->

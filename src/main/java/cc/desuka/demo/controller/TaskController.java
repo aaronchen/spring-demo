@@ -6,6 +6,7 @@ import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
@@ -220,12 +221,14 @@ public class TaskController {
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskQueryService.getTaskById(id);
+        Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
         model.addAttribute("mode", "view");
         model.addAttribute("tags", tagService.getAllTags());
+        addDependencyAttributes(
+                task, projectAccessGuard.canEdit(task.getProject().getId(), currentDetails), model);
         addTimelineAttributes(model, id, currentDetails);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "tasks/task-modal";
@@ -319,12 +322,13 @@ public class TaskController {
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        Task task = taskQueryService.getTaskById(id);
+        Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
         model.addAttribute("mode", "edit");
         model.addAttribute("tags", tagService.getAllTags());
+        addDependencyAttributes(task, true, model);
         addTimelineAttributes(model, id, currentDetails);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "tasks/task-modal";
@@ -344,6 +348,8 @@ public class TaskController {
             @RequestParam(required = false) Long assigneeId,
             @RequestParam(required = false) List<String> checklistTexts,
             @RequestParam(required = false) List<Boolean> checklistChecked,
+            @RequestParam(required = false) List<Long> blockedByIds,
+            @RequestParam(required = false) List<Long> blocksIds,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
@@ -366,7 +372,9 @@ public class TaskController {
                 assigneeId,
                 taskFormRequest.getVersion(),
                 checklistTexts,
-                checklistChecked);
+                checklistChecked,
+                blockedByIds,
+                blocksIds);
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
@@ -504,6 +512,8 @@ public class TaskController {
         return "redirect:/tasks";
     }
 
+    // ── Dependency management ─────────────────────────────────────────────
+
     // POST /tasks/bulk - Bulk update or delete tasks (JSON request/response)
     @PostMapping("/bulk")
     @ResponseBody
@@ -532,12 +542,17 @@ public class TaskController {
         }
 
         int count = 0;
+        int skipped = 0;
         switch (action) {
             case BulkTaskRequest.ACTION_STATUS -> {
                 TaskStatus newStatus = TaskStatus.valueOf(value);
                 for (Task task : tasks) {
-                    taskService.setStatus(task.getId(), newStatus);
-                    count++;
+                    try {
+                        taskService.setStatus(task.getId(), newStatus);
+                        count++;
+                    } catch (BlockedTaskException e) {
+                        skipped++;
+                    }
                 }
             }
             case BulkTaskRequest.ACTION_PRIORITY -> {
@@ -569,7 +584,13 @@ public class TaskController {
             }
         }
 
-        return ResponseEntity.ok(Map.of("count", count));
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("count", count);
+        if (skipped > 0) {
+            result.put("skipped", skipped);
+            result.put("skippedMessage", messages.get("task.bulk.skippedBlocked", skipped));
+        }
+        return ResponseEntity.ok(result);
     }
 
     private void addProjectEditPermissions(
@@ -587,6 +608,10 @@ public class TaskController {
                     projectId, pid -> projectQueryService.isEditor(pid, userId));
         }
         model.addAttribute("projectEditMap", editByProject);
+    }
+
+    private void addDependencyAttributes(Task task, boolean canEdit, Model model) {
+        model.addAttribute("canEditDependencies", canEdit);
     }
 
     private void addTimelineAttributes(Model model, Long taskId, CustomUserDetails currentDetails) {

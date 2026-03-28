@@ -283,10 +283,28 @@ class SearchableSelect extends HTMLElement {
     }
 
     _select(value, text) {
+        const previous = this._selectedValue;
         this._selectedValue = value;
         this._selectedText = text;
         this._hidden.value = value;
         this._input.value = text;
+        this._updateClear();
+        if (value !== previous) {
+            this.dispatchEvent(new CustomEvent('change', {
+                detail: { value, text },
+                bubbles: true
+            }));
+        }
+    }
+
+    /** Programmatically clear the selection without firing change. */
+    reset() {
+        const empty = this._emptyOption;
+        this._selectedValue = empty ? empty.value : '';
+        this._selectedText = empty ? empty.text : '';
+        this._hidden.value = this._selectedValue;
+        this._input.value = this._selectedText;
+        this._cache = null;
         this._updateClear();
     }
 

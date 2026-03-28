@@ -18,7 +18,7 @@
                 <label class="form-label fw-bold form-label-required"
                        th:text="#{project.member.field.user}">User</label>
                 <searchable-select name="userId" id="memberUserId"
-                                   src="/api/users" value-field="id" text-field="name"
+                                   th:src="${appRoutes.apiUsers}" value-field="id" text-field="name"
                                    th:placeholder="#{project.member.field.user.placeholder}">
                     <option value="">---</option>
                 </searchable-select>

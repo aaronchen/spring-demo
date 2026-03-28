@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +40,17 @@ public class TaskQueryService {
         return taskRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
+    }
+
+    public Task getTaskWithDependencies(Long id) {
+        Task task =
+                taskRepository
+                        .findWithDependenciesById(id)
+                        .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
+        // Force-initialize checklistItems — not in the entity graph to avoid
+        // MultipleBagFetchException
+        task.getChecklistItems().size();
+        return task;
     }
 
     public List<Task> getAllTasks() {
@@ -152,6 +164,31 @@ public class TaskQueryService {
         if (ids.isEmpty()) return Map.of();
         return taskRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Task::getId, Task::getTitle));
+    }
+
+    // ── Dependency picker search ──────────────────────────────────────────
+
+    public List<Map<String, Object>> searchForDependency(
+            Long projectId, String query, List<Long> excludeTaskIds) {
+        return taskRepository
+                .findAll(
+                        TaskSpecifications.withProjectId(projectId),
+                        Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT))
+                .stream()
+                .filter(t -> !excludeTaskIds.contains(t.getId()))
+                .filter(
+                        t ->
+                                query == null
+                                        || query.isBlank()
+                                        || t.getTitle().toLowerCase().contains(query.toLowerCase()))
+                .limit(20)
+                .map(
+                        t ->
+                                Map.<String, Object>of(
+                                        "id", t.getId(),
+                                        "title", t.getTitle(),
+                                        "status", t.getStatus().name()))
+                .toList();
     }
 
     // ── Grouping ──────────────────────────────────────────────────────────

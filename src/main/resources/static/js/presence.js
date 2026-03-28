@@ -14,7 +14,7 @@
             updatePresenceUI(data.count, data.users);
         });
 
-        fetch('/api/presence')
+        fetch(APP_CONFIG.routes.apiPresence)
             .then(function (res) { return res.json(); })
             .then(function (data) { updatePresenceUI(data.count, data.users); });
     });

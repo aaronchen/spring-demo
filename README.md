@@ -46,6 +46,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Task Checklist** - Embeddable checklist items on tasks (text + checked state); drag-and-drop reordering via native HTML Drag and Drop API; checklist progress shown on cards and table rows; changes audited in activity timeline
 - **Pagination** - Configurable page size (10/25/50/100); top and bottom controls
 - **Modal Forms** - Create and edit tasks in a modal overlay; context (filters, search, sort) is preserved
+- **Task Dependencies** - Block/unblock relationships between tasks within the same project; cycle detection prevents circular chains; blocked tasks cannot be completed until blockers are resolved; visual indicators on cards, table rows, and board
 - **Task Lifecycle** - Six-state status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED; CANCELLED as separate terminal state; toggle button advances through the cycle; status radio buttons in edit form
 - **Status-Aware Reassignment** - Reassigning an in-progress task resets its status to OPEN
 - **Color-Coded Tasks** - Six-status visual system: grey = backlog, secondary = open, yellow = in progress, cyan = in review, green = completed, dark = cancelled throughout UI
@@ -92,11 +93,11 @@ A growing full-stack application built as a hands-on learning project for Spring
 
 ### Error Handling
 - **Dual exception handlers** - `ApiExceptionHandler` returns RFC 9457 ProblemDetail JSON for REST; `WebExceptionHandler` returns Thymeleaf pages for web
-- **Custom error pages** - 403 (Access Denied), 404 (Not Found), 409 (Conflict), 500 (Server Error)
+- **Custom error pages** - 400 (Bad Request), 403 (Access Denied), 404 (Not Found), 409 (Conflict), 500 (Server Error)
 - **RFC 9457 ProblemDetail** - Structured `application/problem+json` responses with `type`, `title`, `status`, `detail` fields; validation errors include field-level `errors` map
 
 ### Technical Highlights
-- Spring Boot 4.0.3 with Java 25
+- Spring Boot 4.0.5 with Java 25
 - Spring Security 7.0 with form login, BCrypt, and role-based access control
 - Custom Thymeleaf dialect (`${#auth}`) for ownership/role checks in templates
 - H2 in-memory database (easy development setup)
@@ -672,7 +673,7 @@ spring-demo/
 
 | Layer | Technology |
 |-------|-----------|
-| Framework | Spring Boot 4.0.3 |
+| Framework | Spring Boot 4.0.5 |
 | Language | Java 25 |
 | Security | Spring Security 7.0 |
 | Database | H2 (dev/test), PostgreSQL (prod) |

@@ -20,9 +20,9 @@ function bindProjectChange() {
         if (!assigneeSelect) return;
         const projectId = this.value;
         if (projectId) {
-            assigneeSelect._src = `${APP_CONFIG.routes.api}/projects/${projectId}/members/assignable`;
+            assigneeSelect._src = resolveRoute(APP_CONFIG.routes.apiProjectMembersAssignable, { projectId });
         } else {
-            assigneeSelect._src = `${APP_CONFIG.routes.api}/users`;
+            assigneeSelect._src = APP_CONFIG.routes.apiUsers;
         }
         assigneeSelect._cache = null;
         // Clear current selection since user may not be in the new project

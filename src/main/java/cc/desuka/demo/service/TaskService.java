@@ -5,6 +5,7 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.event.TaskUpdatedEvent;
+import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Priority;
@@ -28,6 +29,7 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskQueryService taskQueryService;
+    private final TaskDependencyService taskDependencyService;
     private final TagService tagService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
@@ -36,12 +38,14 @@ public class TaskService {
     public TaskService(
             TaskRepository taskRepository,
             TaskQueryService taskQueryService,
+            TaskDependencyService taskDependencyService,
             TagService tagService,
             UserService userService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.taskRepository = taskRepository;
         this.taskQueryService = taskQueryService;
+        this.taskDependencyService = taskDependencyService;
         this.tagService = tagService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
@@ -84,7 +88,8 @@ public class TaskService {
 
     public Task updateTask(
             Long id, Task taskDetails, List<Long> tagIds, Long assigneeId, Long expectedVersion) {
-        return updateTask(id, taskDetails, tagIds, assigneeId, expectedVersion, null, null);
+        return updateTask(
+                id, taskDetails, tagIds, assigneeId, expectedVersion, null, null, null, null);
     }
 
     public Task updateTask(
@@ -95,6 +100,28 @@ public class TaskService {
             Long expectedVersion,
             List<String> checklistTexts,
             List<Boolean> checklistChecked) {
+        return updateTask(
+                id,
+                taskDetails,
+                tagIds,
+                assigneeId,
+                expectedVersion,
+                checklistTexts,
+                checklistChecked,
+                null,
+                null);
+    }
+
+    public Task updateTask(
+            Long id,
+            Task taskDetails,
+            List<Long> tagIds,
+            Long assigneeId,
+            Long expectedVersion,
+            List<String> checklistTexts,
+            List<Boolean> checklistChecked,
+            List<Long> blockedByIds,
+            List<Long> blocksIds) {
         Task task = taskQueryService.getTaskById(id);
         if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
             throw new StaleDataException(Task.class, id);
@@ -103,6 +130,9 @@ public class TaskService {
         User previousUser = task.getUser();
 
         TaskStatus previousStatus = task.getStatus();
+        if (taskDetails.getStatus() != previousStatus) {
+            requireNotBlocked(id, taskDetails.getStatus());
+        }
         task.setTitle(taskDetails.getTitle());
         task.setDescription(taskDetails.getDescription());
         task.setStatus(taskDetails.getStatus());
@@ -120,6 +150,7 @@ public class TaskService {
         }
         task.setUser(newUser);
         applyChecklist(task, checklistTexts, checklistChecked);
+        taskDependencyService.reconcile(task, blockedByIds, blocksIds);
 
         Task saved = taskRepository.save(task);
 
@@ -182,8 +213,10 @@ public class TaskService {
                     task.setDescription(value != null && !value.isBlank() ? value : null);
             case Task.FIELD_PRIORITY -> task.setPriority(Priority.valueOf(value));
             case Task.FIELD_STATUS -> {
+                TaskStatus newStatus = TaskStatus.valueOf(value);
+                requireNotBlocked(id, newStatus);
                 TaskStatus previousStatus = task.getStatus();
-                task.setStatus(TaskStatus.valueOf(value));
+                task.setStatus(newStatus);
                 updateCompletedAt(task, previousStatus);
             }
             case Task.FIELD_DUE_DATE ->
@@ -223,6 +256,7 @@ public class TaskService {
         if (task.getStatus() == newStatus) {
             return task;
         }
+        requireNotBlocked(id, newStatus);
         Map<String, Object> before = task.toAuditSnapshot();
         TaskStatus previousStatus = task.getStatus();
         task.setStatus(newStatus);
@@ -260,6 +294,7 @@ public class TaskService {
                     case COMPLETED -> TaskStatus.OPEN;
                     case CANCELLED -> TaskStatus.OPEN;
                 };
+        requireNotBlocked(id, next);
         task.setStatus(next);
         updateCompletedAt(task, previousStatus);
         Task saved = taskRepository.save(task);
@@ -292,6 +327,23 @@ public class TaskService {
                     checked != null && i < checked.size() && Boolean.TRUE.equals(checked.get(i)));
             item.setTask(task);
             task.getChecklistItems().add(item);
+        }
+    }
+
+    private void requireNotBlocked(Long taskId, TaskStatus newStatus) {
+        // Only block completion — other transitions are allowed even when blocked
+        if (newStatus != TaskStatus.COMPLETED) {
+            return;
+        }
+        if (taskDependencyService.hasActiveBlockers(taskId)) {
+            List<String> blockerNames =
+                    taskDependencyService.getActiveBlockers(taskId).stream()
+                            .map(Task::getTitle)
+                            .toList();
+            throw new BlockedTaskException(
+                    messages.get(
+                            "task.dependency.blocked.transition", String.join(", ", blockerNames)),
+                    blockerNames);
         }
     }
 

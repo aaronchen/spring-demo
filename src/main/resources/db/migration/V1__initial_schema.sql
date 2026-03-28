@@ -63,6 +63,13 @@ CREATE TABLE task_tags (
     PRIMARY KEY (task_id, tag_id)
 );
 
+CREATE TABLE task_dependencies (
+    blocking_task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    blocked_task_id  BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    PRIMARY KEY (blocking_task_id, blocked_task_id),
+    CHECK (blocking_task_id <> blocked_task_id)
+);
+
 CREATE TABLE comments (
     id         BIGSERIAL PRIMARY KEY,
     text       VARCHAR(500) NOT NULL,

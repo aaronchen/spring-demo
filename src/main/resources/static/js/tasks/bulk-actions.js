@@ -142,6 +142,9 @@ function executeBulkAction(action, value) {
             const msg = (APP_CONFIG.messages[msgKey] || `${count} tasks updated.`)
                 .replace('{0}', count);
             showToast(msg, 'success');
+            if (data.skipped > 0) {
+                showToast(data.skippedMessage, 'warning');
+            }
             clearBulkSelection();
             doSearch(false);
         })
@@ -173,7 +176,7 @@ function loadBulkAssignUsers() {
     const projectId = getCommonProjectId();
     if (!projectId) return;
 
-    const url = `${APP_CONFIG.routes.api}/projects/${projectId}/members/assignable`;
+    const url = resolveRoute(APP_CONFIG.routes.apiProjectMembersAssignable, { projectId });
     fetch(url)
         .then(r => r.json())
         .then(users => {
