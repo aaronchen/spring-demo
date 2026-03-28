@@ -26,6 +26,7 @@ public class TaskReport {
             messages.get("task.field.priority"),
             messages.get("task.field.startDate"),
             messages.get("task.field.dueDate"),
+            messages.get("task.field.effort"),
             messages.get("task.field.completedAt"),
             messages.get("task.field.user"),
             messages.get("task.field.tags"),
@@ -44,6 +45,7 @@ public class TaskReport {
                             task.getPriority() != null ? messages.get(task.getPriority()) : "",
                             task.getStartDate() != null ? task.getStartDate().toString() : "",
                             task.getDueDate() != null ? task.getDueDate().toString() : "",
+                            task.getEffort() != null ? task.getEffort().toString() : "",
                             task.getCompletedAt() != null
                                     ? task.getCompletedAt().toLocalDate().toString()
                                     : "",

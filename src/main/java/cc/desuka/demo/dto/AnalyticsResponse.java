@@ -10,7 +10,8 @@ public record AnalyticsResponse(
         WorkloadDistribution workloadDistribution,
         List<BurndownPoint> burndown,
         List<VelocityPoint> velocity,
-        OverdueAnalysis overdueAnalysis) {
+        OverdueAnalysis overdueAnalysis,
+        EffortDistribution effortDistribution) {
 
     public record StatusBreakdown(Map<String, Long> counts) {}
 
@@ -21,7 +22,9 @@ public record AnalyticsResponse(
 
     public record BurndownPoint(LocalDate date, long remaining) {}
 
-    public record VelocityPoint(LocalDate weekStart, long completed) {}
+    public record VelocityPoint(LocalDate weekStart, long completed, Long effortCompleted) {}
 
     public record OverdueAnalysis(List<String> assignees, List<Long> counts) {}
+
+    public record EffortDistribution(List<String> assignees, List<Long> efforts) {}
 }

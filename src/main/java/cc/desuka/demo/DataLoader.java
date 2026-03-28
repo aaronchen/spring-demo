@@ -251,6 +251,7 @@ public class DataLoader implements CommandLineRunner {
                         7);
         pe1.setStartDate(today.minusDays(5));
         pe1.setDueDate(today.plusDays(3));
+        pe1.setEffort((short) 5);
         pe1.setTags(Set.of(devops));
         addChecklist(
                 pe1,
@@ -273,6 +274,7 @@ public class DataLoader implements CommandLineRunner {
                         30);
         pe2.setStartDate(today.minusDays(28));
         pe2.setDueDate(today.minusDays(10));
+        pe2.setEffort((short) 8);
         pe2.setCompletedAt(now.minusDays(12));
         pe2.setTags(Set.of(devops));
         tasks.add(pe2);
@@ -288,6 +290,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.MEDIUM,
                         5);
         pe3.setDueDate(today.plusDays(10));
+        pe3.setEffort((short) 3);
         pe3.setTags(Set.of(devops, spike));
         tasks.add(pe3);
 
@@ -302,6 +305,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.MEDIUM,
                         21);
         pe4.setStartDate(today.minusDays(19));
+        pe4.setEffort((short) 13);
         pe4.setCompletedAt(now.minusDays(14));
         pe4.setTags(Set.of(feature, devops));
         tasks.add(pe4);
@@ -331,6 +335,7 @@ public class DataLoader implements CommandLineRunner {
                         10);
         pe6.setStartDate(today.minusDays(8));
         pe6.setDueDate(today.plusDays(1));
+        pe6.setEffort((short) 5);
         pe6.setTags(Set.of(devops, techDebt));
         addChecklist(
                 pe6,
@@ -368,6 +373,7 @@ public class DataLoader implements CommandLineRunner {
                         8);
         pe8.setStartDate(today.minusDays(6));
         pe8.setDueDate(today.plusDays(5));
+        pe8.setEffort((short) 8);
         pe8.setTags(Set.of(devops, feature));
         tasks.add(pe8);
 
@@ -396,6 +402,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.LOW,
                         18);
         pe10.setStartDate(today.minusDays(16));
+        pe10.setEffort((short) 2);
         pe10.setCompletedAt(now.minusDays(11));
         pe10.setTags(Set.of(devops));
         tasks.add(pe10);
@@ -441,6 +448,7 @@ public class DataLoader implements CommandLineRunner {
                         6);
         pd1.setStartDate(today.minusDays(4));
         pd1.setDueDate(today.plusDays(4));
+        pd1.setEffort((short) 5);
         pd1.setTags(Set.of(feature));
         addChecklist(
                 pd1,
@@ -477,6 +485,7 @@ public class DataLoader implements CommandLineRunner {
                         12);
         pd3.setStartDate(today.minusDays(10));
         pd3.setDueDate(today.plusDays(1));
+        pd3.setEffort((short) 3);
         pd3.setTags(Set.of(feature));
         addChecklist(
                 pd3,
@@ -514,6 +523,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.HIGH,
                         8);
         pd5.setStartDate(today.minusDays(7));
+        pd5.setEffort((short) 8);
         pd5.setCompletedAt(now.minusDays(5));
         pd5.setTags(Set.of(bug));
         tasks.add(pd5);
@@ -557,6 +567,7 @@ public class DataLoader implements CommandLineRunner {
                         5);
         pd8.setStartDate(today.minusDays(3));
         pd8.setDueDate(today.plusDays(7));
+        pd8.setEffort((short) 5);
         pd8.setTags(Set.of(feature));
         addChecklist(
                 pd8,
@@ -595,6 +606,7 @@ public class DataLoader implements CommandLineRunner {
                         9);
         pd10.setStartDate(today.minusDays(7));
         pd10.setDueDate(today.plusDays(2));
+        pd10.setEffort((short) 2);
         pd10.setTags(Set.of(techDebt, spike));
         tasks.add(pd10);
 
@@ -639,6 +651,7 @@ public class DataLoader implements CommandLineRunner {
                         7);
         sc1.setStartDate(today.minusDays(5));
         sc1.setDueDate(today.plusDays(3));
+        sc1.setEffort((short) 13);
         sc1.setTags(Set.of(securityTag));
         addChecklist(
                 sc1,
@@ -675,6 +688,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.HIGH,
                         16);
         sc3.setStartDate(today.minusDays(14));
+        sc3.setEffort((short) 8);
         sc3.setCompletedAt(now.minusDays(10));
         sc3.setTags(Set.of(securityTag, devops));
         tasks.add(sc3);
@@ -691,6 +705,7 @@ public class DataLoader implements CommandLineRunner {
                         14);
         sc4.setStartDate(today.minusDays(12));
         sc4.setDueDate(today.plusDays(7));
+        sc4.setEffort((short) 5);
         sc4.setTags(Set.of(securityTag, documentation));
         addChecklist(
                 sc4,
@@ -729,6 +744,7 @@ public class DataLoader implements CommandLineRunner {
                         11);
         sc6.setStartDate(today.minusDays(9));
         sc6.setDueDate(today.plusDays(2));
+        sc6.setEffort((short) 3);
         sc6.setTags(Set.of(securityTag, feature));
         tasks.add(sc6);
 
@@ -846,6 +862,7 @@ public class DataLoader implements CommandLineRunner {
                         6);
         op2.setStartDate(today.minusDays(4));
         op2.setDueDate(today.plusDays(2));
+        op2.setEffort((short) 3);
         op2.setTags(Set.of(devops));
         addChecklist(
                 op2,
@@ -896,6 +913,7 @@ public class DataLoader implements CommandLineRunner {
                         Priority.MEDIUM,
                         25);
         op5.setStartDate(today.minusDays(23));
+        op5.setEffort((short) 13);
         op5.setCompletedAt(now.minusDays(15));
         op5.setTags(Set.of(documentation));
         tasks.add(op5);
@@ -925,6 +943,7 @@ public class DataLoader implements CommandLineRunner {
                         10);
         op7.setStartDate(today.minusDays(8));
         op7.setDueDate(today.plusDays(3));
+        op7.setEffort((short) 5);
         op7.setTags(Set.of(devops, techDebt));
         tasks.add(op7);
 
@@ -1439,6 +1458,7 @@ public class DataLoader implements CommandLineRunner {
         t1.setTags(Set.of(devopsTag));
         t1.setStartDate(today.minusDays(5));
         t1.setDueDate(today.plusDays(2));
+        t1.setEffort((short) 8);
         t1.setCreatedAt(now.minusDays(5));
         addChecklist(
                 t1,
@@ -1499,6 +1519,7 @@ public class DataLoader implements CommandLineRunner {
         t2.setTags(Set.of(documentationTag, spikeTag));
         t2.setStartDate(today.minusDays(10));
         t2.setDueDate(today.minusDays(1)); // overdue
+        t2.setEffort((short) 13);
         t2.setCreatedAt(now.minusDays(10));
         addChecklist(
                 t2,
@@ -1570,6 +1591,7 @@ public class DataLoader implements CommandLineRunner {
         t3.setTags(Set.of(securityTag));
         t3.setStartDate(today.minusDays(14));
         t3.setDueDate(today.minusDays(5));
+        t3.setEffort((short) 5);
         t3.setCompletedAt(now.minusDays(6));
         t3.setCreatedAt(now.minusDays(14));
         addChecklist(
@@ -1630,6 +1652,7 @@ public class DataLoader implements CommandLineRunner {
         t4.setTags(Set.of(featureTag, spikeTag));
         t4.setStartDate(today.minusDays(3));
         t4.setDueDate(today.plusDays(4));
+        t4.setEffort((short) 3);
         t4.setCreatedAt(now.minusDays(3));
         addChecklist(
                 t4,
@@ -1759,6 +1782,7 @@ public class DataLoader implements CommandLineRunner {
         t7.setTags(Set.of(bugTag));
         t7.setStartDate(today.minusDays(4));
         t7.setDueDate(today.minusDays(1));
+        t7.setEffort((short) 2);
         t7.setCompletedAt(now.minusDays(2));
         t7.setCreatedAt(now.minusDays(4));
         t7 = taskRepository.save(t7);

@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.dto.AnalyticsResponse;
 import cc.desuka.demo.dto.AnalyticsResponse.BurndownPoint;
+import cc.desuka.demo.dto.AnalyticsResponse.EffortDistribution;
 import cc.desuka.demo.dto.AnalyticsResponse.OverdueAnalysis;
 import cc.desuka.demo.dto.AnalyticsResponse.PriorityBreakdown;
 import cc.desuka.demo.dto.AnalyticsResponse.StatusBreakdown;
@@ -68,7 +69,8 @@ public class AnalyticsService {
                 buildWorkloadDistribution(projectId, projectIds),
                 buildBurndown(projectId, projectIds),
                 buildVelocity(projectId, projectIds),
-                buildOverdueAnalysis(projectId, projectIds));
+                buildOverdueAnalysis(projectId, projectIds),
+                buildEffortDistribution(projectId, projectIds));
     }
 
     // ── Status Breakdown ─────────────────────────────────────────────────
@@ -185,24 +187,40 @@ public class AnalyticsService {
 
         List<Object[]> dailyCompleted =
                 analyticsRepository.countCompletedPerDay(projectId, projectIds, from);
+        List<Object[]> dailyEffort =
+                analyticsRepository.sumEffortCompletedPerDay(projectId, projectIds, from);
 
         // Bucket by ISO week (Monday)
         Map<LocalDate, Long> weeklyTotals = new TreeMap<>();
+        Map<LocalDate, Long> weeklyEffort = new TreeMap<>();
         for (LocalDate w = weekStart;
                 !w.isAfter(now.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)));
                 w = w.plusWeeks(1)) {
             weeklyTotals.put(w, 0L);
+            weeklyEffort.put(w, 0L);
         }
 
         for (Object[] row : dailyCompleted) {
             LocalDate date = (LocalDate) row[0];
             Long count = (Long) row[1];
             LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            weeklyTotals.merge(monday, count, (a, b) -> a + b);
+            weeklyTotals.merge(monday, count, Long::sum);
+        }
+
+        for (Object[] row : dailyEffort) {
+            LocalDate date = (LocalDate) row[0];
+            Long effort = (Long) row[1];
+            LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            weeklyEffort.merge(monday, effort, Long::sum);
         }
 
         return weeklyTotals.entrySet().stream()
-                .map(e -> new VelocityPoint(e.getKey(), e.getValue()))
+                .map(
+                        e -> {
+                            Long effort = weeklyEffort.getOrDefault(e.getKey(), 0L);
+                            return new VelocityPoint(
+                                    e.getKey(), e.getValue(), effort > 0 ? effort : null);
+                        })
                 .toList();
     }
 
@@ -229,6 +247,29 @@ public class AnalyticsService {
         }
 
         return new OverdueAnalysis(assignees, counts);
+    }
+
+    // ── Effort Distribution ─────────────────────────────────────────────
+
+    private EffortDistribution buildEffortDistribution(Long projectId, List<Long> projectIds) {
+        List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds);
+
+        String unassignedLabel = messages.get("analytics.label.unassigned");
+        List<String> assignees = new ArrayList<>();
+        List<Long> efforts = new ArrayList<>();
+        for (Object[] row : rows) {
+            Long userId = (Long) row[0];
+            Long effort = (Long) row[1];
+            if (userId == null) {
+                assignees.add(unassignedLabel);
+            } else {
+                User user = userService.findUserById(userId);
+                assignees.add(user != null ? user.getName() : unassignedLabel);
+            }
+            efforts.add(effort);
+        }
+
+        return new EffortDistribution(assignees, efforts);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

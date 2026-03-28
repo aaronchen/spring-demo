@@ -32,7 +32,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Responsive Design** - Mobile-friendly UI built with Bootstrap 5
 - **Card, Table, Calendar & Board Views** - Toggle between card grid, sortable table, monthly calendar, and Kanban board; preference persisted via user preferences
 - **Kanban Board** - Drag-and-drop tasks between status columns; cards show title, priority badge, assignee initials, and due date
-- **Inline Editing** - Toggle edit mode in table view to click-to-edit title, description, priority, status, and due date in place
+- **Inline Editing** - Toggle edit mode in table view to click-to-edit title, description, priority, status, due date, and effort in place
 - **Keyboard Shortcuts** - `h` (help), `n` (new task), `s`/`/` (search), `1-4` (switch views), `e` (edit mode in table), `Escape` (close/cancel)
 - **Saved Views** - Save current filter/sort/view combinations as named views; recall from dropdown
 - **Bulk Actions** - Select tasks in table view with checkboxes (cross-page selection persists); floating action bar for batch status, priority, assign (project-scoped member list), and delete operations; selection clears on filter/search/sort/view change
@@ -231,7 +231,7 @@ Navigate to http://localhost:8080/tasks (requires login).
 
 #### Creating a Task
 
-Click **New Task** — a modal opens. Select a project from the dropdown (pre-selected if you're on a project page), fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date and due date, and optional checklist items, then click **Create Task**. Tasks can be created from any page with the New Task button. Your current search/filter/sort state is preserved.
+Click **New Task** — a modal opens. Select a project from the dropdown (pre-selected if you're on a project page), fill in title (required, max 100 chars), description (optional, max 500 chars), priority (Low/Medium/High, defaults to Medium), optional start date, due date, and effort (points/hours), and optional checklist items, then click **Create Task**. Tasks can be created from any page with the New Task button. Your current search/filter/sort state is preserved.
 
 #### Editing a Task
 
@@ -336,6 +336,7 @@ Content-Type: application/json
   "priority": "HIGH",
   "startDate": "2026-03-10",
   "dueDate": "2026-03-15",
+  "effort": 5,
   "tagIds": [1, 3]
 }
 ```
@@ -348,6 +349,7 @@ Content-Type: application/json
 - **priority**: optional, one of `LOW`, `MEDIUM`, `HIGH` (defaults to `MEDIUM`)
 - **startDate**: optional, ISO date format `yyyy-MM-dd`
 - **dueDate**: optional, ISO date format `yyyy-MM-dd`
+- **effort**: optional, integer 0–32767 (unit-agnostic: points, hours, etc.)
 - **tagIds**: optional list of tag IDs; omit or send `[]` for no tags
 - **userId**: optional (admin only); omit or send `null` to auto-assign to caller
 - **version**: required on update; must match current entity version (optimistic locking)

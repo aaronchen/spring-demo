@@ -64,6 +64,18 @@
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
                             <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
                         </th>
+                        <!-- Effort column -->
+                        <th th:with="ord=${taskPage.pageable.sort.getOrderFor('effort')},
+                                     nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"
+                            style="cursor: pointer; user-select: none; white-space: nowrap;"
+                            data-sort-field="effort"
+                            th:attr="data-sort-dir=${nextDir}"
+                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            <span th:text="#{task.field.effort}">Effort</span>
+                            <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
+                            <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
+                            <i th:if="${ord != null && !ord.direction.isAscending()}" class="bi bi-arrow-down small ms-1"></i>
+                        </th>
                         <!-- Description column -->
                         <th th:with="ord=${taskPage.pageable.sort.getOrderFor('description')},
                                      nextDir=${ord != null && ord.direction.isAscending() ? 'desc' : 'asc'}"

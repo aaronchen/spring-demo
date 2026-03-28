@@ -37,6 +37,7 @@ CREATE TABLE tasks (
     priority     VARCHAR(255) NOT NULL DEFAULT 'MEDIUM',
     start_date   DATE,
     due_date     DATE,
+    effort       SMALLINT,
     completed_at TIMESTAMP,
     created_at   TIMESTAMP,
     updated_at   TIMESTAMP,

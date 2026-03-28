@@ -48,6 +48,13 @@ body {
     color: var(--bs-danger);
 }
 
+/* Match radio-button groups to form-control height for alignment in rows */
+.form-check-row {
+    min-height: 2.375rem;
+    display: flex;
+    align-items: center;
+}
+
 /* Form validation styling improvements */
 .is-invalid {
     border-color: #dc3545 !important;

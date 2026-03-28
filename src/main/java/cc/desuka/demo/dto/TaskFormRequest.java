@@ -29,6 +29,8 @@ public class TaskFormRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate dueDate;
 
+    private Short effort;
+
     private Long version;
 
     public static TaskFormRequest fromEntity(Task task) {
@@ -39,6 +41,7 @@ public class TaskFormRequest {
         request.setPriority(task.getPriority());
         request.setStartDate(task.getStartDate());
         request.setDueDate(task.getDueDate());
+        request.setEffort(task.getEffort());
         request.setVersion(task.getVersion());
         return request;
     }
@@ -51,6 +54,7 @@ public class TaskFormRequest {
         task.setPriority(priority);
         task.setStartDate(startDate);
         task.setDueDate(dueDate);
+        task.setEffort(effort);
         return task;
     }
 }

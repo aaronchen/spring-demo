@@ -71,6 +71,7 @@ Content-Type: application/json
     "priority": "HIGH",
     "startDate": "2026-03-10",
     "dueDate": "2026-03-15",
+    "effort": 5,
     "tagIds": [1, 3]
 }
 

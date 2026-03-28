@@ -71,7 +71,7 @@
     <!-- Status -->
     <div class="mb-3" th:if="${mode != 'create'}">
         <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
-        <div class="d-flex gap-3 flex-wrap">
+        <div class="form-check-row gap-3 flex-wrap">
             <div class="form-check">
                 <input class="form-check-input" type="radio" th:field="*{status}" value="BACKLOG" id="status-backlog"
                        th:disabled="${mode == 'view'}">
@@ -120,7 +120,7 @@
     <!-- Priority -->
     <div class="mb-3">
         <label class="form-label fw-bold" th:text="#{task.field.priority}">Priority</label>
-        <div class="d-flex gap-3">
+        <div class="form-check-row gap-3">
             <div class="form-check">
                 <input class="form-check-input" type="radio" th:field="*{priority}" value="LOW" id="priority-low"
                        th:disabled="${mode == 'view'}">
@@ -145,9 +145,9 @@
         </div>
     </div>
 
-    <!-- Dates: Start Date and Due Date side by side -->
+    <!-- Dates + Effort -->
     <div class="row mb-3">
-        <div class="col-md-6">
+        <div class="col-md-4 col-xl-5">
             <label for="startDate" class="form-label fw-bold" th:text="#{task.field.startDate}">Start Date</label>
             <input type="date"
                    th:field="*{startDate}"
@@ -155,12 +155,23 @@
                    id="startDate"
                    th:disabled="${mode == 'view'}">
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4 col-xl-5">
             <label for="dueDate" class="form-label fw-bold" th:text="#{task.field.dueDate}">Due Date</label>
             <input type="date"
                    th:field="*{dueDate}"
                    class="form-control"
                    id="dueDate"
+                   th:disabled="${mode == 'view'}">
+        </div>
+        <div class="col-md-4 col-xl-2">
+            <label for="effort" class="form-label fw-bold" th:text="#{task.field.effort}">Effort</label>
+            <input type="number"
+                   th:field="*{effort}"
+                   class="form-control"
+                   id="effort"
+                   min="0"
+                   max="32767"
+                   th:placeholder="#{task.field.effort.placeholder}"
                    th:disabled="${mode == 'view'}">
         </div>
     </div>

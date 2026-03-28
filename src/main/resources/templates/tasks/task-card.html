@@ -82,6 +82,9 @@
                     <i class="bi bi-check2-square"></i>
                     <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
                 </span>
+                <span th:if="${task.effort != null}" class="badge bg-light text-dark">
+                    <i class="bi bi-speedometer2"></i> <span th:text="${task.effort}">0</span>
+                </span>
             </div>
             <p class="card-text mt-1 mb-0">
                 <small class="text-muted">

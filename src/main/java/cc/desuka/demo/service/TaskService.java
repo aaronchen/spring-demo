@@ -139,6 +139,7 @@ public class TaskService {
         task.setPriority(taskDetails.getPriority());
         task.setStartDate(taskDetails.getStartDate());
         task.setDueDate(taskDetails.getDueDate());
+        task.setEffort(taskDetails.getEffort());
         task.setTags(tagService.findAllByIds(tagIds));
         updateCompletedAt(task, previousStatus);
         // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
@@ -222,6 +223,8 @@ public class TaskService {
             case Task.FIELD_DUE_DATE ->
                     task.setDueDate(
                             value != null && !value.isBlank() ? LocalDate.parse(value) : null);
+            case Task.FIELD_EFFORT ->
+                    task.setEffort(value != null && !value.isBlank() ? Short.valueOf(value) : null);
             case Task.FIELD_USER_ID ->
                     task.setUser(
                             value != null && !value.isBlank()
