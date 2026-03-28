@@ -77,8 +77,9 @@ class ProjectServiceTest {
 
             // Creator added as OWNER via cascade
             assertThat(result.getMembers()).hasSize(1);
-            assertThat(result.getMembers().get(0).getRole()).isEqualTo(ProjectRole.OWNER);
-            assertThat(result.getMembers().get(0).getUser()).isEqualTo(alice);
+            ProjectMember owner = result.getMembers().iterator().next();
+            assertThat(owner.getRole()).isEqualTo(ProjectRole.OWNER);
+            assertThat(owner.getUser()).isEqualTo(alice);
 
             // Audit event published
             verify(eventPublisher).publishEvent(any(AuditEvent.class));

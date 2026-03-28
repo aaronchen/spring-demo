@@ -8,8 +8,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.hibernate.annotations.Formula;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -37,6 +39,8 @@ public class Task implements OwnedEntity, Auditable {
     public static final String FIELD_CHECKLIST_ITEMS = "checklistItems";
     public static final String FIELD_CHECKLIST_TOTAL = "checklistTotal";
     public static final String FIELD_CHECKLIST_CHECKED = "checklistChecked";
+    public static final String FIELD_BLOCKED_BY = "blockedBy";
+    public static final String FIELD_BLOCKS = "blocks";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -100,7 +104,7 @@ public class Task implements OwnedEntity, Auditable {
             name = "task_tags",
             joinColumns = @JoinColumn(name = "task_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id"))
-    private List<Tag> tags = new ArrayList<>();
+    private Set<Tag> tags = new LinkedHashSet<>();
 
     // @ManyToOne: many tasks can belong to one user.
     //
@@ -127,7 +131,7 @@ public class Task implements OwnedEntity, Auditable {
             orphanRemoval = true,
             fetch = FetchType.LAZY)
     @OrderBy("createdAt ASC")
-    private List<Comment> comments = new ArrayList<>();
+    private Set<Comment> comments = new LinkedHashSet<>();
 
     @OneToMany(
             mappedBy = "task",
@@ -144,6 +148,31 @@ public class Task implements OwnedEntity, Auditable {
     @Formula(
             "(SELECT COUNT(*) FROM checklist_items ci WHERE ci.task_id = id AND ci.checked = TRUE)")
     private int checklistChecked;
+
+    // Tasks that THIS task blocks (this task is the blocker).
+    // Task is the owning side — @JoinTable lives here.
+    // No cascade: dependency management is explicit through the service layer.
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "task_dependencies",
+            joinColumns = @JoinColumn(name = "blocking_task_id"),
+            inverseJoinColumns = @JoinColumn(name = "blocked_task_id"))
+    private Set<Task> blocks = new LinkedHashSet<>();
+
+    // Tasks that block THIS task (this task is blocked).
+    @ManyToMany(mappedBy = "blocks", fetch = FetchType.LAZY)
+    private Set<Task> blockedBy = new LinkedHashSet<>();
+
+    // Virtual column — true when at least one non-terminal task blocks this one.
+    // Avoids loading the full dependency graph on list views.
+    @Formula(
+            "(SELECT CASE WHEN EXISTS("
+                    + "SELECT 1 FROM task_dependencies td "
+                    + "JOIN tasks bt ON bt.id = td.blocking_task_id "
+                    + "WHERE td.blocked_task_id = id "
+                    + "AND bt.status NOT IN ('COMPLETED', 'CANCELLED')"
+                    + ") THEN TRUE ELSE FALSE END)")
+    private boolean blocked;
 
     @PrePersist
     protected void onPrePersist() {
@@ -265,11 +294,11 @@ public class Task implements OwnedEntity, Auditable {
         this.project = project;
     }
 
-    public List<Tag> getTags() {
+    public Set<Tag> getTags() {
         return tags;
     }
 
-    public void setTags(List<Tag> tags) {
+    public void setTags(Set<Tag> tags) {
         this.tags = tags;
     }
 
@@ -281,11 +310,11 @@ public class Task implements OwnedEntity, Auditable {
         this.user = user;
     }
 
-    public List<Comment> getComments() {
+    public Set<Comment> getComments() {
         return comments;
     }
 
-    public void setComments(List<Comment> comments) {
+    public void setComments(Set<Comment> comments) {
         this.comments = comments;
     }
 
@@ -303,6 +332,26 @@ public class Task implements OwnedEntity, Auditable {
 
     public int getChecklistChecked() {
         return checklistChecked;
+    }
+
+    public Set<Task> getBlocks() {
+        return blocks;
+    }
+
+    public void setBlocks(Set<Task> blocks) {
+        this.blocks = blocks;
+    }
+
+    public Set<Task> getBlockedBy() {
+        return blockedBy;
+    }
+
+    public void setBlockedBy(Set<Task> blockedBy) {
+        this.blockedBy = blockedBy;
+    }
+
+    public boolean isBlocked() {
+        return blocked;
     }
 
     @Override
@@ -326,6 +375,14 @@ public class Task implements OwnedEntity, Auditable {
                                 .map(ci -> (ci.isChecked() ? "[x] " : "[ ] ") + ci.getText())
                                 .toList()
                         : List.of());
+        snapshot.put(
+                FIELD_BLOCKED_BY,
+                blockedBy != null
+                        ? blockedBy.stream().map(Task::getTitle).sorted().toList()
+                        : List.of());
+        snapshot.put(
+                FIELD_BLOCKS,
+                blocks != null ? blocks.stream().map(Task::getTitle).sorted().toList() : List.of());
         return snapshot;
     }
 }

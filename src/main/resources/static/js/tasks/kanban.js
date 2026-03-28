@@ -51,6 +51,13 @@ function kanbanDrop(e) {
     const oldStatus = card.dataset.status;
     if (oldStatus === newStatus) return;
 
+    // Prevent blocked tasks from being completed
+    const blockedStatuses = ['COMPLETED'];
+    if (card.dataset.blocked === 'true' && blockedStatuses.includes(newStatus)) {
+        showToast(APP_CONFIG.messages['task.dependency.blocked.drag'] || 'This task is blocked', 'warning');
+        return;
+    }
+
     // Optimistic UI update: move card to new column
     const columnBody = column.querySelector('.kanban-column-body');
     const emptyMsg = columnBody.querySelector('.kanban-empty');
@@ -83,7 +90,15 @@ function kanbanDrop(e) {
         if (!response.ok) {
             // Revert on failure: move card back
             revertCard(card, oldStatus);
-            showToast(APP_CONFIG.messages['toast.error.generic'] || 'Failed to update status', 'danger');
+            if (response.status === 409) {
+                response.json().then(data => {
+                    showToast(data.detail || APP_CONFIG.messages['task.dependency.blocked.drag'] || 'This task is blocked', 'warning');
+                }).catch(() => {
+                    showToast(APP_CONFIG.messages['task.dependency.blocked.drag'] || 'This task is blocked', 'warning');
+                });
+            } else {
+                showToast(APP_CONFIG.messages['toast.error.generic'] || 'Failed to update status', 'danger');
+            }
         }
     }).catch(() => {
         revertCard(card, oldStatus);

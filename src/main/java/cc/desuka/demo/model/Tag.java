@@ -4,10 +4,10 @@ import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 // Inverse side of the @ManyToMany relationship — Task owns the join table.
 // mappedBy = "tags" points to the field name in Task, not a column or table name.
@@ -32,7 +32,7 @@ public class Tag implements Auditable {
     // LAZY: don't load all tasks that share this tag unless explicitly requested.
     // No cascade: deleting a tag removes rows from task_tags, but leaves the tasks intact.
     @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
-    private List<Task> tasks = new ArrayList<>();
+    private Set<Task> tasks = new LinkedHashSet<>();
 
     public Tag() {}
 
@@ -56,11 +56,11 @@ public class Tag implements Auditable {
         this.name = name;
     }
 
-    public List<Task> getTasks() {
+    public Set<Task> getTasks() {
         return tasks;
     }
 
-    public void setTasks(List<Task> tasks) {
+    public void setTasks(Set<Task> tasks) {
         this.tasks = tasks;
     }
 

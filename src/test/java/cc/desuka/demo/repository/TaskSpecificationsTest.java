@@ -12,6 +12,7 @@ import cc.desuka.demo.model.TaskStatusFilter;
 import cc.desuka.demo.model.User;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +60,7 @@ class TaskSpecificationsTest {
         task.setPriority(priority);
         task.setUser(user);
         task.setDueDate(dueDate);
-        task.setTags(List.of(tags));
+        task.setTags(Set.of(tags));
         return em.persist(task);
     }
 

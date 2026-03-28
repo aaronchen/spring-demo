@@ -348,6 +348,14 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     margin-top: 0.25rem;
 }
 
+.kanban-card-blocked {
+    opacity: 0.6;
+    border-left: 3px solid var(--bs-warning, #ffc107);
+}
+.kanban-card-blocked .kanban-card-title {
+    color: var(--bs-secondary, #6c757d);
+}
+
 .kanban-empty {
     opacity: 0.6;
     font-style: italic;
@@ -434,3 +442,8 @@ td.inline-edit-active:hover {
 .bulk-select-cell { width: 1px; white-space: nowrap; }
 .bulk-select-cell .form-check-input { cursor: pointer; }
 #bulk-select-all { cursor: pointer; }
+
+/* ── Dependency picker ── */
+.dep-picker {
+    font-size: 0.875rem;
+}

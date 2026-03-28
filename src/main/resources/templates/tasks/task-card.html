@@ -56,8 +56,12 @@
         <!-- Card Body -->
         <div class="card-body">
             <p class="card-text" th:text="${task.description} ?: #{task.noDescription}">Description</p>
-            <!-- Priority and due date badges -->
+            <!-- Priority, due date, and blocked badges -->
             <div class="mb-2">
+                <span th:if="${task.blocked}" class="badge bg-warning text-dark"
+                      th:title="#{task.dependency.blocked.tooltip}">
+                    <i class="bi bi-lock-fill"></i> <span th:text="#{task.dependency.blocked}">Blocked</span>
+                </span>
                 <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
                    onclick="setPriorityFilter('HIGH'); return false;">
                     <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>

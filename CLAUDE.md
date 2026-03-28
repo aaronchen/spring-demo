@@ -6,7 +6,7 @@
 
 - **Package**: `cc.desuka.demo`
 - **Java Version**: 25
-- **Spring Boot**: 4.0.3
+- **Spring Boot**: 4.0.5
 - **Security**: Spring Security 7.0 (form login, BCrypt, role-based access)
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
@@ -88,11 +88,28 @@ Ternary `? :` must be **inside** `${}` for string literals: `th:classappend="${c
 
 ### Frontend Route Configuration Pattern
 
-Routes defined in `application.properties`, exposed two ways:
+All URLs centralized in `AppRoutesProperties` (defaults in Java, overridable via `application.properties`). Exposed two ways:
 - **Templates**: `GlobalModelAttributes` → `${appRoutes}`. Use `@{}` for `th:href`/`th:action` (context-path-aware). Use `${appRoutes.tasks + ...}` only for HTMX `th:attr` values where `@{}` doesn't work.
 - **JavaScript**: `FrontendConfigController` → `/config.js` → `window.APP_CONFIG.routes` and `APP_CONFIG.messages`
 
-**Key rule:** never use `${appRoutes.tasks}` inside `th:href` — it bypasses context-path handling.
+Two categories of routes:
+- **Web routes**: `projects`, `tasks`, `audit`, `dashboard`, `analytics` — used for page navigation
+- **API resource routes**: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit` — used for fetch calls and HTMX attributes
+- **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens, resolved via overloaded getters (Java) or `resolveRoute()` (JS)
+
+**Key rules:**
+- Never use `${appRoutes.tasks}` inside `th:href` — it bypasses context-path handling
+- Never hardcode API URLs in controllers, templates, or JS — always use `appRoutes` (Java/Thymeleaf) or `APP_CONFIG.routes` (JS)
+- For parameterized URLs, use the resource base from config and append the dynamic segment: `APP_CONFIG.routes.apiProjects + '/' + id + '/members'`
+- Prefer parameterized route templates over manual concatenation. Java: `appRoutes.getApiProjectAnalytics(id)`. JS: `resolveRoute(APP_CONFIG.routes.apiProjectAnalytics, { projectId })`. Templates: `appRoutes.getApiProjectMembersAssignable(task.project.id)`
+
+### Entity Collection Convention
+
+`Set` (not `List`) for `@ManyToMany` and `@OneToMany` associations — avoids Hibernate multiple-bags exception and matches relational semantics. Use `LinkedHashSet` for initialization. Only use `List` with `@OrderColumn` (e.g., `checklistItems` for drag-and-drop ordering). `@OrderBy` works with both `Set` and `List` — prefer `Set` with `LinkedHashSet` to preserve iteration order.
+
+### Task Dependency Pattern
+
+Bidirectional `@ManyToMany` self-referential relationship on `Task`: `blocks` (owning side, `@JoinTable(task_dependencies)`) and `blockedBy` (inverse, `mappedBy`). `blocked` virtual column (`@Formula`) checks for non-terminal blockers without loading the graph. `TaskDependencyService` handles reconciliation, BFS cycle detection, same-project validation, and self-reference prevention. `BlockedTaskException` (409) blocks status transitions; `CyclicDependencyException` (422) prevents circular chains. Dependencies managed via form params (`blockedByIds`, `blocksIds`) in web UI; searchable picker via `/api/tasks/search-for-dependency`.
 
 ### Constructor Injection Pattern
 
@@ -115,6 +132,8 @@ Users disabled (not deleted) when they have completed tasks or comments. `UserSe
 `Setting` entity → `Settings` POJO (defaults + `BeanWrapper` auto-mapping) → `SettingService.load()`. `GlobalModelAttributes` exposes `${settings}`.
 
 To add a setting: (1) field + default in `Settings.java`, (2) `KEY_*` constant matching field name, (3) `audit.field.<key>` in `messages.properties`.
+
+**Maintenance banner dismiss** — `maintenanceBannerVersion` setting bumped (timestamp) on banner text change. Inline script in `base.html` compares `bannerDismissed` cookie against rendered version; shows banner only if unmatched. Dismiss stores cookie. New banner text = new version = banner reappears for all users.
 
 ### User Preferences Pattern
 
@@ -242,7 +261,7 @@ Chart.js 4.5.1 (via WebJar) renders 6 charts: status/priority doughnuts, workloa
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 207 tests, 25 test classes
+./mvnw test                               # 223 tests, 26 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 

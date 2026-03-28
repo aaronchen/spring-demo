@@ -8,8 +8,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Model Layer
 - `model/Task.java` - Entity class with JPA annotations; implements `OwnedEntity`
-  - Fields: id, version, title, description, status, priority, priorityOrder, startDate, dueDate, createdAt, completedAt, updatedAt, project, tags, user, checklistItems, checklistTotal, checklistChecked
-  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_START_DATE`, `FIELD_CREATED_AT`, `FIELD_COMPLETED_AT`, `FIELD_UPDATED_AT`, `FIELD_PROJECT`, `FIELD_TAGS`, `FIELD_USER`, `FIELD_COMMENTS`, `FIELD_CHECKLIST_ITEMS`, `FIELD_CHECKLIST_TOTAL`, `FIELD_CHECKLIST_CHECKED`) — used in mappers, specifications, and `toAuditSnapshot()`
+  - Fields: id, version, title, description, status, priority, priorityOrder, startDate, dueDate, createdAt, completedAt, updatedAt, project, tags, user, checklistItems, checklistTotal, checklistChecked, blocks, blockedBy, blocked
+  - `FIELD_*` constants (`FIELD_ID`, `FIELD_VERSION`, `FIELD_TITLE`, `FIELD_DESCRIPTION`, `FIELD_STATUS`, `FIELD_PRIORITY`, `FIELD_PRIORITY_ORDER`, `FIELD_DUE_DATE`, `FIELD_START_DATE`, `FIELD_CREATED_AT`, `FIELD_COMPLETED_AT`, `FIELD_UPDATED_AT`, `FIELD_PROJECT`, `FIELD_TAGS`, `FIELD_USER`, `FIELD_COMMENTS`, `FIELD_CHECKLIST_ITEMS`, `FIELD_CHECKLIST_TOTAL`, `FIELD_CHECKLIST_CHECKED`, `FIELD_BLOCKS`, `FIELD_BLOCKED_BY`, `FIELD_BLOCKED`) — used in mappers, specifications, and `toAuditSnapshot()`
   - `@Version` on `version` field — JPA optimistic locking; Hibernate auto-increments on each update and throws `OptimisticLockException` on stale writes
   - `status` — `@Enumerated(EnumType.STRING)`, `TaskStatus` enum (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED), defaults to `OPEN`
   - `isCompleted()` — derived convenience method, returns `status == TaskStatus.COMPLETED` (no backing field)
@@ -20,9 +20,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `completedAt` — `LocalDateTime`, set automatically by `TaskService` when status changes to COMPLETED (cleared when un-completed)
   - `updatedAt` — `LocalDateTime`, set by `@PrePersist` / `@PreUpdate` lifecycle callbacks
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "project_id", nullable = false)` — every task belongs to a project
-  - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side
+  - `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_tags")` — Task is the owning side; `Set<Tag>`
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — Task owns the FK column; user is optional (nullable)
-  - `@OneToMany(mappedBy = "task", cascade = ALL, orphanRemoval = true)` + `@OrderBy("sortOrder ASC")` — checklist items owned by task; cascade delete
+  - `@OneToMany(mappedBy = "task", cascade = ALL, orphanRemoval = true)` + `@OrderBy("sortOrder ASC")` — checklist items owned by task; cascade delete; `List<ChecklistItem>` (uses `@OrderColumn` for drag-and-drop ordering)
+  - `@OneToMany(mappedBy = "task")` — comments; `Set<Comment>`
+  - `blocks` (`Set<Task>`) — `@ManyToMany(fetch = LAZY)` + `@JoinTable(name = "task_dependencies", joinColumns = "blocking_task_id", inverseJoinColumns = "blocked_task_id")` — tasks this task blocks; owning side
+  - `blockedBy` (`Set<Task>`) — `@ManyToMany(mappedBy = "blocks", fetch = LAZY)` — tasks that block this task; inverse side
+  - `blocked` (boolean) — `@Formula` virtual column, true when at least one non-terminal task in `blockedBy` exists
   - `checklistTotal` — `@Formula` subquery counting all checklist items (virtual column, avoids loading collection on list views)
   - `checklistChecked` — `@Formula` subquery counting checked items (virtual column for progress display)
   - Validation: `@NotBlank`, `@Size` constraints
@@ -72,8 +76,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `description` — `@Size(max = 500)`
   - `status` — `@Enumerated(EnumType.STRING)`, `ProjectStatus` enum (ACTIVE, ARCHIVED), defaults to `ACTIVE`
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "created_by")` — project creator
-  - `@OneToMany(mappedBy = "project", cascade = ALL, orphanRemoval = true)` — members list
-  - `@OneToMany(mappedBy = "project", cascade = ALL, orphanRemoval = true)` — tasks list
+  - `@OneToMany(mappedBy = "project", cascade = ALL, orphanRemoval = true)` — members; `Set<ProjectMember>`
+  - `@OneToMany(mappedBy = "project", cascade = ALL, orphanRemoval = true)` — tasks; `Set<Task>`
   - `@PrePersist` / `@PreUpdate` lifecycle callbacks set `updatedAt`
   - `toAuditSnapshot()` — captures name, description, status
   - Manual getters/setters (no Lombok on entities)
@@ -104,7 +108,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `model/Tag.java` - Tag entity
   - Fields: id, name (unique, max 50 chars)
   - `FIELD_*` constants (`FIELD_ID`, `FIELD_NAME`)
-  - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here)
+  - `@ManyToMany(mappedBy = "tags", fetch = LAZY)` — Tag is the inverse side (no @JoinTable here); `Set<Task>`
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 - `model/User.java` - User entity with authentication fields
@@ -113,7 +117,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `password` — BCrypt hash; nullable for API-created users (who cannot log in)
   - `role` — `@Enumerated(EnumType.STRING)`, stored as "USER" or "ADMIN" in the database
   - `enabled` — disabled users cannot log in and are hidden from assignment dropdowns
-  - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete)
+  - `@OneToMany(mappedBy = "user", fetch = LAZY)` — inverse side; no cascade (service handles task reassignment on delete); `Set<Task>`
   - Manual getters/setters; `equals()`/`hashCode()` use `getId()` (not field access) for Hibernate proxy safety
 
 - `model/ChecklistItem.java` - Checklist item entity for task sub-items
@@ -331,7 +335,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Lombok `@Data`
 
 - `dto/TaskResponse.java` - API output DTO (returned by all read/write endpoints)
-  - Fields: `id`, `title`, `description`, `status` (`TaskStatus`), `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`
+  - Fields: `id`, `title`, `description`, `status` (`TaskStatus`), `priority` (`Priority`), `dueDate` (`LocalDate`), `createdAt`, `tags` (`List<TagResponse>`), `user` (`UserResponse`, nullable), `version`, `blocked` (boolean), `blockedBy` (`List<TaskDependencyResponse>`), `blocks` (`List<TaskDependencyResponse>`)
+  - Lombok `@Data`
+
+- `dto/TaskDependencyResponse.java` - Lightweight dependency DTO for task relationship display
+  - Fields: `id`, `title`, `status` (`TaskStatus`)
   - Lombok `@Data`
 
 - `dto/TagResponse.java` - Tag output DTO
@@ -457,7 +465,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `toEntity(TaskRequest)` — `id`, `status`, `createdAt`, `tags`, `user`, `version` explicitly ignored via `Task.FIELD_*` constants (service resolves relationships)
   - Implementation `TaskMapperImpl` generated into `target/generated-sources/` at compile time
 
-- `mapper/TagMapper.java` - MapStruct mapper for Tag ↔ TagResponse
+- `mapper/TagMapper.java` - MapStruct mapper for Tag ↔ TagResponse; `toResponseList` accepts `Collection<Tag>`
 
 - `mapper/CommentMapper.java` - MapStruct mapper for Comment ↔ CommentResponse
   - `@Mapping(source = "task.id", target = "taskId")` — flattens task association to ID
@@ -505,7 +513,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getProjectsForUser(Long userId, boolean includeArchived, String sort)` — user's projects with sort/archive filter
   - `getAccessibleProjectIds(Long userId)` — returns IDs of active projects for a user; used by controllers for project-scoped queries
   - `getEditableProjectsForUser(Long userId)` — returns active projects where user is EDITOR or OWNER
-  - Member queries: `getMembers(Long)`, `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
+  - Member queries: `getMembers(Long)` (returns `Set<ProjectMember>`), `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
 
 - `service/ProjectService.java` - Project write operations with audit event publishing
   - Constructor injection: `ProjectRepository`, `ProjectQueryService`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
@@ -528,6 +536,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
   - `getIncompleteTasks()` — uses `findByStatusNotIn(terminalStatuses())` instead of single-status exclusion
 
+- `service/TaskDependencyService.java` - Dependency management with cycle detection and validation
+  - Constructor injection: `TaskQueryService`
+  - `reconcileBlockedBy(task, blockedByIds)` — replaces `blockedBy` set; validates same-project, no self-reference, no cycles
+  - `reconcileBlocks(task, blocksIds)` — replaces `blocks` set; validates same-project, no self-reference, no cycles
+  - `getActiveBlockers(task)` — returns non-terminal tasks from `blockedBy` set
+  - `hasActiveBlockers(task)` — returns true if any non-terminal task blocks this one
+  - `wouldCreateCycle(source, target)` — BFS cycle detection; returns true if adding source→target would create a cycle
+
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskQueryService`, `CommentQueryService`, `ApplicationEventPublisher`
   - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
@@ -546,7 +562,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/TagService.java` - Tag business logic with audit event publishing
   - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `countTasksByTagId`, `createTag`, `deleteTag`
-  - `findAllByIds(ids)` — returns tags matching the given IDs; returns empty list for null/empty input; used by `TaskService` for tag resolution
+  - `findAllByIds(ids)` — returns `Set<Tag>` matching the given IDs; returns empty set for null/empty input; used by `TaskService` for tag resolution
   - `countTasksByTagId(tagId)` — uses ORM relationship traversal (`getTagById(tagId).getTasks().size()`) instead of custom repository query
 
 - `audit/AuditLogService.java` - Audit log business logic
@@ -627,6 +643,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - PUT: calls `projectAccessGuard.requireEditAccess()` on task's project
   - DELETE: three-way check via `requireDeleteAccess()` — admin OR task creator OR project owner
   - PATCH `/api/tasks/{id}/toggle` — advance status; checks edit access to task's project
+  - GET `/api/tasks/search-for-dependency` — search for tasks within a project, excluding specified task IDs; returns id, title, status
 
 - `controller/api/UserApiController.java` - User REST API endpoints
   - `@RestController` with `/api/users` base path
@@ -779,7 +796,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/TaskController.java` - Task web UI endpoints (cross-project task views)
   - `@Controller` with `/tasks` base path
-  - Constructor injection: `TaskService`, `TaskQueryService`, `ProjectQueryService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `TaskReport`, `Messages`
+  - Constructor injection: `TaskService`, `TaskQueryService`, `TaskDependencyService`, `ProjectQueryService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `TaskReport`, `Messages`
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
@@ -791,7 +808,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `GET /tasks/new` — optional `projectId` param; if provided, checks edit access and pre-selects project; if omitted, adds `editableProjects` list for project dropdown; accepts optional `dueDate` param (ISO date) to pre-fill
   - `POST /tasks` — create task; requires `projectId`; accepts `TaskFormRequest` + separate `@RequestParam` for `tagIds`, `assigneeId`, checklist arrays; on validation error re-render, adds `editableProjects` to model
   - `GET /tasks/{id}/edit` — edit form; checks `projectAccessGuard.requireEditAccess()`
-  - `POST /tasks/{id}` — update task; checks edit access; accepts `TaskFormRequest`
+  - `POST /tasks/{id}` — update task; checks edit access; accepts `TaskFormRequest`; dependency management via form params `blockedByIds` and `blocksIds`
   - `DELETE /tasks/{id}` — delete via `requireDeleteAccess()`: admin OR task creator OR project owner
   - `GET /tasks/{id}/activity` — activity timeline fragment (HTMX live refresh via WebSocket)
   - `POST /{id}/comments` — add comment to task; returns `task-activity` template (whole file for hx-swap-oob count updates)
@@ -904,9 +921,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `h2ConsoleServlet()` — registers H2 console servlet at `/h2-console/*`
 
 - `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
-  - Fields: `tasks` (default `/tasks`), `api` (default `/api`), `audit` (default `/admin/audit`), `projects` (default `/projects`), `dashboard` (default `/dashboard`)
-  - `projects` route used by `ProjectController` and frontend JS for project-scoped task views
-  - Single source of truth for base paths used by both Thymeleaf templates and frontend JS
+  - Web routes: `projects`, `tasks`, `audit`, `dashboard`, `analytics`
+  - API resource routes: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit`
+  - Parameterized API routes (URL templates with `{placeholder}` tokens): `apiProjectAnalytics`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById`
+  - Parameterized routes have overloaded getters: no-arg returns template string (for JS exposure), with-arg resolves placeholders (for Java use)
+  - Single source of truth for all paths used by Thymeleaf templates, controllers, and frontend JS
 
 - `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects shared attributes into every Thymeleaf model
   - `@ModelAttribute("appRoutes")` — exposes the `AppRoutesProperties` bean as `${appRoutes}` in all templates
@@ -926,22 +945,33 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `config/Settings.java` - Typed POJO for site-wide settings with defaults (not a JPA entity)
   - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name)
   - `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` — theme id constants
-  - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`), `notificationPurgeDays` (default `30`)
+  - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`), `maintenanceBannerVersion` (default `""`), `notificationPurgeDays` (default `30`)
 
 ### Exception Handling
 - `exception/EntityNotFoundException.java` - Custom unchecked exception for missing entities
 
 - `exception/StaleDataException.java` - Custom unchecked exception for optimistic locking conflicts (409)
 
+- `exception/BlockedTaskException.java` - Custom unchecked exception for completing a task with active blockers
+  - `getBlockerNames()` — returns list of blocker task titles for user-facing messages
+
+- `exception/CyclicDependencyException.java` - Custom unchecked exception for dependency cycles
+
 - `exception/ApiExceptionHandler.java` - `@RestControllerAdvice` scoped to `controller.api`; extends `ResponseEntityExceptionHandler`
   - Ordered at `HIGHEST_PRECEDENCE` to win over `WebExceptionHandler`
   - Returns RFC 9457 `ProblemDetail` responses (`application/problem+json` content type)
   - Overrides `handleMethodArgumentNotValid()` — adds field-level `errors` map via `ProblemDetail.setProperty("errors", fieldErrors)`
-  - Handles: `MethodArgumentNotValidException` (400), `EntityNotFoundException` (404), `AccessDeniedException` (403), `StaleDataException` (409), catch-all `Exception` (500)
+  - Handlers sorted by error code:
+    - 400: `MethodArgumentNotValidException`, `IllegalArgumentException`
+    - 403: `AccessDeniedException`
+    - 404: `EntityNotFoundException`
+    - 409: `StaleDataException`, `BlockedTaskException` (adds `blockers` property with blocker names list)
+    - 422: `CyclicDependencyException`
+    - 500: catch-all `Exception`
 
 - `exception/WebExceptionHandler.java` - `@ControllerAdvice` for Thymeleaf web controllers
   - Constructor injection: `SettingService` — injects `settings` into each `ModelAndView` manually (since `@ModelAttribute` methods from `GlobalModelAttributes` don't run for exception handlers)
-  - Handles: `EntityNotFoundException` and `NoResourceFoundException` → `error/404.html`, `StaleDataException` → `error/409.html`, catch-all → `error/500.html`
+  - Handles: `EntityNotFoundException` and `NoResourceFoundException` → `error/404.html`, `StaleDataException` → `error/409.html`, `BlockedTaskException` and `CyclicDependencyException` → `error/400.html`, catch-all → `error/500.html`
   - `AccessDeniedException` is explicitly re-thrown so Spring Security's `ExceptionTranslationFilter` can handle it → `error/403.html` (without this, the catch-all `Exception` handler would swallow it as a 500)
   - Each error `ModelAndView` adds `settingService.load()` as `"settings"` so error pages can access theme and site name
 
@@ -1037,6 +1067,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Comment entries rendered with `MentionUtils.renderHtml()` for styled @mention spans; delete buttons use `hx-delete` with `hx-confirm` and `data-confirm-*` attributes
   - Audit entries show action badge, principal, and field-level change details
 
+- `templates/tasks/task-dependencies.html` - Dependency panel fragment with "Blocked By" and "Blocks" sections
+  - Searchable select for adding dependencies; remove buttons in edit mode; hidden inputs for form submission
+  - Used by `task-layout.html` in both modal and full-page views
+
 - `templates/tasks/task-board.html` - Kanban board view fragment (`grid` fragment)
   - Reads `${tasksByStatus}` — `Map<TaskStatus, List<Task>>` built by `TaskService.groupByStatus()`
   - One column per `TaskStatus` (6 columns: Backlog/Open/In Progress/In Review/Completed/Cancelled)
@@ -1129,6 +1163,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/users/user-table.html` - User table fragment (bare file)
 - `templates/login.html` - Login page (Spring Security handles POST)
 - `templates/register.html` - Registration page
+- `templates/error/400.html` - Bad Request error page
 - `templates/error/403.html` - Access Denied page
 - `templates/error/404.html` - Not Found page
 - `templates/error/409.html` - Conflict page (optimistic locking, rendered by `WebExceptionHandler`)
@@ -1207,6 +1242,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `drop` — reads task ID from transfer data; POSTs to `POST /tasks/{id}/status` with target column's status
   - `dragend` — clears dragging styles regardless of outcome
   - Updates card position in DOM optimistically; reverts on server error
+- `static/js/tasks/task-dependencies.js` - Dependency picker and management
+  - Binds `.dep-picker` elements, creates dependency items with hidden inputs, manages exclude lists dynamically
+  - Re-binds on `htmx:afterSettle` for modal support
 - `static/js/tasks/keyboard-shortcuts.js` - Keyboard shortcut handler for task pages
   - `h` — open keyboard help modal; `n` — open new task modal; `s` / `/` — focus search input
   - `1` / `2` / `3` / `4` — switch to cards / table / calendar / board view
@@ -1233,7 +1271,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Namespace conventions:
     - `action.*` — generic actions; `pagination.*` — pagination controls
     - `nav.*`, `footer.*`, `page.title.*` — layout strings
-    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`, `task.bulk.*` for bulk action UI); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
+    - `task.*` — Task feature (includes `task.status.backlog`, `task.status.open`, `task.status.inProgress`, `task.status.inReview`, `task.status.completed`, `task.status.cancelled`, `action.toggle.*.next` for advance status button labels, `task.field.project`, `task.field.project.placeholder`, `task.bulk.*` for bulk action UI, `task.dependency.*` for dependency management UI); `project.*` — Project feature (includes `project.role.*`, `project.member.*`, `project.action.*`); `tag.*` — Tag feature; `user.*` — User feature
     - `analytics.*` — Analytics feature (chart titles, labels, filter keys)
     - `dashboard.*` — Dashboard feature (includes `dashboard.my.inReview`, `dashboard.projects.heading`, `dashboard.glance.heading`, `dashboard.system.heading`, `dashboard.system.*` stat labels)
     - `login.*`, `register.*` — Auth pages
@@ -1260,6 +1298,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `test/java/.../event/NotificationEventListenerTest.java` - 8 unit tests (Mockito): task assigned/updated/comment notification routing, self-exclusion, deduplication across groups
 - `test/java/.../event/WebSocketEventListenerTest.java` - 2 unit tests (Mockito): broadcasts to correct STOMP topics
 - `test/java/.../util/MentionUtilsTest.java` - 12 unit tests: extract user IDs (single, multiple, duplicates, none, null, malformed), render HTML links, XSS escaping in text and display names
+- `test/java/.../service/TaskDependencyServiceTest.java` - 16 unit tests (Mockito): reconciliation, cycle detection (BFS), same-project validation, self-reference prevention, active blocker filtering
 - `test/java/.../controller/api/TaskApiControllerTest.java` - 15 tests (`@SpringBootTest` + `@AutoConfigureMockMvc` + `@MockitoBean`): REST API JSON CRUD, auth redirect, validation 400, ownership 403, optimistic locking 409
 - `test/java/.../controller/api/CommentApiControllerTest.java` - 7 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): GET/POST/DELETE, auth redirect, ownership 403, not found 404
 - `test/java/.../controller/api/TagApiControllerTest.java` - 7 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`): GET all/by-id, admin-only POST 201/DELETE 204, regular user 403
@@ -1296,7 +1335,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - H2 console disabled, Swagger UI disabled
 
 - `resources/db/migration/V1__initial_schema.sql` - Flyway initial migration
-  - PostgreSQL DDL for all 12 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, comments, audit_logs, notifications, settings, user_preferences
+  - PostgreSQL DDL for all 14 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, task_dependencies, comments, audit_logs, notifications, settings, user_preferences, saved_views
   - Seeds default admin user (`admin@example.com` / `password`)
   - Mirrors JPA entity definitions; used when `ddl-auto=validate` (prod profile)
 
@@ -1359,6 +1398,7 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `DELETE /api/tasks/{id}` - Delete task (owner or admin)
 - `PATCH /api/tasks/{id}/toggle` - Toggle completion (any authenticated user)
 - `GET /api/tasks/search?keyword=...` - Search by title/description
+- `GET /api/tasks/search-for-dependency?projectId=&q=&excludeIds=` - Search for dependency candidates within a project (returns id, title, status)
 - `GET /api/tasks/incomplete` - Get incomplete tasks only
 
 **REST API — Comments** (requires login; CSRF exempt):
@@ -1423,7 +1463,8 @@ The following sections were moved from CLAUDE.md. They are reference material de
 | Test class | Type | What it tests |
 |---|---|---|
 | `TaskQueryServiceTest` | Unit (Mockito) | Read-only task lookups: getTaskById, getAllTasks, searchTasks |
-| `TaskServiceTest` | Unit (Mockito) | Write operations: CRUD, optimistic locking, status transitions, assignment |
+| `TaskServiceTest` | Unit (Mockito) | Write operations: CRUD, optimistic locking, status transitions, assignment, dependency blocking |
+| `TaskDependencyServiceTest` | Unit (Mockito) | Reconciliation, cycle detection (BFS), same-project validation, self-reference prevention, active blocker filtering |
 | `TagServiceTest` | Unit (Mockito) | Service CRUD, audit event publishing |
 | `CommentServiceTest` | Unit (Mockito) | CRUD, events, subscriber/mention ID extraction, dedup |
 | `UserServiceTest` | Unit (Mockito) | CRUD, canDelete logic, enable/disable, profile update diff, role change |
@@ -1564,6 +1605,13 @@ CREATE TABLE task_tags (
     task_id BIGINT NOT NULL REFERENCES tasks(id),
     tag_id  BIGINT NOT NULL REFERENCES tags(id),
     PRIMARY KEY (task_id, tag_id)
+);
+
+CREATE TABLE task_dependencies (
+    blocking_task_id BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    blocked_task_id  BIGINT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+    PRIMARY KEY (blocking_task_id, blocked_task_id),
+    CHECK (blocking_task_id <> blocked_task_id)  -- no self-reference
 );
 ```
 

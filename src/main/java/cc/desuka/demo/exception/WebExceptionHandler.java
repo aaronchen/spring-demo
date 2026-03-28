@@ -1,7 +1,9 @@
 package cc.desuka.demo.exception;
 
 import cc.desuka.demo.service.SettingService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -47,7 +49,10 @@ public class WebExceptionHandler {
     }
 
     @ExceptionHandler(StaleDataException.class)
-    public ModelAndView handleConflict(StaleDataException ex) {
+    public Object handleConflict(StaleDataException ex, HttpServletRequest request) {
+        if (isHtmxRequest(request)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
+        }
         ModelAndView mav = new ModelAndView("error/409");
         mav.setStatus(HttpStatus.CONFLICT);
         mav.addObject("message", ex.getMessage());
@@ -55,8 +60,23 @@ public class WebExceptionHandler {
         return mav;
     }
 
+    @ExceptionHandler({CyclicDependencyException.class, BlockedTaskException.class})
+    public Object handleBadRequest(RuntimeException ex, HttpServletRequest request) {
+        if (isHtmxRequest(request)) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
+        ModelAndView mav = new ModelAndView("error/400");
+        mav.setStatus(HttpStatus.BAD_REQUEST);
+        mav.addObject("message", ex.getMessage());
+        mav.addObject("settings", settingService.load());
+        return mav;
+    }
+
     @ExceptionHandler({EntityNotFoundException.class, NoResourceFoundException.class})
-    public ModelAndView handleNotFound(Exception ex) {
+    public Object handleNotFound(Exception ex, HttpServletRequest request) {
+        if (isHtmxRequest(request)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+        }
         ModelAndView mav = new ModelAndView("error/404");
         mav.setStatus(HttpStatus.NOT_FOUND);
         mav.addObject("message", ex.getMessage());
@@ -65,10 +85,17 @@ public class WebExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ModelAndView handleServerError(Exception ex) {
+    public Object handleServerError(Exception ex, HttpServletRequest request) {
+        if (isHtmxRequest(request)) {
+            return ResponseEntity.internalServerError().build();
+        }
         ModelAndView mav = new ModelAndView("error/500");
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         mav.addObject("settings", settingService.load());
         return mav;
+    }
+
+    private boolean isHtmxRequest(HttpServletRequest request) {
+        return "true".equals(request.getHeader("HX-Request"));
     }
 }

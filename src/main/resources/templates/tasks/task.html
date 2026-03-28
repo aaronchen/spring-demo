@@ -70,6 +70,7 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
     <script th:src="@{/js/tasks/task-form.js}"></script>
+    <script th:if="${mode != 'create'}" th:src="@{/js/tasks/task-dependencies.js}"></script>
 
     <script th:if="${mode != 'create'}" th:inline="javascript">
         (function() {

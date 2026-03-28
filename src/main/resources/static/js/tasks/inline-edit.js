@@ -149,11 +149,20 @@ function showSelectInput(cell, taskId, field, currentValue, originalContent, opt
     const select = document.createElement('select');
     select.className = 'form-select form-select-sm inline-edit-input';
 
+    // Check if the row is blocked (for disabling status options)
+    const row = cell.closest('tr');
+    const isBlocked = row?.dataset.blocked === 'true';
+    const blockedStatuses = ['COMPLETED'];
+
     options.forEach(opt => {
         const option = document.createElement('option');
         option.value = opt.value;
         option.textContent = opt.label;
         if (opt.value === currentValue) option.selected = true;
+        // Disable blocked status transitions
+        if (field === 'status' && isBlocked && blockedStatuses.includes(opt.value)) {
+            option.disabled = true;
+        }
         select.appendChild(option);
     });
 
@@ -244,6 +253,12 @@ function saveInlineEdit(cell, taskId, field, value, originalContent) {
         if (response.ok) {
             return response.text();
         }
+        // Parse error detail for blocked task message
+        if (response.headers.get('Content-Type')?.includes('json')) {
+            return response.json().then(data => {
+                throw new Error(data.detail || 'Failed to save');
+            });
+        }
         throw new Error('Failed to save');
     }).then(html => {
         const template = document.createElement('template');
@@ -263,8 +278,8 @@ function saveInlineEdit(cell, taskId, field, value, originalContent) {
                 });
             }
         }
-    }).catch(() => {
+    }).catch(err => {
         cancelInlineEdit(cell, originalContent);
-        showToast(APP_CONFIG.messages['toast.error.generic'] || 'Failed to save', 'danger');
+        showToast(err.message || APP_CONFIG.messages['toast.error.generic'] || 'Failed to save', 'danger');
     });
 }

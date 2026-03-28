@@ -11,7 +11,7 @@
             <button id="clear-all-btn"
                     th:if="${!notifications.isEmpty()}"
                     class="btn btn-outline-danger btn-sm"
-                    hx-delete="/api/notifications"
+                    th:hx-delete="${appRoutes.apiNotifications}"
                     th:attr="hx-confirm=#{notification.clearAll.confirm},
                              data-confirm-title=#{notification.clearAll.title},
                              data-confirm-text=#{notification.clearAll.action}"
@@ -35,7 +35,7 @@
                  th:classappend="${!n.read} ? 'list-group-item-light fw-semibold' : ''"
                  style="cursor: pointer;"
                  th:data-id="${n.id}"
-                 th:attr="hx-patch=${'/api/notifications/' + n.id + '/read'}, hx-swap='none'">
+                 th:attr="hx-patch=${appRoutes.getApiNotificationRead(n.id)}, hx-swap='none'">
                 <div class="d-flex align-items-start py-1">
                     <i class="bi me-3 mt-1"
                        th:classappend="${n.type == 'TASK_ASSIGNED'} ? 'bi-person-plus text-primary' :
@@ -87,7 +87,7 @@
 
         document.body.addEventListener('htmx:afterRequest', function(e) {
             const el = e.detail.elt;
-            if (el.getAttribute('hx-delete') === '/api/notifications') {
+            if (el.getAttribute('hx-delete') === APP_CONFIG.routes.apiNotifications) {
                 helpers.fire('notification:cleared');
                 return;
             }
@@ -116,7 +116,7 @@
             row.className = 'list-group-item list-group-item-action list-group-item-light fw-semibold';
             row.style.cursor = 'pointer';
             row.dataset.id = n.id;
-            row.setAttribute('hx-patch', `/api/notifications/${n.id}/read`);
+            row.setAttribute('hx-patch', `${APP_CONFIG.routes.apiNotifications}/${n.id}/read`);
             row.setAttribute('hx-swap', 'none');
             htmx.process(row);
 

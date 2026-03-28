@@ -132,6 +132,15 @@ Cookie: JSESSIONID={{sessionId}}
 
 
 ### ============================================================
+### Task Dependencies — Search (project-scoped)
+### ============================================================
+
+### Search for tasks to add as dependency (excludes self and existing dependencies)
+GET {{baseUrl}}/api/tasks/search-for-dependency?projectId=1&q=CI&excludeTaskIds=1,2
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
 ### Tags — Read (any authenticated user)
 ### ============================================================
 

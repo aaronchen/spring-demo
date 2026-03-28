@@ -1,5 +1,16 @@
 // Shared browser utilities
 
+// Substitute {placeholder} tokens in a URL template with values from a params object.
+// Example: resolveRoute("/api/projects/{projectId}/members", { projectId: 42 })
+//       → "/api/projects/42/members"
+function resolveRoute(template, params) {
+    let url = template;
+    for (const [key, value] of Object.entries(params)) {
+        url = url.replace(`{${key}}`, value);
+    }
+    return url;
+}
+
 function getCookie(name) {
     const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
     return match ? match[1] : null;
@@ -193,8 +204,16 @@ document.addEventListener('htmx:confirm', function (evt) {
 // is not swapped by default — the user sees nothing. This handler catches it
 // globally and shows a toast so the user knows to reload.
 document.addEventListener('htmx:responseError', function (evt) {
-    if (evt.detail.xhr.status === 409) {
-        showToast(APP_CONFIG.messages['error.409.message'], 'danger');
+    const status = evt.detail.xhr.status;
+    const msg = evt.detail.xhr.responseText;
+    if (status === 400) {
+        showToast(msg || APP_CONFIG.messages['error.400.heading'], 'danger');
+    } else if (status === 404) {
+        showToast(msg || APP_CONFIG.messages['error.404.message'], 'warning');
+    } else if (status === 409) {
+        showToast(msg || APP_CONFIG.messages['error.409.message'], 'danger');
+    } else if (status >= 500) {
+        showToast(APP_CONFIG.messages['error.500.message'], 'danger');
     }
 });
 

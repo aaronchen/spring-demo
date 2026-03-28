@@ -1,9 +1,11 @@
 package cc.desuka.demo.mapper;
 
+import cc.desuka.demo.dto.TaskDependencyResponse;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
 import cc.desuka.demo.model.Task;
 import java.util.List;
+import java.util.Set;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -24,6 +26,10 @@ public interface TaskMapper {
 
     List<TaskResponse> toResponseList(List<Task> tasks);
 
+    TaskDependencyResponse toDependencyResponse(Task task);
+
+    List<TaskDependencyResponse> toDependencyResponseList(Set<Task> tasks);
+
     // tags is ignored here — the mapper can't do DB lookups.
     // TaskService.resolveTags() fetches Tag entities from tagIds and sets them on the task.
     @Mapping(target = Task.FIELD_ID, ignore = true)
@@ -39,5 +45,7 @@ public interface TaskMapper {
     @Mapping(target = Task.FIELD_CHECKLIST_TOTAL, ignore = true)
     @Mapping(target = Task.FIELD_CHECKLIST_CHECKED, ignore = true)
     @Mapping(target = Task.FIELD_PROJECT, ignore = true)
+    @Mapping(target = Task.FIELD_BLOCKED_BY, ignore = true)
+    @Mapping(target = Task.FIELD_BLOCKS, ignore = true)
     Task toEntity(TaskRequest request);
 }

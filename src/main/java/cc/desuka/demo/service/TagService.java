@@ -6,8 +6,9 @@ import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +35,9 @@ public class TagService {
                 .orElseThrow(() -> new EntityNotFoundException(Tag.class, id));
     }
 
-    public List<Tag> findAllByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) return new ArrayList<>();
-        return tagRepository.findAllById(ids);
+    public Set<Tag> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return new LinkedHashSet<>();
+        return new LinkedHashSet<>(tagRepository.findAllById(ids));
     }
 
     public int countTasksByTagId(Long tagId) {

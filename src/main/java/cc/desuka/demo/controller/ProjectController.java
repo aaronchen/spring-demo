@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.ProjectListQuery;
@@ -53,6 +54,7 @@ public class ProjectController {
     private final UserService userService;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
+    private final AppRoutesProperties appRoutes;
 
     public ProjectController(
             ProjectService projectService,
@@ -61,7 +63,8 @@ public class ProjectController {
             TagService tagService,
             UserService userService,
             ProjectAccessGuard projectAccessGuard,
-            TaskReport taskReport) {
+            TaskReport taskReport,
+            AppRoutesProperties appRoutes) {
         this.projectService = projectService;
         this.projectQueryService = projectQueryService;
         this.taskQueryService = taskQueryService;
@@ -69,6 +72,7 @@ public class ProjectController {
         this.userService = userService;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
+        this.appRoutes = appRoutes;
     }
 
     // GET /projects - List projects the current user belongs to
@@ -372,7 +376,7 @@ public class ProjectController {
         projectAccessGuard.requireViewAccess(id, currentDetails);
         Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
-        model.addAttribute("apiUrl", "/api/projects/" + id + "/analytics");
+        model.addAttribute("apiUrl", appRoutes.getApiProjectAnalytics(id));
         return "analytics/analytics";
     }
 

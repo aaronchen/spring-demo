@@ -52,7 +52,13 @@ public class SettingsController {
         settingService.updateValue(Settings.KEY_SITE_NAME, siteName);
         settingService.updateValue(
                 Settings.KEY_REGISTRATION_ENABLED, String.valueOf(registrationEnabled));
+        String previousBanner = settingService.load().getMaintenanceBanner();
         settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, maintenanceBanner);
+        if (!maintenanceBanner.equals(previousBanner)) {
+            settingService.updateValue(
+                    Settings.KEY_MAINTENANCE_BANNER_VERSION,
+                    String.valueOf(System.currentTimeMillis()));
+        }
         settingService.updateValue(
                 Settings.KEY_NOTIFICATION_PURGE_DAYS, String.valueOf(notificationPurgeDays));
 

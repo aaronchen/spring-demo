@@ -33,5 +33,9 @@ public class TaskResponse {
     // null when the task is unassigned
     private UserResponse user;
 
+    private boolean blocked;
+    private List<TaskDependencyResponse> blockedBy;
+    private List<TaskDependencyResponse> blocks;
+
     private Long version;
 }

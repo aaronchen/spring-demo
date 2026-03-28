@@ -45,6 +45,14 @@ public class ProjectAccessGuard {
         }
     }
 
+    /** Returns true if the user can edit within the project (EDITOR/OWNER or admin). */
+    public boolean canEdit(Long projectId, CustomUserDetails currentDetails) {
+        if (AuthExpressions.isAdmin(currentDetails.getUser())) {
+            return true;
+        }
+        return projectQueryService.isEditor(projectId, currentDetails.getUser().getId());
+    }
+
     /** Throws {@link AccessDeniedException} unless the user is a project OWNER or system admin. */
     public void requireOwnerAccess(Long projectId, CustomUserDetails currentDetails) {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {

@@ -57,7 +57,8 @@ class TagApiControllerTest {
         Tag tag = new Tag("Work");
         tag.setId(1L);
         when(tagService.getAllTags()).thenReturn(List.of(tag));
-        when(tagMapper.toResponseList(anyList())).thenReturn(List.of(new TagResponse(1L, "Work")));
+        when(tagMapper.toResponseList(anyCollection()))
+                .thenReturn(List.of(new TagResponse(1L, "Work")));
 
         mockMvc.perform(get("/api/tags").with(user(regularDetails)))
                 .andExpect(status().isOk())

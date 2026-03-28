@@ -535,7 +535,7 @@ function highlightActiveTags() {
 // ── Saved Views ──
 
 function loadSavedViews() {
-    fetch(`${APP_CONFIG.routes.api}/views`)
+    fetch(APP_CONFIG.routes.apiViews)
         .then(r => r.json())
         .then(views => renderSavedViewsList(views))
         .catch(() => {});
@@ -680,7 +680,7 @@ function saveCurrentView() {
             sort: activeSorts.slice(),
         };
 
-        fetch(`${APP_CONFIG.routes.api}/views`, {
+        fetch(APP_CONFIG.routes.apiViews, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, data }),
@@ -696,7 +696,7 @@ function saveCurrentView() {
 }
 
 function deleteSavedView(id) {
-    fetch(`${APP_CONFIG.routes.api}/views/${id}`, { method: 'DELETE' })
+    fetch(resolveRoute(APP_CONFIG.routes.apiViewById, { id }), { method: 'DELETE' })
         .then(r => {
             if (r.ok) {
                 clearActiveView();

@@ -5,10 +5,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Entity
 @Table(name = "projects")
@@ -56,14 +56,14 @@ public class Project implements Auditable {
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
-    private List<ProjectMember> members = new ArrayList<>();
+    private Set<ProjectMember> members = new LinkedHashSet<>();
 
     @OneToMany(
             mappedBy = "project",
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
-    private List<Task> tasks = new ArrayList<>();
+    private Set<Task> tasks = new LinkedHashSet<>();
 
     @PrePersist
     protected void onPrePersist() {
@@ -140,19 +140,19 @@ public class Project implements Auditable {
         this.updatedAt = updatedAt;
     }
 
-    public List<ProjectMember> getMembers() {
+    public Set<ProjectMember> getMembers() {
         return members;
     }
 
-    public void setMembers(List<ProjectMember> members) {
+    public void setMembers(Set<ProjectMember> members) {
         this.members = members;
     }
 
-    public List<Task> getTasks() {
+    public Set<Task> getTasks() {
         return tasks;
     }
 
-    public void setTasks(List<Task> tasks) {
+    public void setTasks(Set<Task> tasks) {
         this.tasks = tasks;
     }
 

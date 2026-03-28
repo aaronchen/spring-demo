@@ -1,0 +1,87 @@
+<!--/* Task dependency section — included in task-layout.html for edit/view modes.
+     Reads from model: ${task}, ${canEditDependencies}.
+     JS handler: task-dependencies.js (DOM manipulation, no fetch — deps submit with form).
+     Dependencies are saved as hidden inputs (blockedByIds/blocksIds) on form submit. */-->
+<div th:fragment="dependencies" id="task-dependencies" xmlns:th="http://www.thymeleaf.org">
+
+    <!--/* Blocked By — tasks that must complete before this one */-->
+    <div class="mb-3">
+        <label class="form-label fw-semibold">
+            <i class="bi bi-lock-fill text-warning"></i>
+            <span th:text="#{task.dependency.blockedBy}">Blocked By</span>
+        </label>
+        <div id="dep-list-blockedBy" class="list-group list-group-flush mb-2">
+            <div th:if="${task.blockedBy == null || task.blockedBy.isEmpty()}"
+                 class="text-muted small dep-empty-msg" data-direction="blockedBy">
+                <span th:text="#{task.dependency.empty.blockedBy}">No blockers</span>
+            </div>
+            <div th:each="blocker : ${task.blockedBy}"
+                 class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
+                <input type="hidden" name="blockedByIds" th:value="${blocker.id}">
+                <span class="badge me-2"
+                      th:classappend="${blocker.status.terminal ? 'bg-success' : 'bg-secondary'}"
+                      th:text="#{${blocker.status.messageKey}}">Status</span>
+                <a class="flex-grow-1 small"
+                   th:classappend="${blocker.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
+                   th:href="@{${appRoutes.tasks + '/' + blocker.id}}"
+                   target="_blank"
+                   th:text="${blocker.title}">Blocker title</a>
+                <button th:if="${canEditDependencies}" type="button"
+                        class="btn btn-sm btn-outline-danger ms-2 border-0"
+                        onclick="removeDependencyItem(this)"
+                        th:title="#{task.dependency.remove.title}">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <searchable-select th:if="${canEditDependencies}"
+                           class="dep-picker" data-direction="blockedBy"
+                           th:data-task-id="${task.id}"
+                           th:data-project-id="${task.project.id}"
+                           value-field="id" text-field="title"
+                           th:placeholder="#{task.dependency.add.blockedBy.placeholder}">
+            <option value="">---</option>
+        </searchable-select>
+    </div>
+
+    <!-- Blocks -->
+    <div class="mb-2">
+        <label class="form-label fw-semibold">
+            <i class="bi bi-unlock-fill text-muted"></i>
+            <span th:text="#{task.dependency.blocks}">Blocks</span>
+        </label>
+        <div id="dep-list-blocks" class="list-group list-group-flush mb-2">
+            <div th:if="${task.blocks == null || task.blocks.isEmpty()}"
+                 class="text-muted small dep-empty-msg" data-direction="blocks">
+                <span th:text="#{task.dependency.empty.blocks}">Does not block any tasks</span>
+            </div>
+            <div th:each="blocked : ${task.blocks}"
+                 class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
+                <input type="hidden" name="blocksIds" th:value="${blocked.id}">
+                <span class="badge me-2"
+                      th:classappend="${blocked.status.terminal ? 'bg-success' : 'bg-secondary'}"
+                      th:text="#{${blocked.status.messageKey}}">Status</span>
+                <a class="flex-grow-1 small"
+                   th:classappend="${blocked.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
+                   th:href="@{${appRoutes.tasks + '/' + blocked.id}}"
+                   target="_blank"
+                   th:text="${blocked.title}">Blocked title</a>
+                <button th:if="${canEditDependencies}" type="button"
+                        class="btn btn-sm btn-outline-danger ms-2 border-0"
+                        onclick="removeDependencyItem(this)"
+                        th:title="#{task.dependency.remove.title}">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+        <searchable-select th:if="${canEditDependencies}"
+                           class="dep-picker" data-direction="blocks"
+                           th:data-task-id="${task.id}"
+                           th:data-project-id="${task.project.id}"
+                           value-field="id" text-field="title"
+                           th:placeholder="#{task.dependency.add.blocks.placeholder}">
+            <option value="">---</option>
+        </searchable-select>
+    </div>
+
+</div>

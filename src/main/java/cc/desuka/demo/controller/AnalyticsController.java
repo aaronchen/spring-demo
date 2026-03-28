@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
@@ -16,15 +17,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 public class AnalyticsController {
 
     private final ProjectQueryService projectQueryService;
+    private final AppRoutesProperties appRoutes;
 
-    public AnalyticsController(ProjectQueryService projectQueryService) {
+    public AnalyticsController(
+            ProjectQueryService projectQueryService, AppRoutesProperties appRoutes) {
         this.projectQueryService = projectQueryService;
+        this.appRoutes = appRoutes;
     }
 
     @GetMapping
     public String crossProjectAnalytics(
             @AuthenticationPrincipal CustomUserDetails currentDetails, Model model) {
-        model.addAttribute("apiUrl", "/api/analytics");
+        model.addAttribute("apiUrl", appRoutes.getApiAnalytics());
 
         boolean isAdmin = AuthExpressions.isAdmin(currentDetails.getUser());
         List<Project> projects;

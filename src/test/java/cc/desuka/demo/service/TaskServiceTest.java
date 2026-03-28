@@ -21,6 +21,7 @@ import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +36,7 @@ class TaskServiceTest {
 
     @Mock private TaskRepository taskRepository;
     @Mock private TaskQueryService taskQueryService;
+    @Mock private TaskDependencyService taskDependencyService;
     @Mock private TagService tagService;
     @Mock private UserService userService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -72,7 +74,7 @@ class TaskServiceTest {
     void createTask_setsTagsAndUser_publishesEvents() {
         Tag tag = new Tag("Work");
         tag.setId(1L);
-        when(tagService.findAllByIds(List.of(1L))).thenReturn(List.of(tag));
+        when(tagService.findAllByIds(List.of(1L))).thenReturn(Set.of(tag));
         when(userService.findUserById(1L)).thenReturn(alice);
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(
@@ -105,7 +107,7 @@ class TaskServiceTest {
 
     @Test
     void createTask_noTags_noUser() {
-        when(tagService.findAllByIds(anyList())).thenReturn(List.of());
+        when(tagService.findAllByIds(anyList())).thenReturn(Set.of());
         when(userService.findUserById(null)).thenReturn(null);
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(
@@ -143,7 +145,7 @@ class TaskServiceTest {
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setUser(alice);
         when(taskQueryService.getTaskById(1L)).thenReturn(task);
-        when(tagService.findAllByIds(anyList())).thenReturn(List.of());
+        when(tagService.findAllByIds(anyList())).thenReturn(Set.of());
         when(userService.findUserById(2L)).thenReturn(bob);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
