@@ -35,7 +35,7 @@
                  th:classappend="${!n.read} ? 'list-group-item-light fw-semibold' : ''"
                  style="cursor: pointer;"
                  th:data-id="${n.id}"
-                 th:attr="hx-patch=${appRoutes.getApiNotificationRead(n.id)}, hx-swap='none'">
+                 th:attr="hx-patch=${appRoutes.apiNotificationRead.resolve('id', n.id)}, hx-swap='none'">
                 <div class="d-flex align-items-start py-1">
                     <i class="bi me-3 mt-1"
                        th:classappend="${n.type == 'TASK_ASSIGNED'} ? 'bi-person-plus text-primary' :

@@ -100,7 +100,7 @@
            onclick="setStatusFilter('IN_PROGRESS'); return false;">
             <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
         </a>
-        <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-light text-dark text-decoration-none"
+        <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-backlog text-decoration-none"
            onclick="setStatusFilter('BACKLOG'); return false;">
             <i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span>
         </a>

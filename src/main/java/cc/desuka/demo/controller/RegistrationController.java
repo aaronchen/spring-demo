@@ -2,11 +2,13 @@ package cc.desuka.demo.controller;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.RegistrationRequest;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.service.SettingService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
+import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -23,22 +25,25 @@ public class RegistrationController {
     private final PasswordEncoder passwordEncoder;
     private final ApplicationEventPublisher eventPublisher;
     private final SettingService settingService;
+    private final AppRoutesProperties appRoutes;
 
     public RegistrationController(
             UserService userService,
             PasswordEncoder passwordEncoder,
             ApplicationEventPublisher eventPublisher,
-            SettingService settingService) {
+            SettingService settingService,
+            AppRoutesProperties appRoutes) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
         this.eventPublisher = eventPublisher;
         this.settingService = settingService;
+        this.appRoutes = appRoutes;
     }
 
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {
         if (!settingService.load().isRegistrationEnabled()) {
-            return "redirect:/login";
+            return "redirect:" + appRoutes.getLogin();
         }
         model.addAttribute("registrationRequest", new RegistrationRequest());
         return "register";
@@ -48,7 +53,7 @@ public class RegistrationController {
     public String register(
             @Valid @ModelAttribute RegistrationRequest registrationRequest, BindingResult result) {
         if (!settingService.load().isRegistrationEnabled()) {
-            return "redirect:/login";
+            return "redirect:" + appRoutes.getLogin();
         }
 
         // Cross-field validation: passwords must match
@@ -77,6 +82,6 @@ public class RegistrationController {
                         saved.getEmail(),
                         AuditDetails.toJson(saved.toAuditSnapshot())));
 
-        return "redirect:/login?registered";
+        return "redirect:" + appRoutes.getLogin().resolve(Map.of(), Map.of("registered", ""));
     }
 }

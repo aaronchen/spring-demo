@@ -39,6 +39,7 @@
                             <!--/* name="username" is Spring Security's default parameter name */-->
                             <input type="email" id="username" name="username"
                                    class="form-control"
+                                   autocomplete="username"
                                    th:placeholder="#{user.field.email.placeholder}"
                                    required autofocus>
                         </div>
@@ -47,6 +48,7 @@
                                    th:text="#{login.field.password}">Password</label>
                             <input type="password" id="password" name="password"
                                    class="form-control"
+                                   autocomplete="current-password"
                                    th:placeholder="#{login.field.password.placeholder}"
                                    required>
                         </div>

@@ -40,6 +40,7 @@ public class Task implements OwnedEntity, Auditable {
     public static final String FIELD_CHECKLIST_TOTAL = "checklistTotal";
     public static final String FIELD_CHECKLIST_CHECKED = "checklistChecked";
     public static final String FIELD_EFFORT = "effort";
+    public static final String FIELD_SPRINT = "sprint";
     public static final String FIELD_BLOCKED_BY = "blockedBy";
     public static final String FIELD_BLOCKS = "blocks";
 
@@ -124,6 +125,10 @@ public class Task implements OwnedEntity, Auditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
     private Project project;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sprint_id")
+    private Sprint sprint;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
@@ -306,6 +311,14 @@ public class Task implements OwnedEntity, Auditable {
         this.project = project;
     }
 
+    public Sprint getSprint() {
+        return sprint;
+    }
+
+    public void setSprint(Sprint sprint) {
+        this.sprint = sprint;
+    }
+
     public Set<Tag> getTags() {
         return tags;
     }
@@ -377,6 +390,7 @@ public class Task implements OwnedEntity, Auditable {
         snapshot.put(FIELD_START_DATE, startDate != null ? startDate.toString() : null);
         snapshot.put(FIELD_DUE_DATE, dueDate != null ? dueDate.toString() : null);
         snapshot.put(FIELD_EFFORT, effort);
+        snapshot.put(FIELD_SPRINT, sprint != null ? sprint.getName() : null);
         snapshot.put(FIELD_USER, user != null ? user.getName() : null);
         snapshot.put(
                 FIELD_TAGS,

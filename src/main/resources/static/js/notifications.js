@@ -140,7 +140,7 @@
 
         item.addEventListener('click', function () {
             if (!n.read) {
-                fetch(resolveRoute(APP_CONFIG.routes.apiNotificationRead, { id: n.id }), { method: 'PATCH' })
+                fetch(APP_CONFIG.routes.apiNotificationRead.resolve({ id: n.id }), { method: 'PATCH' })
                     .then(function () { fire('notification:read', { id: n.id }); });
                 item.classList.remove('fw-semibold');
                 n.read = true;

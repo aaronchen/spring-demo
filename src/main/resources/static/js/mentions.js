@@ -64,7 +64,7 @@ function initMentionInputs(root) {
                 if (projectId) {
                     // Project-scoped: fetch once, filter client-side via Tribute lookup
                     if (cachedMembers) { cb(cachedMembers); return; }
-                    const url = resolveRoute(APP_CONFIG.routes.apiProjectMembers, { projectId });
+                    const url = APP_CONFIG.routes.apiProjectMembers.resolve({ projectId });
                     fetch(url, { credentials: 'same-origin' })
                         .then(function(r) { return r.json(); })
                         .then(function(users) { cachedMembers = users; cb(users); })

@@ -22,6 +22,8 @@ public interface TaskMapper {
     // MapStruct calls TagMapper.toResponseList(task.getTags()) automatically via the uses clause.
     @Mapping(target = "projectId", source = "project.id")
     @Mapping(target = "projectName", source = "project.name")
+    @Mapping(target = "sprintId", source = "sprint.id")
+    @Mapping(target = "sprintName", source = "sprint.name")
     TaskResponse toResponse(Task task);
 
     List<TaskResponse> toResponseList(List<Task> tasks);
@@ -45,6 +47,7 @@ public interface TaskMapper {
     @Mapping(target = Task.FIELD_CHECKLIST_TOTAL, ignore = true)
     @Mapping(target = Task.FIELD_CHECKLIST_CHECKED, ignore = true)
     @Mapping(target = Task.FIELD_PROJECT, ignore = true)
+    @Mapping(target = Task.FIELD_SPRINT, ignore = true)
     @Mapping(target = Task.FIELD_BLOCKED_BY, ignore = true)
     @Mapping(target = Task.FIELD_BLOCKS, ignore = true)
     Task toEntity(TaskRequest request);

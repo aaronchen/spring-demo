@@ -37,6 +37,17 @@
                                      th:errors="*{description}">Description error</div>
                             </div>
 
+                            <!-- Sprint toggle -->
+                            <div class="mb-3 form-check">
+                                <input type="checkbox" class="form-check-input" id="sprintEnabled"
+                                       th:field="*{sprintEnabled}">
+                                <label class="form-check-label fw-bold" for="sprintEnabled"
+                                       th:text="#{project.field.sprintEnabled}">Enable Sprints</label>
+                                <div class="form-text" th:text="#{project.field.sprintEnabled.description}">
+                                    Allow sprints for this project.
+                                </div>
+                            </div>
+
                             <!-- Buttons -->
                             <div class="d-flex gap-2">
                                 <button type="submit" class="btn btn-primary">

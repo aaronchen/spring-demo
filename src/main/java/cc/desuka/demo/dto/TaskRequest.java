@@ -31,6 +31,9 @@ public class TaskRequest {
 
     private Short effort;
 
+    // null = no sprint assignment change; explicit 0 or absent = backlog
+    private Long sprintId;
+
     // null or empty = no tags (or remove all existing tags from this task)
     private List<Long> tagIds;
 

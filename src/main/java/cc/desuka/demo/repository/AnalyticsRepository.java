@@ -26,45 +26,52 @@ public class AnalyticsRepository {
 
     // ── Workload: group by user + status ─────────────────────────────────
 
-    public List<Object[]> countByUserAndStatus(Long projectId, List<Long> projectIds) {
+    public List<Object[]> countByUserAndStatus(
+            Long projectId, List<Long> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, t.status, COUNT(t) FROM Task t"
                         + projectWhereClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, projectId == null && projectIds == null)
                         + " GROUP BY t.user.id, t.status";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
     // ── Burndown: created per day ────────────────────────────────────────
 
     public List<Object[]> countCreatedPerDay(
-            Long projectId, List<Long> projectIds, LocalDateTime from) {
+            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.createdAt AS LocalDate), COUNT(t) FROM Task t"
                         + " WHERE t.createdAt >= :from"
                         + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false)
                         + " GROUP BY CAST(t.createdAt AS LocalDate)"
                         + " ORDER BY CAST(t.createdAt AS LocalDate)";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
     // ── Burndown: completed per day ──────────────────────────────────────
 
     public List<Object[]> countCompletedPerDay(
-            Long projectId, List<Long> projectIds, LocalDateTime from) {
+            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), COUNT(t) FROM Task t"
                         + " WHERE t.completedAt IS NOT NULL AND t.completedAt >= :from"
                         + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false)
                         + " GROUP BY CAST(t.completedAt AS LocalDate)"
                         + " ORDER BY CAST(t.completedAt AS LocalDate)";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
@@ -73,6 +80,7 @@ public class AnalyticsRepository {
     public long countOpenAtDate(
             Long projectId,
             List<Long> projectIds,
+            Long sprintId,
             LocalDateTime from,
             Collection<TaskStatus> terminalStatuses) {
         String jpql =
@@ -80,57 +88,68 @@ public class AnalyticsRepository {
                         + " WHERE t.createdAt < :from"
                         + " AND (t.completedAt IS NULL OR t.completedAt >= :from)"
                         + " AND t.status NOT IN :terminalStatuses"
-                        + projectAndClause(projectId, projectIds);
+                        + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false);
         TypedQuery<Long> query = em.createQuery(jpql, Long.class);
         query.setParameter("from", from);
         query.setParameter("terminalStatuses", terminalStatuses);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getSingleResult();
     }
 
     // ── Overdue by assignee ──────────────────────────────────────────────
 
     public List<Object[]> countOverdueByUser(
-            Long projectId, List<Long> projectIds, Collection<TaskStatus> terminalStatuses) {
+            Long projectId,
+            List<Long> projectIds,
+            Long sprintId,
+            Collection<TaskStatus> terminalStatuses) {
         String jpql =
                 "SELECT t.user.id, COUNT(t) FROM Task t"
                         + " WHERE t.dueDate < CURRENT_DATE"
                         + " AND t.status NOT IN :terminalStatuses"
                         + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false)
                         + " GROUP BY t.user.id";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         query.setParameter("terminalStatuses", terminalStatuses);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
     // ── Effort by assignee ────────────────────────────────────────────────
 
-    public List<Object[]> sumEffortByUser(Long projectId, List<Long> projectIds) {
+    public List<Object[]> sumEffortByUser(Long projectId, List<Long> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, SUM(t.effort) FROM Task t"
                         + " WHERE t.effort IS NOT NULL"
                         + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false)
                         + " GROUP BY t.user.id";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
     // ── Effort completed per day ────────────────────────────────────────
 
     public List<Object[]> sumEffortCompletedPerDay(
-            Long projectId, List<Long> projectIds, LocalDateTime from) {
+            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), SUM(t.effort) FROM Task t"
                         + " WHERE t.completedAt IS NOT NULL AND t.completedAt >= :from"
                         + " AND t.effort IS NOT NULL"
                         + projectAndClause(projectId, projectIds)
+                        + sprintAndClause(sprintId, false)
                         + " GROUP BY CAST(t.completedAt AS LocalDate)"
                         + " ORDER BY CAST(t.completedAt AS LocalDate)";
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
+        bindSprintParam(query, sprintId);
         return query.getResultList();
     }
 
@@ -161,6 +180,23 @@ public class AnalyticsRepository {
             query.setParameter("projectId", projectId);
         } else if (projectIds != null) {
             query.setParameter("projectIds", projectIds);
+        }
+    }
+
+    /**
+     * Returns an AND (or WHERE) clause for sprint scoping.
+     *
+     * @param firstClause true when there is no preceding WHERE — emits WHERE instead of AND
+     */
+    private String sprintAndClause(Long sprintId, boolean firstClause) {
+        if (sprintId == null) return "";
+        String prefix = firstClause ? " WHERE" : " AND";
+        return prefix + " t.sprint.id = :sprintId";
+    }
+
+    private void bindSprintParam(TypedQuery<?> query, Long sprintId) {
+        if (sprintId != null) {
+            query.setParameter("sprintId", sprintId);
         }
     }
 }

@@ -31,6 +31,8 @@ public class TaskFormRequest {
 
     private Short effort;
 
+    private Long sprintId;
+
     private Long version;
 
     public static TaskFormRequest fromEntity(Task task) {
@@ -42,6 +44,7 @@ public class TaskFormRequest {
         request.setStartDate(task.getStartDate());
         request.setDueDate(task.getDueDate());
         request.setEffort(task.getEffort());
+        request.setSprintId(task.getSprint() != null ? task.getSprint().getId() : null);
         request.setVersion(task.getVersion());
         return request;
     }

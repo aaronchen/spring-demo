@@ -59,8 +59,13 @@ public class ProjectApiController {
     // GET /api/projects/{id}/analytics — project analytics data
     @GetMapping("/{id}/analytics")
     public AnalyticsResponse getProjectAnalytics(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable Long id,
+            @RequestParam(required = false) Long sprintId,
+            @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
+        if (sprintId != null) {
+            return analyticsService.getProjectAnalytics(id, sprintId);
+        }
         return analyticsService.getProjectAnalytics(id);
     }
 }

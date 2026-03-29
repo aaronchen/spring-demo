@@ -17,6 +17,7 @@ import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.model.Setting;
+import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
@@ -29,6 +30,7 @@ import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
 import cc.desuka.demo.repository.SavedViewRepository;
 import cc.desuka.demo.repository.SettingRepository;
+import cc.desuka.demo.repository.SprintRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
@@ -59,6 +61,7 @@ public class DataLoader implements CommandLineRunner {
     private final ProjectMemberRepository projectMemberRepository;
     private final SavedViewRepository savedViewRepository;
     private final SettingRepository settingRepository;
+    private final SprintRepository sprintRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataLoader(
@@ -72,6 +75,7 @@ public class DataLoader implements CommandLineRunner {
             ProjectMemberRepository projectMemberRepository,
             SavedViewRepository savedViewRepository,
             SettingRepository settingRepository,
+            SprintRepository sprintRepository,
             PasswordEncoder passwordEncoder) {
         this.taskRepository = taskRepository;
         this.tagRepository = tagRepository;
@@ -83,6 +87,7 @@ public class DataLoader implements CommandLineRunner {
         this.projectMemberRepository = projectMemberRepository;
         this.savedViewRepository = savedViewRepository;
         this.settingRepository = settingRepository;
+        this.sprintRepository = sprintRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -211,6 +216,55 @@ public class DataLoader implements CommandLineRunner {
                         // Cross-project: Tina helps on security and ops
                         new ProjectMember(securityProject, tina, ProjectRole.EDITOR),
                         new ProjectMember(opsProject, tina, ProjectRole.EDITOR)));
+
+        // ── Sprints ─────────────────────────────────────────────────────────────
+        platformProject.setSprintEnabled(true);
+        platformProject = projectRepository.save(platformProject);
+
+        productProject.setSprintEnabled(true);
+        productProject = projectRepository.save(productProject);
+
+        // Platform Engineering: past sprint, active sprint, future sprint
+        Sprint peSprint1 = new Sprint();
+        peSprint1.setName("PE Sprint 1");
+        peSprint1.setGoal("Build cache and CI migration");
+        peSprint1.setStartDate(today.minusDays(28));
+        peSprint1.setEndDate(today.minusDays(14));
+        peSprint1.setProject(platformProject);
+        peSprint1 = sprintRepository.save(peSprint1);
+
+        Sprint peSprint2 = new Sprint();
+        peSprint2.setName("PE Sprint 2");
+        peSprint2.setGoal("Observability and developer tooling");
+        peSprint2.setStartDate(today.minusDays(13));
+        peSprint2.setEndDate(today.plusDays(1));
+        peSprint2.setProject(platformProject);
+        peSprint2 = sprintRepository.save(peSprint2);
+
+        Sprint peSprint3 = new Sprint();
+        peSprint3.setName("PE Sprint 3");
+        peSprint3.setGoal("Containerization and deployment");
+        peSprint3.setStartDate(today.plusDays(2));
+        peSprint3.setEndDate(today.plusDays(16));
+        peSprint3.setProject(platformProject);
+        peSprint3 = sprintRepository.save(peSprint3);
+
+        // Product Development: active sprint, future sprint
+        Sprint pdSprint1 = new Sprint();
+        pdSprint1.setName("PD Sprint 1");
+        pdSprint1.setGoal("Search and analytics features");
+        pdSprint1.setStartDate(today.minusDays(10));
+        pdSprint1.setEndDate(today.plusDays(4));
+        pdSprint1.setProject(productProject);
+        pdSprint1 = sprintRepository.save(pdSprint1);
+
+        Sprint pdSprint2 = new Sprint();
+        pdSprint2.setName("PD Sprint 2");
+        pdSprint2.setGoal("User engagement and notifications");
+        pdSprint2.setStartDate(today.plusDays(5));
+        pdSprint2.setEndDate(today.plusDays(19));
+        pdSprint2.setProject(productProject);
+        pdSprint2 = sprintRepository.save(pdSprint2);
 
         // ── Tags ────────────────────────────────────────────────────────────────
         // Three orthogonal dimensions so combinations feel natural:
@@ -1017,6 +1071,29 @@ public class DataLoader implements CommandLineRunner {
                         8);
         op12.setTags(Set.of(spike));
         tasks.add(op12);
+
+        // ── Sprint Assignments ──────────────────────────────────────────────────
+        // Platform Engineering: completed tasks → Sprint 1, active → Sprint 2, planned → Sprint 3
+        pe2.setSprint(peSprint1); // CI migration (completed)
+        pe4.setSprint(peSprint1); // Health checks (completed)
+        pe7.setSprint(peSprint1); // Dev setup docs (completed)
+        pe10.setSprint(peSprint1); // Code coverage (completed)
+
+        pe1.setSprint(peSprint2); // Build cache (in progress)
+        pe6.setSprint(peSprint2); // Docker optimization (in review)
+        pe8.setSprint(peSprint2); // Preview environments (in progress)
+        pe11.setSprint(peSprint2); // Build regression (in progress)
+
+        pe3.setSprint(peSprint3); // DB migration tooling (open)
+        pe9.setSprint(peSprint3); // Refactor shared lib (open)
+        // pe5, pe12 left in backlog (no sprint)
+
+        // Product Development: active tasks → Sprint 1
+        pd1.setSprint(pdSprint1); // Redesign modal (in progress)
+        pd2.setSprint(pdSprint1); // Search filters (open)
+        pd3.setSprint(pdSprint1); // Dashboard widgets (in review)
+        pd4.setSprint(pdSprint1); // Real-time notifications (completed)
+        // Remaining PD tasks left in backlog
 
         // ── Task Dependencies ─────────────────────────────────────────────────
         // Set up before saveAll so entities are still new (no @Version conflict)

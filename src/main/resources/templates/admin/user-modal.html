@@ -29,6 +29,7 @@
                 <input type="email" class="form-control"
                        th:field="*{email}"
                        th:placeholder="#{user.field.email.placeholder}"
+                       autocomplete="off"
                        th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}">
                 <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
                      th:errors="*{email}">Email error</div>
@@ -39,6 +40,7 @@
                 <input type="password" class="form-control"
                        th:field="*{password}"
                        th:placeholder="#{admin.users.field.password.placeholder}"
+                       autocomplete="new-password"
                        th:classappend="${#fields.hasErrors('password') ? 'is-invalid' : ''}">
                 <div class="invalid-feedback" th:if="${#fields.hasErrors('password')}"
                      th:errors="*{password}">Password error</div>

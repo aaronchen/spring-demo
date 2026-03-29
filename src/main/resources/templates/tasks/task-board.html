@@ -15,7 +15,7 @@
                 <div class="kanban-column-header">
                     <span class="kanban-column-header-label">
                         <span class="badge me-1"
-                              th:classappend="${status.name() == 'BACKLOG' ? 'bg-light text-dark' :
+                              th:classappend="${status.name() == 'BACKLOG' ? 'bg-backlog' :
                                                (status.name() == 'OPEN' ? 'bg-secondary' :
                                                (status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' :
                                                (status.name() == 'IN_REVIEW' ? 'bg-info text-white' :

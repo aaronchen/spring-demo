@@ -9,6 +9,7 @@ import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.report.TaskReport;
@@ -17,6 +18,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.SprintQueryService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
@@ -31,6 +33,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +53,7 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ProjectQueryService projectQueryService;
     private final TaskQueryService taskQueryService;
+    private final SprintQueryService sprintQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final ProjectAccessGuard projectAccessGuard;
@@ -60,6 +64,7 @@ public class ProjectController {
             ProjectService projectService,
             ProjectQueryService projectQueryService,
             TaskQueryService taskQueryService,
+            SprintQueryService sprintQueryService,
             TagService tagService,
             UserService userService,
             ProjectAccessGuard projectAccessGuard,
@@ -68,6 +73,7 @@ public class ProjectController {
         this.projectService = projectService;
         this.projectQueryService = projectQueryService;
         this.taskQueryService = taskQueryService;
+        this.sprintQueryService = sprintQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.projectAccessGuard = projectAccessGuard;
@@ -126,7 +132,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
-        return new RedirectView("/projects/" + saved.getId());
+        return new RedirectView(appRoutes.getProjectDetail().resolve("projectId", saved.getId()));
     }
 
     // GET /projects/{id} - Project home with task list
@@ -173,6 +179,33 @@ public class ProjectController {
         model.addAttribute("allTags", tagService.getAllTags());
         model.addAttribute("view", resolvedView);
         model.addAttribute("selectedUserId", query.getSelectedUserId());
+
+        // Sprint support
+        if (project.isSprintEnabled()) {
+            List<Sprint> sprints = sprintQueryService.getSprintsByProject(id);
+            model.addAttribute("sprints", sprints);
+            Optional<Sprint> activeSprint = sprintQueryService.getActiveSprint(id);
+            activeSprint.ifPresent(s -> model.addAttribute("activeSprint", s));
+
+            // Default to active sprint only on initial page load (direct navigation).
+            // HTMX requests always carry an explicit value from the dropdown.
+            if (query.getSprintId() == null
+                    && activeSprint.isPresent()
+                    && !HtmxUtils.isHtmxRequest(request)) {
+                query.setSprintId(activeSprint.get().getId());
+            }
+
+            model.addAttribute("sprintId", query.getSprintId());
+
+            // Resolve sprint filter label for the dropdown button
+            Long sid = query.getSprintId();
+            if (sid != null && sid > 0) {
+                sprints.stream()
+                        .filter(s -> s.getId().equals(sid))
+                        .findFirst()
+                        .ifPresent(s -> model.addAttribute("sprintFilterLabel", s.getName()));
+            }
+        }
 
         // Resolve filtered user's name
         Long currentId = currentDetails.getUser().getId();
@@ -256,6 +289,9 @@ public class ProjectController {
         model.addAttribute("projectRequest", ProjectRequest.fromEntity(project));
         model.addAttribute("projectMembers", projectQueryService.getMembers(id));
         model.addAttribute("projectRoles", ProjectRole.values());
+        if (project.isSprintEnabled()) {
+            model.addAttribute("sprints", sprintQueryService.getSprintsByProject(id));
+        }
 
         return "projects/project-settings";
     }
@@ -280,7 +316,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
-        return new RedirectView("/projects/" + id);
+        return new RedirectView(appRoutes.getProjectSettings().resolve("projectId", id));
     }
 
     // POST /projects/{id}/archive - Archive project
@@ -294,7 +330,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectArchived");
         }
-        return new RedirectView("/projects");
+        return new RedirectView(appRoutes.getProjects().toString());
     }
 
     // POST /projects/{id}/unarchive - Restore archived project
@@ -308,7 +344,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectUnarchived");
         }
-        return new RedirectView("/projects/" + id);
+        return new RedirectView(appRoutes.getProjectDetail().resolve("projectId", id));
     }
 
     // POST /projects/{id}/members - Add member
@@ -376,7 +412,14 @@ public class ProjectController {
         projectAccessGuard.requireViewAccess(id, currentDetails);
         Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
-        model.addAttribute("apiUrl", appRoutes.getApiProjectAnalytics(id));
+        model.addAttribute("apiUrl", appRoutes.getApiProjectAnalytics().resolve("projectId", id));
+        if (project.isSprintEnabled()) {
+            List<Sprint> sprints = sprintQueryService.getSprintsByProject(id);
+            model.addAttribute("sprints", sprints);
+            sprintQueryService
+                    .getActiveSprint(id)
+                    .ifPresent(s -> model.addAttribute("activeSprint", s));
+        }
         return "analytics/analytics";
     }
 

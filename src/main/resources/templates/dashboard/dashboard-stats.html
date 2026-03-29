@@ -214,7 +214,7 @@
                             <span th:if="${isInProgress && !overdue}" class="badge bg-warning text-dark">
                                 <i class="bi bi-play-circle-fill"></i>
                             </span>
-                            <span th:if="${isBacklog && !overdue}" class="badge bg-light text-dark">
+                            <span th:if="${isBacklog && !overdue}" class="badge bg-backlog">
                                 <i class="bi bi-inbox"></i>
                             </span>
                             <span th:if="${!isTerminal && !isInProgress && !isInReview && !isBacklog && !overdue}" class="badge bg-secondary">
@@ -260,7 +260,7 @@
                                 </small>
                             </div>
                             <span class="badge"
-                                  th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bg-info' : (task.status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' : (task.status.name() == 'BACKLOG' ? 'bg-light text-dark' : 'bg-secondary'))}">
+                                  th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bg-info' : (task.status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' : (task.status.name() == 'BACKLOG' ? 'bg-backlog' : 'bg-secondary'))}">
                                 <i th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bi-eye-fill' : (task.status.name() == 'IN_PROGRESS' ? 'bi-play-circle-fill' : (task.status.name() == 'BACKLOG' ? 'bi-inbox' : 'bi-circle'))}"></i>
                             </span>
                         </a>

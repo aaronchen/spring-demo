@@ -7,7 +7,7 @@
     const msg = window.APP_CONFIG?.messages || {};
 
     const STATUS_COLORS = {
-        BACKLOG: '#6c757d',
+        BACKLOG: '#adb5bd',
         OPEN: '#0d6efd',
         IN_PROGRESS: '#ffc107',
         IN_REVIEW: '#0dcaf0',
@@ -45,8 +45,28 @@
         return msg[`task.priority.${map[key]}`] || key;
     }
 
-    // ── Project Filter ───────────────────────────────────────────────────
+    // ── Sprint Filter ────────────────────────────────────────────────────
 
+    let currentSprintId = '';
+
+    window.setAnalyticsSprintFilter = function (sprintId) {
+        currentSprintId = sprintId;
+        const container = document.getElementById('sprint-filter');
+        if (container) {
+            container.querySelectorAll('.btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            if (sprintId === '') {
+                container.querySelector('.btn')?.classList.add('active');
+            } else {
+                const match = container.querySelector(`[data-sprint-id="${sprintId}"]`);
+                if (match) match.classList.add('active');
+            }
+        }
+        fetchAndRender();
+    };
+
+    // ── Project Filter ───────────────────────────────────────────────────
 
     function getSelectedProjectIds() {
         const checkboxes = document.querySelectorAll('.project-filter-checkbox');
@@ -60,12 +80,19 @@
 
     function buildFetchUrl() {
         const projectIds = getSelectedProjectIds();
-        if (projectIds === null) return apiUrl; // Project-scoped page
-        if (projectIds.length === 0) return null; // Nothing selected
-
         const params = new URLSearchParams();
-        projectIds.forEach(id => params.append('projectIds', id));
-        return `${apiUrl}?${params.toString()}`;
+
+        if (projectIds !== null) {
+            if (projectIds.length === 0) return null; // Nothing selected
+            projectIds.forEach(id => params.append('projectIds', id));
+        }
+
+        if (currentSprintId) {
+            params.append('sprintId', currentSprintId);
+        }
+
+        const qs = params.toString();
+        return qs ? `${apiUrl}?${qs}` : apiUrl;
     }
 
     function initFilterListeners() {

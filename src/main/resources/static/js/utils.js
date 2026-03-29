@@ -1,15 +1,5 @@
 // Shared browser utilities
 
-// Substitute {placeholder} tokens in a URL template with values from a params object.
-// Example: resolveRoute("/api/projects/{projectId}/members", { projectId: 42 })
-//       → "/api/projects/42/members"
-function resolveRoute(template, params) {
-    let url = template;
-    for (const [key, value] of Object.entries(params)) {
-        url = url.replace(`{${key}}`, value);
-    }
-    return url;
-}
 
 function getCookie(name) {
     const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));

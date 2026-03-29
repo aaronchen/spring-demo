@@ -25,6 +25,8 @@ public class TaskResponse {
     private LocalDate startDate;
     private LocalDate dueDate;
     private Short effort;
+    private Long sprintId;
+    private String sprintName;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;

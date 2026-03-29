@@ -176,7 +176,7 @@ function loadBulkAssignUsers() {
     const projectId = getCommonProjectId();
     if (!projectId) return;
 
-    const url = resolveRoute(APP_CONFIG.routes.apiProjectMembersAssignable, { projectId });
+    const url = APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId });
     fetch(url)
         .then(r => r.json())
         .then(users => {
