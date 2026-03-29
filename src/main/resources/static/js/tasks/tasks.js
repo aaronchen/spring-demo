@@ -16,7 +16,7 @@ const SORT_LABELS = {
 };
 
 const STATUS_CONFIG = {
-    BACKLOG:     { msgKey: 'task.filter.backlog',    css: 'bg-light text-dark',   btnCss: 'btn-outline-secondary', icon: 'bi-inbox' },
+    BACKLOG:     { msgKey: 'task.filter.backlog',    css: 'bg-backlog',                    btnCss: 'btn-backlog',                 icon: 'bi-inbox' },
     OPEN:        { msgKey: 'task.filter.open',       css: 'bg-secondary text-white', btnCss: 'btn-secondary',      icon: 'bi-circle' },
     IN_PROGRESS: { msgKey: 'task.filter.inProgress', css: 'bg-warning text-dark', btnCss: 'btn-warning',           icon: 'bi-play-circle-fill' },
     IN_REVIEW:   { msgKey: 'task.filter.inReview',   css: 'bg-info text-white',   btnCss: 'btn-info',             icon: 'bi-eye-fill' },
@@ -61,6 +61,8 @@ function buildUrl(page) {
     // This ensures bookmarked URLs preserve the user filter choice.
     params.set('selectedUserId', selectedUserId || '');
     if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
+    const sprintEl = document.getElementById('current-sprint-filter');
+    if (sprintEl && sprintEl.value) params.set('sprintId', sprintEl.value);
     params.set('view', currentView);
     return `${TASKS_BASE}?${params.toString()}`;
 }
@@ -85,6 +87,8 @@ function exportTasks() {
     if (priority) params.set('priority', priority);
     if (selectedUserId) params.set('selectedUserId', selectedUserId);
     if (selectedTagIds.length > 0) params.set('tags', selectedTagIds.join(','));
+    const sprintEl = document.getElementById('current-sprint-filter');
+    if (sprintEl && sprintEl.value) params.set('sprintId', sprintEl.value);
     if (activeSorts.length > 0) {
         params.set('sort', `${activeSorts[0].field},${activeSorts[0].direction}`);
     }
@@ -317,6 +321,26 @@ function renderUserFilter(userName) {
         label.textContent = userName || 'User';
         clearIcon.classList.remove('d-none');
     }
+}
+
+// ── Sprint filter ──
+
+function setSprintFilter(value) {
+    const hidden = document.getElementById('current-sprint-filter');
+    const label = document.getElementById('sprint-filter-label');
+    if (hidden) hidden.value = value;
+    if (label) {
+        if (!value) {
+            label.textContent = APP_CONFIG.messages['task.field.sprint'] || 'Sprint';
+        } else if (value === '0') {
+            label.textContent = APP_CONFIG.messages['sprint.filter.noSprint'] || 'No Sprint';
+        } else {
+            // Find the clicked item's text
+            const item = document.querySelector(`[data-value="${value}"]`);
+            if (item) label.textContent = item.textContent;
+        }
+    }
+    doSearch(true);
 }
 
 // ── Status filter (dropdown + clickable badges on cards/rows) ──
@@ -696,7 +720,7 @@ function saveCurrentView() {
 }
 
 function deleteSavedView(id) {
-    fetch(resolveRoute(APP_CONFIG.routes.apiViewById, { id }), { method: 'DELETE' })
+    fetch(APP_CONFIG.routes.apiViewById.resolve({ id }), { method: 'DELETE' })
         .then(r => {
             if (r.ok) {
                 clearActiveView();

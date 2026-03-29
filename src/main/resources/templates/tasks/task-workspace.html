@@ -61,6 +61,34 @@
         </button>
     </div>
 
+    <!--/* Sprint Filter — visible when project has sprints enabled */-->
+    <div th:if="${sprints != null && !sprints.isEmpty()}" class="dropdown">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-lightning-charge"></i> <span id="sprint-filter-label"
+                th:text="${sprintFilterLabel != null}
+                    ? ${sprintFilterLabel}
+                    : (${sprintId != null && sprintId == 0}
+                        ? #{sprint.filter.noSprint}
+                        : #{task.field.sprint})">Sprint</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" onclick="setSprintFilter(''); return false;"
+                   th:text="#{sprint.filter.all}">All Tasks</a></li>
+            <li><a class="dropdown-item" href="#" onclick="setSprintFilter('0'); return false;"
+                   th:text="#{sprint.filter.noSprint}">No Sprint</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li th:each="s : ${sprints}">
+                <a class="dropdown-item" href="#"
+                   th:data-value="${s.id}"
+                   onclick="setSprintFilter(this.dataset.value); return false;"
+                   th:text="${(s.active ? '⚡ ' : '') + s.name}">Sprint</a>
+            </li>
+        </ul>
+        <input type="hidden" id="current-sprint-filter"
+               th:value="${sprintId != null} ? ${sprintId} : ''">
+    </div>
+
     <!-- Status Filter Dropdown -->
     <div class="dropdown">
         <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
@@ -74,7 +102,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="BACKLOG"
                    onclick="setStatusFilter('BACKLOG')">
-                    <span class="badge bg-light text-dark"><i class="bi bi-inbox"></i></span>
+                    <span class="badge bg-backlog"><i class="bi bi-inbox"></i></span>
                     <span th:text="#{task.filter.backlog}">Backlog</span>
                 </a>
             </li>
@@ -455,6 +483,25 @@
                 <!--/* Populated by JS */-->
             </div>
         </div>
+    </div>
+    <!--/* Sprint (project-scoped with sprints enabled) */-->
+    <div th:if="${project != null && projectSprints != null && !projectSprints.isEmpty()}"
+         class="dropdown d-inline-block">
+        <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-lightning-charge"></i> <span th:text="#{task.bulk.sprint}">Set Sprint</span>
+        </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#"
+                   onclick="executeBulkAction('SPRINT', '0'); return false;"
+                   th:text="#{task.field.sprint.none}">Backlog</a></li>
+            <li th:each="s : ${projectSprints}" th:if="${!s.past}">
+                <a class="dropdown-item" href="#"
+                   th:data-value="${s.id}"
+                   onclick="executeBulkAction('SPRINT', this.dataset.value); return false;"
+                   th:text="${s.name + (s.active ? ' ★' : '')}">Sprint</a>
+            </li>
+        </ul>
     </div>
     <!-- Effort -->
     <div class="dropdown d-inline-block">

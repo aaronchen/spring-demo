@@ -242,4 +242,75 @@ class TaskSpecificationsTest {
 
         assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Match");
     }
+
+    // ── Sprint filter ───────────────────────────────────────────────────
+
+    @Test
+    void filterBySprintId_matchesSprint() {
+        cc.desuka.demo.model.Sprint sprint = new cc.desuka.demo.model.Sprint();
+        sprint.setName("Sprint 1");
+        sprint.setStartDate(LocalDate.now());
+        sprint.setEndDate(LocalDate.now().plusDays(14));
+        sprint.setProject(project);
+        sprint = em.persist(sprint);
+
+        Task inSprint = createTask("In Sprint", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        inSprint.setSprint(sprint);
+        createTask("No Sprint", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        em.flush();
+
+        TaskSearchCriteria c = criteria();
+        c.setSprintId(sprint.getId());
+
+        Page<Task> result =
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("In Sprint");
+    }
+
+    @Test
+    void filterBySprintId_zeroReturnsBacklog() {
+        cc.desuka.demo.model.Sprint sprint = new cc.desuka.demo.model.Sprint();
+        sprint.setName("Sprint 1");
+        sprint.setStartDate(LocalDate.now());
+        sprint.setEndDate(LocalDate.now().plusDays(14));
+        sprint.setProject(project);
+        sprint = em.persist(sprint);
+
+        Task inSprint = createTask("In Sprint", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        inSprint.setSprint(sprint);
+        createTask("Backlog Task", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        em.flush();
+
+        TaskSearchCriteria c = criteria();
+        c.setSprintId(0L);
+
+        Page<Task> result =
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).extracting(Task::getTitle).containsExactly("Backlog Task");
+    }
+
+    @Test
+    void filterBySprintId_nullReturnsAll() {
+        cc.desuka.demo.model.Sprint sprint = new cc.desuka.demo.model.Sprint();
+        sprint.setName("Sprint 1");
+        sprint.setStartDate(LocalDate.now());
+        sprint.setEndDate(LocalDate.now().plusDays(14));
+        sprint.setProject(project);
+        sprint = em.persist(sprint);
+
+        Task inSprint = createTask("In Sprint", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        inSprint.setSprint(sprint);
+        createTask("Backlog Task", TaskStatus.OPEN, Priority.MEDIUM, alice, null);
+        em.flush();
+
+        TaskSearchCriteria c = criteria();
+        // sprintId is null by default — no filter
+
+        Page<Task> result =
+                taskRepository.findAll(TaskSpecifications.build(c), PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).hasSize(2);
+    }
 }

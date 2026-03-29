@@ -18,13 +18,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
 
-    @EntityGraph(attributePaths = {"tags", "user", "project", "checklistItems"})
+    @EntityGraph(attributePaths = {"tags", "user", "project", "sprint", "checklistItems"})
     Optional<Task> findById(Long id);
 
-    @EntityGraph(attributePaths = {"tags", "user", "project", "blockedBy", "blocks"})
+    @EntityGraph(attributePaths = {"tags", "user", "project", "sprint", "blockedBy", "blocks"})
     Optional<Task> findWithDependenciesById(Long id);
 
-    @EntityGraph(attributePaths = {"tags", "user", "project"})
+    @EntityGraph(attributePaths = {"tags", "user", "project", "sprint"})
     List<Task> findAll();
 
     @EntityGraph(attributePaths = {"tags", "user"})
@@ -72,6 +72,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     // with large tag counts, prefer @BatchSize(size = 25) on Task.tags — it loads tags
     // in batches after pagination, avoiding this issue entirely.
     // Loads both tags and user in a single query to prevent N+1 on the paginated task list.
-    @EntityGraph(attributePaths = {"tags", "user", "project"})
+    @EntityGraph(attributePaths = {"tags", "user", "project", "sprint"})
     Page<Task> findAll(Specification<Task> spec, Pageable pageable);
 }

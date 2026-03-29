@@ -9,6 +9,7 @@ import cc.desuka.demo.dto.AnalyticsResponse.StatusBreakdown;
 import cc.desuka.demo.dto.AnalyticsResponse.VelocityPoint;
 import cc.desuka.demo.dto.AnalyticsResponse.WorkloadDistribution;
 import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.AnalyticsRepository;
@@ -37,46 +38,55 @@ public class AnalyticsService {
 
     private final TaskRepository taskRepository;
     private final AnalyticsRepository analyticsRepository;
+    private final SprintQueryService sprintQueryService;
     private final UserService userService;
     private final Messages messages;
 
     public AnalyticsService(
             TaskRepository taskRepository,
             AnalyticsRepository analyticsRepository,
+            SprintQueryService sprintQueryService,
             UserService userService,
             Messages messages) {
         this.taskRepository = taskRepository;
         this.analyticsRepository = analyticsRepository;
+        this.sprintQueryService = sprintQueryService;
         this.userService = userService;
         this.messages = messages;
     }
 
     public AnalyticsResponse getProjectAnalytics(Long projectId) {
-        return buildAnalytics(projectId, null);
+        return buildAnalytics(projectId, null, null);
+    }
+
+    public AnalyticsResponse getProjectAnalytics(Long projectId, Long sprintId) {
+        return buildAnalytics(projectId, null, sprintId);
     }
 
     /**
      * @param accessibleProjectIds null = admin (all projects); non-null = scoped
      */
     public AnalyticsResponse getCrossProjectAnalytics(List<Long> accessibleProjectIds) {
-        return buildAnalytics(null, accessibleProjectIds);
+        return buildAnalytics(null, accessibleProjectIds, null);
     }
 
-    private AnalyticsResponse buildAnalytics(Long projectId, List<Long> projectIds) {
+    private AnalyticsResponse buildAnalytics(Long projectId, List<Long> projectIds, Long sprintId) {
         return new AnalyticsResponse(
-                buildStatusBreakdown(projectId, projectIds),
-                buildPriorityBreakdown(projectId, projectIds),
-                buildWorkloadDistribution(projectId, projectIds),
-                buildBurndown(projectId, projectIds),
-                buildVelocity(projectId, projectIds),
-                buildOverdueAnalysis(projectId, projectIds),
-                buildEffortDistribution(projectId, projectIds));
+                buildStatusBreakdown(projectId, projectIds, sprintId),
+                buildPriorityBreakdown(projectId, projectIds, sprintId),
+                buildWorkloadDistribution(projectId, projectIds, sprintId),
+                buildBurndown(projectId, projectIds, sprintId),
+                buildVelocity(projectId, projectIds, sprintId),
+                buildOverdueAnalysis(projectId, projectIds, sprintId),
+                buildEffortDistribution(projectId, projectIds, sprintId));
     }
 
     // ── Status Breakdown ─────────────────────────────────────────────────
 
-    private StatusBreakdown buildStatusBreakdown(Long projectId, List<Long> projectIds) {
-        Specification<cc.desuka.demo.model.Task> scope = projectScope(projectId, projectIds);
+    private StatusBreakdown buildStatusBreakdown(
+            Long projectId, List<Long> projectIds, Long sprintId) {
+        Specification<cc.desuka.demo.model.Task> scope =
+                projectScope(projectId, projectIds).and(TaskSpecifications.withSprintId(sprintId));
         Map<String, Long> counts = new LinkedHashMap<>();
         for (TaskStatus status : TaskStatus.values()) {
             long count =
@@ -89,8 +99,10 @@ public class AnalyticsService {
 
     // ── Priority Breakdown ───────────────────────────────────────────────
 
-    private PriorityBreakdown buildPriorityBreakdown(Long projectId, List<Long> projectIds) {
-        Specification<cc.desuka.demo.model.Task> scope = projectScope(projectId, projectIds);
+    private PriorityBreakdown buildPriorityBreakdown(
+            Long projectId, List<Long> projectIds, Long sprintId) {
+        Specification<cc.desuka.demo.model.Task> scope =
+                projectScope(projectId, projectIds).and(TaskSpecifications.withSprintId(sprintId));
         Map<String, Long> counts = new LinkedHashMap<>();
         for (Priority priority : Priority.values()) {
             long count =
@@ -104,8 +116,10 @@ public class AnalyticsService {
 
     // ── Workload Distribution ────────────────────────────────────────────
 
-    private WorkloadDistribution buildWorkloadDistribution(Long projectId, List<Long> projectIds) {
-        List<Object[]> rows = analyticsRepository.countByUserAndStatus(projectId, projectIds);
+    private WorkloadDistribution buildWorkloadDistribution(
+            Long projectId, List<Long> projectIds, Long sprintId) {
+        List<Object[]> rows =
+                analyticsRepository.countByUserAndStatus(projectId, projectIds, sprintId);
 
         // Collect unique user IDs preserving order, null = unassigned
         List<Long> userIds = new ArrayList<>();
@@ -154,22 +168,38 @@ public class AnalyticsService {
 
     // ── Burndown Chart ───────────────────────────────────────────────────
 
-    private List<BurndownPoint> buildBurndown(Long projectId, List<Long> projectIds) {
-        LocalDate startDate = LocalDate.now().minusDays(BURNDOWN_DAYS);
+    private List<BurndownPoint> buildBurndown(
+            Long projectId, List<Long> projectIds, Long sprintId) {
+        // When scoped to a sprint, use the sprint's date range instead of rolling 30 days
+        LocalDate startDate;
+        LocalDate endDate;
+        if (sprintId != null) {
+            Sprint sprint = sprintQueryService.getSprintById(sprintId);
+            startDate = sprint.getStartDate();
+            endDate = sprint.isActive() ? LocalDate.now() : sprint.getEndDate();
+        } else {
+            startDate = LocalDate.now().minusDays(BURNDOWN_DAYS);
+            endDate = LocalDate.now();
+        }
         LocalDateTime from = startDate.atStartOfDay();
         List<TaskStatus> terminal = TaskStatus.terminalStatuses();
 
-        long initial = analyticsRepository.countOpenAtDate(projectId, projectIds, from, terminal);
+        long initial =
+                analyticsRepository.countOpenAtDate(
+                        projectId, projectIds, sprintId, from, terminal);
 
         Map<LocalDate, Long> createdByDay =
-                toDateMap(analyticsRepository.countCreatedPerDay(projectId, projectIds, from));
+                toDateMap(
+                        analyticsRepository.countCreatedPerDay(
+                                projectId, projectIds, sprintId, from));
         Map<LocalDate, Long> completedByDay =
-                toDateMap(analyticsRepository.countCompletedPerDay(projectId, projectIds, from));
+                toDateMap(
+                        analyticsRepository.countCompletedPerDay(
+                                projectId, projectIds, sprintId, from));
 
         List<BurndownPoint> points = new ArrayList<>();
         long remaining = initial;
-        LocalDate today = LocalDate.now();
-        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             remaining += createdByDay.getOrDefault(date, 0L);
             remaining -= completedByDay.getOrDefault(date, 0L);
             points.add(new BurndownPoint(date, remaining));
@@ -180,15 +210,16 @@ public class AnalyticsService {
 
     // ── Velocity ─────────────────────────────────────────────────────────
 
-    private List<VelocityPoint> buildVelocity(Long projectId, List<Long> projectIds) {
+    private List<VelocityPoint> buildVelocity(
+            Long projectId, List<Long> projectIds, Long sprintId) {
         LocalDate now = LocalDate.now();
         LocalDate weekStart = now.minusWeeks(VELOCITY_WEEKS).with(DayOfWeek.MONDAY);
         LocalDateTime from = weekStart.atStartOfDay();
 
         List<Object[]> dailyCompleted =
-                analyticsRepository.countCompletedPerDay(projectId, projectIds, from);
+                analyticsRepository.countCompletedPerDay(projectId, projectIds, sprintId, from);
         List<Object[]> dailyEffort =
-                analyticsRepository.sumEffortCompletedPerDay(projectId, projectIds, from);
+                analyticsRepository.sumEffortCompletedPerDay(projectId, projectIds, sprintId, from);
 
         // Bucket by ISO week (Monday)
         Map<LocalDate, Long> weeklyTotals = new TreeMap<>();
@@ -226,10 +257,11 @@ public class AnalyticsService {
 
     // ── Overdue Analysis ─────────────────────────────────────────────────
 
-    private OverdueAnalysis buildOverdueAnalysis(Long projectId, List<Long> projectIds) {
+    private OverdueAnalysis buildOverdueAnalysis(
+            Long projectId, List<Long> projectIds, Long sprintId) {
         List<TaskStatus> terminal = TaskStatus.terminalStatuses();
         List<Object[]> rows =
-                analyticsRepository.countOverdueByUser(projectId, projectIds, terminal);
+                analyticsRepository.countOverdueByUser(projectId, projectIds, sprintId, terminal);
 
         String unassignedLabel = messages.get("analytics.label.unassigned");
         List<String> assignees = new ArrayList<>();
@@ -251,8 +283,9 @@ public class AnalyticsService {
 
     // ── Effort Distribution ─────────────────────────────────────────────
 
-    private EffortDistribution buildEffortDistribution(Long projectId, List<Long> projectIds) {
-        List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds);
+    private EffortDistribution buildEffortDistribution(
+            Long projectId, List<Long> projectIds, Long sprintId) {
+        List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds, sprintId);
 
         String unassignedLabel = messages.get("analytics.label.unassigned");
         List<String> assignees = new ArrayList<>();

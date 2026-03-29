@@ -30,6 +30,7 @@ public class TaskSearchCriteria {
     private boolean overdue;
     private Priority priority;
     private Long userId;
+    private Long sprintId;
     private List<Long> tagIds;
 
     // ── Date range (calendar view) ────────────────────────────────────────
@@ -107,6 +108,14 @@ public class TaskSearchCriteria {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public Long getSprintId() {
+        return sprintId;
+    }
+
+    public void setSprintId(Long sprintId) {
+        this.sprintId = sprintId;
     }
 
     public List<Long> getTagIds() {

@@ -21,6 +21,7 @@ public class Project implements Auditable {
     public static final String FIELD_CREATED_BY = "createdBy";
     public static final String FIELD_CREATED_AT = "createdAt";
     public static final String FIELD_UPDATED_AT = "updatedAt";
+    public static final String FIELD_SPRINT_ENABLED = "sprintEnabled";
     public static final String FIELD_MEMBERS = "members";
     public static final String FIELD_MEMBER = "member";
     public static final String FIELD_ROLE = "role";
@@ -41,6 +42,9 @@ public class Project implements Auditable {
     @Column(nullable = false)
     private ProjectStatus status = ProjectStatus.ACTIVE;
 
+    @Column(name = "sprint_enabled", nullable = false)
+    private boolean sprintEnabled = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
@@ -57,6 +61,13 @@ public class Project implements Auditable {
             orphanRemoval = true,
             fetch = FetchType.LAZY)
     private Set<ProjectMember> members = new LinkedHashSet<>();
+
+    @OneToMany(
+            mappedBy = "project",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            fetch = FetchType.LAZY)
+    private Set<Sprint> sprints = new LinkedHashSet<>();
 
     @OneToMany(
             mappedBy = "project",
@@ -116,6 +127,14 @@ public class Project implements Auditable {
         this.status = status;
     }
 
+    public boolean isSprintEnabled() {
+        return sprintEnabled;
+    }
+
+    public void setSprintEnabled(boolean sprintEnabled) {
+        this.sprintEnabled = sprintEnabled;
+    }
+
     public User getCreatedBy() {
         return createdBy;
     }
@@ -148,6 +167,14 @@ public class Project implements Auditable {
         this.members = members;
     }
 
+    public Set<Sprint> getSprints() {
+        return sprints;
+    }
+
+    public void setSprints(Set<Sprint> sprints) {
+        this.sprints = sprints;
+    }
+
     public Set<Task> getTasks() {
         return tasks;
     }
@@ -162,6 +189,7 @@ public class Project implements Auditable {
         snapshot.put(FIELD_NAME, name);
         snapshot.put(FIELD_DESCRIPTION, description);
         snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
+        snapshot.put(FIELD_SPRINT_ENABLED, sprintEnabled);
         return snapshot;
     }
 }

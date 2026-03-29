@@ -10,13 +10,14 @@ CREATE TABLE users (
 );
 
 CREATE TABLE projects (
-    id          BIGSERIAL PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    description VARCHAR(500),
-    status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
-    created_by  BIGINT NOT NULL REFERENCES users(id),
-    created_at  TIMESTAMP,
-    updated_at  TIMESTAMP
+    id              BIGSERIAL PRIMARY KEY,
+    name            VARCHAR(100) NOT NULL,
+    description     VARCHAR(500),
+    status          VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
+    sprint_enabled  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_by      BIGINT NOT NULL REFERENCES users(id),
+    created_at      TIMESTAMP,
+    updated_at      TIMESTAMP
 );
 
 CREATE TABLE project_members (
@@ -26,6 +27,17 @@ CREATE TABLE project_members (
     role        VARCHAR(50) NOT NULL DEFAULT 'EDITOR',
     created_at  TIMESTAMP,
     UNIQUE (project_id, user_id)
+);
+
+CREATE TABLE sprints (
+    id           BIGSERIAL PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    goal         VARCHAR(500),
+    start_date   DATE NOT NULL,
+    end_date     DATE NOT NULL,
+    created_at   TIMESTAMP,
+    updated_at   TIMESTAMP,
+    project_id   BIGINT NOT NULL REFERENCES projects(id)
 );
 
 CREATE TABLE tasks (
@@ -42,6 +54,7 @@ CREATE TABLE tasks (
     created_at   TIMESTAMP,
     updated_at   TIMESTAMP,
     project_id   BIGINT NOT NULL REFERENCES projects(id),
+    sprint_id    BIGINT REFERENCES sprints(id),
     user_id      BIGINT REFERENCES users(id)
 );
 

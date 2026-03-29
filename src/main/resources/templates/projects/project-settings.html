@@ -6,95 +6,224 @@
     <div th:replace="~{layouts/base :: navbar}"></div>
 
     <main class="container flex-grow-1 mb-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-8 col-md-10">
 
-                <!-- Back link -->
-                <a th:href="@{/projects/{id}(id=${project.id})}" class="text-decoration-none mb-3 d-inline-block">
-                    <i class="bi bi-arrow-left"></i> <span th:text="${project.name}">Project Name</span>
-                </a>
+        <!-- Back link + heading -->
+        <a th:href="@{/projects/{id}(id=${project.id})}" class="text-decoration-none mb-3 d-inline-block">
+            <i class="bi bi-arrow-left"></i> <span th:text="${project.name}">Project Name</span>
+        </a>
+        <h1 class="display-4 mb-4" th:text="#{project.settings.heading}">Project Settings</h1>
 
-                <h1 class="display-4 mb-4" th:text="#{project.settings.heading}">Project Settings</h1>
+        <div class="row">
 
-                <!-- Project Details Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <form th:action="@{/projects/{id}(id=${project.id})}" th:object="${projectRequest}" method="post">
+            <!-- Sidebar Nav -->
+            <div class="col-md-auto">
+                <nav class="settings-nav" id="settings-nav">
+                    <a class="settings-nav-link active" href="#general" data-settings-tab="general">
+                        <i class="bi bi-gear"></i> <span th:text="#{project.settings.tab.general}">General</span>
+                    </a>
+                    <a class="settings-nav-link" href="#sprints" data-settings-tab="sprints"
+                       th:if="${project.sprintEnabled}">
+                        <i class="bi bi-lightning-charge"></i> <span th:text="#{project.sprint.heading}">Sprints</span>
+                    </a>
+                    <a class="settings-nav-link" href="#members" data-settings-tab="members">
+                        <i class="bi bi-people"></i> <span th:text="#{project.members.heading}">Members</span>
+                    </a>
+                    <a class="settings-nav-link" href="#danger" data-settings-tab="danger">
+                        <i class="bi bi-exclamation-triangle"></i> <span th:text="#{project.settings.dangerZone}">Danger Zone</span>
+                    </a>
+                </nav>
+            </div>
 
-                            <!-- Name -->
-                            <div class="mb-3">
-                                <label for="name" class="form-label form-label-required"
-                                       th:text="#{project.field.name}">Name</label>
-                                <input type="text" class="form-control" id="name" th:field="*{name}"
-                                       th:placeholder="#{project.field.name}"
-                                       th:errorclass="is-invalid">
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
-                                     th:errors="*{name}">Name error</div>
-                            </div>
+            <!-- Content Panel -->
+            <div class="col">
 
-                            <!-- Description -->
-                            <div class="mb-3">
-                                <label for="description" class="form-label"
-                                       th:text="#{project.field.description}">Description</label>
-                                <textarea class="form-control" id="description" th:field="*{description}"
-                                          rows="3"
-                                          th:placeholder="#{project.field.description}"
-                                          th:errorclass="is-invalid"></textarea>
-                                <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}"
-                                     th:errors="*{description}">Description error</div>
-                            </div>
+                <!-- General -->
+                <div class="settings-panel" id="panel-general">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <form th:action="@{/projects/{id}(id=${project.id})}" th:object="${projectRequest}" method="post">
 
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> <span th:text="#{admin.settings.save}">Save</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                                <!-- Name -->
+                                <div class="mb-3">
+                                    <label for="name" class="form-label form-label-required"
+                                           th:text="#{project.field.name}">Name</label>
+                                    <input type="text" class="form-control" id="name" th:field="*{name}"
+                                           th:placeholder="#{project.field.name}"
+                                           th:errorclass="is-invalid">
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                                         th:errors="*{name}">Name error</div>
+                                </div>
 
-                <!-- Members Card -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0" th:text="#{project.members.heading}">Members</h5>
-                    </div>
-                    <div th:replace="~{projects/member-table}"></div>
-                </div>
+                                <!-- Description -->
+                                <div class="mb-3">
+                                    <label for="description" class="form-label"
+                                           th:text="#{project.field.description}">Description</label>
+                                    <textarea class="form-control" id="description" th:field="*{description}"
+                                              rows="3"
+                                              th:placeholder="#{project.field.description}"
+                                              th:errorclass="is-invalid"></textarea>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('description')}"
+                                         th:errors="*{description}">Description error</div>
+                                </div>
 
-                <!-- Danger Zone -->
-                <div class="card shadow-sm border-danger">
-                    <div class="card-header bg-danger text-white">
-                        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> <span th:text="#{project.settings.dangerZone}">Danger Zone</span></h5>
-                    </div>
-                    <div class="card-body">
-                        <!--/* Unarchive — shown when project is archived */-->
-                        <div th:if="${project.status.name() == 'ARCHIVED'}"
-                             class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <strong th:text="#{project.action.unarchive}">Restore Project</strong>
-                                <p class="text-muted mb-0 small" th:text="#{project.unarchive.description}">
-                                    Restoring makes the project visible and active again.
-                                </p>
-                            </div>
-                            <form th:action="@{/projects/{id}/unarchive(id=${project.id})}" method="post">
-                                <button type="submit" class="btn btn-outline-success">
-                                    <i class="bi bi-arrow-counterclockwise"></i>
-                                    <span th:text="#{project.action.unarchive}">Restore</span>
+                                <!-- Sprint toggle -->
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="sprintEnabled"
+                                           th:field="*{sprintEnabled}">
+                                    <label class="form-check-label fw-bold" for="sprintEnabled"
+                                           th:text="#{project.field.sprintEnabled}">Enable Sprints</label>
+                                    <div class="form-text" th:text="#{project.field.sprintEnabled.description}">
+                                        Allow sprints for this project.
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle"></i> <span th:text="#{admin.settings.save}">Save</span>
                                 </button>
                             </form>
                         </div>
-                        <!--/* Archive — shown when project is active */-->
-                        <div th:if="${project.status.name() == 'ACTIVE'}"
-                             class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <strong th:text="#{project.action.archive}">Archive Project</strong>
-                                <p class="text-muted mb-0 small" th:text="#{project.archive.description}">
-                                    Archiving hides the project from the list. This can be undone.
-                                </p>
+                    </div>
+                </div>
+
+                <!--/* Sprints — only rendered when sprints are enabled */-->
+                <div class="settings-panel d-none" id="panel-sprints" th:if="${project.sprintEnabled}">
+                    <div class="card shadow-sm mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0" th:text="#{sprint.action.create}">Create Sprint</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label form-label-required" th:text="#{sprint.field.name}">Name</label>
+                                    <input type="text" class="form-control form-control-sm" id="new-sprint-name" maxlength="100">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" th:text="#{sprint.field.goal}">Goal</label>
+                                    <input type="text" class="form-control form-control-sm" id="new-sprint-goal" maxlength="500">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label form-label-required" th:text="#{sprint.field.startDate}">Start Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="new-sprint-start">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label form-label-required" th:text="#{sprint.field.endDate}">End Date</label>
+                                    <input type="date" class="form-control form-control-sm" id="new-sprint-end">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-sm btn-primary w-100" onclick="createSprint()">
+                                        <i class="bi bi-check-circle"></i> <span th:text="#{sprint.action.create}">Create</span>
+                                    </button>
+                                </div>
                             </div>
-                            <form id="archive-form" th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
-                                <button type="button" class="btn btn-outline-danger" id="archive-btn">
-                                    <i class="bi bi-archive"></i> <span th:text="#{project.action.archive}">Archive</span>
-                                </button>
-                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0" th:text="#{project.sprint.heading}">Sprints</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Sprint List -->
+                            <div id="sprint-list">
+                                <div th:if="${sprints == null || sprints.isEmpty()}" class="text-muted text-center py-3"
+                                     th:text="#{sprint.empty}">No sprints yet.</div>
+                                <div th:if="${sprints != null && !sprints.isEmpty()}" class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th th:text="#{sprint.field.name}">Name</th>
+                                                <th th:text="#{sprint.field.startDate}">Start</th>
+                                                <th th:text="#{sprint.field.endDate}">End</th>
+                                                <th>Status</th>
+                                                <th style="width: 1px; white-space: nowrap;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr th:each="sprint : ${sprints}">
+                                                <td>
+                                                    <span th:text="${sprint.name}">Sprint 1</span>
+                                                    <small th:if="${sprint.goal != null}" class="d-block text-muted"
+                                                           th:text="${sprint.goal}">Goal</small>
+                                                </td>
+                                                <td class="text-nowrap">
+                                                    <small th:text="${#temporals.format(sprint.startDate, 'MMM dd, yyyy')}">Date</small>
+                                                </td>
+                                                <td class="text-nowrap">
+                                                    <small th:text="${#temporals.format(sprint.endDate, 'MMM dd, yyyy')}">Date</small>
+                                                </td>
+                                                <td>
+                                                    <span th:if="${sprint.active}" class="badge bg-success"
+                                                          th:text="#{sprint.status.active}">Active</span>
+                                                    <span th:if="${sprint.past}" class="badge bg-secondary"
+                                                          th:text="#{sprint.status.past}">Past</span>
+                                                    <span th:if="${sprint.future}" class="badge bg-light text-dark"
+                                                          th:text="#{sprint.status.future}">Future</span>
+                                                </td>
+                                                <td class="text-nowrap">
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            th:data-sprint-id="${sprint.id}"
+                                                            onclick="deleteSprint(this.dataset.sprintId)"
+                                                            th:title="#{sprint.action.delete}">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Members -->
+                <div class="settings-panel d-none" id="panel-members">
+                    <div class="card shadow-sm">
+                        <div class="card-header">
+                            <h5 class="mb-0" th:text="#{project.members.heading}">Members</h5>
+                        </div>
+                        <div th:replace="~{projects/member-table}"></div>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="settings-panel d-none" id="panel-danger">
+                    <div class="card shadow-sm border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> <span th:text="#{project.settings.dangerZone}">Danger Zone</span></h5>
+                        </div>
+                        <div class="card-body">
+                            <!--/* Unarchive — shown when project is archived */-->
+                            <div th:if="${project.status.name() == 'ARCHIVED'}"
+                                 class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong th:text="#{project.action.unarchive}">Restore Project</strong>
+                                    <p class="text-muted mb-0 small" th:text="#{project.unarchive.description}">
+                                        Restoring makes the project visible and active again.
+                                    </p>
+                                </div>
+                                <form th:action="@{/projects/{id}/unarchive(id=${project.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-success">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        <span th:text="#{project.action.unarchive}">Restore</span>
+                                    </button>
+                                </form>
+                            </div>
+                            <!--/* Archive — shown when project is active */-->
+                            <div th:if="${project.status.name() == 'ACTIVE'}"
+                                 class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong th:text="#{project.action.archive}">Archive Project</strong>
+                                    <p class="text-muted mb-0 small" th:text="#{project.archive.description}">
+                                        Archiving hides the project from the list. This can be undone.
+                                    </p>
+                                </div>
+                                <form id="archive-form" th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
+                                    <button type="button" class="btn btn-outline-danger" id="archive-btn">
+                                        <i class="bi bi-archive"></i> <span th:text="#{project.action.archive}">Archive</span>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -107,6 +236,81 @@
     <div th:replace="~{layouts/base :: scripts}"></div>
 
     <script th:inline="javascript">
+        // ── Tab navigation ──────────────────────────────────────────────────
+        document.querySelectorAll('#settings-nav .settings-nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const tab = this.dataset.settingsTab;
+
+                // Update nav active state
+                document.querySelectorAll('#settings-nav .settings-nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show the target panel, hide others
+                document.querySelectorAll('.settings-panel').forEach(p => p.classList.add('d-none'));
+                document.getElementById(`panel-${tab}`).classList.remove('d-none');
+
+                // Update URL hash
+                history.replaceState(null, '', `#${tab}`);
+            });
+        });
+
+        // Restore tab from URL hash on page load
+        (function() {
+            const hash = location.hash.replace('#', '');
+            if (hash) {
+                const link = document.querySelector(`[data-settings-tab="${hash}"]`);
+                if (link) link.click();
+            }
+        })();
+
+        // ── Sprint CRUD ─────────────────────────────────────────────────────
+        const sprintApiUrl = /*[[${appRoutes.apiProjectSprints.resolve('projectId', project.id)}]]*/ '/api/projects/0/sprints';
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+
+        function sprintHeaders() {
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfHeader && csrfToken) headers[csrfHeader] = csrfToken;
+            return headers;
+        }
+
+        function handleSprintError(r) {
+            r.json()
+                .then(d => showToast(d.detail || 'Error', 'danger'))
+                .catch(() => showToast('Error', 'danger'));
+        }
+
+        function createSprint() {
+            const name = document.getElementById('new-sprint-name').value.trim();
+            const goal = document.getElementById('new-sprint-goal').value.trim();
+            const startDate = document.getElementById('new-sprint-start').value;
+            const endDate = document.getElementById('new-sprint-end').value;
+            if (!name || !startDate || !endDate) return;
+
+            fetch(sprintApiUrl, {
+                method: 'POST',
+                headers: sprintHeaders(),
+                body: JSON.stringify({ name, goal: goal || null, startDate, endDate })
+            }).then(r => { if (r.ok) { location.hash = 'sprints'; location.reload(); } else handleSprintError(r); });
+        }
+
+        function deleteSprint(id) {
+            showConfirm({
+                message: /*[[#{sprint.confirm.delete}]]*/ 'Delete sprint?',
+                title: /*[[#{sprint.action.delete}]]*/ 'Delete',
+                confirmText: /*[[#{sprint.action.delete}]]*/ 'Delete',
+                headerClass: 'bg-danger text-white',
+                confirmClass: 'btn btn-danger',
+            }, function() {
+                fetch(`${sprintApiUrl}/${id}`, {
+                    method: 'DELETE',
+                    headers: sprintHeaders()
+                }).then(r => { if (r.ok) { location.hash = 'sprints'; location.reload(); } else handleSprintError(r); });
+            });
+        }
+
+        // ── Archive confirm ─────────────────────────────────────────────────
         document.getElementById('archive-btn')?.addEventListener('click', function() {
             showConfirm({
                 message: /*[[#{project.archive.confirm}]]*/ 'Are you sure?',

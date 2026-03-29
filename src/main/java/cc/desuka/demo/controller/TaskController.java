@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.BulkTaskRequest;
 import cc.desuka.demo.dto.CalendarDay;
@@ -19,6 +20,7 @@ import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.ProjectQueryService;
+import cc.desuka.demo.service.SprintQueryService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
@@ -59,6 +61,7 @@ public class TaskController {
     private final TaskService taskService;
     private final TaskQueryService taskQueryService;
     private final ProjectQueryService projectQueryService;
+    private final SprintQueryService sprintQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final CommentService commentService;
@@ -66,12 +69,14 @@ public class TaskController {
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
+    private final AppRoutesProperties appRoutes;
     private final Messages messages;
 
     public TaskController(
             TaskService taskService,
             TaskQueryService taskQueryService,
             ProjectQueryService projectQueryService,
+            SprintQueryService sprintQueryService,
             TagService tagService,
             UserService userService,
             CommentService commentService,
@@ -79,10 +84,12 @@ public class TaskController {
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
+            AppRoutesProperties appRoutes,
             Messages messages) {
         this.taskService = taskService;
         this.taskQueryService = taskQueryService;
         this.projectQueryService = projectQueryService;
+        this.sprintQueryService = sprintQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.commentService = commentService;
@@ -90,6 +97,7 @@ public class TaskController {
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
+        this.appRoutes = appRoutes;
         this.messages = messages;
     }
 
@@ -267,6 +275,7 @@ public class TaskController {
         model.addAttribute("tags", tagService.getAllTags());
         model.addAttribute("timeline", Collections.emptyList());
         model.addAttribute("activityCount", 0);
+        addSprintAttributes(task.getProject(), model);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "tasks/task-modal";
         }
@@ -306,12 +315,15 @@ public class TaskController {
         }
         Task task = taskFormRequest.toEntity();
         task.setProject(project);
+        if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
+            task.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
+        }
         Task created =
                 taskService.createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked);
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
-        return new RedirectView("/tasks/" + created.getId());
+        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", created.getId()));
     }
 
     // GET /tasks/{id}/edit - Show edit form (full page or modal fragment)
@@ -328,6 +340,7 @@ public class TaskController {
         model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
         model.addAttribute("mode", "edit");
         model.addAttribute("tags", tagService.getAllTags());
+        addSprintAttributes(task.getProject(), model);
         addDependencyAttributes(task, true, model);
         addTimelineAttributes(model, id, currentDetails);
         if (HtmxUtils.isHtmxRequest(request)) {
@@ -365,6 +378,9 @@ public class TaskController {
             return "tasks/task";
         }
         Task taskDetails = taskFormRequest.toEntity();
+        if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
+            taskDetails.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
+        }
         taskService.updateTask(
                 id,
                 taskDetails,
@@ -378,7 +394,7 @@ public class TaskController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
-        return new RedirectView("/tasks/" + id);
+        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
     }
 
     // DELETE /tasks/{id} - Delete task
@@ -395,7 +411,7 @@ public class TaskController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskDeleted");
         }
-        return new RedirectView("/tasks");
+        return new RedirectView(appRoutes.getTasks().toString());
     }
 
     // GET /tasks/{id}/activity - Fetch activity timeline fragment (HTMX live refresh)
@@ -428,7 +444,7 @@ public class TaskController {
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
-        return new RedirectView("/tasks/" + id);
+        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
     }
 
     // DELETE /tasks/{id}/comments/{commentId} - Delete a comment
@@ -450,7 +466,7 @@ public class TaskController {
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
-        return new RedirectView("/tasks/" + id);
+        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
     }
 
     // PATCH /tasks/{id}/field - Inline edit a single field (used by table view inline editing)
@@ -485,7 +501,7 @@ public class TaskController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
-        return "redirect:/tasks";
+        return "redirect:" + appRoutes.getTasks();
     }
 
     // POST /tasks/{id}/toggle - Advance status (OPEN → IN_PROGRESS → COMPLETED → OPEN)
@@ -509,7 +525,7 @@ public class TaskController {
                     ? "tasks/task-table-row :: row"
                     : "tasks/task-card :: card";
         }
-        return "redirect:/tasks";
+        return "redirect:" + appRoutes.getTasks();
     }
 
     // ── Dependency management ─────────────────────────────────────────────
@@ -571,6 +587,13 @@ public class TaskController {
             case BulkTaskRequest.ACTION_EFFORT -> {
                 for (Task task : tasks) {
                     taskService.updateField(task.getId(), "effort", value);
+                    count++;
+                }
+            }
+            case BulkTaskRequest.ACTION_SPRINT -> {
+                Long sprintId = value != null && !value.isBlank() ? Long.valueOf(value) : null;
+                for (Task task : tasks) {
+                    taskService.assignSprint(task.getId(), sprintId);
                     count++;
                 }
             }
@@ -677,6 +700,13 @@ public class TaskController {
             weeks.add(week);
         }
         return weeks;
+    }
+
+    private void addSprintAttributes(Project project, Model model) {
+        if (project != null && project.isSprintEnabled()) {
+            model.addAttribute(
+                    "projectSprints", sprintQueryService.getSprintsByProject(project.getId()));
+        }
     }
 
     private void addEditableProjects(Model model, CustomUserDetails currentDetails) {

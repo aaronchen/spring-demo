@@ -88,20 +88,27 @@ Ternary `? :` must be **inside** `${}` for string literals: `th:classappend="${c
 
 ### Frontend Route Configuration Pattern
 
-All URLs centralized in `AppRoutesProperties` (defaults in Java, overridable via `application.properties`). Exposed two ways:
+All URLs centralized in `AppRoutesProperties` as `RouteTemplate` fields (defaults in Java, overridable via `application.properties`). `RouteTemplate` wraps URL templates with `{placeholder}` tokens and provides a symmetric `resolve()` API in both Java and JavaScript. Exposed two ways:
 - **Templates**: `GlobalModelAttributes` → `${appRoutes}`. Use `@{}` for `th:href`/`th:action` (context-path-aware). Use `${appRoutes.tasks + ...}` only for HTMX `th:attr` values where `@{}` doesn't work.
-- **JavaScript**: `FrontendConfigController` → `/config.js` → `window.APP_CONFIG.routes` and `APP_CONFIG.messages`
+- **JavaScript**: `FrontendConfigController` → `/config.js` → `window.APP_CONFIG.routes` (auto-discovered via reflection) and `APP_CONFIG.messages`
 
 Two categories of routes:
-- **Web routes**: `projects`, `tasks`, `audit`, `dashboard`, `analytics` — used for page navigation
+- **Web routes**: `projects`, `tasks`, `audit`, `dashboard`, `analytics`, `login`, `profile` — used for page navigation
+- **Parameterized web routes**: `projectDetail`, `projectSettings`, `taskDetail` — URL templates for redirects
 - **API resource routes**: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit` — used for fetch calls and HTMX attributes
-- **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens, resolved via overloaded getters (Java) or `resolveRoute()` (JS)
+- **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens, resolved via `RouteTemplate.resolve()`
+
+**RouteTemplate resolve API** (symmetric Java/JS):
+- Java: `route.resolve("projectId", id)`, `route.resolve(Map.of("projectId", id))`, `route.resolve(Map.of("projectId", id), Map.of("q", "test"))`
+- JS: `route.resolve({ projectId: id })`, `route.resolve({ projectId: id }, { q: "test" })`
+- Thymeleaf: `appRoutes.apiProjectMembers.resolve('projectId', project.id)`
+- `toString()` returns the raw template — works transparently in string contexts
 
 **Key rules:**
 - Never use `${appRoutes.tasks}` inside `th:href` — it bypasses context-path handling
 - Never hardcode API URLs in controllers, templates, or JS — always use `appRoutes` (Java/Thymeleaf) or `APP_CONFIG.routes` (JS)
-- For parameterized URLs, use the resource base from config and append the dynamic segment: `APP_CONFIG.routes.apiProjects + '/' + id + '/members'`
-- Prefer parameterized route templates over manual concatenation. Java: `appRoutes.getApiProjectAnalytics(id)`. JS: `resolveRoute(APP_CONFIG.routes.apiProjectAnalytics, { projectId })`. Templates: `appRoutes.getApiProjectMembersAssignable(task.project.id)`
+- Always use `resolve()` for parameterized routes — never concatenate path segments manually
+- Adding a new `RouteTemplate` field to `AppRoutesProperties` auto-exposes it in `/config.js` (reflection-based)
 
 ### Entity Collection Convention
 
@@ -110,6 +117,10 @@ Two categories of routes:
 ### Task Dependency Pattern
 
 Bidirectional `@ManyToMany` self-referential relationship on `Task`: `blocks` (owning side, `@JoinTable(task_dependencies)`) and `blockedBy` (inverse, `mappedBy`). `blocked` virtual column (`@Formula`) checks for non-terminal blockers without loading the graph. `TaskDependencyService` handles reconciliation, BFS cycle detection, same-project validation, and self-reference prevention. `BlockedTaskException` (409) blocks status transitions; `CyclicDependencyException` (422) prevents circular chains. Dependencies managed via form params (`blockedByIds`, `blocksIds`) in web UI; searchable picker via `/api/tasks/search-for-dependency`.
+
+### Sprint Pattern
+
+Optional per-project time-boxed iterations. Sprint status derived from date ranges: `endDate < today` = past, `startDate <= today <= endDate` = active, `startDate > today` = future. Non-overlapping date ranges enforced at service level (at most one active sprint at any time). Sprint filter sentinel: `sprintId=null` = no filter (all tasks), `0` = no sprint assigned, positive = real sprint. Default to active sprint on initial page load (non-HTMX); HTMX requests treat null as "all." Sprint filter rendered as a Bootstrap dropdown button matching other filters. Incomplete tasks stay in ended sprints — users manually move them to the next sprint or backlog (no auto-carryover). Managed via GitHub-style project settings page (sidebar nav + content panels). Sprint filter only shown on single-project views. Disabling sprints clears all task sprint assignments. Deleting a sprint unassigns its tasks. Task form dynamically loads sprint dropdown on project change via JS fetch.
 
 ### Constructor Injection Pattern
 
@@ -246,7 +257,7 @@ Tribute.js autocomplete on `[data-mention]` elements. Project-scoped via `data-p
 
 ### Analytics Pattern
 
-Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar, effort-by-assignee horizontal bar. Velocity chart includes optional effort line (dual Y-axis) when effort data exists. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security.
+Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar, effort-by-assignee horizontal bar. Velocity chart includes optional effort line (dual Y-axis) when effort data exists. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security. Sprint-scoped analytics pass `sprintId` to repository queries; burndown uses sprint date range instead of rolling 30-day window.
 
 ### CSS Organization
 
@@ -261,7 +272,7 @@ Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workloa
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 223 tests, 26 test classes
+./mvnw test                               # 242 tests, 29 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 

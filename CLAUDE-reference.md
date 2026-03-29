@@ -150,6 +150,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `model/NotificationType.java` - Enum for notification types: `TASK_ASSIGNED`, `COMMENT_ADDED`, `COMMENT_MENTIONED`, `TASK_DUE_REMINDER`, `TASK_OVERDUE`, `SYSTEM`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Notification
 
+- `model/Sprint.java` - JPA entity for time-boxed iterations
+  - Fields: id, name (max 100), goal (max 500), startDate, endDate, createdAt, updatedAt, project (ManyToOne LAZY)
+  - Status derived from date ranges: `isPast()` (endDate < today), `isActive()` (startDate <= today <= endDate), `isFuture()` (startDate > today)
+  - `FIELD_*` constants, `Auditable` interface
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "project_id", nullable = false)` — every sprint belongs to a project
+  - Manual getters/setters (no Lombok on entities)
+
 - `model/AuditLog.java` - Audit log entity
   - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
   - `FIELD_*` constants (`FIELD_ACTION`, `FIELD_PRINCIPAL`, `FIELD_DETAILS`, `FIELD_TIMESTAMP`)
@@ -282,6 +289,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `markAllAsReadByUserId(Long)` — `@Modifying` `@Query` bulk UPDATE (no derived method convention for bulk updates)
   - `deleteByUserId(Long)` — clear all for a user
   - `deleteByCreatedAtBefore(LocalDateTime)` — purge old notifications
+
+- `repository/SprintRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<Sprint, Long>`
+  - `findByProjectIdOrderByStartDateDesc(Long)` — all sprints for a project, newest first
+  - `findActiveByProjectId(Long, LocalDate)` — `Optional<Sprint>`; sprint whose date range contains the given date
+  - `existsOverlapping(Long, Long, LocalDate, LocalDate)` — checks for overlapping date ranges (excludes self by ID)
+  - `findWithProjectById(Long)` — `@EntityGraph(attributePaths = {"project"})` for eager project loading
 
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
@@ -447,6 +461,17 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `dto/SavedViewResponse.java` - Saved view output DTO
   - Fields: `id`, `name`, `data` (`SavedViewData`)
   - Record DTO; `fromEntity()` deserializes JSON via `SavedViewData.fromJson()`
+
+- `dto/SprintRequest.java` - Form/API binding for sprint CRUD
+  - Fields: `name` (required, max 100), `goal` (optional, max 500), `startDate` (required), `endDate` (required)
+  - Validation annotations used by `@Valid` in the controller
+  - `fromEntity(Sprint)` / `toEntity()` methods
+  - Lombok `@Data`
+
+- `dto/SprintResponse.java` - API response DTO for sprints
+  - Fields: `id`, `name`, `goal`, `startDate`, `endDate`, `status` (String: "past"/"active"/"future")
+  - `fromEntity(Sprint)` static factory
+  - Lombok `@Data`
 
 - `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
   - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
@@ -615,6 +640,19 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getViewById(Long id)` — returns view or throws `EntityNotFoundException`
   - `deleteView(SavedView)` — deletes view entity (caller must have already checked ownership via `OwnershipGuard`)
 
+- `service/SprintService.java` - Command service for sprint lifecycle
+  - Constructor injection: `SprintRepository`, `TaskRepository`, `SprintQueryService`, `ProjectQueryService`, `ApplicationEventPublisher`, `Messages`
+  - `createSprint(Long projectId, Sprint)` — validates dates and no overlap, persists sprint; publishes audit event
+  - `updateSprint(Long id, Sprint)` — validates dates and no overlap; publishes audit event
+  - `clearSprintAssignments(Long projectId)` — nullifies sprint FK on all tasks in a project (used when disabling sprints)
+  - `deleteSprint(Long)` — nullifies sprint FK on associated tasks before deleting; publishes audit event
+
+- `service/SprintQueryService.java` - Read-only query service; `@Transactional(readOnly = true)` class-level
+  - Constructor injection: `SprintRepository`
+  - `getSprintById(Long)` — throws `EntityNotFoundException` if not found
+  - `getSprintsByProject(Long projectId)` — all sprints for a project, newest first
+  - `getActiveSprint(Long projectId)` — returns `Optional<Sprint>` for sprint whose date range contains today
+
 - `service/AnalyticsService.java` - Analytics chart data builder
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
   - `getProjectAnalytics(Long projectId)` — single-project analytics
@@ -681,6 +719,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `GET /api/projects/{id}/members` — all enabled members of a project (returns `List<UserResponse>`)
   - `GET /api/projects/{id}/members/assignable` — editors and owners only, excludes VIEWERs (for task assignment dropdowns)
   - `GET /api/projects/{id}/analytics` — project-scoped analytics data; requires view access via `ProjectAccessGuard`
+
+- `controller/api/SprintApiController.java` - Sprint REST API endpoints
+  - `@RestController` with `/api/projects/{projectId}/sprints` base path
+  - Constructor injection: `SprintService`, `SprintQueryService`, `ProjectAccessGuard`
+  - `GET /api/projects/{projectId}/sprints` — list all sprints for a project
+  - `POST /api/projects/{projectId}/sprints` — create sprint; requires edit access
+  - `PUT /api/projects/{projectId}/sprints/{id}` — update sprint; requires edit access
+  - `DELETE /api/projects/{projectId}/sprints/{id}` — delete sprint (nullifies task FKs); requires edit access
+  - **Security**: uses `ProjectAccessGuard` for all mutating operations; `@AuthenticationPrincipal CustomUserDetails` on all endpoints
 
 - `controller/api/AnalyticsApiController.java` - Cross-project analytics REST API
   - `@RestController` with `/api/analytics` base path
@@ -827,9 +874,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS runtime config)
   - `@RestController` producing `application/javascript`
-  - Emits `window.APP_CONFIG = { routes: { ... }, messages: { ... } };`
-  - `routes` — from `AppRoutesProperties`; `messages` — all keys from `messages.properties` via `ResourceBundle`
-  - `escapeJs()` / `buildMessagesJson()` helpers sanitize values before embedding in JS output
+  - Emits `RouteTemplate.JS_CLASS` + `window.APP_CONFIG = { routes: { ... }, messages: { ... } };`
+  - Routes auto-discovered via reflection over `AppRoutesProperties` fields; emitted as `new Route("template")` JS expressions
+  - Messages serialized via Jackson `ObjectMapper` from `ResourceBundle`
   - Loaded by the `scripts` fragment on every page; `APP_CONFIG` is available globally to all page scripts
   - NOTE: Uses JVM default locale; for i18n, would need `MessageSource` with request `Locale` (conflicts with content-hash caching)
 
@@ -920,11 +967,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `startH2WebServer()` — starts H2 web server on port 8082
   - `h2ConsoleServlet()` — registers H2 console servlet at `/h2-console/*`
 
-- `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`
-  - Web routes: `projects`, `tasks`, `audit`, `dashboard`, `analytics`
+- `config/AppRoutesProperties.java` - `@ConfigurationProperties(prefix = "app.routes")`, Lombok `@Data`
+  - All fields are `RouteTemplate` — plain routes and parameterized templates use the same type
+  - Web routes: `projects`, `tasks`, `audit`, `dashboard`, `analytics`, `login`, `profile`
+  - Parameterized web routes: `projectDetail`, `projectSettings`, `taskDetail`
   - API resource routes: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit`
-  - Parameterized API routes (URL templates with `{placeholder}` tokens): `apiProjectAnalytics`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById`
-  - Parameterized routes have overloaded getters: no-arg returns template string (for JS exposure), with-arg resolves placeholders (for Java use)
+  - Parameterized API routes (URL templates with `{placeholder}` tokens): `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById`
+  - Spring binds `String` properties to `RouteTemplate` via `RouteTemplate.StringConverter` (`@ConfigurationPropertiesBinding`)
   - Single source of truth for all paths used by Thymeleaf templates, controllers, and frontend JS
 
 - `config/GlobalModelAttributes.java` - `@ControllerAdvice` that injects shared attributes into every Thymeleaf model
@@ -976,6 +1025,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Each error `ModelAndView` adds `settingService.load()` as `"settings"` so error pages can access theme and site name
 
 ### Utilities
+- `util/RouteTemplate.java` - URL template value type with `{placeholder}` tokens
+  - `resolve()` overloads: no-arg (returns template), single key-value, Map params, Map params + Map query (with URL encoding)
+  - `toString()` returns raw template — transparent in Thymeleaf expressions and string concatenation
+  - `JS_CLASS` constant — JavaScript `Route` class with matching `resolve(params, query)`, `toString()`, `valueOf()` methods; emitted by `FrontendConfigController` into `/config.js`
+  - Nested `StringConverter` (`@ConfigurationPropertiesBinding`) — allows Spring to bind `String` properties to `RouteTemplate` in `AppRoutesProperties`
+
 - `util/Messages.java` - `@Component` wrapper around `MessageSource` for convenient message resolution in service layer
   - Constructor injection: `MessageSource`
   - `get(String key)` — resolves message with default locale, no args
@@ -1434,6 +1489,12 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `GET /api/projects/{id}/members` - All enabled members of a project
 - `GET /api/projects/{id}/members/assignable` - Editors and owners only (for task assignment)
 
+**REST API — Sprints** (requires login; CSRF exempt):
+- `GET /api/projects/{projectId}/sprints` - List all sprints for a project
+- `POST /api/projects/{projectId}/sprints` - Create sprint (201 Created; requires edit access)
+- `PUT /api/projects/{projectId}/sprints/{id}` - Update sprint (requires edit access)
+- `DELETE /api/projects/{projectId}/sprints/{id}` - Delete sprint (204 No Content; nullifies task FKs)
+
 **REST API — Saved Views** (requires login; CSRF exempt):
 - `GET /api/views` - List saved views for current user
 - `POST /api/views` - Save current filters as a named view
@@ -1487,6 +1548,9 @@ The following sections were moved from CLAUDE.md. They are reference material de
 | `AuditApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: admin-only access |
 | `PresenceApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: online users + count |
 | `SecurityConfigTest` | `@SpringBootTest` + MockMvc | URL security: public/auth/admin access, CSRF behavior |
+| `SprintServiceTest` | Unit (Mockito) | Sprint lifecycle: create (valid, invalid dates, overlapping), update (valid, overlapping), delete (task FK nullification) |
+| `SprintQueryServiceTest` | Unit (Mockito) | Read-only sprint lookups: getSprintById, getSprintsByProject, getActiveSprint |
+| `SprintApiControllerTest` | `@SpringBootTest` + MockMvc | REST API: list, create, create invalid, update, delete |
 | `DemoApplicationTests` | `@SpringBootTest` | Context loads successfully |
 
 ### Database Schema
@@ -1506,6 +1570,7 @@ CREATE TABLE projects (
     name        VARCHAR(100) NOT NULL,
     description VARCHAR(500),
     status      VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE / ARCHIVED
+    sprint_enabled BOOLEAN NOT NULL DEFAULT FALSE,     -- enables sprint features for this project
     created_by  BIGINT NOT NULL REFERENCES users(id),
     created_at  TIMESTAMP,
     updated_at  TIMESTAMP
@@ -1534,7 +1599,19 @@ CREATE TABLE tasks (
     updated_at   TIMESTAMP,
     project_id   BIGINT NOT NULL REFERENCES projects(id),  -- every task belongs to a project
     user_id      BIGINT REFERENCES users(id),   -- nullable FK; @ManyToOne owning side
+    sprint_id    BIGINT REFERENCES sprints(id), -- nullable FK; assigned sprint
     parent_id    BIGINT REFERENCES tasks(id)    -- nullable FK; subtask support
+);
+
+CREATE TABLE sprints (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL,
+    goal         VARCHAR(500),
+    start_date   DATE NOT NULL,
+    end_date     DATE NOT NULL,
+    created_at   TIMESTAMP,
+    updated_at   TIMESTAMP,
+    project_id   BIGINT NOT NULL REFERENCES projects(id)
 );
 
 CREATE TABLE task_checklist_items (

@@ -44,6 +44,24 @@
             </div>
         </div>
 
+        <!--/* Sprint filter (project-scoped, when sprints enabled) */-->
+        <div th:if="${project != null && sprints != null && !sprints.isEmpty()}" class="card mb-4" id="sprint-filter">
+            <div class="card-body">
+                <h6 class="card-title mb-3">
+                    <i class="bi bi-lightning-charge me-1"></i>
+                    <span th:text="#{task.field.sprint}">Sprint</span>
+                </h6>
+                <select class="form-select form-select-sm" style="width: auto; min-width: 10rem;"
+                        onchange="setAnalyticsSprintFilter(this.value)">
+                    <option value="" th:text="#{sprint.filter.all}">All</option>
+                    <option th:each="s : ${sprints}"
+                            th:value="${s.id}"
+                            th:selected="${s.active}"
+                            th:text="${(s.active ? '⚡ ' : '') + s.name}">Sprint</option>
+                </select>
+            </div>
+        </div>
+
         <!-- Row 1: Status + Priority Breakdown -->
         <div class="row mb-4">
             <div class="col-md-6 mb-4 mb-md-0">

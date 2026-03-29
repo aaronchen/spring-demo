@@ -3,6 +3,7 @@ package cc.desuka.demo.repository;
 import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
+import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
@@ -88,6 +89,14 @@ public class TaskSpecifications {
         };
     }
 
+    public static Specification<Task> withSprintId(Long sprintId) {
+        return (root, query, cb) -> {
+            if (sprintId == null) return cb.conjunction();
+            if (sprintId == 0L) return cb.isNull(root.get(Task.FIELD_SPRINT));
+            return cb.equal(root.get(Task.FIELD_SPRINT).get(Sprint.FIELD_ID), sprintId);
+        };
+    }
+
     public static Specification<Task> withDateInRange(LocalDate from, LocalDate to) {
         return (root, query, cb) -> {
             if (from == null || to == null) return cb.conjunction();
@@ -115,6 +124,7 @@ public class TaskSpecifications {
                 .and(withKeyword(criteria.getKeyword()))
                 .and(withUserId(criteria.getUserId()))
                 .and(withTagIds(criteria.getTagIds()))
+                .and(withSprintId(criteria.getSprintId()))
                 .and(withDateInRange(criteria.getDueDateFrom(), criteria.getDueDateTo()));
     }
 }

@@ -15,14 +15,19 @@ public class ProjectRequest {
     @Size(max = 500, message = "{project.description.size}")
     private String description;
 
+    private boolean sprintEnabled;
+
     public static ProjectRequest fromEntity(Project project) {
         ProjectRequest request = new ProjectRequest();
         request.setName(project.getName());
         request.setDescription(project.getDescription());
+        request.setSprintEnabled(project.isSprintEnabled());
         return request;
     }
 
     public Project toEntity() {
-        return new Project(name, description);
+        Project project = new Project(name, description);
+        project.setSprintEnabled(sprintEnabled);
+        return project;
     }
 }

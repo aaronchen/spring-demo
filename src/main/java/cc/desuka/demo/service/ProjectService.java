@@ -25,6 +25,7 @@ public class ProjectService {
     private final ProjectQueryService projectQueryService;
     private final UserService userService;
     private final TaskQueryService taskQueryService;
+    private final SprintService sprintService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -33,12 +34,14 @@ public class ProjectService {
             ProjectQueryService projectQueryService,
             UserService userService,
             TaskQueryService taskQueryService,
+            SprintService sprintService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
         this.projectQueryService = projectQueryService;
         this.userService = userService;
         this.taskQueryService = taskQueryService;
+        this.sprintService = sprintService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -70,6 +73,13 @@ public class ProjectService {
 
         project.setName(projectDetails.getName());
         project.setDescription(projectDetails.getDescription());
+
+        // When disabling sprints, unassign all tasks from sprints in this project
+        boolean disablingSprints = project.isSprintEnabled() && !projectDetails.isSprintEnabled();
+        project.setSprintEnabled(projectDetails.isSprintEnabled());
+        if (disablingSprints) {
+            sprintService.clearSprintAssignments(id);
+        }
 
         Project saved = projectRepository.save(project);
 

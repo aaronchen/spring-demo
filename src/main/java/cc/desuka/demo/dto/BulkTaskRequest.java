@@ -10,6 +10,7 @@ public class BulkTaskRequest {
     public static final String ACTION_PRIORITY = "PRIORITY";
     public static final String ACTION_ASSIGN = "ASSIGN";
     public static final String ACTION_EFFORT = "EFFORT";
+    public static final String ACTION_SPRINT = "SPRINT";
     public static final String ACTION_DELETE = "DELETE";
 
     @NotEmpty private List<Long> taskIds;

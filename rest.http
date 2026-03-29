@@ -400,6 +400,47 @@ Cookie: JSESSIONID={{sessionId}}
 GET {{baseUrl}}/api/projects/1/analytics
 Cookie: JSESSIONID={{sessionId}}
 
+### Project-scoped analytics filtered to a sprint
+GET {{baseUrl}}/api/projects/1/analytics?sprintId=2
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
+### Sprints — CRUD (project edit access required)
+### ============================================================
+
+### List sprints for a project
+GET {{baseUrl}}/api/projects/1/sprints
+Cookie: JSESSIONID={{sessionId}}
+
+### Create a sprint
+POST {{baseUrl}}/api/projects/1/sprints
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+    "name": "Sprint 4",
+    "goal": "Performance improvements",
+    "startDate": "2026-04-01",
+    "endDate": "2026-04-15"
+}
+
+### Update a sprint
+PUT {{baseUrl}}/api/projects/1/sprints/3
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+    "name": "Sprint 3 (Revised)",
+    "goal": "Containerization and deployment",
+    "startDate": "2026-04-02",
+    "endDate": "2026-04-18"
+}
+
+### Delete a sprint
+DELETE {{baseUrl}}/api/projects/1/sprints/3
+Cookie: JSESSIONID={{sessionId}}
+
 
 ### ============================================================
 ### OpenAPI / Swagger (public, no auth needed)

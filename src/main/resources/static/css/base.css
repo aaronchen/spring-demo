@@ -1,5 +1,20 @@
 /* Base CSS — global styles shared across all pages */
 
+/* Backlog status — light gray, distinct from Open (dark gray) */
+.btn-backlog {
+    --bs-btn-color: #212529;
+    --bs-btn-bg: #b0b7bf;
+    --bs-btn-border-color: #a3abb4;
+    --bs-btn-hover-bg: #c0c6cc;
+    --bs-btn-hover-border-color: #b4bbc2;
+    --bs-btn-active-bg: #b4bbc2;
+    --bs-btn-active-border-color: #aab1b8;
+}
+.badge.bg-backlog {
+    background-color: #adb5bd !important;
+    color: #fff;
+}
+
 /* Ensure footer stays at bottom */
 body {
     min-height: 100vh;
@@ -151,5 +166,50 @@ body {
     padding: 0.15rem 0.4rem;
     font-size: 0.85rem;
     color: var(--bs-body-color, #212529);
+}
+
+/* ── Settings sidebar nav (GitHub-style) ────────────────────────────── */
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 1rem;
+}
+
+.settings-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    position: relative;
+    color: var(--bs-secondary-color, #6c757d);
+    text-decoration: none;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.settings-nav-link::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 25%;
+    height: 50%;
+    width: 3px;
+    border-radius: 3px;
+    background: transparent;
+}
+
+.settings-nav-link:hover {
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+.settings-nav-link.active {
+    color: var(--bs-body-color);
+    font-weight: 600;
+}
+
+.settings-nav-link.active::before {
+    background: var(--bs-primary, #0d6efd);
 }
 

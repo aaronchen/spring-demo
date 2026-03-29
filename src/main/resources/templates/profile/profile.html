@@ -41,6 +41,7 @@
                                 <input type="email" id="profile-email" class="form-control"
                                        th:field="*{email}"
                                        th:classappend="${#fields.hasErrors('email') ? 'is-invalid' : ''}"
+                                       autocomplete="email"
                                        maxlength="150">
                                 <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}"
                                      th:errors="*{email}">Error</div>
@@ -70,6 +71,7 @@
                                 <input type="password" id="current-password" class="form-control"
                                        th:field="*{currentPassword}"
                                        th:classappend="${#fields.hasErrors('currentPassword') ? 'is-invalid' : ''}"
+                                       autocomplete="current-password"
                                        th:placeholder="#{profile.password.current.placeholder}">
                                 <div class="invalid-feedback" th:if="${#fields.hasErrors('currentPassword')}"
                                      th:errors="*{currentPassword}">Error</div>
@@ -81,6 +83,7 @@
                                 <input type="password" id="new-password" class="form-control"
                                        th:field="*{newPassword}"
                                        th:classappend="${#fields.hasErrors('newPassword') ? 'is-invalid' : ''}"
+                                       autocomplete="new-password"
                                        th:placeholder="#{profile.password.new.placeholder}">
                                 <div class="invalid-feedback" th:if="${#fields.hasErrors('newPassword')}"
                                      th:errors="*{newPassword}">Error</div>
@@ -92,6 +95,7 @@
                                 <input type="password" id="confirm-password" class="form-control"
                                        th:field="*{confirmPassword}"
                                        th:classappend="${#fields.hasErrors('confirmPassword') ? 'is-invalid' : ''}"
+                                       autocomplete="new-password"
                                        th:placeholder="#{profile.password.confirm.placeholder}">
                                 <div class="invalid-feedback" th:if="${#fields.hasErrors('confirmPassword')}"
                                      th:errors="*{confirmPassword}">Error</div>

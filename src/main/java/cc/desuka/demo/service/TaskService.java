@@ -9,6 +9,7 @@ import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
@@ -30,6 +31,7 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final TaskQueryService taskQueryService;
     private final TaskDependencyService taskDependencyService;
+    private final SprintQueryService sprintQueryService;
     private final TagService tagService;
     private final UserService userService;
     private final ApplicationEventPublisher eventPublisher;
@@ -39,6 +41,7 @@ public class TaskService {
             TaskRepository taskRepository,
             TaskQueryService taskQueryService,
             TaskDependencyService taskDependencyService,
+            SprintQueryService sprintQueryService,
             TagService tagService,
             UserService userService,
             ApplicationEventPublisher eventPublisher,
@@ -46,6 +49,7 @@ public class TaskService {
         this.taskRepository = taskRepository;
         this.taskQueryService = taskQueryService;
         this.taskDependencyService = taskDependencyService;
+        this.sprintQueryService = sprintQueryService;
         this.tagService = tagService;
         this.userService = userService;
         this.eventPublisher = eventPublisher;
@@ -140,6 +144,7 @@ public class TaskService {
         task.setStartDate(taskDetails.getStartDate());
         task.setDueDate(taskDetails.getDueDate());
         task.setEffort(taskDetails.getEffort());
+        task.setSprint(taskDetails.getSprint());
         task.setTags(tagService.findAllByIds(tagIds));
         updateCompletedAt(task, previousStatus);
         // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
@@ -225,6 +230,7 @@ public class TaskService {
                             value != null && !value.isBlank() ? LocalDate.parse(value) : null);
             case Task.FIELD_EFFORT ->
                     task.setEffort(value != null && !value.isBlank() ? Short.valueOf(value) : null);
+            case Task.FIELD_SPRINT -> task.setSprint(resolveSprint(value, task));
             case Task.FIELD_USER_ID ->
                     task.setUser(
                             value != null && !value.isBlank()
@@ -348,6 +354,38 @@ public class TaskService {
                             "task.dependency.blocked.transition", String.join(", ", blockerNames)),
                     blockerNames);
         }
+    }
+
+    public void assignSprint(Long taskId, Long sprintId) {
+        Task task = taskQueryService.getTaskById(taskId);
+        Map<String, Object> before = task.toAuditSnapshot();
+        task.setSprint(sprintId != null ? sprintQueryService.getSprintById(sprintId) : null);
+        Task saved = taskRepository.save(task);
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.TASK_UPDATED,
+                            Task.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+        }
+    }
+
+    private Sprint resolveSprint(String value, Task task) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        Long sprintId = Long.valueOf(value);
+        if (sprintId == 0L) {
+            return null;
+        }
+        Sprint sprint = sprintQueryService.getSprintById(sprintId);
+        if (!sprint.getProject().getId().equals(task.getProject().getId())) {
+            throw new IllegalArgumentException(messages.get("sprint.error.wrongProject"));
+        }
+        return sprint;
     }
 
     private void updateCompletedAt(Task task, TaskStatus previousStatus) {

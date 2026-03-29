@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.ChangePasswordRequest;
 import cc.desuka.demo.dto.ProfileRequest;
@@ -28,14 +29,17 @@ public class ProfileController {
     private final UserService userService;
     private final UserPreferenceService userPreferenceService;
     private final PasswordEncoder passwordEncoder;
+    private final AppRoutesProperties appRoutes;
 
     public ProfileController(
             UserService userService,
             UserPreferenceService userPreferenceService,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            AppRoutesProperties appRoutes) {
         this.userService = userService;
         this.userPreferenceService = userPreferenceService;
         this.passwordEncoder = passwordEncoder;
+        this.appRoutes = appRoutes;
     }
 
     // GET /profile - Show profile page
@@ -71,7 +75,7 @@ public class ProfileController {
                         profileRequest.getEmail());
         SecurityUtils.refreshCachedUser(updated);
         redirectAttributes.addFlashAttribute("profileSaved", true);
-        return "redirect:/profile";
+        return "redirect:" + appRoutes.getProfile();
     }
 
     // POST /profile/password - Change password
@@ -111,7 +115,7 @@ public class ProfileController {
         // Update the security context so the session stays valid
         user.setPassword(encoded);
         redirectAttributes.addFlashAttribute("passwordChanged", true);
-        return "redirect:/profile";
+        return "redirect:" + appRoutes.getProfile();
     }
 
     // POST /profile/preferences - Save user preferences
@@ -129,6 +133,6 @@ public class ProfileController {
         userPreferenceService.save(
                 userId, UserPreferences.KEY_DUE_REMINDER, String.valueOf(dueReminder));
         redirectAttributes.addFlashAttribute("preferencesSaved", true);
-        return "redirect:/profile";
+        return "redirect:" + appRoutes.getProfile();
     }
 }

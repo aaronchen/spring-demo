@@ -20,7 +20,7 @@ function bindProjectChange() {
         if (!assigneeSelect) return;
         const projectId = this.value;
         if (projectId) {
-            assigneeSelect._src = resolveRoute(APP_CONFIG.routes.apiProjectMembersAssignable, { projectId });
+            assigneeSelect._src = APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId });
         } else {
             assigneeSelect._src = APP_CONFIG.routes.apiUsers;
         }
@@ -35,7 +35,46 @@ function bindProjectChange() {
                 assigneeSelect._input.placeholder = assigneeSelect.getAttribute('placeholder') || '';
             }
         }
+        // Update sprint dropdown for the selected project
+        updateSprintDropdown(projectId);
     });
+}
+
+function updateSprintDropdown(projectId) {
+    const container = document.getElementById('sprint-selector');
+    const select = document.getElementById('sprintId');
+    if (!container || !select) return;
+
+    if (!projectId) {
+        container.classList.add('d-none');
+        select.innerHTML = '';
+        return;
+    }
+
+    const url = APP_CONFIG.routes.apiProjectSprints.resolve({ projectId });
+    fetch(url)
+        .then(r => r.json())
+        .then(sprints => {
+            if (!sprints.length) {
+                container.classList.add('d-none');
+                select.innerHTML = '';
+                return;
+            }
+            const noneLabel = APP_CONFIG.messages['task.field.sprint.none'] || 'No Sprint';
+            let options = `<option value="">${noneLabel}</option>`;
+            for (const s of sprints) {
+                if (s.status !== 'past') {
+                    const indicator = s.status === 'active' ? ' ⚡' : '';
+                    options += `<option value="${s.id}">${s.name}${indicator}</option>`;
+                }
+            }
+            select.innerHTML = options;
+            container.classList.remove('d-none');
+        })
+        .catch(() => {
+            container.classList.add('d-none');
+            select.innerHTML = '';
+        });
 }
 
 function addChecklistItem() {

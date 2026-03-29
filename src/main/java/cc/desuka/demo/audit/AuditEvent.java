@@ -7,7 +7,9 @@ public class AuditEvent {
     // Audit categories — single source of truth for filter UI and query logic.
     // Each event constant must be prefixed with one of these categories.
     public static final List<String> CATEGORIES =
-            List.of("PROJECT", "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH", "SETTING");
+            List.of(
+                    "PROJECT", "SPRINT", "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH",
+                    "SETTING");
 
     // Project actions
     public static final String PROJECT_CREATED = "PROJECT_CREATED";
@@ -18,6 +20,11 @@ public class AuditEvent {
     public static final String PROJECT_MEMBER_ADDED = "PROJECT_MEMBER_ADDED";
     public static final String PROJECT_MEMBER_REMOVED = "PROJECT_MEMBER_REMOVED";
     public static final String PROJECT_MEMBER_ROLE_CHANGED = "PROJECT_MEMBER_ROLE_CHANGED";
+
+    // Sprint actions
+    public static final String SPRINT_CREATED = "SPRINT_CREATED";
+    public static final String SPRINT_UPDATED = "SPRINT_UPDATED";
+    public static final String SPRINT_DELETED = "SPRINT_DELETED";
 
     // Task actions
     public static final String TASK_CREATED = "TASK_CREATED";

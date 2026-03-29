@@ -17,6 +17,7 @@ public class TaskListQuery {
     private boolean overdue;
     private Priority priority;
     private Long selectedUserId;
+    private Long sprintId;
     private List<Long> tags;
 
     /** Populates a {@link TaskSearchCriteria} from these filter values. */
@@ -39,6 +40,7 @@ public class TaskListQuery {
         criteria.setOverdue(overdue);
         criteria.setPriority(priority);
         criteria.setUserId(selectedUserId);
+        criteria.setSprintId(sprintId);
         criteria.setTagIds(tags);
     }
 
@@ -80,6 +82,14 @@ public class TaskListQuery {
 
     public void setSelectedUserId(Long selectedUserId) {
         this.selectedUserId = selectedUserId;
+    }
+
+    public Long getSprintId() {
+        return sprintId;
+    }
+
+    public void setSprintId(Long sprintId) {
+        this.sprintId = sprintId;
     }
 
     public List<Long> getTags() {
