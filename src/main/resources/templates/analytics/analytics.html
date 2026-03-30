@@ -57,7 +57,7 @@
                     <option th:each="s : ${sprints}"
                             th:value="${s.id}"
                             th:selected="${s.active}"
-                            th:text="${(s.active ? '⚡ ' : '') + s.name}">Sprint</option>
+                            th:text="${s.name}">Sprint</option>
                 </select>
             </div>
         </div>

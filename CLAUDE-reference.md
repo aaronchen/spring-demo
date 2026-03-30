@@ -1174,7 +1174,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/projects/project-grid.html` - Project card grid fragment (`grid` fragment, bare fragment pattern)
   - Responsive 3-column grid of project cards with `card-lift` hover effect
   - Archived projects shown with `bg-light text-muted` styling (no lift)
-  - Card footer: creator name, creation date, status badge
+  - Card footer: creator name, creation date, sprint badge (when enabled), status badge; `flex-wrap` prevents crowding at narrow widths
   - Empty state with folder icon
 - `templates/projects/member-table.html` - Member management fragment (bare fragment pattern)
   - Add member form: `<searchable-select>` for user (remote), role dropdown, add button; HTMX POST

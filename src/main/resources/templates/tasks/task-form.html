@@ -33,7 +33,7 @@
             <option th:each="s : ${projectSprints}"
                     th:if="${!s.past || (task.sprint != null && task.sprint.id == s.id)}"
                     th:value="${s.id}"
-                    th:text="${s.name + (s.active ? ' ⚡' : '')}"
+                    th:text="${s.name}"
                     th:selected="${task.sprint != null && task.sprint.id == s.id}">Sprint</option>
         </select>
     </div>
