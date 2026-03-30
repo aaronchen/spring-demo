@@ -22,6 +22,8 @@ public class Project implements Auditable {
     public static final String FIELD_CREATED_AT = "createdAt";
     public static final String FIELD_UPDATED_AT = "updatedAt";
     public static final String FIELD_SPRINT_ENABLED = "sprintEnabled";
+    public static final String FIELD_TASKS = "tasks";
+    public static final String FIELD_SPRINTS = "sprints";
     public static final String FIELD_MEMBERS = "members";
     public static final String FIELD_MEMBER = "member";
     public static final String FIELD_ROLE = "role";

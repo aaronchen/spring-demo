@@ -16,6 +16,7 @@ public interface ProjectMapper {
     @Mapping(target = Project.FIELD_CREATED_AT, ignore = true)
     @Mapping(target = Project.FIELD_UPDATED_AT, ignore = true)
     @Mapping(target = Project.FIELD_MEMBERS, ignore = true)
-    @Mapping(target = "sprints", ignore = true)
+    @Mapping(target = Project.FIELD_TASKS, ignore = true)
+    @Mapping(target = Project.FIELD_SPRINTS, ignore = true)
     Project toEntity(ProjectRequest request);
 }
