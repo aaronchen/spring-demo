@@ -5,10 +5,16 @@ import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.ProjectListQuery;
 import cc.desuka.demo.dto.ProjectRequest;
+import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
+import cc.desuka.demo.dto.SprintRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.mapper.ProjectMapper;
+import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
+import cc.desuka.demo.mapper.SprintMapper;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
@@ -18,11 +24,15 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.RecurringTaskGenerationService;
+import cc.desuka.demo.service.RecurringTaskTemplateService;
 import cc.desuka.demo.service.SprintQueryService;
+import cc.desuka.demo.service.SprintService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
+import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -54,31 +64,52 @@ public class ProjectController {
     private final ProjectQueryService projectQueryService;
     private final TaskQueryService taskQueryService;
     private final SprintQueryService sprintQueryService;
+    private final SprintService sprintService;
+    private final RecurringTaskTemplateService recurringTaskTemplateService;
+    private final RecurringTaskGenerationService recurringTaskGenerationService;
     private final TagService tagService;
     private final UserService userService;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
     private final AppRoutesProperties appRoutes;
+    private final Messages messages;
+    private final ProjectMapper projectMapper;
+    private final SprintMapper sprintMapper;
+    private final RecurringTaskTemplateMapper recurringTaskTemplateMapper;
 
     public ProjectController(
             ProjectService projectService,
             ProjectQueryService projectQueryService,
             TaskQueryService taskQueryService,
             SprintQueryService sprintQueryService,
+            SprintService sprintService,
+            RecurringTaskTemplateService recurringTaskTemplateService,
+            RecurringTaskGenerationService recurringTaskGenerationService,
             TagService tagService,
             UserService userService,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
-            AppRoutesProperties appRoutes) {
+            AppRoutesProperties appRoutes,
+            Messages messages,
+            ProjectMapper projectMapper,
+            SprintMapper sprintMapper,
+            RecurringTaskTemplateMapper recurringTaskTemplateMapper) {
         this.projectService = projectService;
         this.projectQueryService = projectQueryService;
         this.taskQueryService = taskQueryService;
         this.sprintQueryService = sprintQueryService;
+        this.sprintService = sprintService;
+        this.recurringTaskTemplateService = recurringTaskTemplateService;
+        this.recurringTaskGenerationService = recurringTaskGenerationService;
         this.tagService = tagService;
         this.userService = userService;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
         this.appRoutes = appRoutes;
+        this.messages = messages;
+        this.projectMapper = projectMapper;
+        this.sprintMapper = sprintMapper;
+        this.recurringTaskTemplateMapper = recurringTaskTemplateMapper;
     }
 
     // GET /projects - List projects the current user belongs to
@@ -128,7 +159,8 @@ public class ProjectController {
             return "projects/project-form";
         }
         Project saved =
-                projectService.createProject(projectRequest.toEntity(), currentDetails.getUser());
+                projectService.createProject(
+                        projectMapper.toEntity(projectRequest), currentDetails.getUser());
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
@@ -286,14 +318,17 @@ public class ProjectController {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
-        model.addAttribute("projectRequest", ProjectRequest.fromEntity(project));
+        model.addAttribute("projectRequest", projectMapper.toRequest(project));
         model.addAttribute("projectMembers", projectQueryService.getMembers(id));
         model.addAttribute("projectRoles", ProjectRole.values());
         if (project.isSprintEnabled()) {
-            model.addAttribute("sprints", sprintQueryService.getSprintsByProject(id));
+            populateSprintPanelModel(id, model);
+        }
+        if (!project.isSprintEnabled()) {
+            populateRecurringPanelModel(id, model);
         }
 
-        return "projects/project-settings";
+        return "projects/settings/settings";
     }
 
     // POST /projects/{id} - Update project
@@ -310,9 +345,9 @@ public class ProjectController {
             model.addAttribute("project", projectQueryService.getProjectById(id));
             model.addAttribute("projectMembers", projectQueryService.getMembers(id));
             model.addAttribute("projectRoles", ProjectRole.values());
-            return "projects/project-settings";
+            return "projects/settings/settings";
         }
-        projectService.updateProject(id, projectRequest.toEntity());
+        projectService.updateProject(id, projectMapper.toEntity(projectRequest));
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
@@ -363,7 +398,7 @@ public class ProjectController {
             model.addAttribute("memberError", e.getMessage());
         }
         populateMemberModel(id, model);
-        return "projects/member-table";
+        return "projects/settings/member-panel";
     }
 
     // PATCH /projects/{id}/members/{userId}/role - Change member role
@@ -382,7 +417,7 @@ public class ProjectController {
             model.addAttribute("memberError", e.getMessage());
         }
         populateMemberModel(id, model);
-        return "projects/member-table";
+        return "projects/settings/member-panel";
     }
 
     // DELETE /projects/{id}/members/{userId} - Remove member
@@ -400,7 +435,7 @@ public class ProjectController {
             model.addAttribute("memberError", e.getMessage());
         }
         populateMemberModel(id, model);
-        return "projects/member-table";
+        return "projects/settings/member-panel";
     }
 
     // GET /projects/{id}/analytics - Project analytics page
@@ -421,6 +456,277 @@ public class ProjectController {
                     .ifPresent(s -> model.addAttribute("activeSprint", s));
         }
         return "analytics/analytics";
+    }
+
+    // ── Sprint CRUD (HTMX fragment responses) ─────────────────────────
+
+    // GET /projects/{id}/sprints/panel — return panel in create mode (used by cancel button)
+    @GetMapping("/{id}/sprints/panel")
+    public String sprintPanel(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        populateSprintPanelModel(id, model);
+        return "projects/settings/sprint-panel";
+    }
+
+    // GET /projects/{id}/sprints/{sid}/edit — return panel in edit mode
+    @GetMapping("/{id}/sprints/{sid}/edit")
+    public String editSprintForm(
+            @PathVariable Long id,
+            @PathVariable Long sid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        Sprint sprint = sprintQueryService.getSprintById(sid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        model.addAttribute("editSprint", sprint);
+        model.addAttribute("sprintRequest", sprintMapper.toRequest(sprint));
+        model.addAttribute("sprints", sprintQueryService.getSprintsByProject(id));
+        return "projects/settings/sprint-panel";
+    }
+
+    // POST /projects/{id}/sprints — create sprint
+    @PostMapping("/{id}/sprints")
+    public String createSprint(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
+            BindingResult result,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+
+        if (result.hasErrors()) {
+            model.addAttribute("sprints", sprintQueryService.getSprintsByProject(id));
+            return "projects/settings/sprint-panel";
+        }
+
+        try {
+            sprintService.createSprint(id, sprintMapper.toEntity(sprintRequest));
+            model.addAttribute("sprintCreated", true);
+            model.addAttribute("sprintRequest", new SprintRequest());
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("sprintError", e.getMessage());
+        }
+
+        populateSprintPanelModel(id, model);
+        return "projects/settings/sprint-panel";
+    }
+
+    // POST /projects/{id}/sprints/{sid} — update sprint
+    @PostMapping("/{id}/sprints/{sid}")
+    public String updateSprint(
+            @PathVariable Long id,
+            @PathVariable Long sid,
+            @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
+            BindingResult result,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+
+        if (result.hasErrors()) {
+            model.addAttribute("editSprint", sprintQueryService.getSprintById(sid));
+            model.addAttribute("sprints", sprintQueryService.getSprintsByProject(id));
+            return "projects/settings/sprint-panel";
+        }
+
+        try {
+            sprintService.updateSprint(sid, sprintMapper.toEntity(sprintRequest));
+            model.addAttribute("sprintSaved", true);
+            model.addAttribute("sprintRequest", new SprintRequest());
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("sprintError", e.getMessage());
+            model.addAttribute("editSprint", sprintQueryService.getSprintById(sid));
+        }
+
+        populateSprintPanelModel(id, model);
+        return "projects/settings/sprint-panel";
+    }
+
+    // DELETE /projects/{id}/sprints/{sid} — delete sprint
+    @DeleteMapping("/{id}/sprints/{sid}")
+    public String deleteSprint(
+            @PathVariable Long id,
+            @PathVariable Long sid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        sprintService.deleteSprint(sid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        model.addAttribute("sprintDeleted", true);
+        populateSprintPanelModel(id, model);
+        return "projects/settings/sprint-panel";
+    }
+
+    // ── Recurring Template CRUD (HTMX fragment responses) ───────────
+
+    // GET /projects/{id}/recurring-templates/panel — return panel in create mode
+    @GetMapping("/{id}/recurring-templates/panel")
+    public String recurringPanel(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // GET /projects/{id}/recurring-templates/{tid}/edit — return panel in edit mode
+    @GetMapping("/{id}/recurring-templates/{tid}/edit")
+    public String editRecurringForm(
+            @PathVariable Long id,
+            @PathVariable Long tid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        RecurringTaskTemplate template = recurringTaskTemplateService.getTemplateById(tid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        model.addAttribute("editTemplate", template);
+        model.addAttribute("recurringRequest", recurringTaskTemplateMapper.toRequest(template));
+        model.addAttribute(
+                "recurringTemplates", recurringTaskTemplateService.getTemplatesByProject(id));
+        model.addAttribute("projectMembers", projectQueryService.getMembers(id));
+        model.addAttribute("allTags", tagService.getAllTags());
+        return "projects/settings/recurring-panel";
+    }
+
+    // POST /projects/{id}/recurring-templates — create recurring template
+    @PostMapping("/{id}/recurring-templates")
+    public String createRecurringTemplate(
+            @PathVariable Long id,
+            @Valid @ModelAttribute("recurringRequest")
+                    RecurringTaskTemplateRequest recurringRequest,
+            BindingResult result,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+
+        if (result.hasErrors()) {
+            populateRecurringPanelModel(id, model);
+            return "projects/settings/recurring-panel";
+        }
+
+        try {
+            recurringTaskTemplateService.createTemplate(id, recurringRequest);
+            model.addAttribute("templateCreated", true);
+            model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("recurringError", e.getMessage());
+        }
+
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // POST /projects/{id}/recurring-templates/{tid} — update recurring template
+    @PostMapping("/{id}/recurring-templates/{tid}")
+    public String updateRecurringTemplate(
+            @PathVariable Long id,
+            @PathVariable Long tid,
+            @Valid @ModelAttribute("recurringRequest")
+                    RecurringTaskTemplateRequest recurringRequest,
+            BindingResult result,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+
+        if (result.hasErrors()) {
+            model.addAttribute("editTemplate", recurringTaskTemplateService.getTemplateById(tid));
+            populateRecurringPanelModel(id, model);
+            return "projects/settings/recurring-panel";
+        }
+
+        try {
+            recurringTaskTemplateService.updateTemplate(tid, recurringRequest);
+            model.addAttribute("templateSaved", true);
+            model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("recurringError", e.getMessage());
+            model.addAttribute("editTemplate", recurringTaskTemplateService.getTemplateById(tid));
+        }
+
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // POST /projects/{id}/recurring-templates/{tid}/toggle — toggle enabled
+    @PostMapping("/{id}/recurring-templates/{tid}/toggle")
+    public String toggleRecurringTemplate(
+            @PathVariable Long id,
+            @PathVariable Long tid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        recurringTaskTemplateService.toggleEnabled(tid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        model.addAttribute("templateToggled", true);
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // POST /projects/{id}/recurring-templates/{tid}/generate — generate task now
+    @PostMapping("/{id}/recurring-templates/{tid}/generate")
+    public String generateRecurringTemplate(
+            @PathVariable Long id,
+            @PathVariable Long tid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        RecurringTaskTemplate template = recurringTaskTemplateService.getTemplateById(tid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+
+        if (!template.isEnabled()) {
+            model.addAttribute("recurringError", messages.get("recurring.error.disabled"));
+        } else {
+            recurringTaskGenerationService.generateFromTemplate(
+                    template, currentDetails.getUsername());
+            model.addAttribute("templateGenerated", true);
+        }
+
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // DELETE /projects/{id}/recurring-templates/{tid} — delete recurring template
+    @DeleteMapping("/{id}/recurring-templates/{tid}")
+    public String deleteRecurringTemplate(
+            @PathVariable Long id,
+            @PathVariable Long tid,
+            @AuthenticationPrincipal CustomUserDetails currentDetails,
+            Model model) {
+        projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        recurringTaskTemplateService.deleteTemplate(tid);
+        model.addAttribute("project", projectQueryService.getProjectById(id));
+        model.addAttribute("templateDeleted", true);
+        populateRecurringPanelModel(id, model);
+        return "projects/settings/recurring-panel";
+    }
+
+    // ── Panel model helpers ─────────────────────────────────────────────
+
+    private void populateSprintPanelModel(Long projectId, Model model) {
+        model.addAttribute("sprints", sprintQueryService.getSprintsByProject(projectId));
+        if (!model.containsAttribute("sprintRequest")) {
+            model.addAttribute("sprintRequest", new SprintRequest());
+        }
+    }
+
+    private void populateRecurringPanelModel(Long projectId, Model model) {
+        model.addAttribute(
+                "recurringTemplates",
+                recurringTaskTemplateService.getTemplatesByProject(projectId));
+        model.addAttribute("projectMembers", projectQueryService.getMembers(projectId));
+        model.addAttribute("allTags", tagService.getAllTags());
+        if (!model.containsAttribute("recurringRequest")) {
+            model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
+        }
     }
 
     private void populateMemberModel(Long projectId, Model model) {

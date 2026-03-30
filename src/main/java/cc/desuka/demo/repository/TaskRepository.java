@@ -21,7 +21,16 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     @EntityGraph(attributePaths = {"tags", "user", "project", "sprint", "checklistItems"})
     Optional<Task> findById(Long id);
 
-    @EntityGraph(attributePaths = {"tags", "user", "project", "sprint", "blockedBy", "blocks"})
+    @EntityGraph(
+            attributePaths = {
+                "tags",
+                "user",
+                "project",
+                "sprint",
+                "blockedBy",
+                "blocks",
+                "template"
+            })
     Optional<Task> findWithDependenciesById(Long id);
 
     @EntityGraph(attributePaths = {"tags", "user", "project", "sprint"})

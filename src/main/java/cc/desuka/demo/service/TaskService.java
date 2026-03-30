@@ -373,6 +373,26 @@ public class TaskService {
         }
     }
 
+    public void clearSprintAssignments(Long projectId) {
+        taskRepository
+                .findAll(
+                        (root, query, cb) ->
+                                cb.equal(root.get("sprint").get("project").get("id"), projectId))
+                .forEach(task -> task.setSprint(null));
+    }
+
+    public void clearSprintFromTasks(Long sprintId) {
+        taskRepository
+                .findAll((root, query, cb) -> cb.equal(root.get("sprint").get("id"), sprintId))
+                .forEach(task -> task.setSprint(null));
+    }
+
+    public void clearTemplateFromTasks(Long templateId) {
+        taskRepository
+                .findAll((root, query, cb) -> cb.equal(root.get("template").get("id"), templateId))
+                .forEach(task -> task.setTemplate(null));
+    }
+
     private Sprint resolveSprint(String value, Task task) {
         if (value == null || value.isBlank()) {
             return null;

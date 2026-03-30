@@ -55,7 +55,8 @@ CREATE TABLE tasks (
     updated_at   TIMESTAMP,
     project_id   BIGINT NOT NULL REFERENCES projects(id),
     sprint_id    BIGINT REFERENCES sprints(id),
-    user_id      BIGINT REFERENCES users(id)
+    user_id      BIGINT REFERENCES users(id),
+    template_id  BIGINT REFERENCES recurring_task_templates(id) ON DELETE SET NULL
 );
 
 CREATE TABLE checklist_items (
@@ -125,6 +126,33 @@ CREATE TABLE user_preferences (
     pref_key   VARCHAR(100) NOT NULL,
     pref_value VARCHAR(500),
     UNIQUE (user_id, pref_key)
+);
+
+CREATE TABLE recurring_task_templates (
+    id              BIGSERIAL PRIMARY KEY,
+    title           VARCHAR(100) NOT NULL,
+    description     VARCHAR(500),
+    priority        VARCHAR(255) NOT NULL DEFAULT 'MEDIUM',
+    effort          SMALLINT,
+    recurrence      VARCHAR(20) NOT NULL,
+    day_of_week     SMALLINT,
+    day_of_month    SMALLINT,
+    due_days_after  SMALLINT,
+    next_run_date   DATE NOT NULL,
+    end_date        DATE,
+    enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+    last_generated_at TIMESTAMP,
+    created_at      TIMESTAMP,
+    updated_at      TIMESTAMP,
+    project_id      BIGINT NOT NULL REFERENCES projects(id),
+    assignee_id     BIGINT REFERENCES users(id),
+    created_by      BIGINT NOT NULL REFERENCES users(id)
+);
+
+CREATE TABLE recurring_template_tags (
+    template_id BIGINT NOT NULL REFERENCES recurring_task_templates(id) ON DELETE CASCADE,
+    tag_id      BIGINT NOT NULL REFERENCES tags(id),
+    PRIMARY KEY (template_id, tag_id)
 );
 
 CREATE TABLE saved_views (

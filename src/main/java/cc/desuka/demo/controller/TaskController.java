@@ -8,6 +8,7 @@ import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.exception.BlockedTaskException;
+import cc.desuka.demo.mapper.TaskFormMapper;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
@@ -69,6 +70,7 @@ public class TaskController {
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
+    private final TaskFormMapper taskFormMapper;
     private final AppRoutesProperties appRoutes;
     private final Messages messages;
 
@@ -84,6 +86,7 @@ public class TaskController {
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
+            TaskFormMapper taskFormMapper,
             AppRoutesProperties appRoutes,
             Messages messages) {
         this.taskService = taskService;
@@ -97,6 +100,7 @@ public class TaskController {
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
+        this.taskFormMapper = taskFormMapper;
         this.appRoutes = appRoutes;
         this.messages = messages;
     }
@@ -232,7 +236,7 @@ public class TaskController {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
+        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "view");
         model.addAttribute("tags", tagService.getAllTags());
         addDependencyAttributes(
@@ -270,7 +274,7 @@ public class TaskController {
             task.setDueDate(dueDate);
         }
         model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
+        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "create");
         model.addAttribute("tags", tagService.getAllTags());
         model.addAttribute("timeline", Collections.emptyList());
@@ -313,7 +317,7 @@ public class TaskController {
             }
             return "tasks/task";
         }
-        Task task = taskFormRequest.toEntity();
+        Task task = taskFormMapper.toEntity(taskFormRequest);
         task.setProject(project);
         if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
             task.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
@@ -337,7 +341,7 @@ public class TaskController {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", TaskFormRequest.fromEntity(task));
+        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "edit");
         model.addAttribute("tags", tagService.getAllTags());
         addSprintAttributes(task.getProject(), model);
@@ -377,7 +381,7 @@ public class TaskController {
             }
             return "tasks/task";
         }
-        Task taskDetails = taskFormRequest.toEntity();
+        Task taskDetails = taskFormMapper.toEntity(taskFormRequest);
         if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
             taskDetails.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
         }

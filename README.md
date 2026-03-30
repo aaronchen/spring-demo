@@ -67,6 +67,8 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
 - **Analytics Dashboard** - Six interactive Chart.js charts: status breakdown, priority breakdown, workload distribution (stacked bar by assignee), 30-day burndown, 12-week velocity, and overdue-by-assignee; available cross-project (`/analytics` with project filter checkboxes) and per-project (`/projects/{id}/analytics`)
 - **Real-Time Dashboard** - Per-project stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, due-this-week tasks, recent tasks, and activity feed; admin-only system overview across all projects; auto-refreshes via WebSocket on task and presence changes
+- **Sprints** - Optional time-boxed iterations per project; date-range-based status (past/active/future); non-overlapping enforcement; sprint filter on task views (active sprint / backlog / all); sprint-scoped analytics with burndown using sprint date range; managed via project settings page
+- **Recurring Task Templates** - Automated task generation for non-sprint projects; DAILY/WEEKLY/BIWEEKLY/MONTHLY recurrence; configurable day-of-week/month, relative due dates, optional end date; scheduled 6 AM generation with missed-date skip; auto-disable at end date; managed via project settings with split "New Task" button
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
 - **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
@@ -463,7 +465,11 @@ spring-demo/
 │   │   ├── mapper/
 │   │   │   ├── CommentMapper.java       # MapStruct (impl generated at compile time)
 │   │   │   ├── NotificationMapper.java  # MapStruct: actor.name → actorName
+│   │   │   ├── ProjectMapper.java       # MapStruct: Project ↔ ProjectRequest
+│   │   │   ├── RecurringTaskTemplateMapper.java # MapStruct: template ↔ Request/Response
+│   │   │   ├── SprintMapper.java        # MapStruct: Sprint ↔ Request/Response (derived status)
 │   │   │   ├── TagMapper.java
+│   │   │   ├── TaskFormMapper.java      # MapStruct: Task ↔ TaskFormRequest (web forms)
 │   │   │   ├── TaskMapper.java
 │   │   │   └── UserMapper.java
 │   │   ├── model/

@@ -10,13 +10,10 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectStatus;
 import cc.desuka.demo.model.Sprint;
-import cc.desuka.demo.model.Task;
 import cc.desuka.demo.repository.SprintRepository;
-import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,13 +21,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class SprintServiceTest {
 
     @Mock private SprintRepository sprintRepository;
-    @Mock private TaskRepository taskRepository;
+    @Mock private TaskService taskService;
     @Mock private SprintQueryService sprintQueryService;
     @Mock private ProjectQueryService projectQueryService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -161,23 +157,16 @@ class SprintServiceTest {
 
     // ── deleteSprint ──────────────────────────────────────────────────────
 
-    @SuppressWarnings("unchecked")
     @Test
     void deleteSprint_nullifiesTasksAndDeletesSprint() {
-        Task task1 = new Task();
-        task1.setSprint(sprint);
-        Task task2 = new Task();
-        task2.setSprint(sprint);
         when(sprintQueryService.getSprintById(1L)).thenReturn(sprint);
-        when(taskRepository.findAll(any(Specification.class))).thenReturn(List.of(task1, task2));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
             sprintService.deleteSprint(1L);
 
-            assertThat(task1.getSprint()).isNull();
-            assertThat(task2.getSprint()).isNull();
+            verify(taskService).clearSprintFromTasks(1L);
             verify(sprintRepository).delete(sprint);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
         }

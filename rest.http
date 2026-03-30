@@ -443,6 +443,58 @@ Cookie: JSESSIONID={{sessionId}}
 
 
 ### ============================================================
+### Recurring Task Templates (non-sprint projects, project edit access)
+### ============================================================
+
+### List recurring templates for a project
+GET {{baseUrl}}/api/projects/3/recurring-templates
+Cookie: JSESSIONID={{sessionId}}
+
+### Create a recurring template
+POST {{baseUrl}}/api/projects/3/recurring-templates
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+  "title": "Weekly Standup Notes",
+  "description": "Compile and share standup notes",
+  "recurrence": "WEEKLY",
+  "priority": "MEDIUM",
+  "nextRunDate": "2026-04-06",
+  "dueDaysAfter": 1
+}
+
+### Get a specific template
+GET {{baseUrl}}/api/projects/3/recurring-templates/1
+Cookie: JSESSIONID={{sessionId}}
+
+### Update a template
+PUT {{baseUrl}}/api/projects/3/recurring-templates/1
+Cookie: JSESSIONID={{sessionId}}
+Content-Type: application/json
+
+{
+  "title": "Weekly Security Audit Review (Updated)",
+  "recurrence": "WEEKLY",
+  "priority": "HIGH",
+  "nextRunDate": "2026-04-07",
+  "dueDaysAfter": 5
+}
+
+### Toggle enabled/disabled
+POST {{baseUrl}}/api/projects/3/recurring-templates/1/toggle
+Cookie: JSESSIONID={{sessionId}}
+
+### Generate a task from template immediately
+POST {{baseUrl}}/api/projects/3/recurring-templates/1/generate
+Cookie: JSESSIONID={{sessionId}}
+
+### Delete a template
+DELETE {{baseUrl}}/api/projects/3/recurring-templates/1
+Cookie: JSESSIONID={{sessionId}}
+
+
+### ============================================================
 ### OpenAPI / Swagger (public, no auth needed)
 ### ============================================================
 

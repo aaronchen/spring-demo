@@ -32,6 +32,8 @@ class ProjectServiceTest {
     @Mock private ProjectQueryService projectQueryService;
     @Mock private UserService userService;
     @Mock private TaskQueryService taskQueryService;
+    @Mock private SprintService sprintService;
+    @Mock private RecurringTaskTemplateService recurringTaskTemplateService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Messages messages;
 

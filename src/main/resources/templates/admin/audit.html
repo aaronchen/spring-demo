@@ -9,7 +9,26 @@
         <h1 class="display-4 mb-4" th:text="#{admin.audit.heading}">Audit Log</h1>
 
         <!-- Filters row -->
-        <div class="row g-3 mb-4 align-items-end">
+        <div class="row g-3 mb-4 align-items-center">
+
+            <!-- Category dropdown -->
+            <div class="col-md-auto dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle audit-category-btn"
+                        type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-funnel"></i>
+                    <span id="audit-category-label" th:text="#{admin.audit.filter.all}">All</span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item audit-category-item active" href="#"
+                           data-category=""
+                           th:text="#{admin.audit.filter.all}">All</a></li>
+                    <li th:each="cat : ${categories}">
+                        <a class="dropdown-item audit-category-item" href="#"
+                           th:data-category="${cat.toLowerCase()}"
+                           th:text="#{${'admin.audit.filter.' + cat.toLowerCase()}}">Category</a>
+                    </li>
+                </ul>
+            </div>
 
             <!-- Search -->
             <div class="col-md-4">
@@ -27,23 +46,13 @@
                 </div>
             </div>
 
-            <!-- Category buttons -->
-            <div class="col-md-auto">
-                <div class="btn-group" role="group" aria-label="Category filter">
-                    <button type="button" class="btn btn-outline-secondary btn-sm audit-category-btn active"
-                            data-category="" th:text="#{admin.audit.filter.all}">All</button>
-                    <button th:each="cat : ${categories}" type="button"
-                            class="btn btn-outline-secondary btn-sm audit-category-btn"
-                            th:data-category="${cat.toLowerCase()}"
-                            th:text="#{${'admin.audit.filter.' + cat.toLowerCase()}}">Category</button>
-                </div>
-            </div>
-
             <!-- Date range -->
             <div class="col-md-auto d-flex align-items-center gap-2">
                 <label for="audit-date-from" class="form-label mb-0 text-nowrap"
                        th:text="#{admin.audit.date.from}">From</label>
-                <input type="date" id="audit-date-from" class="form-control form-control-sm" style="width: auto;">
+                <input type="date" id="audit-date-from"
+                       class="form-control form-control-sm date-range-start"
+                       data-date-min-for="audit-date-to" style="width: auto;">
                 <label for="audit-date-to" class="form-label mb-0 text-nowrap"
                        th:text="#{admin.audit.date.to}">To</label>
                 <input type="date" id="audit-date-to" class="form-control form-control-sm" style="width: auto;">

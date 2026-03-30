@@ -9,6 +9,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ScheduledTaskService {
 
+    private static final Logger log = LoggerFactory.getLogger(ScheduledTaskService.class);
+
     private final TaskQueryService taskQueryService;
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
+    private final RecurringTaskGenerationService recurringTaskGenerationService;
     private final UserPreferenceService userPreferenceService;
     private final SettingService settingService;
     private final Messages messages;
@@ -31,12 +36,14 @@ public class ScheduledTaskService {
             TaskQueryService taskQueryService,
             NotificationService notificationService,
             NotificationRepository notificationRepository,
+            RecurringTaskGenerationService recurringTaskGenerationService,
             UserPreferenceService userPreferenceService,
             SettingService settingService,
             Messages messages) {
         this.taskQueryService = taskQueryService;
         this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
+        this.recurringTaskGenerationService = recurringTaskGenerationService;
         this.userPreferenceService = userPreferenceService;
         this.settingService = settingService;
         this.messages = messages;
@@ -64,6 +71,19 @@ public class ScheduledTaskService {
                     NotificationType.TASK_DUE_REMINDER,
                     message,
                     "/tasks/" + task.getId());
+        }
+    }
+
+    /**
+     * Generates tasks from recurring templates that are due. Runs daily at 6:00 AM — before due
+     * reminders at 8:00 AM so newly generated tasks with due dates get reminded on the same day.
+     */
+    @Scheduled(cron = "0 0 6 * * *")
+    @Transactional
+    public void generateRecurringTasks() {
+        int count = recurringTaskGenerationService.generateDueTasks();
+        if (count > 0) {
+            log.info("Generated {} recurring tasks", count);
         }
     }
 
