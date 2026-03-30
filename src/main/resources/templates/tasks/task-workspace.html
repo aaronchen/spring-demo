@@ -73,17 +73,22 @@
                         : #{task.field.sprint})">Sprint</span>
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="#" onclick="setSprintFilter(''); return false;"
-                   th:text="#{sprint.filter.all}">All Tasks</a></li>
-            <li><a class="dropdown-item" href="#" onclick="setSprintFilter('0'); return false;"
-                   th:text="#{sprint.filter.noSprint}">No Sprint</a></li>
-            <li><hr class="dropdown-divider"></li>
             <li th:each="s : ${sprints}">
                 <a class="dropdown-item" href="#"
                    th:data-value="${s.id}"
-                   onclick="setSprintFilter(this.dataset.value); return false;"
-                   th:text="${(s.active ? '⚡ ' : '') + s.name}">Sprint</a>
+                   th:data-name="${s.name}"
+                   onclick="setSprintFilter(this.dataset.value); return false;">
+                    <span th:text="${s.name}">Sprint</span>
+                    <i th:if="${s.active}" class="bi bi-broadcast-pin text-muted ms-1"></i>
+                </a>
             </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" onclick="setSprintFilter('0'); return false;">
+                    <i class="bi bi-dash-circle me-1"></i> <span th:text="#{sprint.filter.noSprint}">No Sprint</span>
+                </a></li>
+            <li><a class="dropdown-item" href="#" onclick="setSprintFilter(''); return false;">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> <span th:text="#{sprint.filter.all}">All Tasks</span>
+                </a></li>
         </ul>
         <input type="hidden" id="current-sprint-filter"
                th:value="${sprintId != null} ? ${sprintId} : ''">

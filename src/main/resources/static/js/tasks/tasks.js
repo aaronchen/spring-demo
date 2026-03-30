@@ -335,9 +335,8 @@ function setSprintFilter(value) {
         } else if (value === '0') {
             label.textContent = APP_CONFIG.messages['sprint.filter.noSprint'] || 'No Sprint';
         } else {
-            // Find the clicked item's text
             const item = document.querySelector(`[data-value="${value}"]`);
-            if (item) label.textContent = item.textContent;
+            if (item) label.textContent = item.dataset.name || item.textContent;
         }
     }
     doSearch(true);
@@ -642,6 +641,21 @@ function applySavedView(view) {
     document.getElementById('current-priority-filter').value = query.priority || '';
     selectedUserId = query.selectedUserId || null;
     selectedTagIds = query.tags || [];
+    const sprintHidden = document.getElementById('current-sprint-filter');
+    if (sprintHidden) {
+        sprintHidden.value = query.sprintId || '';
+        const label = document.getElementById('sprint-filter-label');
+        if (label) {
+            if (!query.sprintId) {
+                label.textContent = APP_CONFIG.messages['task.field.sprint'] || 'Sprint';
+            } else if (query.sprintId === '0' || query.sprintId === 0) {
+                label.textContent = APP_CONFIG.messages['sprint.filter.noSprint'] || 'No Sprint';
+            } else {
+                const item = document.querySelector(`[data-value="${query.sprintId}"]`);
+                label.textContent = item ? (item.dataset.name || item.textContent.trim()) : (APP_CONFIG.messages['task.field.sprint'] || 'Sprint');
+            }
+        }
+    }
     if (data.view) currentView = data.view;
     if (data.sort) {
         activeSorts = data.sort;
@@ -699,6 +713,7 @@ function saveCurrentView() {
                 priority: priorityValue || null,
                 selectedUserId: selectedUserId || null,
                 tags: selectedTagIds.length > 0 ? selectedTagIds.slice() : null,
+                sprintId: (document.getElementById('current-sprint-filter') || {}).value || null,
             },
             view: currentView,
             sort: activeSorts.slice(),

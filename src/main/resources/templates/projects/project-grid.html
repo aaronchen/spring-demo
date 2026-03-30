@@ -16,18 +16,23 @@
                     <p class="card-text text-muted small" th:if="${project.description}"
                        th:text="${#strings.abbreviate(project.description, 120)}">Description</p>
                 </div>
-                <div class="card-footer bg-transparent border-top-0 d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
+                <div class="card-footer bg-transparent border-top-0 d-flex flex-wrap justify-content-between align-items-center gap-1">
+                    <small class="text-muted text-nowrap">
                         <i class="bi bi-person"></i>
                         <span th:text="${project.createdBy?.name}">Creator</span>
                         <span class="ms-2">
                             <i class="bi bi-calendar3"></i>
-                            <span th:text="${#temporals.format(project.createdAt, 'MMM dd, yyyy')}">Date</span>
+                            <span th:text="${#temporals.format(project.createdAt, 'MMM d, yyyy')}">Date</span>
                         </span>
                     </small>
-                    <span class="badge"
-                          th:classappend="${isArchived ? 'bg-secondary' : 'bg-success'}"
-                          th:text="${isArchived} ? #{project.status.archived} : #{project.status.active}">Status</span>
+                    <span class="d-flex gap-1">
+                        <span th:if="${project.sprintEnabled}" class="badge bg-info">
+                            <i class="bi bi-lightning-charge"></i> <span th:text="#{task.field.sprint}">Sprint</span>
+                        </span>
+                        <span class="badge"
+                              th:classappend="${isArchived ? 'bg-secondary' : 'bg-success'}"
+                              th:text="${isArchived} ? #{project.status.archived} : #{project.status.active}">Status</span>
+                    </span>
                 </div>
             </div>
         </div>

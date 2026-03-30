@@ -64,8 +64,7 @@ function updateSprintDropdown(projectId) {
             let options = `<option value="">${noneLabel}</option>`;
             for (const s of sprints) {
                 if (s.status !== 'past') {
-                    const indicator = s.status === 'active' ? ' ⚡' : '';
-                    options += `<option value="${s.id}">${s.name}${indicator}</option>`;
+                    options += `<option value="${s.id}">${s.name}</option>`;
                 }
             }
             select.innerHTML = options;
