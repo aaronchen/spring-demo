@@ -1,11 +1,12 @@
-/* Category button active states */
-.audit-category-btn.active {
-    --bs-btn-active-bg: var(--bs-secondary);
-    --bs-btn-active-border-color: var(--bs-secondary);
-    --bs-btn-active-color: #fff;
-    background-color: var(--bs-secondary) !important;
-    border-color: var(--bs-secondary) !important;
-    color: #fff !important;
+/* Category filter dropdown — matches form-control-sm height, caret right-aligned */
+.audit-category-btn {
+    min-width: 120px;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    padding: .25rem .5rem;
+    font-size: .875rem;
+    line-height: 1.5;
 }
 
 /* Search clear button */

@@ -60,7 +60,30 @@
                                 th:title="#{task.export.tooltip}">
                             <i class="bi bi-filetype-csv"></i> <span th:text="#{task.export}">Export</span>
                         </button>
-                        <button th:if="${canEditProject}" class="btn btn-primary btn-lg"
+                        <!--/* Split button: "New Task" + dropdown with "New Recurring Task" on non-sprint projects */-->
+                        <div th:if="${canEditProject && !project.sprintEnabled}" class="btn-group">
+                            <button class="btn btn-primary btn-lg"
+                                    th:attr="hx-get=${appRoutes.tasks + '/new?projectId=' + project.id}"
+                                    hx-target="#task-modal-content"
+                                    hx-swap="innerHTML">
+                                <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>
+                            </button>
+                            <button type="button" class="btn btn-primary btn-lg dropdown-toggle dropdown-toggle-split"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                <span class="visually-hidden">Toggle Dropdown</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item"
+                                       th:href="@{/projects/{id}/settings(id=${project.id})}+ '#recurring'">
+                                        <i class="bi bi-arrow-repeat me-1"></i>
+                                        <span th:text="#{recurring.action.create}">New Recurring Task</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <!--/* Simple button for sprint projects (no recurring tasks) */-->
+                        <button th:if="${canEditProject && project.sprintEnabled}" class="btn btn-primary btn-lg"
                                 th:attr="hx-get=${appRoutes.tasks + '/new?projectId=' + project.id}"
                                 hx-target="#task-modal-content"
                                 hx-swap="innerHTML">

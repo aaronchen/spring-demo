@@ -5,7 +5,6 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.repository.SprintRepository;
-import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.Map;
@@ -18,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SprintService {
 
     private final SprintRepository sprintRepository;
-    private final TaskRepository taskRepository;
+    private final TaskService taskService;
     private final SprintQueryService sprintQueryService;
     private final ProjectQueryService projectQueryService;
     private final ApplicationEventPublisher eventPublisher;
@@ -26,13 +25,13 @@ public class SprintService {
 
     public SprintService(
             SprintRepository sprintRepository,
-            TaskRepository taskRepository,
+            TaskService taskService,
             SprintQueryService sprintQueryService,
             ProjectQueryService projectQueryService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.sprintRepository = sprintRepository;
-        this.taskRepository = taskRepository;
+        this.taskService = taskService;
         this.sprintQueryService = sprintQueryService;
         this.projectQueryService = projectQueryService;
         this.eventPublisher = eventPublisher;
@@ -87,21 +86,14 @@ public class SprintService {
     }
 
     public void clearSprintAssignments(Long projectId) {
-        taskRepository
-                .findAll(
-                        (root, query, cb) ->
-                                cb.equal(root.get("sprint").get("project").get("id"), projectId))
-                .forEach(task -> task.setSprint(null));
+        taskService.clearSprintAssignments(projectId);
     }
 
     public void deleteSprint(Long id) {
         Sprint sprint = sprintQueryService.getSprintById(id);
         String snapshot = AuditDetails.toJson(sprint.toAuditSnapshot());
 
-        // Nullify sprint FK on associated tasks before deleting
-        taskRepository
-                .findAll((root, query, cb) -> cb.equal(root.get("sprint").get("id"), id))
-                .forEach(task -> task.setSprint(null));
+        taskService.clearSprintFromTasks(id);
 
         sprintRepository.delete(sprint);
 

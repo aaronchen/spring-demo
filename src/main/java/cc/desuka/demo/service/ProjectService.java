@@ -26,6 +26,7 @@ public class ProjectService {
     private final UserService userService;
     private final TaskQueryService taskQueryService;
     private final SprintService sprintService;
+    private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -35,6 +36,7 @@ public class ProjectService {
             UserService userService,
             TaskQueryService taskQueryService,
             SprintService sprintService,
+            RecurringTaskTemplateService recurringTaskTemplateService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
@@ -42,6 +44,7 @@ public class ProjectService {
         this.userService = userService;
         this.taskQueryService = taskQueryService;
         this.sprintService = sprintService;
+        this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -76,9 +79,14 @@ public class ProjectService {
 
         // When disabling sprints, unassign all tasks from sprints in this project
         boolean disablingSprints = project.isSprintEnabled() && !projectDetails.isSprintEnabled();
+        // When enabling sprints, disable all recurring templates (mutually exclusive)
+        boolean enablingSprints = !project.isSprintEnabled() && projectDetails.isSprintEnabled();
         project.setSprintEnabled(projectDetails.isSprintEnabled());
         if (disablingSprints) {
             sprintService.clearSprintAssignments(id);
+        }
+        if (enablingSprints) {
+            recurringTaskTemplateService.disableAllForProject(id);
         }
 
         Project saved = projectRepository.save(project);

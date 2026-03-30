@@ -14,6 +14,8 @@ import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.Recurrence;
+import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.model.Setting;
@@ -28,6 +30,7 @@ import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.NotificationRepository;
 import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
+import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.repository.SavedViewRepository;
 import cc.desuka.demo.repository.SettingRepository;
 import cc.desuka.demo.repository.SprintRepository;
@@ -62,6 +65,7 @@ public class DataLoader implements CommandLineRunner {
     private final SavedViewRepository savedViewRepository;
     private final SettingRepository settingRepository;
     private final SprintRepository sprintRepository;
+    private final RecurringTaskTemplateRepository recurringTaskTemplateRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataLoader(
@@ -76,6 +80,7 @@ public class DataLoader implements CommandLineRunner {
             SavedViewRepository savedViewRepository,
             SettingRepository settingRepository,
             SprintRepository sprintRepository,
+            RecurringTaskTemplateRepository recurringTaskTemplateRepository,
             PasswordEncoder passwordEncoder) {
         this.taskRepository = taskRepository;
         this.tagRepository = tagRepository;
@@ -88,6 +93,7 @@ public class DataLoader implements CommandLineRunner {
         this.savedViewRepository = savedViewRepository;
         this.settingRepository = settingRepository;
         this.sprintRepository = sprintRepository;
+        this.recurringTaskTemplateRepository = recurringTaskTemplateRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -1470,6 +1476,61 @@ public class DataLoader implements CommandLineRunner {
 
         notificationRepository.saveAll(notifications);
 
+        // ── Recurring Task Templates ────────────────────────────────────────
+        RecurringTaskTemplate weeklyAudit = new RecurringTaskTemplate();
+        weeklyAudit.setTitle("Weekly Security Audit Review");
+        weeklyAudit.setDescription("Review security audit logs and flag anomalies");
+        weeklyAudit.setPriority(Priority.HIGH);
+        weeklyAudit.setRecurrence(Recurrence.WEEKLY);
+        weeklyAudit.setDayOfWeek((short) 1);
+        weeklyAudit.setNextRunDate(today.plusDays(1));
+        weeklyAudit.setDueDaysAfter((short) 5);
+        weeklyAudit.setProject(securityProject);
+        weeklyAudit.setAssignee(david);
+        weeklyAudit.setCreatedBy(alice);
+        weeklyAudit.setTags(new java.util.LinkedHashSet<>(List.of(securityTag)));
+
+        RecurringTaskTemplate monthlyCompliance = new RecurringTaskTemplate();
+        monthlyCompliance.setTitle("Monthly Compliance Report");
+        monthlyCompliance.setDescription("Generate and submit monthly compliance report");
+        monthlyCompliance.setPriority(Priority.MEDIUM);
+        monthlyCompliance.setRecurrence(Recurrence.MONTHLY);
+        monthlyCompliance.setDayOfMonth((short) 1);
+        monthlyCompliance.setNextRunDate(today.withDayOfMonth(1).plusMonths(1));
+        monthlyCompliance.setDueDaysAfter((short) 10);
+        monthlyCompliance.setEffort((short) 8);
+        monthlyCompliance.setProject(securityProject);
+        monthlyCompliance.setAssignee(grace);
+        monthlyCompliance.setCreatedBy(alice);
+
+        RecurringTaskTemplate dailyHealthCheck = new RecurringTaskTemplate();
+        dailyHealthCheck.setTitle("Daily System Health Check");
+        dailyHealthCheck.setDescription("Verify all production services are healthy");
+        dailyHealthCheck.setPriority(Priority.HIGH);
+        dailyHealthCheck.setRecurrence(Recurrence.DAILY);
+        dailyHealthCheck.setNextRunDate(today.plusDays(1));
+        dailyHealthCheck.setDueDaysAfter((short) 1);
+        dailyHealthCheck.setEffort((short) 1);
+        dailyHealthCheck.setProject(opsProject);
+        dailyHealthCheck.setAssignee(frank);
+        dailyHealthCheck.setCreatedBy(david);
+
+        RecurringTaskTemplate biweeklyBackup = new RecurringTaskTemplate();
+        biweeklyBackup.setTitle("Biweekly Backup Verification");
+        biweeklyBackup.setDescription("Verify backup integrity and test restore procedure");
+        biweeklyBackup.setPriority(Priority.MEDIUM);
+        biweeklyBackup.setRecurrence(Recurrence.BIWEEKLY);
+        biweeklyBackup.setNextRunDate(today.plusDays(3));
+        biweeklyBackup.setDueDaysAfter((short) 7);
+        biweeklyBackup.setEffort((short) 4);
+        biweeklyBackup.setProject(opsProject);
+        biweeklyBackup.setAssignee(henry);
+        biweeklyBackup.setCreatedBy(david);
+        biweeklyBackup.setEnabled(false);
+
+        recurringTaskTemplateRepository.saveAll(
+                List.of(weeklyAudit, monthlyCompliance, dailyHealthCheck, biweeklyBackup));
+
         // ── Curated demo data for Alice & Bob ───────────────────────────────────
         List<Project> projects =
                 List.of(platformProject, productProject, securityProject, opsProject);
@@ -1494,6 +1555,8 @@ public class DataLoader implements CommandLineRunner {
                         + " notifications, "
                         + auditLogRepository.count()
                         + " audit logs, "
+                        + recurringTaskTemplateRepository.count()
+                        + " recurring templates, "
                         + settingRepository.count()
                         + " settings.");
     }

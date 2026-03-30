@@ -38,6 +38,14 @@
         </select>
     </div>
 
+    <!--/* Generated-from badge — shown when task was created by a recurring template */-->
+    <div class="mb-3" th:if="${taskFormRequest.templateName != null}">
+        <span class="badge bg-info-subtle text-info-emphasis">
+            <i class="bi bi-arrow-repeat"></i>
+            <span th:text="#{recurring.generatedFrom(${taskFormRequest.templateName})}">Generated from: Template</span>
+        </span>
+    </div>
+
     <!-- Title -->
     <div class="mb-3">
         <label for="title" class="form-label fw-bold"
@@ -167,8 +175,9 @@
             <label for="startDate" class="form-label fw-bold" th:text="#{task.field.startDate}">Start Date</label>
             <input type="date"
                    th:field="*{startDate}"
-                   class="form-control"
+                   class="form-control date-range-start"
                    id="startDate"
+                   data-date-min-for="dueDate"
                    th:disabled="${mode == 'view'}">
         </div>
         <div class="col-md-4 col-xl-5">

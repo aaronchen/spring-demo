@@ -24,6 +24,8 @@ public interface TaskMapper {
     @Mapping(target = "projectName", source = "project.name")
     @Mapping(target = "sprintId", source = "sprint.id")
     @Mapping(target = "sprintName", source = "sprint.name")
+    @Mapping(target = "templateId", source = "template.id")
+    @Mapping(target = "templateName", source = "template.title")
     TaskResponse toResponse(Task task);
 
     List<TaskResponse> toResponseList(List<Task> tasks);
@@ -48,6 +50,7 @@ public interface TaskMapper {
     @Mapping(target = Task.FIELD_CHECKLIST_CHECKED, ignore = true)
     @Mapping(target = Task.FIELD_PROJECT, ignore = true)
     @Mapping(target = Task.FIELD_SPRINT, ignore = true)
+    @Mapping(target = Task.FIELD_TEMPLATE, ignore = true)
     @Mapping(target = Task.FIELD_BLOCKED_BY, ignore = true)
     @Mapping(target = Task.FIELD_BLOCKS, ignore = true)
     Task toEntity(TaskRequest request);

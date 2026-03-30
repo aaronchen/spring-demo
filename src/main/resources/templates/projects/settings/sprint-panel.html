@@ -1,0 +1,154 @@
+<!--/* Bare fragment — returned by HTMX after sprint CRUD.
+     Also included from project-settings.html via th:replace. */-->
+<div id="sprint-panel-content" xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Error Alert -->
+    <div th:if="${sprintError}" class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+        <span th:text="${sprintError}">Error</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Sprint Form -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h5 class="mb-0"
+                th:text="${editSprint != null} ? #{sprint.action.edit} : #{sprint.action.create}">Create Sprint</h5>
+        </div>
+        <div class="card-body">
+            <form th:object="${sprintRequest}"
+                  th:with="formUrl=${editSprint != null}
+                      ? @{/projects/{pId}/sprints/{sId}(pId=${project.id}, sId=${editSprint.id})}
+                      : @{/projects/{pId}/sprints(pId=${project.id})}"
+                  th:attr="hx-post=${formUrl}"
+                  hx-target="#sprint-panel-content"
+                  hx-swap="outerHTML">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold form-label-required"
+                               th:text="#{sprint.field.name}">Name</label>
+                        <input type="text" class="form-control form-control-sm" th:field="*{name}"
+                               autocomplete="off" th:placeholder="#{sprint.field.name}" th:errorclass="is-invalid">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                             th:errors="*{name}">Name error</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold" th:text="#{sprint.field.goal}">Goal</label>
+                        <input type="text" class="form-control form-control-sm" th:field="*{goal}"
+                               autocomplete="off" th:placeholder="#{sprint.field.goal}" th:errorclass="is-invalid">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('goal')}"
+                             th:errors="*{goal}">Goal error</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold form-label-required"
+                               th:text="#{sprint.field.startDate}">Start Date</label>
+                        <input type="date" class="form-control form-control-sm date-range-start" th:field="*{startDate}"
+                               data-date-min-for="sprint-endDate" th:errorclass="is-invalid">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('startDate')}"
+                             th:errors="*{startDate}">Date error</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold form-label-required"
+                               th:text="#{sprint.field.endDate}">End Date</label>
+                        <input type="date" class="form-control form-control-sm" th:field="*{endDate}"
+                               id="sprint-endDate" th:errorclass="is-invalid">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('endDate')}"
+                             th:errors="*{endDate}">Date error</div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-check-circle"></i>
+                            <span th:text="${editSprint != null} ? #{action.save} : #{sprint.action.create}">Create</span>
+                        </button>
+                        <button th:if="${editSprint != null}" type="button"
+                                class="btn btn-sm btn-outline-secondary w-100"
+                                th:attr="hx-get=@{/projects/{pId}/sprints/panel(pId=${project.id})}"
+                                hx-target="#sprint-panel-content"
+                                hx-swap="outerHTML">
+                            <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Triggers -->
+    <th:block th:if="${sprintCreated}">
+        <script>showToast(APP_CONFIG.messages['sprint.action.created'], 'success');</script>
+    </th:block>
+    <th:block th:if="${sprintSaved}">
+        <script>showToast(APP_CONFIG.messages['sprint.action.saved'], 'success');</script>
+    </th:block>
+    <th:block th:if="${sprintDeleted}">
+        <script>showToast(APP_CONFIG.messages['sprint.action.deleted'], 'success');</script>
+    </th:block>
+
+    <!-- Sprint List -->
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0" th:text="#{project.sprint.heading}">Sprints</h5>
+        </div>
+        <div class="card-body">
+            <div th:if="${sprints == null || sprints.isEmpty()}" class="text-muted text-center py-3"
+                 th:text="#{sprint.empty}">No sprints yet.</div>
+            <div th:if="${sprints != null && !sprints.isEmpty()}" class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th th:text="#{sprint.field.name}">Name</th>
+                            <th th:text="#{sprint.field.startDate}">Start</th>
+                            <th th:text="#{sprint.field.endDate}">End</th>
+                            <th>Status</th>
+                            <th style="width: 1px; white-space: nowrap;" th:text="#{project.member.table.actions}">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="sprint : ${sprints}">
+                            <td>
+                                <span th:text="${sprint.name}">Sprint 1</span>
+                                <small th:if="${sprint.goal != null}" class="d-block text-muted"
+                                       th:text="${sprint.goal}">Goal</small>
+                            </td>
+                            <td class="text-nowrap">
+                                <small th:text="${#temporals.format(sprint.startDate, 'MMM dd, yyyy')}">Date</small>
+                            </td>
+                            <td class="text-nowrap">
+                                <small th:text="${#temporals.format(sprint.endDate, 'MMM dd, yyyy')}">Date</small>
+                            </td>
+                            <td>
+                                <span th:if="${sprint.active}" class="badge bg-success"
+                                      th:text="#{sprint.status.active}">Active</span>
+                                <span th:if="${sprint.past}" class="badge bg-secondary"
+                                      th:text="#{sprint.status.past}">Past</span>
+                                <span th:if="${sprint.future}" class="badge bg-light text-dark"
+                                      th:text="#{sprint.status.future}">Future</span>
+                            </td>
+                            <td class="text-nowrap">
+                                <button class="btn btn-sm btn-outline-primary me-1"
+                                        th:attr="hx-get=@{/projects/{pId}/sprints/{sId}/edit(pId=${project.id}, sId=${sprint.id})}"
+                                        hx-target="#sprint-panel-content"
+                                        hx-swap="outerHTML"
+                                        th:title="#{sprint.action.edit}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        th:attr="hx-delete=@{/projects/{pId}/sprints/{sId}(pId=${project.id}, sId=${sprint.id})},
+                                                 hx-confirm=#{sprint.confirm.delete},
+                                                 data-confirm-title=#{sprint.action.delete},
+                                                 data-confirm-text=#{sprint.action.delete},
+                                                 data-confirm-header-class='bg-danger text-white',
+                                                 data-confirm-btn-class='btn btn-danger'"
+                                        hx-target="#sprint-panel-content"
+                                        hx-swap="outerHTML"
+                                        th:title="#{sprint.action.delete}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>

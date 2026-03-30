@@ -207,6 +207,17 @@ document.addEventListener('htmx:responseError', function (evt) {
     }
 });
 
+// ── Date range constraint ────────────────────────────────────────────────────
+// Add .date-range-start and data-date-min-for="targetId" to a date input.
+// On change, sets min on the target element. Delegated listener works with
+// HTMX-swapped content.
+
+document.addEventListener('change', function (evt) {
+    if (!evt.target.classList.contains('date-range-start')) return;
+    const endInput = document.getElementById(evt.target.dataset.dateMinFor);
+    if (endInput) endInput.min = evt.target.value;
+});
+
 document.addEventListener('htmx:configRequest', function (evt) {
     const tokenMeta  = document.querySelector('meta[name="_csrf"]');
     const headerMeta = document.querySelector('meta[name="_csrf_header"]');

@@ -35,7 +35,7 @@
 ### Dual Interface Pattern
 The application provides **two interfaces** for the same backend:
 
-1. **REST API** (`TaskApiController`) - `/api/tasks/*` — JSON CRUD with `TaskRequest`/`TaskResponse` DTOs, `TaskMapper` (MapStruct) for conversion
+1. **REST API** (`TaskApiController`) - `/api/tasks/*` — JSON CRUD with `TaskRequest`/`TaskResponse` DTOs, MapStruct mappers for conversion
 2. **Web UI** (`TaskWebController`) - `/tasks/*` — Thymeleaf + HTMX + Bootstrap
 
 **Shared report logic** — `report/` package contains services used by multiple controllers (e.g., CSV export).
@@ -122,9 +122,17 @@ Bidirectional `@ManyToMany` self-referential relationship on `Task`: `blocks` (o
 
 Optional per-project time-boxed iterations. Sprint status derived from date ranges: `endDate < today` = past, `startDate <= today <= endDate` = active, `startDate > today` = future. Non-overlapping date ranges enforced at service level (at most one active sprint at any time). Sprint filter sentinel: `sprintId=null` = no filter (all tasks), `0` = no sprint assigned, positive = real sprint. Default to active sprint on initial page load (non-HTMX); HTMX requests treat null as "all." Sprint filter rendered as a Bootstrap dropdown button matching other filters. Incomplete tasks stay in ended sprints — users manually move them to the next sprint or backlog (no auto-carryover). Managed via GitHub-style project settings page (sidebar nav + content panels). Sprint filter only shown on single-project views. Disabling sprints clears all task sprint assignments. Deleting a sprint unassigns its tasks. Task form dynamically loads sprint dropdown on project change via JS fetch.
 
+### Recurring Task Pattern
+
+`RecurringTaskTemplate` entity — separate from `Task`, only on non-sprint projects (`sprintEnabled = false`). `Recurrence` enum: DAILY, WEEKLY, BIWEEKLY, MONTHLY (implements `Translatable`). Relative due dates via nullable `dueDaysAfter` (Short). Open-ended: `endDate` nullable, runs until disabled. Optional `dayOfWeek` (1-7 ISO) for WEEKLY/BIWEEKLY, `dayOfMonth` (1-31) for MONTHLY. `@Scheduled` cron at 6 AM generates tasks from due templates. Skip missed dates: advance `nextRunDate` past today without generating multiple tasks. Auto-disable when end date reached. Silent assignee skip if user disabled. Task FK `template_id` for display only. Managed via project settings "Recurring Tasks" panel. Split "New Task" button (Bootstrap `btn-group` with `dropdown-toggle-split`) on non-sprint projects offers "New Recurring Task" linking to settings.
+
 ### Constructor Injection Pattern
 
 Always use constructor injection, not `@Autowired` field injection.
+
+### MapStruct Mapper Convention
+
+All entity↔DTO conversion uses MapStruct `@Mapper(componentModel = "spring")` interfaces in the `mapper/` package — never manual `fromEntity()`/`toEntity()` methods on DTOs. Mappers are injected into controllers via constructor injection. Use `@Mapping(target = ..., ignore = true)` for fields the DTO shouldn't set (id, timestamps, associations). Use `@Mapping(source = "nested.field", target = "flatField")` for flattening. Custom logic via `default` methods or `expression = "java(...)"`. Current mappers: `TaskMapper`, `TaskFormMapper`, `ProjectMapper`, `SprintMapper`, `RecurringTaskTemplateMapper`, `TagMapper`. Exception: `SavedViewResponse.fromEntity()` remains manual (uses `SavedViewData.fromJson()`).
 
 ### `@Unique` Validation Pattern
 
@@ -173,7 +181,7 @@ Entities with an owner implement `OwnedEntity` (`getUser()`, null = unassigned).
 
 ### Translatable Enum Pattern
 
-Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`. `TaskStatusFilter` is excluded (internal query param enum).
+Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`, `Recurrence`. `TaskStatusFilter` is excluded (internal query param enum).
 
 ### Confirm Dialog Pattern
 

@@ -41,6 +41,7 @@ public class Task implements OwnedEntity, Auditable {
     public static final String FIELD_CHECKLIST_CHECKED = "checklistChecked";
     public static final String FIELD_EFFORT = "effort";
     public static final String FIELD_SPRINT = "sprint";
+    public static final String FIELD_TEMPLATE = "template";
     public static final String FIELD_BLOCKED_BY = "blockedBy";
     public static final String FIELD_BLOCKS = "blocks";
 
@@ -133,6 +134,11 @@ public class Task implements OwnedEntity, Auditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
+
+    // Optional link back to the recurring template that generated this task
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "template_id")
+    private RecurringTaskTemplate template;
 
     @OneToMany(
             mappedBy = "task",
@@ -335,6 +341,14 @@ public class Task implements OwnedEntity, Auditable {
         this.user = user;
     }
 
+    public RecurringTaskTemplate getTemplate() {
+        return template;
+    }
+
+    public void setTemplate(RecurringTaskTemplate template) {
+        this.template = template;
+    }
+
     public Set<Comment> getComments() {
         return comments;
     }
@@ -392,6 +406,7 @@ public class Task implements OwnedEntity, Auditable {
         snapshot.put(FIELD_EFFORT, effort);
         snapshot.put(FIELD_SPRINT, sprint != null ? sprint.getName() : null);
         snapshot.put(FIELD_USER, user != null ? user.getName() : null);
+        snapshot.put(FIELD_TEMPLATE, template != null ? template.getTitle() : null);
         snapshot.put(
                 FIELD_TAGS,
                 tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());

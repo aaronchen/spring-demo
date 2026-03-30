@@ -157,6 +157,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "project_id", nullable = false)` — every sprint belongs to a project
   - Manual getters/setters (no Lombok on entities)
 
+- `model/Recurrence.java` - Enum for recurring task frequency
+  - Values: `DAILY`, `WEEKLY`, `BIWEEKLY`, `MONTHLY`
+  - Implements `Translatable` with `recurring.recurrence.*` message keys
+
+- `model/RecurringTaskTemplate.java` - JPA entity for recurring task blueprints
+  - Fields: id, title (max 100), description (max 500), priority, effort, recurrence (Recurrence enum), dayOfWeek, dayOfMonth, dueDaysAfter, nextRunDate, endDate (nullable = open-ended), enabled (boolean), lastGeneratedAt, createdAt, updatedAt, project (ManyToOne LAZY), assignee (ManyToOne LAZY, nullable), createdBy (ManyToOne LAZY), tags (ManyToMany via `recurring_template_tags`)
+  - `calculateNextRunDate(LocalDate)` — advances date based on recurrence pattern
+  - `FIELD_*` constants, `Auditable` interface, `toAuditSnapshot()`
+  - Only available on non-sprint-enabled projects
+
 - `model/AuditLog.java` - Audit log entity
   - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
   - `FIELD_*` constants (`FIELD_ACTION`, `FIELD_PRINCIPAL`, `FIELD_DETAILS`, `FIELD_TIMESTAMP`)
@@ -296,6 +306,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `findActiveByProjectId(Long, LocalDate)` — `Optional<Sprint>`; sprint whose date range contains the given date
   - `existsOverlapping(Long, Long, LocalDate, LocalDate)` — checks for overlapping date ranges (excludes self by ID)
   - `findWithProjectById(Long)` — `@EntityGraph(attributePaths = {"project"})` for eager project loading
+
+- `repository/RecurringTaskTemplateRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<RecurringTaskTemplate, Long>`
+  - `findByProjectIdOrderByCreatedAtDesc(Long)` — all templates for a project
+  - `findWithDetailsById(Long)` — `@EntityGraph` eager-loading project, assignee, createdBy, tags
+  - `findDueTemplates(LocalDate)` — enabled templates with `nextRunDate <= today`, active non-sprint projects
 
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
@@ -473,6 +489,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `fromEntity(Sprint)` static factory
   - Lombok `@Data`
 
+- `dto/RecurringTaskTemplateRequest.java` - Form/API binding for recurring template CRUD
+  - Fields: `title` (required), `description`, `priority`, `effort`, `recurrence` (required), `dayOfWeek`, `dayOfMonth`, `dueDaysAfter`, `nextRunDate` (required), `endDate`, `assigneeId`, `tagIds`
+  - Lombok `@Data`
+
+- `dto/RecurringTaskTemplateResponse.java` - API response DTO for recurring templates
+  - Fields: `id`, `title`, `description`, `priority`, `effort`, `recurrence`, `dayOfWeek`, `dayOfMonth`, `dueDaysAfter`, `nextRunDate`, `endDate`, `enabled`, `lastGeneratedAt`, `createdAt`, `assigneeId`, `assigneeName`, `createdByName`, `tags` (List<TagResponse>)
+  - `fromEntity(RecurringTaskTemplate)` static factory
+  - Lombok `@Data`
+
 - `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
   - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
   - `StatusBreakdown(Map<String, Long> counts)` — task count per status
@@ -503,6 +528,22 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `mapper/UserMapper.java` - MapStruct mapper for User ↔ UserResponse / UserRequest
   - `toEntity(UserRequest)` — `id`, `password`, `role`, `enabled`, `tasks` explicitly ignored via `User.FIELD_*` constants
+
+- `mapper/ProjectMapper.java` - MapStruct mapper for Project ↔ ProjectRequest
+  - `toRequest(Project)`, `toEntity(ProjectRequest)` — ignores `id`, `status`, `createdBy`, `createdAt`, `updatedAt`, `members`, `sprints`
+
+- `mapper/SprintMapper.java` - MapStruct mapper for Sprint ↔ SprintRequest / SprintResponse
+  - `toResponse(Sprint)` — derived `status` field via `sprintStatus()` default method (past/active/future)
+  - `toResponseList(List<Sprint>)`, `toRequest(Sprint)`, `toEntity(SprintRequest)` — ignores `id`, `createdAt`, `updatedAt`, `project`
+
+- `mapper/TaskFormMapper.java` - MapStruct mapper for Task ↔ TaskFormRequest (web form binding)
+  - `toRequest(Task)` — flattens `sprint.id` → `sprintId`, `template.title` → `templateName`
+  - `toEntity(TaskFormRequest)` — ignores all association/audit fields (service resolves relationships)
+
+- `mapper/RecurringTaskTemplateMapper.java` - MapStruct mapper for RecurringTaskTemplate ↔ Request/Response
+  - `uses = {TagMapper.class}` — delegates tag collection mapping
+  - `toResponse(RecurringTaskTemplate)` — flattens `assignee.id/name`, `createdBy.name`
+  - `toRequest(RecurringTaskTemplate)` — custom `tagIds()` default method extracts IDs from tag set
 
 ### Service Layer
 - `service/CommentService.java` - Comment business logic with audit and domain event publishing
@@ -629,7 +670,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by both `TaskController` (cross-project export at `GET /tasks/export`) and `ProjectController` (per-project export at `GET /projects/{id}/export`); replaces the inline `CsvWriter` call that was previously only in `TaskController`
 
 - `service/ScheduledTaskService.java` - Centralized home for all `@Scheduled` jobs
-  - Constructor injection: `TaskService`, `NotificationService`, `NotificationRepository`, `UserPreferenceService`, `SettingService`, `MessageSource`
+  - Constructor injection: `TaskQueryService`, `NotificationService`, `NotificationRepository`, `RecurringTaskGenerationService`, `UserPreferenceService`, `SettingService`, `Messages`
+  - `generateRecurringTasks()` — `@Scheduled(cron = "0 0 6 * * *")` `@Transactional`; generates tasks from due recurring templates (runs before due reminders)
   - `sendDueReminders()` — `@Scheduled(cron = "0 0 8 * * *")`; finds tasks due tomorrow, sends `TASK_DUE_REMINDER` notifications to assigned users who have the `dueReminder` preference enabled
   - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; reads `notificationPurgeDays` from `Settings`, deletes notifications older than that
 
@@ -652,6 +694,20 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `getSprintById(Long)` — throws `EntityNotFoundException` if not found
   - `getSprintsByProject(Long projectId)` — all sprints for a project, newest first
   - `getActiveSprint(Long projectId)` — returns `Optional<Sprint>` for sprint whose date range contains today
+
+- `service/RecurringTaskTemplateService.java` - Command service for recurring template CRUD; `@Transactional` class-level
+  - Constructor injection: `RecurringTaskTemplateRepository`, `ProjectQueryService`, `TagService`, `UserService`, `ApplicationEventPublisher`, `Messages`
+  - `getTemplatesByProject(Long)` — list templates (read-only)
+  - `getTemplateById(Long)` — with eager-loaded details
+  - `createTemplate(Long projectId, RecurringTaskTemplateRequest)` — validates non-sprint project and end date; publishes audit event
+  - `updateTemplate(Long id, RecurringTaskTemplateRequest)` — validates end date; publishes audit event
+  - `toggleEnabled(Long)` — flips enabled flag; publishes audit event
+  - `deleteTemplate(Long)` — deletes template; publishes audit event
+
+- `service/RecurringTaskGenerationService.java` - Generates tasks from due recurring templates
+  - Constructor injection: `RecurringTaskTemplateRepository`, `TaskRepository`, `ApplicationEventPublisher`
+  - `generateDueTasks()` — finds all due templates, creates tasks, advances `nextRunDate` to next future date (skips missed), auto-disables when end date reached
+  - Silently skips assignee if user is disabled; logs errors per template without failing the batch
 
 - `service/AnalyticsService.java` - Analytics chart data builder
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
@@ -728,6 +784,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `PUT /api/projects/{projectId}/sprints/{id}` — update sprint; requires edit access
   - `DELETE /api/projects/{projectId}/sprints/{id}` — delete sprint (nullifies task FKs); requires edit access
   - **Security**: uses `ProjectAccessGuard` for all mutating operations; `@AuthenticationPrincipal CustomUserDetails` on all endpoints
+
+- `controller/api/RecurringTaskTemplateApiController.java` - Recurring task template REST API
+  - `@RestController` with `/api/projects/{projectId}/recurring-templates` base path
+  - Constructor injection: `RecurringTaskTemplateService`, `ProjectAccessGuard`
+  - `GET` — list templates for a project
+  - `GET /{id}` — get template details
+  - `POST` — create template; requires edit access
+  - `PUT /{id}` — update template; requires edit access
+  - `POST /{id}/toggle` — toggle enabled/disabled; requires edit access
+  - `DELETE /{id}` — delete template; requires edit access
 
 - `controller/api/AnalyticsApiController.java` - Cross-project analytics REST API
   - `@RestController` with `/api/analytics` base path
@@ -1054,7 +1120,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `TaskController.exportTasks()` for task CSV download
 
 ### Bootstrap
-- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **20 users**, **8 tags**, **4 projects**, **56 tasks** (48 project-specific + 8 curated demo interactions), **6 saved views** (3 per Alice/Bob)
+- `DataLoader.java` - Seeds database on startup (`@Profile("dev")`): **20 users**, **8 tags**, **4 projects**, **56 tasks** (48 project-specific + 8 curated demo interactions), **4 recurring templates** (2 per non-sprint project), **6 saved views** (3 per Alice/Bob)
   - First user (Alice Johnson) gets `Role.ADMIN`; all others get `Role.USER`
   - All passwords: `"password"` (BCrypt-encoded once, reused for all 20 users for speed)
   - Dev credentials: `alice.johnson@example.com` / `password` (admin), `bob.smith@example.com` / `password` (regular)
@@ -1390,7 +1456,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - H2 console disabled, Swagger UI disabled
 
 - `resources/db/migration/V1__initial_schema.sql` - Flyway initial migration
-  - PostgreSQL DDL for all 14 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, task_dependencies, comments, audit_logs, notifications, settings, user_preferences, saved_views
+  - PostgreSQL DDL for all 16 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, task_dependencies, comments, audit_logs, notifications, settings, user_preferences, recurring_task_templates, recurring_template_tags, saved_views
   - Seeds default admin user (`admin@example.com` / `password`)
   - Mirrors JPA entity definitions; used when `ddl-auto=validate` (prod profile)
 
@@ -1494,6 +1560,14 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `POST /api/projects/{projectId}/sprints` - Create sprint (201 Created; requires edit access)
 - `PUT /api/projects/{projectId}/sprints/{id}` - Update sprint (requires edit access)
 - `DELETE /api/projects/{projectId}/sprints/{id}` - Delete sprint (204 No Content; nullifies task FKs)
+
+**REST API — Recurring Task Templates** (requires login; CSRF exempt):
+- `GET /api/projects/{projectId}/recurring-templates` - List recurring templates for a project
+- `GET /api/projects/{projectId}/recurring-templates/{id}` - Get template details
+- `POST /api/projects/{projectId}/recurring-templates` - Create template (201 Created; non-sprint projects only)
+- `PUT /api/projects/{projectId}/recurring-templates/{id}` - Update template
+- `POST /api/projects/{projectId}/recurring-templates/{id}/toggle` - Toggle enabled/disabled
+- `DELETE /api/projects/{projectId}/recurring-templates/{id}` - Delete template (204 No Content)
 
 **REST API — Saved Views** (requires login; CSRF exempt):
 - `GET /api/views` - List saved views for current user
@@ -1675,6 +1749,33 @@ CREATE TABLE saved_views (
     name       VARCHAR(100) NOT NULL,
     filters    VARCHAR(2000) NOT NULL,
     created_at TIMESTAMP
+);
+
+CREATE TABLE recurring_task_templates (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title           VARCHAR(100) NOT NULL,
+    description     VARCHAR(500),
+    priority        VARCHAR(255) NOT NULL DEFAULT 'MEDIUM',
+    effort          SMALLINT,
+    recurrence      VARCHAR(20) NOT NULL,
+    day_of_week     SMALLINT,
+    day_of_month    SMALLINT,
+    due_days_after  SMALLINT,
+    next_run_date   DATE NOT NULL,
+    end_date        DATE,
+    enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+    last_generated_at TIMESTAMP,
+    created_at      TIMESTAMP,
+    updated_at      TIMESTAMP,
+    project_id      BIGINT NOT NULL REFERENCES projects(id),
+    assignee_id     BIGINT REFERENCES users(id),
+    created_by      BIGINT NOT NULL REFERENCES users(id)
+);
+
+CREATE TABLE recurring_template_tags (
+    template_id BIGINT NOT NULL REFERENCES recurring_task_templates(id) ON DELETE CASCADE,
+    tag_id      BIGINT NOT NULL REFERENCES tags(id),
+    PRIMARY KEY (template_id, tag_id)
 );
 
 -- Join table: singular owning entity + plural inverse entity

@@ -1,7 +1,6 @@
 package cc.desuka.demo.dto;
 
 import cc.desuka.demo.model.Priority;
-import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -35,29 +34,6 @@ public class TaskFormRequest {
 
     private Long version;
 
-    public static TaskFormRequest fromEntity(Task task) {
-        TaskFormRequest request = new TaskFormRequest();
-        request.setTitle(task.getTitle());
-        request.setDescription(task.getDescription());
-        request.setStatus(task.getStatus());
-        request.setPriority(task.getPriority());
-        request.setStartDate(task.getStartDate());
-        request.setDueDate(task.getDueDate());
-        request.setEffort(task.getEffort());
-        request.setSprintId(task.getSprint() != null ? task.getSprint().getId() : null);
-        request.setVersion(task.getVersion());
-        return request;
-    }
-
-    public Task toEntity() {
-        Task task = new Task();
-        task.setTitle(title);
-        task.setDescription(description);
-        task.setStatus(status);
-        task.setPriority(priority);
-        task.setStartDate(startDate);
-        task.setDueDate(dueDate);
-        task.setEffort(effort);
-        return task;
-    }
+    // Display-only: name of the recurring template that generated this task (null if not generated)
+    private String templateName;
 }

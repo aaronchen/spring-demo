@@ -27,6 +27,8 @@ public class TaskResponse {
     private Short effort;
     private Long sprintId;
     private String sprintName;
+    private Long templateId;
+    private String templateName;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
     private LocalDateTime updatedAt;

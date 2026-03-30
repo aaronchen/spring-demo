@@ -8,7 +8,15 @@ public class AuditEvent {
     // Each event constant must be prefixed with one of these categories.
     public static final List<String> CATEGORIES =
             List.of(
-                    "PROJECT", "SPRINT", "TASK", "USER", "PROFILE", "COMMENT", "TAG", "AUTH",
+                    "PROJECT",
+                    "SPRINT",
+                    "TASK",
+                    "RECURRING",
+                    "USER",
+                    "PROFILE",
+                    "COMMENT",
+                    "TAG",
+                    "AUTH",
                     "SETTING");
 
     // Project actions
@@ -25,6 +33,11 @@ public class AuditEvent {
     public static final String SPRINT_CREATED = "SPRINT_CREATED";
     public static final String SPRINT_UPDATED = "SPRINT_UPDATED";
     public static final String SPRINT_DELETED = "SPRINT_DELETED";
+
+    // Recurring template actions
+    public static final String RECURRING_TEMPLATE_CREATED = "RECURRING_TEMPLATE_CREATED";
+    public static final String RECURRING_TEMPLATE_UPDATED = "RECURRING_TEMPLATE_UPDATED";
+    public static final String RECURRING_TEMPLATE_DELETED = "RECURRING_TEMPLATE_DELETED";
 
     // Task actions
     public static final String TASK_CREATED = "TASK_CREATED";

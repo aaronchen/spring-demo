@@ -2,6 +2,7 @@ package cc.desuka.demo.controller.api;
 
 import cc.desuka.demo.dto.SprintRequest;
 import cc.desuka.demo.dto.SprintResponse;
+import cc.desuka.demo.mapper.SprintMapper;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
@@ -20,14 +21,17 @@ public class SprintApiController {
     private final SprintService sprintService;
     private final SprintQueryService sprintQueryService;
     private final ProjectAccessGuard projectAccessGuard;
+    private final SprintMapper sprintMapper;
 
     public SprintApiController(
             SprintService sprintService,
             SprintQueryService sprintQueryService,
-            ProjectAccessGuard projectAccessGuard) {
+            ProjectAccessGuard projectAccessGuard,
+            SprintMapper sprintMapper) {
         this.sprintService = sprintService;
         this.sprintQueryService = sprintQueryService;
         this.projectAccessGuard = projectAccessGuard;
+        this.sprintMapper = sprintMapper;
     }
 
     @GetMapping
@@ -35,9 +39,7 @@ public class SprintApiController {
             @PathVariable Long projectId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
-        return sprintQueryService.getSprintsByProject(projectId).stream()
-                .map(SprintResponse::fromEntity)
-                .toList();
+        return sprintMapper.toResponseList(sprintQueryService.getSprintsByProject(projectId));
     }
 
     @PostMapping
@@ -47,8 +49,8 @@ public class SprintApiController {
             @Valid @RequestBody SprintRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
-        Sprint sprint = sprintService.createSprint(projectId, request.toEntity());
-        return SprintResponse.fromEntity(sprint);
+        Sprint sprint = sprintService.createSprint(projectId, sprintMapper.toEntity(request));
+        return sprintMapper.toResponse(sprint);
     }
 
     @PutMapping("/{id}")
@@ -58,8 +60,8 @@ public class SprintApiController {
             @Valid @RequestBody SprintRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
-        Sprint sprint = sprintService.updateSprint(id, request.toEntity());
-        return SprintResponse.fromEntity(sprint);
+        Sprint sprint = sprintService.updateSprint(id, sprintMapper.toEntity(request));
+        return sprintMapper.toResponse(sprint);
     }
 
     @DeleteMapping("/{id}")

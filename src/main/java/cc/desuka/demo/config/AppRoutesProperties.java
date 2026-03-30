@@ -66,5 +66,7 @@ public class AppRoutesProperties {
             new RouteTemplate("/api/notifications/read-all");
     private RouteTemplate apiTaskSearchForDependency =
             new RouteTemplate("/api/tasks/search-for-dependency");
+    private RouteTemplate apiProjectRecurringTemplates =
+            new RouteTemplate("/api/projects/{projectId}/recurring-templates");
     private RouteTemplate apiViewById = new RouteTemplate("/api/views/{id}");
 }

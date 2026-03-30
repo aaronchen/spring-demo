@@ -40,6 +40,15 @@ function onPageSizeChange(newSize) {
     doSearch(false);
 }
 
+function updateCategoryDropdown() {
+    const label = document.getElementById('audit-category-label');
+    document.querySelectorAll('.audit-category-item').forEach(item => {
+        const isActive = (item.dataset.category || '') === currentCategory;
+        item.classList.toggle('active', isActive);
+        if (isActive) label.textContent = item.textContent;
+    });
+}
+
 function initFromUrl() {
     const params = new URLSearchParams(window.location.search);
 
@@ -51,9 +60,7 @@ function initFromUrl() {
     document.getElementById('audit-date-to').value = params.get('to') || '';
 
     currentCategory = params.get('category') || '';
-    document.querySelectorAll('.audit-category-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.category === currentCategory);
-    });
+    updateCategoryDropdown();
 
     const clearBtn = document.getElementById('audit-search-clear-btn');
     if (clearBtn) clearBtn.classList.toggle('d-none', !params.get('search'));
@@ -72,12 +79,12 @@ document.addEventListener('DOMContentLoaded', function() {
         onPageSizeChange(e.detail.size);
     });
 
-    // Category buttons
-    document.querySelectorAll('.audit-category-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.audit-category-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentCategory = this.dataset.category;
+    // Category dropdown
+    document.querySelectorAll('.audit-category-item').forEach(item => {
+        item.addEventListener('click', function (e) {
+            e.preventDefault();
+            currentCategory = this.dataset.category || '';
+            updateCategoryDropdown();
             doSearch(true);
         });
     });
