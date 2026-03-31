@@ -213,6 +213,24 @@
         </div>
     </nav>
 
+    <!--/* Recently Viewed — vertical tab on left edge, lg+ only.
+         Panel slides out to the right; live updates via WebSocket (recent-views.js). */-->
+    <div th:if="${currentUser != null}" id="recent-views-wrapper" class="d-none d-lg-flex">
+        <!-- Panel (drawer body — populated by recent-views.js via API fetch) -->
+        <div id="recent-views-panel" class="card shadow d-none">
+            <div id="recent-views-empty" class="px-3 py-3 text-muted small text-center">
+                <i class="bi bi-clock me-1"></i>
+                <span th:text="#{recentlyViewed.empty}">No recently viewed items.</span>
+            </div>
+            <div id="recent-views-list" class="list-group list-group-flush"></div>
+        </div>
+        <!-- Vertical tab (drawer handle) -->
+        <a href="#" id="recent-views-toggle" class="recent-views-tab shadow-sm">
+            <i class="bi bi-clock-history"></i>
+            <span th:text="#{recentlyViewed.heading}">Recently Viewed</span>
+        </a>
+    </div>
+
     <!--/* Maintenance Banner — included automatically with navbar.
          Dismiss state persisted via cookie keyed on server-side version,
          so the banner reappears only when the admin changes the message. */-->
@@ -237,6 +255,7 @@
             });
         })();
     </script>
+
     </th:block>
 
     <!-- Footer Fragment -->
@@ -267,6 +286,7 @@
             <script th:src="@{/js/websocket.js}"></script>
             <script th:src="@{/js/presence.js}"></script>
             <script th:src="@{/js/notifications.js}"></script>
+            <script th:src="@{/js/recent-views.js}"></script>
         </th:block>
     </div>
 </body>

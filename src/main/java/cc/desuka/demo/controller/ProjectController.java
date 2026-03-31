@@ -14,6 +14,7 @@ import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
 import cc.desuka.demo.mapper.SprintMapper;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
@@ -24,6 +25,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.ProjectService;
+import cc.desuka.demo.service.RecentViewService;
 import cc.desuka.demo.service.RecurringTaskGenerationService;
 import cc.desuka.demo.service.RecurringTaskTemplateService;
 import cc.desuka.demo.service.SprintQueryService;
@@ -69,6 +71,7 @@ public class ProjectController {
     private final RecurringTaskGenerationService recurringTaskGenerationService;
     private final TagService tagService;
     private final UserService userService;
+    private final RecentViewService recentViewService;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
     private final AppRoutesProperties appRoutes;
@@ -87,6 +90,7 @@ public class ProjectController {
             RecurringTaskGenerationService recurringTaskGenerationService,
             TagService tagService,
             UserService userService,
+            RecentViewService recentViewService,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
             AppRoutesProperties appRoutes,
@@ -103,6 +107,7 @@ public class ProjectController {
         this.recurringTaskGenerationService = recurringTaskGenerationService;
         this.tagService = tagService;
         this.userService = userService;
+        this.recentViewService = recentViewService;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
         this.appRoutes = appRoutes;
@@ -187,6 +192,13 @@ public class ProjectController {
         projectAccessGuard.requireViewAccess(id, currentDetails);
 
         Project project = projectQueryService.getProjectById(id);
+        if (!HtmxUtils.isHtmxRequest(request)) {
+            recentViewService.recordView(
+                    currentDetails.getUser(),
+                    RecentView.TYPE_PROJECT,
+                    project.getId(),
+                    project.getName());
+        }
         model.addAttribute("project", project);
         model.addAttribute("projectMembers", projectQueryService.getMembers(id));
 

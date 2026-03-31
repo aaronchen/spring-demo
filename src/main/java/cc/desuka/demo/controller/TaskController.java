@@ -12,6 +12,7 @@ import cc.desuka.demo.mapper.TaskFormMapper;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
+import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.report.TaskReport;
@@ -21,6 +22,7 @@ import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.ProjectQueryService;
+import cc.desuka.demo.service.RecentViewService;
 import cc.desuka.demo.service.SprintQueryService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
@@ -67,6 +69,7 @@ public class TaskController {
     private final UserService userService;
     private final CommentService commentService;
     private final TimelineService timelineService;
+    private final RecentViewService recentViewService;
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
@@ -83,6 +86,7 @@ public class TaskController {
             UserService userService,
             CommentService commentService,
             TimelineService timelineService,
+            RecentViewService recentViewService,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
@@ -97,6 +101,7 @@ public class TaskController {
         this.userService = userService;
         this.commentService = commentService;
         this.timelineService = timelineService;
+        this.recentViewService = recentViewService;
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
@@ -235,6 +240,8 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
+        recentViewService.recordView(
+                currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "view");
@@ -340,6 +347,8 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
+        recentViewService.recordView(
+                currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
         model.addAttribute("task", task);
         model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "edit");
