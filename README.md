@@ -124,7 +124,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Per-user preferences (`UserPreferences` POJO + `user_preferences` table) mirroring the Settings pattern
 - CSS theme system with `[data-theme]` selectors and FOUC prevention
 - Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
-- WebSocket + STOMP via `spring-boot-starter-websocket` and STOMP.js 7.1
+- WebSocket + STOMP via `spring-boot-starter-websocket` and STOMP.js 7.3
 - Shared STOMP client (`websocket.js`) with `onConnect(callback)` pattern for feature scripts
 - Client-side event bus via `CustomEvent` — decouples notification producers (WebSocket, dropdown, page) from consumers (badge, dropdown list, page list)
 - Online presence tracking with `ConcurrentHashMap` keyed by user ID (multi-tab safe, name-change safe); broadcast via `/topic/presence`
@@ -562,10 +562,7 @@ spring-demo/
 │       │   │       ├── inline-edit.js  # Toggle-based inline editing (table view)
 │       │   │       ├── kanban.js       # Drag-and-drop for Kanban board
 │       │   │       └── keyboard-shortcuts.js # Keyboard shortcut handler
-│       │   ├── tribute/
-│       │   │   └── tribute.min.js      # Tribute.js @mention autocomplete
 │       │   ├── favicon.svg             # SVG favicon
-│       │   └── bootstrap-icons/
 │       ├── templates/
 │       │   ├── dashboard/
 │       │   │   ├── dashboard.html        # Dashboard page with WebSocket subscriptions
@@ -688,10 +685,10 @@ spring-demo/
 | ORM | Spring Data JPA / Hibernate |
 | Validation | Jakarta Validation |
 | Templates | Thymeleaf 3.x + Spring Security dialect |
-| CSS | Bootstrap 5.3.3 |
-| Icons | Bootstrap Icons |
+| CSS | Bootstrap 5.3.8 |
+| Icons | Bootstrap Icons 1.13.1 |
 | Dynamic UI | HTMX 2.0.4 |
-| @Mentions | Tribute.js |
+| @Mentions | Tribute.js 5.1.3 |
 | Build | Maven |
 | Formatting | Spotless + google-java-format 1.30 (AOSP) |
 | Mapping | MapStruct 1.6 |

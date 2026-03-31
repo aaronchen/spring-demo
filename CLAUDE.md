@@ -10,8 +10,8 @@
 - **Security**: Spring Security 7.0 (form login, BCrypt, role-based access)
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
-- **Frontend**: Bootstrap 5.3.3 + HTMX 2.0.4
-- **Real-Time**: WebSocket + STOMP (via STOMP.js 7.1)
+- **Frontend**: Bootstrap 5.3.8 + HTMX 2.0.4
+- **Real-Time**: WebSocket + STOMP (via STOMP.js 7.3)
 
 ## Architecture
 
