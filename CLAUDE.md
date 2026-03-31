@@ -199,12 +199,13 @@ Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageK
 
 ### Event-Driven Side Effects Pattern
 
-Services publish domain events via `ApplicationEventPublisher`. Three listeners:
+Services publish domain events via `ApplicationEventPublisher`. Four listeners:
 - `AuditEventListener` (audit/) — persists audit logs (DB)
 - `NotificationEventListener` (event/) — routes notifications (DB + WebSocket)
 - `WebSocketEventListener` (event/) — broadcasts ephemeral events (WebSocket only)
+- `RecentViewEventListener` (event/) — syncs titles in recently viewed items (DB + per-user WebSocket)
 
-Domain events: `TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent` (`actor` field). WebSocket events: `TaskChangeEvent`, `CommentChangeEvent` (`userId` field).
+Domain events: `TaskAssignedEvent`, `TaskUpdatedEvent`, `ProjectUpdatedEvent`, `CommentAddedEvent` (`actor` field). WebSocket events: `TaskChangeEvent`, `CommentChangeEvent` (`userId` field).
 
 Services never depend on `SimpMessagingTemplate`, `NotificationService`, or `MessageSource` — only `eventPublisher`. Exception: `ScheduledTaskService` calls `NotificationService` directly (cron doesn't fit event pattern).
 
@@ -262,6 +263,20 @@ Tribute.js autocomplete on `[data-mention]` elements. Project-scoped via `data-p
 ### Activity Timeline Pattern
 
 `TimelineService` merges comments and audit history into chronological `TimelineEntry` stream. `task-activity.html` uses dual-usage template pattern for page includes vs HTMX responses.
+
+### Recently Viewed Pattern
+
+Controllers call `RecentViewService.recordView()` directly — not event-driven (single-purpose action, not a domain event). Title sync uses `@TransactionalEventListener` on `TaskUpdatedEvent`/`ProjectUpdatedEvent` via `RecentViewEventListener`, with `REQUIRES_NEW` propagation (required because `@TransactionalEventListener(AFTER_COMMIT)` runs outside the original transaction, so `@Modifying` queries need their own).
+
+**Data model:** `RecentView` entity stores (user, entityType, entityId, entityTitle, viewedAt). Max 10 entries per user, trimmed on insert. API endpoint `GET /api/recent-views` for JS initial fetch.
+
+**WebSocket push:** Per-user delivery to `/user/queue/recent-views` via `SimpMessagingTemplate`. `RecentViewResponse` includes `titleOnly` flag: `false` = new view (JS prepends to top), `true` = title-only sync for other users (JS updates text in place without reordering).
+
+**HTMX guard:** `ProjectController.showProject()` skips `recordView` for HTMX requests — those are task list refreshes (`doSearch()`), not actual project views. `TaskController.showTask()` does NOT skip — HTMX loads the task modal, which IS viewing the task.
+
+**`ProjectUpdatedEvent`** includes `actor` field — needed for `updateTitle()` to bump `viewedAt` only for the editing user.
+
+**Frontend:** `recent-views.js` fetches via API after WebSocket connect, then live-updates via WebSocket. Vertical left-side drawer tab (CSS `writing-mode: vertical-lr`), lg+ only. Styles in `base.css`.
 
 ### Analytics Pattern
 

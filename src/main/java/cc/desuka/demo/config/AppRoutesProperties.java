@@ -48,6 +48,7 @@ public class AppRoutesProperties {
     private RouteTemplate apiPresence = new RouteTemplate("/api/presence");
     private RouteTemplate apiAnalytics = new RouteTemplate("/api/analytics");
     private RouteTemplate apiViews = new RouteTemplate("/api/views");
+    private RouteTemplate apiRecentViews = new RouteTemplate("/api/recent-views");
     private RouteTemplate apiAudit = new RouteTemplate("/api/audit");
 
     // ── Parameterized API routes ──────────────────────────────────────

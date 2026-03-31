@@ -2,10 +2,12 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.event.ProjectUpdatedEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.ProjectStatus;
+import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.ProjectRepository;
@@ -27,6 +29,7 @@ public class ProjectService {
     private final TaskQueryService taskQueryService;
     private final SprintService sprintService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
+    private final RecentViewService recentViewService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -37,6 +40,7 @@ public class ProjectService {
             TaskQueryService taskQueryService,
             SprintService sprintService,
             RecurringTaskTemplateService recurringTaskTemplateService,
+            RecentViewService recentViewService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
@@ -45,6 +49,7 @@ public class ProjectService {
         this.taskQueryService = taskQueryService;
         this.sprintService = sprintService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
+        this.recentViewService = recentViewService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -100,6 +105,8 @@ public class ProjectService {
                             saved.getId(),
                             SecurityUtils.getCurrentPrincipal(),
                             AuditDetails.toJson(changes)));
+            eventPublisher.publishEvent(
+                    new ProjectUpdatedEvent(saved, SecurityUtils.getCurrentUser()));
         }
 
         return saved;
@@ -147,6 +154,7 @@ public class ProjectService {
         }
 
         String snapshot = AuditDetails.toJson(project.toAuditSnapshot());
+        recentViewService.deleteByEntity(RecentView.TYPE_PROJECT, id);
         projectRepository.delete(project);
 
         eventPublisher.publishEvent(

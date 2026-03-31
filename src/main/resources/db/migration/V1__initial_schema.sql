@@ -163,6 +163,19 @@ CREATE TABLE saved_views (
     created_at TIMESTAMP
 );
 
+CREATE TABLE recent_views (
+    id           BIGSERIAL PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    entity_type  VARCHAR(20) NOT NULL,
+    entity_id    BIGINT NOT NULL,
+    entity_title VARCHAR(200) NOT NULL,
+    viewed_at    TIMESTAMP NOT NULL,
+    UNIQUE (user_id, entity_type, entity_id)
+);
+
+CREATE INDEX idx_recent_views_user_viewed
+    ON recent_views(user_id, viewed_at DESC);
+
 -- Seed a default admin user for first login
 -- Password: 'password' (BCrypt encoded)
 -- Change this password after first login via the profile page

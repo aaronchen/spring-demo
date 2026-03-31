@@ -167,6 +167,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `FIELD_*` constants, `Auditable` interface, `toAuditSnapshot()`
   - Only available on non-sprint-enabled projects
 
+- `model/RecentView.java` - JPA entity for recently viewed items
+  - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (Long), entityTitle (max 200), viewedAt (LocalDateTime)
+  - `TYPE_TASK`, `TYPE_PROJECT` — entity type constants
+  - `@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "entity_type", "entity_id"}))` — one row per user+type+entity
+  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
+  - Manual getters/setters (no Lombok on entities)
+
 - `model/AuditLog.java` - Audit log entity
   - Fields: id, action (String), entityType (String), entityId (Long), principal (String), details (String/JSON), timestamp (Instant)
   - `FIELD_*` constants (`FIELD_ACTION`, `FIELD_PRINCIPAL`, `FIELD_DETAILS`, `FIELD_TIMESTAMP`)
@@ -193,9 +200,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Event Package
 - `event/TaskAssignedEvent.java` - Record published when a task is assigned to someone; fields: `task` (Task), `actor` (User)
 - `event/TaskUpdatedEvent.java` - Record published when task fields change; fields: `task` (Task), `actor` (User)
+- `event/ProjectUpdatedEvent.java` - Record published when project fields change; fields: `project` (Project), `actor` (User)
 - `event/CommentAddedEvent.java` - Record published when a comment is created; fields: `comment` (Comment), `task` (Task), `actor` (User)
 - `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `userId` (long); serialized to JSON for JS clients
 - `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long); serialized to JSON for JS clients
+- `event/RecentViewEventListener.java` - `@TransactionalEventListener` for title sync; listens to `TaskUpdatedEvent` and `ProjectUpdatedEvent`, calls `RecentViewService.updateTitle()` to keep cached titles current
 - `event/NotificationEventListener.java` - Centralized notification routing; listens for domain events (`TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent`) and decides who gets notified via `NotificationService.create()`
 - `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting; listens for `TaskChangeEvent` → `/topic/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
 
@@ -312,6 +321,17 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `findByProjectIdOrderByCreatedAtDesc(Long)` — all templates for a project
   - `findWithDetailsById(Long)` — `@EntityGraph` eager-loading project, assignee, createdBy, tags
   - `findDueTemplates(LocalDate)` — enabled templates with `nextRunDate <= today`, active non-sprint projects
+
+- `repository/RecentViewRepository.java` - Spring Data JPA repository
+  - Extends `JpaRepository<RecentView, Long>`
+  - `findByUserIdAndEntityTypeAndEntityId(Long, String, Long)` — upsert lookup
+  - `findTop10ByUserIdOrderByViewedAtDesc(Long)` — recent views for a user (capped at 10)
+  - `countByUserId(Long)` — total count for trimming
+  - `deleteByUserIdAndIdNotIn(Long, List<Long>)` — trim oldest beyond 10
+  - `updateTitle(String, String, Long, String)` — `@Modifying` `@Query` bulk title update across all users
+  - `findByEntityTypeAndEntityId(String, Long)` — `@EntityGraph(attributePaths = {"user"})` for WebSocket push
+  - `deleteByEntityTypeAndEntityId(String, Long)` — cleanup on entity delete
+  - `deleteByUserId(Long)` — cleanup on user delete
 
 - `repository/AuditLogRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<AuditLog, Long>` and `JpaSpecificationExecutor<AuditLog>`
@@ -498,6 +518,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `fromEntity(RecurringTaskTemplate)` static factory
   - Lombok `@Data`
 
+- `dto/RecentViewResponse.java` - Recent view output DTO (record)
+  - Fields: `entityType`, `entityId`, `entityTitle`, `href`, `viewedAt` (LocalDateTime), `titleOnly` (boolean)
+  - Used for both REST API responses and WebSocket push payloads
+  - `titleOnly` flag distinguishes title-sync messages (update in place) from new view entries (prepend)
+
 - `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
   - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
   - `StatusBreakdown(Map<String, Long> counts)` — task count per status
@@ -584,7 +609,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/ProjectService.java` - Project write operations with audit event publishing
   - Constructor injection: `ProjectRepository`, `ProjectQueryService`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
   - `createProject(Project, User)` — creator becomes OWNER via cascaded `ProjectMember`; publishes `PROJECT_CREATED` audit event
-  - `updateProject(Long, Project)` — updates name/description with diff tracking; publishes `PROJECT_UPDATED` if changed
+  - `updateProject(Long, Project)` — updates name/description with diff tracking; publishes `PROJECT_UPDATED` audit event and `ProjectUpdatedEvent` (with actor) if changed
   - `archiveProject(Long)` — sets status to ARCHIVED; publishes `PROJECT_ARCHIVED`
   - `unarchiveProject(Long)` — restores to ACTIVE; publishes `PROJECT_UNARCHIVED`
   - `deleteProject(Long)` — only if no COMPLETED tasks (cancelled tasks don't block); publishes `PROJECT_DELETED`
@@ -709,6 +734,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `generateDueTasks()` — finds all due templates, creates tasks, advances `nextRunDate` to next future date (skips missed), auto-disables when end date reached
   - Silently skips assignee if user is disabled; logs errors per template without failing the batch
 
+- `service/RecentViewService.java` - Recently viewed items with WebSocket push
+  - Constructor injection: `RecentViewRepository`, `SimpMessagingTemplate`, `AppRoutesProperties`
+  - `recordView(User, String entityType, Long entityId, String title)` — `@Transactional`; upserts recent view (updates viewedAt if exists, creates if not), trims to 10 per user, pushes `RecentViewResponse` via WebSocket to `/queue/recent-views`
+  - `updateTitle(String entityType, Long entityId, String newTitle)` — `@Transactional(propagation = REQUIRES_NEW)`; bulk-updates title across all users' recent views, pushes `titleOnly` response to affected users via WebSocket
+  - `deleteByEntity(String entityType, Long entityId)` — cleanup on entity delete
+  - `deleteByUserId(Long)` — cleanup on user delete
+  - `getRecentViews(Long userId)` — returns top 10 recent views as `RecentViewResponse` list
+
 - `service/AnalyticsService.java` - Analytics chart data builder
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
   - `getProjectAnalytics(Long projectId)` — single-project analytics
@@ -794,6 +827,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `PUT /{id}` — update template; requires edit access
   - `POST /{id}/toggle` — toggle enabled/disabled; requires edit access
   - `DELETE /{id}` — delete template; requires edit access
+
+- `controller/api/RecentViewApiController.java` - Recent views REST API
+  - `@RestController` with `/api/recent-views` base path
+  - `GET /api/recent-views` — returns current user's recent views as `List<RecentViewResponse>`; used by JS for initial load on WebSocket connect
 
 - `controller/api/AnalyticsApiController.java` - Cross-project analytics REST API
   - `@RestController` with `/api/analytics` base path
@@ -885,7 +922,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/ProjectController.java` - Project web UI endpoints
   - `@Controller` with `/projects` base path
-  - Constructor injection: `ProjectService`, `ProjectQueryService`, `TaskQueryService`, `TagService`, `UserService`, `ProjectAccessGuard`, `TaskReport`
+  - Constructor injection: `ProjectService`, `ProjectQueryService`, `TaskQueryService`, `TagService`, `UserService`, `ProjectAccessGuard`, `TaskReport`, `RecentViewService`
   - `GET /projects` — list projects via `@ModelAttribute ProjectListQuery`; admin sees all (with sort and archived toggle); users see their projects; HTMX-aware (returns `project-grid :: grid` fragment)
   - `GET /projects/new` — create form (returns `project-form` template)
   - `POST /projects` — create project; creator becomes OWNER; HTMX-aware (triggers `projectSaved`)
@@ -909,7 +946,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/TaskController.java` - Task web UI endpoints (cross-project task views)
   - `@Controller` with `/tasks` base path
-  - Constructor injection: `TaskService`, `TaskQueryService`, `TaskDependencyService`, `ProjectQueryService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `OwnershipGuard`, `ProjectAccessGuard`, `TaskReport`, `Messages`
+  - Constructor injection: `TaskService`, `TaskQueryService`, `TaskDependencyService`, `ProjectQueryService`, `TagService`, `UserService`, `CommentService`, `TimelineService`, `RecentViewService`, `OwnershipGuard`, `ProjectAccessGuard`, `TaskReport`, `Messages`
   - Returns Thymeleaf template names or fragment selectors
   - HTMX support: detects `HX-Request` header via `HtmxUtils.isHtmxRequest()`
   - `Object` return type on POST methods to allow returning either a String view name or `ResponseEntity`
@@ -1037,7 +1074,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - All fields are `RouteTemplate` — plain routes and parameterized templates use the same type
   - Web routes: `projects`, `tasks`, `audit`, `dashboard`, `analytics`, `login`, `profile`
   - Parameterized web routes: `projectDetail`, `projectSettings`, `taskDetail`
-  - API resource routes: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit`
+  - API resource routes: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit`, `apiRecentViews`
   - Parameterized API routes (URL templates with `{placeholder}` tokens): `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById`
   - Spring binds `String` properties to `RouteTemplate` via `RouteTemplate.StringConverter` (`@ConfigurationPropertiesBinding`)
   - Single source of truth for all paths used by Thymeleaf templates, controllers, and frontend JS
@@ -1146,7 +1183,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `footer` - footer
   - Notification bell dropdown in navbar (unread count badge, recent notifications list, mark-all-read and view-all links)
   - Online users indicator in navbar (count badge + dropdown list)
-  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + Tribute.js (WebJar) + `mentions.js` + STOMP.js (WebJar) + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
+  - Recently viewed drawer markup (vertical tab on left edge, slide-out panel with item list; `d-none d-lg-block` — lg+ only); authenticated users only
+  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + Tribute.js (WebJar) + `mentions.js` + STOMP.js (WebJar) + `websocket.js` + `presence.js` + `notifications.js` + `recent-views.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
 
 - `templates/layouts/pagination.html` - Reusable pagination control bar
   - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
@@ -1303,7 +1341,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ## Static Resources
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
-- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state
+- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state; recently viewed drawer styles (`.recent-views-tab` fixed left-side vertical tab, `.recent-views-drawer` slide-out panel, lg+ only via media query)
 - `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, two-column layout styles, timeline entry styles)
 - `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
 - `static/css/analytics.css` - Analytics page styles (chart container sizing: 300px default, 350px wide; responsive breakpoints at 768px)
@@ -1372,6 +1410,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `e` — toggle inline edit mode (table view only; no-op in other views)
   - `Escape` — close open modal or cancel inline edit mode
   - All shortcuts suppressed when focus is in an input, textarea, or select element
+- `static/js/recent-views.js` - Recently viewed drawer panel
+  - Toggle panel via vertical tab click; outside click closes
+  - Fetches initial list from `GET /api/recent-views` on WebSocket connect
+  - Subscribes to `/user/queue/recent-views` for live updates
+  - `titleOnly` messages update existing item text in place; other messages prepend new item to top
 - `static/js/analytics.js` - Analytics page chart rendering
   - IIFE pattern; reads API URL from `<meta name="_analyticsApi">`
   - `STATUS_COLORS` / `PRIORITY_COLORS` — color maps matching app-wide status/priority colors
@@ -1398,6 +1441,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
     - `login.*`, `register.*` — Auth pages
     - `admin.*` — Admin panel; `audit.*` — Audit feature (includes `audit.field.status`)
     - `home.feature.*` — Home page feature cards (rest, security, ui, data, realtime, lifecycle, admin, production)
+    - `recentlyViewed.*` — Recently viewed feature (`recentlyViewed.heading`, `recentlyViewed.empty`)
     - `notification.*` — Notification feature (includes `notification.task.assigned`, `notification.comment.added`, `notification.time.*` for relative timestamps)
     - `role.*` — Role display names; `error.*` — Error pages; `toast.*` — Toast notifications
 
@@ -1456,7 +1500,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - H2 console disabled, Swagger UI disabled
 
 - `resources/db/migration/V1__initial_schema.sql` - Flyway initial migration
-  - PostgreSQL DDL for all 16 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, task_dependencies, comments, audit_logs, notifications, settings, user_preferences, recurring_task_templates, recurring_template_tags, saved_views
+  - PostgreSQL DDL for all 17 tables: users, projects, project_members, tasks, checklist_items, tags, task_tags, task_dependencies, comments, audit_logs, notifications, settings, user_preferences, recurring_task_templates, recurring_template_tags, saved_views, recent_views
   - Seeds default admin user (`admin@example.com` / `password`)
   - Mirrors JPA entity definitions; used when `ddl-auto=validate` (prod profile)
 
@@ -1574,12 +1618,16 @@ The following sections were moved from CLAUDE.md. They are reference material de
 - `POST /api/views` - Save current filters as a named view
 - `DELETE /api/views/{id}` - Delete saved view (owner or admin)
 
+**REST API — Recent Views** (requires login; CSRF exempt):
+- `GET /api/recent-views` - Current user's recently viewed items (`List<RecentViewResponse>`)
+
 **REST API — Presence** (no authentication required):
 - `GET /api/presence` - Online users (`{"users": [...], "count": n}`)
 
 **WebSocket** (STOMP over SockJS):
 - Endpoint: `ws://localhost:8080/ws`
 - Subscribe: `/user/queue/notifications` — real-time notification push
+- Subscribe: `/user/queue/recent-views` — recently viewed item updates (new views + title syncs)
 - Subscribe: `/topic/presence` — online user list broadcast
 
 **API Documentation** (public, no auth needed):
@@ -1776,6 +1824,16 @@ CREATE TABLE recurring_template_tags (
     template_id BIGINT NOT NULL REFERENCES recurring_task_templates(id) ON DELETE CASCADE,
     tag_id      BIGINT NOT NULL REFERENCES tags(id),
     PRIMARY KEY (template_id, tag_id)
+);
+
+CREATE TABLE recent_views (
+    id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id      BIGINT NOT NULL REFERENCES users(id),
+    entity_type  VARCHAR(50) NOT NULL,              -- 'TASK' or 'PROJECT'
+    entity_id    BIGINT NOT NULL,
+    entity_title VARCHAR(200) NOT NULL,
+    viewed_at    TIMESTAMP NOT NULL,
+    UNIQUE (user_id, entity_type, entity_id)
 );
 
 -- Join table: singular owning entity + plural inverse entity

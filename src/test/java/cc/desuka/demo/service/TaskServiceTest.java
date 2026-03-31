@@ -37,8 +37,10 @@ class TaskServiceTest {
     @Mock private TaskRepository taskRepository;
     @Mock private TaskQueryService taskQueryService;
     @Mock private TaskDependencyService taskDependencyService;
+    @Mock private SprintQueryService sprintQueryService;
     @Mock private TagService tagService;
     @Mock private UserService userService;
+    @Mock private RecentViewService recentViewService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Messages messages;
 
