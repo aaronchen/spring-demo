@@ -128,7 +128,7 @@
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>bootstrap</artifactId>
-			<version>5.3.3</version>
+			<version>5.3.8</version>
 		</dependency>
 		<!-- HTMX via WebJars -->
 		<dependency>
@@ -140,7 +140,7 @@
 		<dependency>
 			<groupId>org.webjars.npm</groupId>
 			<artifactId>stomp__stompjs</artifactId>
-			<version>7.1.1</version>
+			<version>7.3.0</version>
 		</dependency>
 		<!-- Chart.js via WebJars -->
 		<dependency>
@@ -148,7 +148,18 @@
 			<artifactId>chart.js</artifactId>
 			<version>4.5.1</version>
 		</dependency>
-		<!-- Bootstrap Icons: Downloaded locally to static/bootstrap-icons/ -->
+		<!-- Bootstrap Icons via WebJars -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>bootstrap-icons</artifactId>
+			<version>1.13.1</version>
+		</dependency>
+		<!-- Tribute.js via WebJars (@zurb/tribute) -->
+		<dependency>
+			<groupId>org.webjars.npm</groupId>
+			<artifactId>github-com-zurb-tribute</artifactId>
+			<version>5.1.3</version>
+		</dependency>
 
 		<!-- MapStruct: compile-time mapping code generation -->
 		<dependency>

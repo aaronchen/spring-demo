@@ -32,7 +32,7 @@
 ## Running Tests
 
 ```bash
-# Run all tests (183 tests, uses H2 via test profile)
+# Run all tests (242 tests, uses H2 via test profile)
 ./mvnw test
 
 # Run all tests + package JAR (full build lifecycle)
@@ -107,7 +107,7 @@ To switch Render to PostgreSQL: create a Render PostgreSQL instance, set `SPRING
 `.github/workflows/ci.yml` runs on every push to `main` and on every PR targeting `main`:
 1. Checks out the code
 2. Sets up JDK 25
-3. Runs `./mvnw verify` (compile + all 183 tests using H2)
+3. Runs `./mvnw verify` (compile + all 242 tests using H2)
 
 Results show as green check or red X on the commit/PR.
 
@@ -135,12 +135,28 @@ Most code changes (controllers, services, templates, JS, CSS) are handled by Dev
 # Show only a specific dependency
 ./mvnw dependency:tree -Dincludes=org.webjars:bootstrap
 
-# Check for dependency updates
-./mvnw versions:display-dependency-updates
-
 # Force re-download dependencies (if corrupted/stale cache)
 ./mvnw dependency:resolve -U
 ```
+
+### Checking for Updates
+
+```bash
+# Check for newer versions of all dependencies
+./mvnw versions:display-dependency-updates
+
+# Check for newer Spring Boot parent version
+./mvnw versions:display-parent-updates
+
+# Check for newer plugin versions
+./mvnw versions:display-plugin-updates
+```
+
+The Spring Boot parent (`spring-boot-starter-parent`) manages versions for most Spring ecosystem dependencies. Bumping the parent version upgrades them as a tested-together set. Dependencies outside the parent (WebJars like Bootstrap, HTMX, Chart.js, STOMP.js) are versioned individually in `pom.xml`.
+
+When updating a WebJar version, also update the version in the resource path in `base.html` (e.g., `/webjars/bootstrap/5.3.8/css/bootstrap.min.css`).
+
+Skip pre-release versions (milestones like `-M4`, alphas, RCs) unless you have a specific reason to adopt them.
 
 ## Common Workflow
 
@@ -192,6 +208,9 @@ Most code changes (controllers, services, templates, JS, CSS) are handled by Dev
 | bootstrap (WebJar) | CSS framework |
 | htmx.org (WebJar) | Reactive HTML updates |
 | stomp__stompjs (WebJar) | STOMP.js client for WebSocket |
+| chart.js (WebJar) | Chart.js for analytics charts |
+| bootstrap-icons (WebJar) | Icon font |
+| github-com-zurb-tribute (WebJar) | @mention autocomplete |
 | spring-boot-starter-data-jpa-test | JPA test slice (@DataJpaTest) |
 | spring-boot-starter-validation-test | Validation test support |
 | spring-boot-starter-webmvc-test | MockMvc test support (@AutoConfigureMockMvc) |

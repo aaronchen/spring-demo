@@ -1146,7 +1146,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `footer` - footer
   - Notification bell dropdown in navbar (unread count badge, recent notifications list, mark-all-read and view-all links)
   - Online users indicator in navbar (count badge + dropdown list)
-  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + `tribute.min.js` + `mentions.js` + `stomp.umd.min.js` + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
+  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + Tribute.js (WebJar) + `mentions.js` + STOMP.js (WebJar) + `websocket.js` + `presence.js` + `notifications.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
 
 - `templates/layouts/pagination.html` - Reusable pagination control bar
   - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
@@ -1383,8 +1383,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
-- `static/tribute/tribute.min.js` - Tribute.js library for @mention autocomplete; loaded globally in `base.html`
-- `static/bootstrap-icons/` - Bootstrap Icons (locally hosted)
+- Bootstrap Icons served via WebJar (`bootstrap-icons:1.13.1`); loaded globally in `base.html`
+- Tribute.js served via WebJar (`github-com-zurb-tribute:5.1.3`); loaded globally in `base.html`
 
 ## Resource Files
 

@@ -12,10 +12,10 @@
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
     <!-- Bootstrap CSS via WebJars -->
-    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.3/css/bootstrap.min.css}">
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
 
-    <!-- Bootstrap Icons (locally hosted) -->
-    <link rel="stylesheet" th:href="@{/bootstrap-icons/bootstrap-icons.min.css}">
+    <!-- Bootstrap Icons via WebJars -->
+    <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css}">
 
     <!-- Base styles -->
     <link rel="stylesheet" th:href="@{/css/base.css}">
@@ -249,21 +249,21 @@
     <!-- Scripts Fragment -->
     <div th:fragment="scripts">
         <!-- Bootstrap JS Bundle (includes Popper) via WebJars -->
-        <script th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>
+        <script th:src="@{/webjars/bootstrap/5.3.8/js/bootstrap.bundle.min.js}"></script>
         <!-- HTMX via WebJars -->
         <script th:src="@{/webjars/htmx.org/2.0.4/dist/htmx.min.js}"></script>
         <!-- Runtime frontend config -->
         <script th:src="@{/config.js}"></script>
         <!-- Shared utilities -->
         <script th:src="@{/js/utils.js}"></script>
-        <!-- Tribute.js for @mention autocomplete -->
-        <script th:src="@{/tribute/tribute.min.js}"></script>
+        <!-- Tribute.js for @mention autocomplete via WebJars -->
+        <script th:src="@{/webjars/github-com-zurb-tribute/5.1.3/tribute.min.js}"></script>
         <script th:src="@{/js/mentions.js}"></script>
         <!-- Reusable Web Components -->
         <script th:src="@{/js/components/searchable-select.js}"></script>
         <!--/* WebSocket scripts — only load for authenticated users */-->
         <th:block sec:authorize="isAuthenticated()">
-            <script th:src="@{/webjars/stomp__stompjs/7.1.1/bundles/stomp.umd.min.js}"></script>
+            <script th:src="@{/webjars/stomp__stompjs/7.3.0/bundles/stomp.umd.min.js}"></script>
             <script th:src="@{/js/websocket.js}"></script>
             <script th:src="@{/js/presence.js}"></script>
             <script th:src="@{/js/notifications.js}"></script>
