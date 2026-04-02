@@ -411,9 +411,24 @@
     box-shadow: 0 0 0 0.25rem var(--theme-focus-ring);
 }
 
+[data-theme] .form-check-input {
+    background-color: #fff;
+    border-color: var(--bs-border-color, #dee2e6);
+}
+
 [data-theme] .form-check-input:checked {
     background-color: var(--theme-primary);
     border-color: var(--theme-primary);
+}
+
+[data-theme] .form-check-input:disabled {
+    background-color: var(--theme-surface-sunken);
+    border-color: transparent;
+    opacity: 1;
+}
+[data-theme] .form-check-input:checked:disabled {
+    background-color: var(--theme-primary);
+    opacity: 0.5;
 }
 
 [data-theme] .form-check-input:focus {
