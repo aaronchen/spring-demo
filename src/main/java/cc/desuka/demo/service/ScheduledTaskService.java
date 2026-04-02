@@ -62,21 +62,43 @@ public class ScheduledTaskService {
     public void sendDueReminders() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         List<Task> tasks = taskQueryService.getTasksDueOn(tomorrow);
+        log.info("sendDueReminders: starting, dueDate={}, tasksFound={}", tomorrow, tasks.size());
 
+        int sent = 0;
+        int skipped = 0;
+        int failed = 0;
         for (Task task : tasks) {
-            if (task.getUser() == null) continue;
+            if (task.getUser() == null) {
+                skipped++;
+                continue;
+            }
 
             UserPreferences prefs = userPreferenceService.load(task.getUser().getId());
-            if (!prefs.isDueReminder()) continue;
+            if (!prefs.isDueReminder()) {
+                skipped++;
+                continue;
+            }
 
-            String message = messages.get("notification.task.dueReminder", task.getTitle());
-            notificationService.create(
-                    task.getUser(),
-                    null,
-                    NotificationType.TASK_DUE_REMINDER,
-                    message,
-                    appRoutes.getTaskDetail().resolve("taskId", task.getId()));
+            try {
+                String message = messages.get("notification.task.dueReminder", task.getTitle());
+                notificationService.create(
+                        task.getUser(),
+                        null,
+                        NotificationType.TASK_DUE_REMINDER,
+                        message,
+                        appRoutes.getTaskDetail().resolve("taskId", task.getId()));
+                sent++;
+            } catch (Exception e) {
+                failed++;
+                log.error("sendDueReminders: failed for taskId={}", task.getId(), e);
+            }
         }
+
+        log.info(
+                "sendDueReminders: complete, sent={}, skipped={}, failed={}",
+                sent,
+                skipped,
+                failed);
     }
 
     /**
@@ -86,10 +108,9 @@ public class ScheduledTaskService {
     @Scheduled(cron = "0 0 6 * * *")
     @Transactional
     public void generateRecurringTasks() {
-        int count = recurringTaskGenerationService.generateDueTasks();
-        if (count > 0) {
-            log.info("Generated {} recurring tasks", count);
-        }
+        log.info("generateRecurringTasks: starting");
+        int generated = recurringTaskGenerationService.generateDueTasks();
+        log.info("generateRecurringTasks: complete, generated={}", generated);
     }
 
     /**
@@ -100,7 +121,10 @@ public class ScheduledTaskService {
     @Transactional
     public void purgeOldNotifications() {
         int purgeDays = settingService.load().getNotificationPurgeDays();
-        notificationRepository.deleteByCreatedAtBefore(
-                LocalDateTime.now().minus(purgeDays, ChronoUnit.DAYS));
+        log.info("purgeOldNotifications: starting, retentionDays={}", purgeDays);
+        int deleted =
+                notificationRepository.deleteByCreatedAtBefore(
+                        LocalDateTime.now().minus(purgeDays, ChronoUnit.DAYS));
+        log.info("purgeOldNotifications: complete, deleted={}", deleted);
     }
 }

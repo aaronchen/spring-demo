@@ -52,6 +52,7 @@ public class ProjectQueryService {
         return memberRepository.findByUserId(userId).stream()
                 .map(ProjectMember::getProject)
                 .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
+                .sorted(Comparator.comparing(Project::getName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 

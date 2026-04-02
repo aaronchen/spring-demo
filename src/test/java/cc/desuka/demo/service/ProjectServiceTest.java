@@ -31,7 +31,7 @@ class ProjectServiceTest {
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectQueryService projectQueryService;
     @Mock private UserService userService;
-    @Mock private TaskCommandService taskAssignmentService;
+    @Mock private TaskCommandService taskCommandService;
     @Mock private SprintService sprintService;
     @Mock private RecurringTaskTemplateService recurringTaskTemplateService;
     @Mock private RecentViewService recentViewService;
@@ -239,7 +239,7 @@ class ProjectServiceTest {
         projectService.updateMemberRole(1L, 2L, ProjectRole.EDITOR);
 
         assertThat(memberShip.getRole()).isEqualTo(ProjectRole.EDITOR);
-        verify(taskAssignmentService, never()).unassignTasksInProject(any(), any());
+        verify(taskCommandService, never()).unassignTasksInProject(any(), any());
     }
 
     @Test
@@ -252,6 +252,6 @@ class ProjectServiceTest {
         projectService.updateMemberRole(1L, 2L, ProjectRole.VIEWER);
 
         assertThat(memberShip.getRole()).isEqualTo(ProjectRole.VIEWER);
-        verify(taskAssignmentService).unassignTasksInProject(bob, 1L);
+        verify(taskCommandService).unassignTasksInProject(bob, 1L);
     }
 }

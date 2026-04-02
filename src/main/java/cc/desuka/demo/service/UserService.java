@@ -90,17 +90,21 @@ public class UserService {
 
     public User updateUser(Long userId, String name, String email, Role role) {
         User user = getUserById(userId);
+        Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
         user.setEmail(email);
         user.setRole(role);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_UPDATED,
-                        User.class,
-                        saved.getId(),
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.USER_UPDATED,
+                            User.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+        }
         return saved;
     }
 

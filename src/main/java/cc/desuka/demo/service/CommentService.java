@@ -48,10 +48,6 @@ public class CommentService {
         return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
     }
 
-    public long countByUserId(Long userId) {
-        return commentRepository.countByUserId(userId);
-    }
-
     public void deleteByTaskId(Long taskId) {
         commentRepository.deleteByTaskId(taskId);
     }
@@ -92,9 +88,8 @@ public class CommentService {
                         SecurityUtils.getCurrentPrincipal(),
                         snapshot));
         User current = SecurityUtils.getCurrentUser();
-        eventPublisher.publishEvent(
-                new CommentChangeEvent(
-                        "deleted", taskId, id, current != null ? current.getId() : 0L));
+        long actorId = current != null ? current.getId() : 0L;
+        eventPublisher.publishEvent(new CommentChangeEvent("deleted", taskId, id, actorId));
     }
 
     /**

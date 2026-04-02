@@ -27,7 +27,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectQueryService projectQueryService;
     private final UserService userService;
-    private final TaskCommandService taskAssignmentService;
+    private final TaskCommandService taskCommandService;
     private final SprintService sprintService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final RecentViewService recentViewService;
@@ -38,7 +38,7 @@ public class ProjectService {
             ProjectRepository projectRepository,
             ProjectQueryService projectQueryService,
             UserService userService,
-            TaskCommandService taskAssignmentService,
+            TaskCommandService taskCommandService,
             SprintService sprintService,
             RecurringTaskTemplateService recurringTaskTemplateService,
             RecentViewService recentViewService,
@@ -47,7 +47,7 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.projectQueryService = projectQueryService;
         this.userService = userService;
-        this.taskAssignmentService = taskAssignmentService;
+        this.taskCommandService = taskCommandService;
         this.sprintService = sprintService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.recentViewService = recentViewService;
@@ -205,6 +205,7 @@ public class ProjectService {
         }
 
         String snapshot = AuditDetails.toJson(member.toAuditSnapshot());
+        taskCommandService.unassignTasksInProject(member.getUser(), projectId);
         project.getMembers().remove(member);
 
         eventPublisher.publishEvent(
@@ -238,7 +239,7 @@ public class ProjectService {
             // Demoting to VIEWER — unassign non-terminal tasks in this project
             if (newRole == ProjectRole.VIEWER) {
                 User user = userService.getUserById(userId);
-                taskAssignmentService.unassignTasksInProject(user, projectId);
+                taskCommandService.unassignTasksInProject(user, projectId);
             }
 
             Map<String, Object> changes = AuditDetails.diff(before, member.toAuditSnapshot());

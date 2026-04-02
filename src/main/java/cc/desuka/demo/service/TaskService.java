@@ -247,23 +247,7 @@ public class TaskService {
                             messages.get("task.field.notEditable", field));
         }
 
-        Task saved = taskRepository.save(task);
-        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
-        if (!changes.isEmpty()) {
-            eventPublisher.publishEvent(
-                    new AuditEvent(
-                            AuditEvent.TASK_UPDATED,
-                            Task.class,
-                            saved.getId(),
-                            SecurityUtils.getCurrentPrincipal(),
-                            AuditDetails.toJson(changes)));
-            User actor = SecurityUtils.getCurrentUser();
-            eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
-            eventPublisher.publishEvent(
-                    new TaskChangeEvent(
-                            TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
-        }
-        return saved;
+        return saveAndPublish(task, before);
     }
 
     public Task setStatus(Long id, TaskStatus newStatus) {
@@ -276,22 +260,7 @@ public class TaskService {
         TaskStatus previousStatus = task.getStatus();
         task.setStatus(newStatus);
         updateCompletedAt(task, previousStatus);
-        Task saved = taskRepository.save(task);
-        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
-        if (!changes.isEmpty()) {
-            eventPublisher.publishEvent(
-                    new AuditEvent(
-                            AuditEvent.TASK_UPDATED,
-                            Task.class,
-                            saved.getId(),
-                            SecurityUtils.getCurrentPrincipal(),
-                            AuditDetails.toJson(changes)));
-        }
-        User actor = SecurityUtils.getCurrentUser();
-        eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
-        eventPublisher.publishEvent(
-                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
-        return saved;
+        return saveAndPublish(task, before);
     }
 
     // Advance status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN
@@ -312,18 +281,26 @@ public class TaskService {
         requireNotBlocked(id, next);
         task.setStatus(next);
         updateCompletedAt(task, previousStatus);
+        return saveAndPublish(task, before);
+    }
+
+    private Task saveAndPublish(Task task, Map<String, AuditField> before) {
         Task saved = taskRepository.save(task);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.TASK_UPDATED,
-                        Task.class,
-                        saved.getId(),
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(AuditDetails.diff(before, saved.toAuditSnapshot()))));
-        User actor = SecurityUtils.getCurrentUser();
-        eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
-        eventPublisher.publishEvent(
-                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.TASK_UPDATED,
+                            Task.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+            User actor = SecurityUtils.getCurrentUser();
+            eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
+            eventPublisher.publishEvent(
+                    new TaskChangeEvent(
+                            TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+        }
         return saved;
     }
 
@@ -364,17 +341,7 @@ public class TaskService {
         Task task = taskQueryService.getTaskById(taskId);
         Map<String, AuditField> before = task.toAuditSnapshot();
         task.setSprint(sprintId != null ? sprintQueryService.getSprintById(sprintId) : null);
-        Task saved = taskRepository.save(task);
-        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
-        if (!changes.isEmpty()) {
-            eventPublisher.publishEvent(
-                    new AuditEvent(
-                            AuditEvent.TASK_UPDATED,
-                            Task.class,
-                            saved.getId(),
-                            SecurityUtils.getCurrentPrincipal(),
-                            AuditDetails.toJson(changes)));
-        }
+        saveAndPublish(task, before);
     }
 
     public void clearSprintAssignments(Long projectId) {
