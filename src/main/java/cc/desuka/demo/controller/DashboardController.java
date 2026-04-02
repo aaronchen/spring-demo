@@ -27,12 +27,7 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public String dashboard(
             @AuthenticationPrincipal CustomUserDetails currentDetails, Model model) {
-        User currentUser = currentDetails.getUser();
-        List<Long> accessibleProjectIds =
-                AuthExpressions.isAdmin(currentUser)
-                        ? null
-                        : projectQueryService.getAccessibleProjectIds(currentUser.getId());
-        model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
+        addStats(currentDetails, model);
         return "dashboard/dashboard";
     }
 
@@ -40,12 +35,16 @@ public class DashboardController {
     @GetMapping("/dashboard/stats")
     public String dashboardStats(
             @AuthenticationPrincipal CustomUserDetails currentDetails, Model model) {
+        addStats(currentDetails, model);
+        return "dashboard/dashboard-stats";
+    }
+
+    private void addStats(CustomUserDetails currentDetails, Model model) {
         User currentUser = currentDetails.getUser();
         List<Long> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentUser)
                         ? null
                         : projectQueryService.getAccessibleProjectIds(currentUser.getId());
         model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
-        return "dashboard/dashboard-stats";
     }
 }

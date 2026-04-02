@@ -9,6 +9,7 @@ import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
 import cc.desuka.demo.dto.SprintRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.ProjectMapper;
 import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
 import cc.desuka.demo.mapper.SprintMapper;
@@ -258,7 +259,7 @@ public class ProjectController {
             try {
                 model.addAttribute(
                         "filterUserName", userService.getUserById(selectedUserId).getName());
-            } catch (Exception ignored) {
+            } catch (EntityNotFoundException ignored) {
             }
         }
 

@@ -35,7 +35,9 @@ public class ProjectApiController {
 
     // GET /api/projects/{id}/members — all enabled members
     @GetMapping("/{id}/members")
-    public List<UserResponse> getProjectMembers(@PathVariable Long id) {
+    public List<UserResponse> getProjectMembers(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        projectAccessGuard.requireViewAccess(id, currentDetails);
         List<User> members =
                 projectQueryService.getMembers(id).stream()
                         .map(m -> m.getUser())
@@ -46,7 +48,9 @@ public class ProjectApiController {
 
     // GET /api/projects/{id}/members/assignable — editors and owners only (for task assignment)
     @GetMapping("/{id}/members/assignable")
-    public List<UserResponse> getAssignableMembers(@PathVariable Long id) {
+    public List<UserResponse> getAssignableMembers(
+            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        projectAccessGuard.requireViewAccess(id, currentDetails);
         List<User> members =
                 projectQueryService.getMembers(id).stream()
                         .filter(m -> m.getRole() != ProjectRole.VIEWER)

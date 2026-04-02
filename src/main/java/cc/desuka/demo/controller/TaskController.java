@@ -8,6 +8,7 @@ import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.exception.BlockedTaskException;
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.TaskFormMapper;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
@@ -163,7 +164,7 @@ public class TaskController {
             try {
                 model.addAttribute(
                         "filterUserName", userService.getUserById(selectedUserId).getName());
-            } catch (Exception ignored) {
+            } catch (EntityNotFoundException ignored) {
             }
         }
 
