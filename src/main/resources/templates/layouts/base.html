@@ -11,6 +11,9 @@
     <link rel="icon" type="image/png" th:href="@{/favicon.png}">
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
 
+    <!-- Preload primary font to avoid flash of fallback text -->
+    <link rel="preload" th:href="@{/fonts/dm-sans-latin.woff2}" as="font" type="font/woff2" crossorigin>
+
     <!-- Bootstrap CSS via WebJars -->
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
 
