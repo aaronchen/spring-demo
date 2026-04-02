@@ -7,7 +7,10 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+@Repository
 public interface RecentViewRepository extends JpaRepository<RecentView, Long> {
 
     Optional<RecentView> findByUserIdAndEntityTypeAndEntityId(
@@ -18,10 +21,12 @@ public interface RecentViewRepository extends JpaRepository<RecentView, Long> {
     long countByUserId(Long userId);
 
     @Modifying
+    @Transactional
     @Query("DELETE FROM RecentView rv WHERE rv.user.id = :userId" + " AND rv.id NOT IN :keepIds")
     void deleteByUserIdAndIdNotIn(Long userId, List<Long> keepIds);
 
     @Modifying
+    @Transactional
     @Query(
             "UPDATE RecentView rv SET rv.entityTitle = :title"
                     + " WHERE rv.entityType = :entityType AND rv.entityId = :entityId")

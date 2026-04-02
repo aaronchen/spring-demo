@@ -8,7 +8,10 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
+@Repository
 public interface RecurringTaskTemplateRepository
         extends JpaRepository<RecurringTaskTemplate, Long> {
 
@@ -36,6 +39,7 @@ public interface RecurringTaskTemplateRepository
 
     /** Disable all enabled templates for a project (used when enabling sprints). */
     @Modifying
+    @Transactional
     @Query(
             "UPDATE RecurringTaskTemplate t SET t.enabled = false "
                     + "WHERE t.project.id = :projectId AND t.enabled = true")
