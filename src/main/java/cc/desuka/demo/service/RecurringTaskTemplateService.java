@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.RecurringTaskTemplate;
@@ -85,7 +86,7 @@ public class RecurringTaskTemplateService {
         RecurringTaskTemplate template = getTemplateById(id);
         validateEndDate(request);
 
-        Map<String, Object> before = template.toAuditSnapshot();
+        Map<String, AuditField> before = template.toAuditSnapshot();
 
         applyRequest(template, request);
         RecurringTaskTemplate saved = templateRepository.save(template);
@@ -106,7 +107,7 @@ public class RecurringTaskTemplateService {
 
     public void toggleEnabled(Long id) {
         RecurringTaskTemplate template = getTemplateById(id);
-        Map<String, Object> before = template.toAuditSnapshot();
+        Map<String, AuditField> before = template.toAuditSnapshot();
 
         template.setEnabled(!template.isEnabled());
         RecurringTaskTemplate saved = templateRepository.save(template);

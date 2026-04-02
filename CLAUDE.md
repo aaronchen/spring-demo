@@ -295,7 +295,7 @@ Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workloa
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 242 tests, 29 test classes
+./mvnw test                               # 303 tests, 32 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 

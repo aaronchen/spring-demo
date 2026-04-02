@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -186,12 +187,12 @@ public class Project implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_NAME, name);
-        snapshot.put(FIELD_DESCRIPTION, description);
-        snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
-        snapshot.put(FIELD_SPRINT_ENABLED, sprintEnabled);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_NAME, AuditField.text(name));
+        snapshot.put(FIELD_DESCRIPTION, AuditField.text(description));
+        snapshot.put(FIELD_STATUS, AuditField.enumValue(status));
+        snapshot.put(FIELD_SPRINT_ENABLED, AuditField.bool(sprintEnabled));
         return snapshot;
     }
 }

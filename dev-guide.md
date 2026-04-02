@@ -32,7 +32,7 @@
 ## Running Tests
 
 ```bash
-# Run all tests (242 tests, uses H2 via test profile)
+# Run all tests (303 tests, uses H2 via test profile)
 ./mvnw test
 
 # Run all tests + package JAR (full build lifecycle)
@@ -107,7 +107,7 @@ To switch Render to PostgreSQL: create a Render PostgreSQL instance, set `SPRING
 `.github/workflows/ci.yml` runs on every push to `main` and on every PR targeting `main`:
 1. Checks out the code
 2. Sets up JDK 25
-3. Runs `./mvnw verify` (compile + all 242 tests using H2)
+3. Runs `./mvnw verify` (compile + all 303 tests using H2)
 
 Results show as green check or red X on the commit/PR.
 

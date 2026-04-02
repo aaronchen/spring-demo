@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.TaskStatus;
@@ -102,11 +103,11 @@ public class UserService {
 
     public User updateProfile(Long userId, String name, String email) {
         User user = getUserById(userId);
-        Map<String, Object> before = user.toAuditSnapshot();
+        Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
         user.setEmail(email);
         User saved = userRepository.save(user);
-        Map<String, Object> after = saved.toAuditSnapshot();
+        Map<String, AuditField> after = saved.toAuditSnapshot();
         Map<String, Object> diff = AuditDetails.diff(before, after);
         if (!diff.isEmpty()) {
             eventPublisher.publishEvent(

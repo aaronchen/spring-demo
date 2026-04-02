@@ -2,6 +2,7 @@ package cc.desuka.demo;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.config.Settings;
 import cc.desuka.demo.dto.SavedViewData;
 import cc.desuka.demo.dto.TaskListQuery;
@@ -2162,7 +2163,11 @@ public class DataLoader implements CommandLineRunner {
 
         // Task update: t3 completed (Spring Security migration)
         Map<String, Object> t3StatusChange = new LinkedHashMap<>();
-        t3StatusChange.put("status", Map.of("old", "IN_PROGRESS", "new", "COMPLETED"));
+        t3StatusChange.put(
+                "status",
+                Map.of(
+                        "old", AuditField.enumValue(TaskStatus.IN_PROGRESS),
+                        "new", AuditField.enumValue(TaskStatus.COMPLETED)));
         auditLogs.add(
                 auditLog(
                         AuditEvent.TASK_UPDATED,
@@ -2174,7 +2179,11 @@ public class DataLoader implements CommandLineRunner {
 
         // Task update: t7 completed (pagination bug)
         Map<String, Object> t7StatusChange = new LinkedHashMap<>();
-        t7StatusChange.put("status", Map.of("old", "IN_PROGRESS", "new", "COMPLETED"));
+        t7StatusChange.put(
+                "status",
+                Map.of(
+                        "old", AuditField.enumValue(TaskStatus.IN_PROGRESS),
+                        "new", AuditField.enumValue(TaskStatus.COMPLETED)));
         auditLogs.add(
                 auditLog(
                         AuditEvent.TASK_UPDATED,
@@ -2190,19 +2199,21 @@ public class DataLoader implements CommandLineRunner {
                 "checklistItems",
                 Map.of(
                         "old",
-                                List.of(
-                                        "[ ] Configure build stage",
-                                        "[ ] Add test stage with coverage",
-                                        "[ ] Set up staging deploy",
-                                        "[ ] Add Slack notifications",
-                                        "[ ] Document pipeline in wiki"),
+                                AuditField.checklist(
+                                        List.of(
+                                                "[ ] Configure build stage",
+                                                "[ ] Add test stage with coverage",
+                                                "[ ] Set up staging deploy",
+                                                "[ ] Add Slack notifications",
+                                                "[ ] Document pipeline in wiki")),
                         "new",
-                                List.of(
-                                        "[x] Configure build stage",
-                                        "[x] Add test stage with coverage",
-                                        "[ ] Set up staging deploy",
-                                        "[ ] Add Slack notifications",
-                                        "[ ] Document pipeline in wiki")));
+                                AuditField.checklist(
+                                        List.of(
+                                                "[x] Configure build stage",
+                                                "[x] Add test stage with coverage",
+                                                "[ ] Set up staging deploy",
+                                                "[ ] Add Slack notifications",
+                                                "[ ] Document pipeline in wiki"))));
         auditLogs.add(
                 auditLog(
                         AuditEvent.TASK_UPDATED,
@@ -2218,17 +2229,19 @@ public class DataLoader implements CommandLineRunner {
                 "checklistItems",
                 Map.of(
                         "old",
-                                List.of(
-                                        "[ ] Research sliding window algorithms",
-                                        "[ ] Draft architecture section",
-                                        "[ ] Add Redis schema design",
-                                        "[ ] Get review from team"),
+                                AuditField.checklist(
+                                        List.of(
+                                                "[ ] Research sliding window algorithms",
+                                                "[ ] Draft architecture section",
+                                                "[ ] Add Redis schema design",
+                                                "[ ] Get review from team")),
                         "new",
-                                List.of(
-                                        "[x] Research sliding window algorithms",
-                                        "[x] Draft architecture section",
-                                        "[ ] Add Redis schema design",
-                                        "[ ] Get review from team")));
+                                AuditField.checklist(
+                                        List.of(
+                                                "[x] Research sliding window algorithms",
+                                                "[x] Draft architecture section",
+                                                "[ ] Add Redis schema design",
+                                                "[ ] Get review from team"))));
         auditLogs.add(
                 auditLog(
                         AuditEvent.TASK_UPDATED,
@@ -2244,17 +2257,19 @@ public class DataLoader implements CommandLineRunner {
                 "checklistItems",
                 Map.of(
                         "old",
-                                List.of(
-                                        "[ ] Research STOMP protocol",
-                                        "[ ] Design message schema",
-                                        "[ ] Plan connection lifecycle",
-                                        "[ ] Document offline strategy"),
+                                AuditField.checklist(
+                                        List.of(
+                                                "[ ] Research STOMP protocol",
+                                                "[ ] Design message schema",
+                                                "[ ] Plan connection lifecycle",
+                                                "[ ] Document offline strategy")),
                         "new",
-                                List.of(
-                                        "[x] Research STOMP protocol",
-                                        "[x] Design message schema",
-                                        "[ ] Plan connection lifecycle",
-                                        "[ ] Document offline strategy")));
+                                AuditField.checklist(
+                                        List.of(
+                                                "[x] Research STOMP protocol",
+                                                "[x] Design message schema",
+                                                "[ ] Plan connection lifecycle",
+                                                "[ ] Document offline strategy"))));
         auditLogs.add(
                 auditLog(
                         AuditEvent.TASK_UPDATED,

@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -394,37 +395,37 @@ public class Task implements OwnedEntity, Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_PROJECT, project != null ? project.getName() : null);
-        snapshot.put(FIELD_TITLE, title);
-        snapshot.put(FIELD_DESCRIPTION, description);
-        snapshot.put(FIELD_STATUS, status != null ? status.name() : null);
-        snapshot.put(FIELD_PRIORITY, priority != null ? priority.name() : null);
-        snapshot.put(FIELD_START_DATE, startDate != null ? startDate.toString() : null);
-        snapshot.put(FIELD_DUE_DATE, dueDate != null ? dueDate.toString() : null);
-        snapshot.put(FIELD_EFFORT, effort);
-        snapshot.put(FIELD_SPRINT, sprint != null ? sprint.getName() : null);
-        snapshot.put(FIELD_USER, user != null ? user.getName() : null);
-        snapshot.put(FIELD_TEMPLATE, template != null ? template.getTitle() : null);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
         snapshot.put(
-                FIELD_TAGS,
-                tags != null ? tags.stream().map(Tag::getName).sorted().toList() : List.of());
+                FIELD_PROJECT,
+                AuditField.ref(project, Project::getId, Project::getName, AuditField.REF_PROJECT));
+        snapshot.put(FIELD_TITLE, AuditField.text(title));
+        snapshot.put(FIELD_DESCRIPTION, AuditField.text(description));
+        snapshot.put(FIELD_STATUS, AuditField.enumValue(status));
+        snapshot.put(FIELD_PRIORITY, AuditField.enumValue(priority));
+        snapshot.put(FIELD_START_DATE, AuditField.date(startDate));
+        snapshot.put(FIELD_DUE_DATE, AuditField.date(dueDate));
+        snapshot.put(FIELD_EFFORT, AuditField.number(effort));
+        snapshot.put(
+                FIELD_SPRINT,
+                AuditField.ref(sprint, Sprint::getId, Sprint::getName, AuditField.REF_SPRINT));
+        snapshot.put(
+                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
+        snapshot.put(
+                FIELD_TEMPLATE,
+                AuditField.ref(
+                        template,
+                        RecurringTaskTemplate::getId,
+                        RecurringTaskTemplate::getTitle,
+                        AuditField.REF_TEMPLATE));
+        snapshot.put(FIELD_TAGS, AuditField.collection(tags, Tag::getName));
         snapshot.put(
                 FIELD_CHECKLIST_ITEMS,
-                checklistItems != null
-                        ? checklistItems.stream()
-                                .map(ci -> (ci.isChecked() ? "[x] " : "[ ] ") + ci.getText())
-                                .toList()
-                        : List.of());
-        snapshot.put(
-                FIELD_BLOCKED_BY,
-                blockedBy != null
-                        ? blockedBy.stream().map(Task::getTitle).sorted().toList()
-                        : List.of());
-        snapshot.put(
-                FIELD_BLOCKS,
-                blocks != null ? blocks.stream().map(Task::getTitle).sorted().toList() : List.of());
+                AuditField.checklist(
+                        checklistItems, ChecklistItem::isChecked, ChecklistItem::getText));
+        snapshot.put(FIELD_BLOCKED_BY, AuditField.collection(blockedBy, Task::getTitle));
+        snapshot.put(FIELD_BLOCKS, AuditField.collection(blocks, Task::getTitle));
         return snapshot;
     }
 }

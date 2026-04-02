@@ -386,7 +386,9 @@ spring-demo/
 │   │   │   ├── AuditDetails.java            # Snapshot/diff/display-name utilities
 │   │   │   ├── AuditEvent.java              # Event class with action constants
 │   │   │   ├── AuditEventListener.java      # Persists AuditEvent → AuditLog
+│   │   │   ├── AuditField.java              # Typed audit value record (FieldType enum, factory methods)
 │   │   │   ├── AuditLogService.java         # Audit search + entity history
+│   │   │   ├── AuditTemplateHelper.java     # Thymeleaf helpers (enum labels, ref URLs, checklist diff)
 │   │   │   ├── Auditable.java               # Interface for audit snapshots
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
@@ -582,6 +584,7 @@ spring-demo/
 │       │   │   ├── 409.html            # Conflict page (optimistic locking)
 │       │   │   └── 500.html            # Server Error page
 │       │   ├── layouts/
+│       │   │   ├── audit-diff.html     # Shared audit diff rendering fragment
 │       │   │   ├── base.html           # Base layout + auth-aware navbar
 │       │   │   └── pagination.html     # Reusable pagination fragment
 │       │   ├── tags/
@@ -629,7 +632,10 @@ spring-demo/
 ├── src/test/
 │   ├── java/cc/desuka/demo/
 │   │   ├── audit/
-│   │   │   └── AuditEventListenerTest.java       # Audit persistence tests (2)
+│   │   │   ├── AuditDetailsTest.java              # Typed diff + JSON tests (12)
+│   │   │   ├── AuditEventListenerTest.java        # Audit persistence tests (2)
+│   │   │   ├── AuditFieldTest.java                # AuditField record tests (29)
+│   │   │   └── AuditTemplateHelperTest.java       # Template helper tests (20)
 │   │   ├── controller/api/
 │   │   │   ├── AuditApiControllerTest.java       # Audit REST API tests (2)
 │   │   │   ├── CommentApiControllerTest.java     # Comment REST API tests (8)

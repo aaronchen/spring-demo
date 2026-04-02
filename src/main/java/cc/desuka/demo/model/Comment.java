@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -85,11 +86,13 @@ public class Comment implements OwnedEntity, Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_TEXT, text);
-        snapshot.put(FIELD_TASK, task != null ? task.getTitle() : null);
-        snapshot.put(FIELD_USER, user != null ? user.getName() : null);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_TEXT, AuditField.text(text));
+        snapshot.put(
+                FIELD_TASK, AuditField.ref(task, Task::getId, Task::getTitle, AuditField.REF_TASK));
+        snapshot.put(
+                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
         return snapshot;
     }
 

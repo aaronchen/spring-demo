@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -151,12 +152,12 @@ public class Sprint implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_NAME, name);
-        snapshot.put(FIELD_GOAL, goal);
-        snapshot.put(FIELD_START_DATE, startDate != null ? startDate.toString() : null);
-        snapshot.put(FIELD_END_DATE, endDate != null ? endDate.toString() : null);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_NAME, AuditField.text(name));
+        snapshot.put(FIELD_GOAL, AuditField.text(goal));
+        snapshot.put(FIELD_START_DATE, AuditField.date(startDate));
+        snapshot.put(FIELD_END_DATE, AuditField.date(endDate));
         return snapshot;
     }
 }

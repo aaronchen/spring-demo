@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -88,10 +89,11 @@ public class ProjectMember implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_USER, user != null ? user.getName() : null);
-        snapshot.put(FIELD_ROLE, role != null ? role.name() : null);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(
+                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
+        snapshot.put(FIELD_ROLE, AuditField.enumValue(role));
         return snapshot;
     }
 }
