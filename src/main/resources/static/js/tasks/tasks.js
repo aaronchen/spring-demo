@@ -389,14 +389,19 @@ function renderStatusButton() {
     // Determine effective status for display
     const effectiveStatus = overdue ? 'OVERDUE' : (statusFilter !== 'ALL' ? statusFilter : '');
 
-    // Update active item styling
+    // Update checkmark visibility
     document.querySelectorAll('.status-filter-item').forEach(item => {
+        const check = item.querySelector('.filter-check');
         const itemStatus = item.dataset.status;
+        let isActive;
         if (itemStatus === 'OVERDUE') {
-            item.classList.toggle('active', overdue);
+            isActive = overdue;
+        } else if (itemStatus === 'ALL') {
+            isActive = !overdue && statusFilter === 'ALL';
         } else {
-            item.classList.toggle('active', !overdue && itemStatus === statusFilter);
+            isActive = !overdue && itemStatus === statusFilter;
         }
+        if (check) check.style.visibility = isActive ? 'visible' : 'hidden';
     });
 
     // Reset button to default
@@ -443,9 +448,10 @@ function renderPriorityButton() {
     const icon = btn.querySelector('i');
     const baseLabel = APP_CONFIG.messages['task.field.priority'] || 'Priority';
 
-    // Update active item styling
+    // Update checkmark visibility
     document.querySelectorAll('.priority-filter-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.priority === priority);
+        const check = item.querySelector('.filter-check');
+        if (check) check.style.visibility = (item.dataset.priority === priority) ? 'visible' : 'hidden';
     });
 
     // Reset button to default

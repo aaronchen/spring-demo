@@ -84,23 +84,25 @@ function addChecklistItem() {
     if (empty) empty.classList.add('d-none');
     const placeholder = APP_CONFIG.messages['task.checklist.placeholder'] || 'Enter checklist item';
     const div = document.createElement('div');
-    div.className = 'checklist-item input-group input-group-sm mb-1';
+    div.className = 'checklist-item d-flex align-items-center gap-1 mb-1';
     div.draggable = true;
     div.ondragstart = checklistDragStart;
     div.ondragover = checklistDragOver;
     div.ondragend = checklistDragEnd;
     div.ondrop = checklistDrop;
-    div.innerHTML = `<span class="input-group-text checklist-drag-handle">
-            <i class="bi bi-grip-vertical"></i>
-        </span>
-        <div class="input-group-text">
-            <input type="hidden" name="checklistChecked" value="false">
-            <input type="checkbox" class="form-check-input mt-0"
-                   onchange="this.previousElementSibling.value = this.checked">
+    div.innerHTML = `<div class="input-group input-group-sm">
+            <span class="input-group-text checklist-drag-handle">
+                <i class="bi bi-grip-vertical"></i>
+            </span>
+            <div class="input-group-text">
+                <input type="hidden" name="checklistChecked" value="false">
+                <input type="checkbox" class="form-check-input mt-0"
+                       onchange="this.previousElementSibling.value = this.checked">
+            </div>
+            <input type="text" class="form-control" name="checklistTexts" autocomplete="off" placeholder="${placeholder}">
         </div>
-        <input type="text" class="form-control" name="checklistTexts" autocomplete="off" placeholder="${placeholder}">
-        <button type="button" class="btn btn-outline-danger" onclick="removeChecklistItem(this)">
-            <i class="bi bi-x"></i>
+        <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeChecklistItem(this)">
+            <i class="bi bi-x-lg"></i>
         </button>`;
     container.appendChild(div);
     div.querySelector('input[type="text"]').focus();

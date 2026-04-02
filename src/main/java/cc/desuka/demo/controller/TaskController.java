@@ -247,8 +247,7 @@ public class TaskController {
         model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         model.addAttribute("mode", "view");
         model.addAttribute("tags", tagService.getAllTags());
-        addDependencyAttributes(
-                task, projectAccessGuard.canEdit(task.getProject().getId(), currentDetails), model);
+        addDependencyAttributes(task, false, model);
         addTimelineAttributes(model, id, currentDetails);
         if (HtmxUtils.isHtmxRequest(request)) {
             return "tasks/task-modal";

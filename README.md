@@ -70,7 +70,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Sprints** - Optional time-boxed iterations per project; date-range-based status (past/active/future); non-overlapping enforcement; sprint filter on task views (active sprint / backlog / all); sprint-scoped analytics with burndown using sprint date range; managed via project settings page
 - **Recurring Task Templates** - Automated task generation for non-sprint projects; DAILY/WEEKLY/BIWEEKLY/MONTHLY recurrence; configurable day-of-week/month, relative due dates, optional end date; scheduled 6 AM generation with missed-date skip; auto-disable at end date; managed via project settings with split "New Task" button
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
-- **Theme System** - Three color schemes (Default, Workshop, Indigo) switchable from admin settings; CSS custom properties with FOUC prevention
+- **Theme System** - Three color schemes (Default, Workshop, Sapphire) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
 
@@ -553,7 +553,7 @@ spring-demo/
 │       │   │   ├── audit.css           # Audit page styles
 │       │   │   ├── base.css            # Global styles
 │       │   │   ├── tasks.css           # Task page styles
-│       │   │   └── theme.css           # Theme overrides (Workshop, Indigo)
+│       │   │   └── theme.css           # Theme overrides (Workshop, Sapphire)
 │       │   ├── js/
 │       │   │   ├── audit.js            # Audit page logic
 │       │   │   ├── utils.js            # Shared utilities (cookies, CSRF, toasts, confirm)
