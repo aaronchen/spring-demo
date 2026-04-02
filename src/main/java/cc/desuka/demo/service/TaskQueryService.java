@@ -61,12 +61,22 @@ public class TaskQueryService {
         return taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
     }
 
+    public List<Task> getIncompleteTasks(List<Long> accessibleProjectIds) {
+        List<Task> tasks = taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
+        return filterByAccessibleProjects(tasks, accessibleProjectIds);
+    }
+
     public List<Task> searchTasks(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
             return taskRepository.findAll();
         }
         return taskRepository.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
                 keyword, keyword);
+    }
+
+    public List<Task> searchTasks(String keyword, List<Long> accessibleProjectIds) {
+        List<Task> tasks = searchTasks(keyword);
+        return filterByAccessibleProjects(tasks, accessibleProjectIds);
     }
 
     // ── Search and filter ─────────────────────────────────────────────────
@@ -82,7 +92,7 @@ public class TaskQueryService {
     }
 
     public long countAssignedTasks(User user) {
-        return taskRepository.findByUser(user).size();
+        return taskRepository.countByUser(user);
     }
 
     public long countByUserOverdue(User user) {
@@ -193,6 +203,14 @@ public class TaskQueryService {
 
     // ── Grouping ──────────────────────────────────────────────────────────
 
+    private List<Task> filterByAccessibleProjects(
+            List<Task> tasks, List<Long> accessibleProjectIds) {
+        if (accessibleProjectIds == null) return tasks;
+        return tasks.stream()
+                .filter(t -> accessibleProjectIds.contains(t.getProject().getId()))
+                .toList();
+    }
+
     public Map<TaskStatus, List<Task>> groupByStatus(List<Task> tasks) {
         Map<TaskStatus, List<Task>> map = new LinkedHashMap<>();
         for (TaskStatus status : TaskStatus.values()) {
@@ -202,31 +220,5 @@ public class TaskQueryService {
             map.get(task.getStatus()).add(task);
         }
         return map;
-    }
-
-    // ── Write operations (cross-service) ──────────────────────────────────
-
-    @Transactional
-    public void unassignTasks(User user) {
-        List<Task> tasks = taskRepository.findByUser(user);
-        for (Task task : tasks) {
-            task.setUser(null);
-            if (!task.getStatus().isTerminal()) {
-                task.setStatus(TaskStatus.OPEN);
-            }
-        }
-        taskRepository.saveAll(tasks);
-    }
-
-    @Transactional
-    public void unassignTasksInProject(User user, Long projectId) {
-        List<Task> tasks =
-                taskRepository.findByUserAndProjectIdAndStatusNotIn(
-                        user, projectId, TaskStatus.terminalStatuses());
-        for (Task task : tasks) {
-            task.setUser(null);
-            task.setStatus(TaskStatus.OPEN);
-        }
-        taskRepository.saveAll(tasks);
     }
 }

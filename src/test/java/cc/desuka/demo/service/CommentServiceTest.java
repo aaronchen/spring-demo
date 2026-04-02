@@ -162,17 +162,6 @@ class CommentServiceTest {
         verify(commentRepository).deleteByTaskId(1L);
     }
 
-    // ── countByUserId ────────────────────────────────────────────────────
-
-    @Test
-    void countByUserId_delegatesToRepository() {
-        when(commentRepository.countByUserId(1L)).thenReturn(5L);
-
-        long count = commentService.countByUserId(1L);
-
-        assertThat(count).isEqualTo(5L);
-    }
-
     // ── getSubscriberIds ─────────────────────────────────────────────────
 
     @Test

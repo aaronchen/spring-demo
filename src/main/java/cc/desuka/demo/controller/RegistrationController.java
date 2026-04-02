@@ -58,10 +58,7 @@ public class RegistrationController {
 
         // Cross-field validation: passwords must match
         if (!registrationRequest.getPassword().equals(registrationRequest.getConfirmPassword())) {
-            result.rejectValue(
-                    "confirmPassword",
-                    "register.error.passwordMismatch",
-                    "Passwords do not match.");
+            result.rejectValue("confirmPassword", "register.error.passwordMismatch");
         }
 
         if (result.hasErrors()) {

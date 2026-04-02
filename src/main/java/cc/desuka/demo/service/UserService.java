@@ -22,16 +22,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final TaskQueryService taskQueryService;
+    private final TaskCommandService taskAssignmentService;
     private final CommentQueryService commentQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(
             UserRepository userRepository,
             TaskQueryService taskQueryService,
+            TaskCommandService taskAssignmentService,
             CommentQueryService commentQueryService,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskQueryService = taskQueryService;
+        this.taskAssignmentService = taskAssignmentService;
         this.commentQueryService = commentQueryService;
         this.eventPublisher = eventPublisher;
     }
@@ -87,17 +90,21 @@ public class UserService {
 
     public User updateUser(Long userId, String name, String email, Role role) {
         User user = getUserById(userId);
+        Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
         user.setEmail(email);
         user.setRole(role);
         User saved = userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_UPDATED,
-                        User.class,
-                        saved.getId(),
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());
+        if (!changes.isEmpty()) {
+            eventPublisher.publishEvent(
+                    new AuditEvent(
+                            AuditEvent.USER_UPDATED,
+                            User.class,
+                            saved.getId(),
+                            SecurityUtils.getCurrentPrincipal(),
+                            AuditDetails.toJson(changes)));
+        }
         return saved;
     }
 
@@ -155,7 +162,7 @@ public class UserService {
     public User disableUser(Long userId) {
         User user = getUserById(userId);
         user.setEnabled(false);
-        taskQueryService.unassignTasks(user);
+        taskAssignmentService.unassignTasks(user);
         User saved = userRepository.save(user);
         eventPublisher.publishEvent(
                 new AuditEvent(
@@ -216,7 +223,7 @@ public class UserService {
     public void deleteUser(Long id) {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
-        taskQueryService.unassignTasks(user);
+        taskAssignmentService.unassignTasks(user);
         userRepository.delete(user);
         eventPublisher.publishEvent(
                 new AuditEvent(

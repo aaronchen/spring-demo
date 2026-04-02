@@ -178,13 +178,14 @@ function loadBulkAssignUsers() {
 
     const url = APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId });
     fetch(url)
+        .then(requireOk)
         .then(r => r.json())
         .then(users => {
             bulkAssignUsers = users;
             bulkAssignProjectId = projectId;
             renderBulkAssignList(users);
         })
-        .catch(() => {});
+        .catch(err => console.error('Failed to load assignable users:', err));
 }
 
 function filterBulkAssignUsers(query) {

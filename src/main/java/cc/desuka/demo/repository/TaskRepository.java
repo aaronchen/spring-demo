@@ -48,6 +48,8 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     List<Task> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
             String title, String description);
 
+    long countByUser(User user);
+
     long countByUserAndStatus(User user, TaskStatus status);
 
     long countByUserAndDueDateBeforeAndStatusNotIn(

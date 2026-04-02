@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -131,18 +133,13 @@ public class AnalyticsService {
         }
 
         // Resolve names
-        String unassignedLabel = messages.get("analytics.label.unassigned");
+        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assigneeNames = new ArrayList<>();
         Map<Long, Integer> userIndex = new LinkedHashMap<>();
         for (int i = 0; i < userIds.size(); i++) {
             Long uid = userIds.get(i);
             userIndex.put(uid, i);
-            if (uid == null) {
-                assigneeNames.add(unassignedLabel);
-            } else {
-                User user = userService.findUserById(uid);
-                assigneeNames.add(user != null ? user.getName() : unassignedLabel);
-            }
+            assigneeNames.add(resolveUserName(uid, nameMap));
         }
 
         // Build status counts: status -> [count per assignee]
@@ -263,18 +260,13 @@ public class AnalyticsService {
         List<Object[]> rows =
                 analyticsRepository.countOverdueByUser(projectId, projectIds, sprintId, terminal);
 
-        String unassignedLabel = messages.get("analytics.label.unassigned");
+        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assignees = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
         for (Object[] row : rows) {
             Long userId = (Long) row[0];
             Long count = (Long) row[1];
-            if (userId == null) {
-                assignees.add(unassignedLabel);
-            } else {
-                User user = userService.findUserById(userId);
-                assignees.add(user != null ? user.getName() : unassignedLabel);
-            }
+            assignees.add(resolveUserName(userId, nameMap));
             counts.add(count);
         }
 
@@ -287,18 +279,13 @@ public class AnalyticsService {
             Long projectId, List<Long> projectIds, Long sprintId) {
         List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds, sprintId);
 
-        String unassignedLabel = messages.get("analytics.label.unassigned");
+        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assignees = new ArrayList<>();
         List<Long> efforts = new ArrayList<>();
         for (Object[] row : rows) {
             Long userId = (Long) row[0];
             Long effort = (Long) row[1];
-            if (userId == null) {
-                assignees.add(unassignedLabel);
-            } else {
-                User user = userService.findUserById(userId);
-                assignees.add(user != null ? user.getName() : unassignedLabel);
-            }
+            assignees.add(resolveUserName(userId, nameMap));
             efforts.add(effort);
         }
 
@@ -306,6 +293,25 @@ public class AnalyticsService {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
+
+    private Map<Long, String> buildUserNameMap(List<Object[]> rows, int userIdIndex) {
+        List<Long> userIds =
+                rows.stream()
+                        .map(row -> (Long) row[userIdIndex])
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+        return userService.getAllUsers().stream()
+                .filter(u -> userIds.contains(u.getId()))
+                .collect(Collectors.toMap(User::getId, User::getName));
+    }
+
+    private String resolveUserName(Long userId, Map<Long, String> nameMap) {
+        if (userId == null) {
+            return messages.get("analytics.label.unassigned");
+        }
+        return nameMap.getOrDefault(userId, messages.get("analytics.label.unassigned"));
+    }
 
     private Specification<cc.desuka.demo.model.Task> projectScope(
             Long projectId, List<Long> projectIds) {

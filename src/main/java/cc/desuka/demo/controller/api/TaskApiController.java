@@ -125,8 +125,16 @@ public class TaskApiController {
 
     // GET /api/tasks/search?keyword=spring
     @GetMapping("/search")
-    public List<TaskResponse> searchTasks(@RequestParam String keyword) {
-        return taskMapper.toResponseList(taskQueryService.searchTasks(keyword));
+    public List<TaskResponse> searchTasks(
+            @RequestParam String keyword,
+            @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        List<Long> accessibleProjectIds =
+                AuthExpressions.isAdmin(currentDetails.getUser())
+                        ? null
+                        : projectQueryService.getAccessibleProjectIds(
+                                currentDetails.getUser().getId());
+        return taskMapper.toResponseList(
+                taskQueryService.searchTasks(keyword, accessibleProjectIds));
     }
 
     // GET /api/tasks/search-for-dependency?projectId=1&q=deploy&excludeTaskIds=5,10,12
@@ -145,8 +153,14 @@ public class TaskApiController {
 
     // GET /api/tasks/incomplete
     @GetMapping("/incomplete")
-    public List<TaskResponse> getIncompleteTasks() {
-        return taskMapper.toResponseList(taskQueryService.getIncompleteTasks());
+    public List<TaskResponse> getIncompleteTasks(
+            @AuthenticationPrincipal CustomUserDetails currentDetails) {
+        List<Long> accessibleProjectIds =
+                AuthExpressions.isAdmin(currentDetails.getUser())
+                        ? null
+                        : projectQueryService.getAccessibleProjectIds(
+                                currentDetails.getUser().getId());
+        return taskMapper.toResponseList(taskQueryService.getIncompleteTasks(accessibleProjectIds));
     }
 
     // PATCH /api/tasks/5/toggle

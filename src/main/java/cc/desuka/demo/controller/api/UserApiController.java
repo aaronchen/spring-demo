@@ -6,10 +6,10 @@ import cc.desuka.demo.mapper.UserMapper;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.Messages;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,10 +18,12 @@ public class UserApiController {
 
     private final UserService userService;
     private final UserMapper userMapper;
+    private final Messages messages;
 
-    public UserApiController(UserService userService, UserMapper userMapper) {
+    public UserApiController(UserService userService, UserMapper userMapper, Messages messages) {
         this.userService = userService;
         this.userMapper = userMapper;
+        this.messages = messages;
     }
 
     // GET /api/users
@@ -47,11 +49,11 @@ public class UserApiController {
 
     // DELETE /api/users/{id}
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable Long id) {
         if (SecurityUtils.isCurrentUser(id)) {
-            return ResponseEntity.badRequest().build();
+            throw new IllegalArgumentException(messages.get("admin.users.self.cannotRemove"));
         }
         userService.deleteUser(id);
-        return ResponseEntity.noContent().build();
     }
 }

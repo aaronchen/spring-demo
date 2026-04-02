@@ -28,6 +28,7 @@
     // Load initial data via API
     function loadRecentViews() {
         fetch(APP_CONFIG.routes.apiRecentViews)
+            .then(requireOk)
             .then(function (res) { return res.json(); })
             .then(function (items) {
                 listEl.innerHTML = '';

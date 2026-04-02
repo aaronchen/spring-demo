@@ -1,8 +1,8 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.repository.SprintRepository;
-import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -22,7 +22,7 @@ public class SprintQueryService {
     public Sprint getSprintById(Long id) {
         return sprintRepository
                 .findWithProjectById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Sprint not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException(Sprint.class, id));
     }
 
     public List<Sprint> getSprintsByProject(Long projectId) {

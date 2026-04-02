@@ -28,6 +28,7 @@ class UserServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private TaskQueryService taskQueryService;
+    @Mock private TaskCommandService taskAssignmentService;
     @Mock private CommentQueryService commentQueryService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -241,7 +242,7 @@ class UserServiceTest {
             User result = userService.disableUser(2L);
 
             assertThat(result.isEnabled()).isFalse();
-            verify(taskQueryService).unassignTasks(bob);
+            verify(taskAssignmentService).unassignTasks(bob);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
         }
     }
@@ -275,8 +276,8 @@ class UserServiceTest {
 
             userService.deleteUser(2L);
 
-            var inOrder = inOrder(taskQueryService, userRepository);
-            inOrder.verify(taskQueryService).unassignTasks(bob);
+            var inOrder = inOrder(taskAssignmentService, userRepository);
+            inOrder.verify(taskAssignmentService).unassignTasks(bob);
             inOrder.verify(userRepository).delete(bob);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
         }
