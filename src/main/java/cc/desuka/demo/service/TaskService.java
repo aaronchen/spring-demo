@@ -20,6 +20,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
@@ -192,11 +193,20 @@ public class TaskService {
     }
 
     public void deleteTask(Long id) {
-        Task task = taskQueryService.getTaskById(id);
+        Task task = taskQueryService.getTaskWithDependencies(id);
 
         if (task.getStatus() == TaskStatus.COMPLETED) {
             throw new IllegalStateException(messages.get("task.delete.completed"));
         }
+
+        // Clear dependency relationships before deleting.
+        // blockedBy is the inverse side — remove from each blocker's owning "blocks" set.
+        for (Task blocker : new HashSet<>(task.getBlockedBy())) {
+            blocker.getBlocks().remove(task);
+        }
+        task.getBlockedBy().clear();
+        // blocks is the owning side — clearing it removes the join table rows.
+        task.getBlocks().clear();
 
         String snapshot = AuditDetails.toJson(task.toAuditSnapshot());
         recentViewService.deleteByEntity(RecentView.TYPE_TASK, id);

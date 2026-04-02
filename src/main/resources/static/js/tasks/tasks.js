@@ -225,6 +225,9 @@ function initFromUrl() {
     document.getElementById('current-priority-filter').value = params.get('priority') || '';
     renderPriorityButton();
 
+    // Sprint filter
+    renderSprintFilter();
+
     // Search
     document.getElementById('search-input').value = params.get('search') || '';
     const clearBtn = document.getElementById('search-clear-btn');
@@ -335,11 +338,22 @@ function setSprintFilter(value) {
         } else if (value === '0') {
             label.textContent = APP_CONFIG.messages['sprint.filter.noSprint'] || 'No Sprint';
         } else {
-            const item = document.querySelector(`[data-value="${value}"]`);
-            if (item) label.textContent = item.dataset.name || item.textContent;
+            const item = document.querySelector(`.sprint-filter-item[data-value="${value}"]`);
+            if (item) label.textContent = item.dataset.name || item.textContent.trim();
         }
     }
+    renderSprintFilter();
     doSearch(true);
+}
+
+function renderSprintFilter() {
+    const hidden = document.getElementById('current-sprint-filter');
+    if (!hidden) return;
+    const value = hidden.value;
+    document.querySelectorAll('.sprint-filter-item').forEach(item => {
+        const check = item.querySelector('.filter-check');
+        if (check) check.style.visibility = (item.dataset.value === value) ? 'visible' : 'hidden';
+    });
 }
 
 // ── Status filter (dropdown + clickable badges on cards/rows) ──
@@ -678,6 +692,7 @@ function applySavedView(view) {
 
     renderStatusButton();
     renderPriorityButton();
+    renderSprintFilter();
     renderViewToggle();
     renderTagFilter();
     renderUserFilter();

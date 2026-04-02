@@ -646,7 +646,8 @@
 
 [data-theme] .btn-lg {
     border-radius: var(--radius-md);
-    padding: 0.625rem 1.5rem;
+    --bs-btn-padding-y: 0.625rem;
+    --bs-btn-padding-x: 1.5rem;
 }
 
 /* ── Badges ─────────────────────────────────────────────────────────── */
