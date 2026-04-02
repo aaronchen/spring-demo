@@ -20,7 +20,7 @@ body {
     min-height: 100vh;
 }
 
-/* Smooth transitions for cards */
+/* Smooth transitions for cards (theme.css tokens override when data-theme active) */
 .card {
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
@@ -46,13 +46,18 @@ body {
     box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.12) !important;
 }
 
+/* Theme-aware overrides for dashboard stat cards */
+[data-theme] .dashboard-stat-card:hover {
+    box-shadow: var(--shadow-md) !important;
+}
+
 /* Dashboard detail cards — scrollable content area */
 .dashboard-scroll {
     max-height: 360px;
     overflow-y: auto;
 }
 
-/* Button hover effects */
+/* Button hover effects (theme.css provides refined per-property transition when themed) */
 .btn {
     transition: all 0.2s ease-in-out;
 }
@@ -180,8 +185,8 @@ body {
 
 #toast-container .toast {
     font-size: 0.95rem;
-    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
-    animation: toast-slide-in 0.3s ease-out;
+    box-shadow: var(--shadow-xl, 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25));
+    animation: toast-slide-in var(--duration-slow, 0.3s) var(--ease-out, ease-out);
 }
 
 #toast-container .toast-divider {
@@ -192,8 +197,8 @@ body {
 }
 
 @keyframes toast-slide-in {
-    from { transform: translateX(100%); opacity: 0; }
-    to   { transform: translateX(0);    opacity: 1; }
+    from { transform: translateX(100%) scale(0.95); opacity: 0; }
+    to   { transform: translateX(0) scale(1);       opacity: 1; }
 }
 
 /* Confirm modal — floats above other modals (z-index 1055) and their backdrops (1050).
@@ -296,4 +301,47 @@ body {
 .audit-unchecked {
     color: var(--bs-warning);
 }
+
+/* ── Skeleton loading shimmer ─────────────────────────────────────── */
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bs-secondary-bg, #e9ecef) 25%,
+        var(--bs-tertiary-bg, #f8f9fa) 50%,
+        var(--bs-secondary-bg, #e9ecef) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: var(--radius-md, 0.375rem);
+    color: transparent !important;
+    user-select: none;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Hide content and show skeleton indicator during HTMX requests */
+.htmx-indicator-content.htmx-request ~ .htmx-indicator-skeleton {
+    display: block;
+}
+.htmx-indicator-content.htmx-request {
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+}
+.htmx-indicator-skeleton {
+    display: none;
+}
+
+/* ── Reduced motion ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 

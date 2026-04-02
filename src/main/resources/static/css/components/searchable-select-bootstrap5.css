@@ -85,6 +85,14 @@ searchable-select:not(.ss-keyboard-nav) .dropdown-item.active:hover {
     color: #fff;
 }
 
+/* Disabled state — match theme's disabled form-control style */
+searchable-select[disabled] .ss-input {
+    background-color: var(--theme-surface-sunken, var(--bs-secondary-bg, #e9ecef));
+    border-color: transparent;
+    color: var(--bs-secondary-color, #6c757d);
+    cursor: default;
+}
+
 /* Pad input to avoid text under clear button */
 searchable-select .ss-input.has-clear {
     padding-right: 2rem;

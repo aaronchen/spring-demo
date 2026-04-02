@@ -31,10 +31,10 @@ public class SettingsController {
                             List.of("#0d6efd", "#198754", "#ffc107", "#dc3545")),
                     new ThemeOption(
                             Settings.THEME_WORKSHOP,
-                            List.of("#4fb5ee", "#4db17f", "#e6a740", "#f44336")),
+                            List.of("#2b7de9", "#16a34a", "#e6a740", "#dc2626")),
                     new ThemeOption(
-                            Settings.THEME_INDIGO,
-                            List.of("#6366f1", "#14b8a6", "#f59e0b", "#f43f5e")));
+                            Settings.THEME_SAPPHIRE,
+                            List.of("#3b52d4", "#059669", "#ca8a04", "#dc2626")));
 
     @GetMapping
     public String settingsPage(Model model) {
@@ -49,12 +49,13 @@ public class SettingsController {
             @RequestParam(defaultValue = "false") boolean registrationEnabled,
             @RequestParam(defaultValue = "") String maintenanceBanner,
             @RequestParam(defaultValue = "30") int notificationPurgeDays) {
-        settingService.updateValue(Settings.KEY_SITE_NAME, siteName);
+        String banner = maintenanceBanner != null ? maintenanceBanner : "";
+        settingService.updateValue(Settings.KEY_SITE_NAME, siteName != null ? siteName : "");
         settingService.updateValue(
                 Settings.KEY_REGISTRATION_ENABLED, String.valueOf(registrationEnabled));
         String previousBanner = settingService.load().getMaintenanceBanner();
-        settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, maintenanceBanner);
-        if (!maintenanceBanner.equals(previousBanner)) {
+        settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, banner);
+        if (!banner.equals(previousBanner)) {
             settingService.updateValue(
                     Settings.KEY_MAINTENANCE_BANNER_VERSION,
                     String.valueOf(System.currentTimeMillis()));

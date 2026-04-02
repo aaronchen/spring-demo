@@ -31,7 +31,7 @@ public class Settings {
     public static final String KEY_NOTIFICATION_PURGE_DAYS = "notificationPurgeDays";
     public static final String THEME_DEFAULT = "default";
     public static final String THEME_WORKSHOP = "workshop";
-    public static final String THEME_INDIGO = "indigo";
+    public static final String THEME_SAPPHIRE = "sapphire";
 
     private String theme = THEME_WORKSHOP;
     private String siteName = "Spring Workshop";

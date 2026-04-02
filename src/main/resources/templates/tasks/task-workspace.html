@@ -107,6 +107,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="BACKLOG"
                    onclick="setStatusFilter('BACKLOG')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-backlog"><i class="bi bi-inbox"></i></span>
                     <span th:text="#{task.filter.backlog}">Backlog</span>
                 </a>
@@ -114,6 +115,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="OPEN"
                    onclick="setStatusFilter('OPEN')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-secondary"><i class="bi bi-circle"></i></span>
                     <span th:text="#{task.filter.open}">Open</span>
                 </a>
@@ -121,6 +123,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_PROGRESS"
                    onclick="setStatusFilter('IN_PROGRESS')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i></span>
                     <span th:text="#{task.filter.inProgress}">In Progress</span>
                 </a>
@@ -128,6 +131,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_REVIEW"
                    onclick="setStatusFilter('IN_REVIEW')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-info text-white"><i class="bi bi-eye-fill"></i></span>
                     <span th:text="#{task.filter.inReview}">In Review</span>
                 </a>
@@ -135,6 +139,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="COMPLETED"
                    onclick="setStatusFilter('COMPLETED')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i></span>
                     <span th:text="#{task.filter.completed}">Completed</span>
                 </a>
@@ -142,6 +147,7 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="CANCELLED"
                    onclick="setStatusFilter('CANCELLED')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-dark"><i class="bi bi-x-circle-fill"></i></span>
                     <span th:text="#{task.filter.cancelled}">Cancelled</span>
                 </a>
@@ -150,15 +156,17 @@
             <li>
                 <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="OVERDUE"
                    onclick="setStatusFilter('OVERDUE')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-danger"><i class="bi bi-exclamation-circle-fill"></i></span>
                     <span th:text="#{task.dueDate.overdue}">Overdue</span>
                 </a>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status=""
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="ALL"
                    onclick="setStatusFilter('')">
-                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <i class="bi bi-check-lg filter-check"></i>
+                    <i class="bi bi-funnel"></i>
                     <span th:text="#{task.filter.all}">All</span>
                 </a>
             </li>
@@ -180,6 +188,7 @@
             <li>
                 <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="LOW"
                    onclick="setPriorityFilter('LOW')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-success"><i class="bi bi-reception-1"></i></span>
                     <span th:text="#{task.priority.low}">Low</span>
                 </a>
@@ -187,6 +196,7 @@
             <li>
                 <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="MEDIUM"
                    onclick="setPriorityFilter('MEDIUM')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i></span>
                     <span th:text="#{task.priority.medium}">Medium</span>
                 </a>
@@ -194,6 +204,7 @@
             <li>
                 <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="HIGH"
                    onclick="setPriorityFilter('HIGH')">
+                    <i class="bi bi-check-lg filter-check"></i>
                     <span class="badge bg-danger"><i class="bi bi-reception-4"></i></span>
                     <span th:text="#{task.priority.high}">High</span>
                 </a>
@@ -202,7 +213,8 @@
             <li>
                 <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority=""
                    onclick="setPriorityFilter('')">
-                    <i class="bi bi-arrow-counterclockwise"></i>
+                    <i class="bi bi-check-lg filter-check"></i>
+                    <i class="bi bi-funnel"></i>
                     <span th:text="#{task.filter.all}">All</span>
                 </a>
             </li>
@@ -341,17 +353,19 @@
                 aria-expanded="false">
             <i class="bi bi-tags"></i> <span id="tag-filter-label" th:text="#{task.filter.tags}">Tags</span>
         </button>
-        <ul class="dropdown-menu" aria-labelledby="tagDropdown" style="max-height: 300px; overflow-y: auto;">
-            <li th:each="tag : ${allTags}">
-                <label class="dropdown-item d-flex align-items-center gap-2 mb-0">
-                    <input type="checkbox" class="form-check-input tag-filter-checkbox mt-0"
-                           th:data-tag-id="${tag.id}"
-                           th:data-tag-name="${tag.name}"
-                           onchange="onTagCheckboxChange(this)">
-                    <span th:text="${tag.name}">Tag Name</span>
-                </label>
-            </li>
-        </ul>
+        <div class="dropdown-menu" aria-labelledby="tagDropdown">
+            <div style="max-height: 300px; overflow-y: auto; overscroll-behavior: contain;">
+                <div th:each="tag : ${allTags}">
+                    <label class="dropdown-item d-flex align-items-center gap-2 mb-0">
+                        <input type="checkbox" class="form-check-input tag-filter-checkbox mt-0"
+                               th:data-tag-id="${tag.id}"
+                               th:data-tag-name="${tag.name}"
+                               onchange="onTagCheckboxChange(this)">
+                        <span th:text="${tag.name}">Tag Name</span>
+                    </label>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Saved Views -->

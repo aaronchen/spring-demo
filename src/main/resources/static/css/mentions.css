@@ -14,9 +14,10 @@
     max-height: 300px;
     overflow: auto;
     margin-bottom: 4px;
-    border-radius: 0.375rem;
-    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15);
+    border-radius: var(--radius-md, 0.375rem);
+    box-shadow: var(--shadow-lg, 0 0.25rem 0.75rem rgba(0, 0, 0, 0.15));
     z-index: 1080;
+    animation: dropdown-in var(--duration-fast, 120ms) var(--ease-out, ease-out);
 }
 .tribute-container ul {
     margin: 0;
@@ -30,7 +31,7 @@
 .tribute-container li {
     padding: 0.4rem 0.75rem;
     cursor: pointer;
-    transition: background-color 0.15s;
+    transition: background-color var(--duration-fast, 0.15s) var(--ease-in-out, ease);
 }
 .tribute-container li.highlight {
     background: var(--bs-primary);

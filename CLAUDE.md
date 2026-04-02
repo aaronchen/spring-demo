@@ -164,9 +164,13 @@ Three controllers for User concerns: `UserController` (`/users` — public list)
 
 ### Theme System
 
-Custom color schemes via `data-theme` attribute on `<html>`. Palette tokens in `theme.css` mapped to Bootstrap `--bs-*` variables.
+Custom color schemes via `data-theme` attribute on `<html>`. Palette tokens in `theme.css` mapped to Bootstrap `--bs-*` variables. Design tokens (motion, shadows, radius) and shared refinements (typography, forms, cards, dropdowns) also live in `theme.css` under `[data-theme]`.
+
+Three themes: `default` (stock Bootstrap), `workshop` (cerulean + violet), `sapphire` (deep blue + teal). All custom palettes include `--theme-info` for In Review status — Bootstrap's stock Info is too close to blue primaries.
 
 To add a theme: (1) `THEME_*` constant in `Settings.java`, (2) `[data-theme="name"]` palette in `theme.css`, (3) `ThemeOption` in `SettingsController.THEMES`, (4) `admin.settings.theme.<name>.{name,description}` in `messages.properties`.
+
+For detailed color palettes, WCAG contrast ratios, design tokens, component patterns, and anti-patterns, see [CSS-GUIDE.md](CSS-GUIDE.md).
 
 ### Security Authorization Patterns
 
@@ -288,9 +292,11 @@ Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workloa
 
 ### CSS Organization
 
-- `base.css` for every page, `tasks.css` for task pages (via `head(title, cssFile)` fragment parameter)
+- `base.css` for every page, `theme.css` for theme palettes + design tokens + Bootstrap overrides, `tasks.css` for task pages (via `head(title, cssFile)` fragment parameter)
 - Task JS files in `static/js/tasks/` subfolder
+- Self-hosted DM Sans font in `static/fonts/` (WOFF2, variable weight 400–600)
 - Bootstrap active state overrides: use CSS custom properties (`--bs-btn-active-bg`). Bootstrap utilities use `!important` — override with `!important`
+- See [CSS-GUIDE.md](CSS-GUIDE.md) for full design reference
 
 ## Development Workflow
 
