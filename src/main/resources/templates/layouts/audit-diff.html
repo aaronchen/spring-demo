@@ -1,0 +1,138 @@
+<!--/* Shared audit diff rendering fragment.
+     Renders a single field from an audit details map.
+
+     Usage:
+       <th:block th:each="field : ${detailsMap}">
+           <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+       </th:block>
+
+     Detection logic:
+       - Diff: value is Map with old/new keys (both are AuditField maps with 'type' key)
+       - Snapshot: value is Map with a 'type' key (no old/new) — e.g., on CREATE
+*/-->
+<th:block xmlns:th="http://www.thymeleaf.org">
+
+    <!-- Field entry -->
+    <!--/* Hide the entire row when the value is a blank snapshot (null scalar, empty collection) */-->
+    <div th:fragment="field(fieldKey, fieldValue)" class="audit-diff-field small text-muted"
+         th:unless="${fieldValue instanceof T(java.util.Map)
+                      and fieldValue['type'] != null
+                      and fieldValue['old'] == null
+                      and @auditTemplateHelper.isBlank(fieldValue)}">
+        <strong th:text="${fieldKey}">Field</strong>:
+
+        <!--/* === Diff (old/new are AuditField maps with 'type' key) === */-->
+        <th:block th:if="${fieldValue instanceof T(java.util.Map) and fieldValue['old'] != null}">
+            <th:block th:switch="${fieldValue['new']['type']}">
+
+                <!--/* ENUM — translate both values */-->
+                <th:block th:case="'ENUM'">
+                    <span class="text-decoration-line-through"
+                          th:text="${fieldValue['old']['value'] != null
+                                     ? @auditTemplateHelper.resolveEnumLabel(fieldValue['old']['enumClass'], fieldValue['old']['value'])
+                                     : ''}">old</span>
+                    &rarr;
+                    <span th:text="${fieldValue['new']['value'] != null
+                                     ? @auditTemplateHelper.resolveEnumLabel(fieldValue['new']['enumClass'], fieldValue['new']['value'])
+                                     : ''}">new</span>
+                </th:block>
+
+                <!--/* BOOLEAN — localized Yes/No */-->
+                <th:block th:case="'BOOLEAN'">
+                    <span class="text-decoration-line-through"
+                          th:text="${fieldValue['old']['value'] == 'true'} ? #{audit.boolean.true} : #{audit.boolean.false}">old</span>
+                    &rarr;
+                    <span th:text="${fieldValue['new']['value'] == 'true'} ? #{audit.boolean.true} : #{audit.boolean.false}">new</span>
+                </th:block>
+
+                <!--/* REFERENCE — display name, linked if possible */-->
+                <th:block th:case="'REFERENCE'">
+                    <span class="text-decoration-line-through"
+                          th:text="${fieldValue['old']['refName'] != null ? fieldValue['old']['refName'] : ''}">old</span>
+                    &rarr;
+                    <th:block th:with="url=${@auditTemplateHelper.resolveUrl(fieldValue['new']['refType'], fieldValue['new']['refId'])}">
+                        <a th:if="${url != null}" th:href="${url}"
+                           th:text="${fieldValue['new']['refName'] != null ? fieldValue['new']['refName'] : ''}">new</a>
+                        <span th:unless="${url != null}"
+                              th:text="${fieldValue['new']['refName'] != null ? fieldValue['new']['refName'] : ''}">new</span>
+                    </th:block>
+                </th:block>
+
+                <!--/* COLLECTION — show added/removed items */-->
+                <th:block th:case="'COLLECTION'">
+                    <th:block th:with="oldItems=${fieldValue['old']['items'] != null ? fieldValue['old']['items'] : T(java.util.List).of()},
+                                       newItems=${fieldValue['new']['items'] != null ? fieldValue['new']['items'] : T(java.util.List).of()}">
+                        <span th:each="item : ${newItems}" th:unless="${oldItems.contains(item)}"
+                              class="audit-added me-1">+<span th:text="${item}">added</span></span>
+                        <span th:each="item : ${oldItems}" th:unless="${newItems.contains(item)}"
+                              class="audit-removed me-1">&minus;<span th:text="${item}">removed</span></span>
+                    </th:block>
+                </th:block>
+
+                <!--/* CHECKLIST — item-level diff computed in Java */-->
+                <th:block th:case="'CHECKLIST'">
+                    <th:block th:with="diffEntries=${@auditTemplateHelper.diffChecklist(
+                                           fieldValue['old']['items'] != null ? fieldValue['old']['items'] : T(java.util.List).of(),
+                                           fieldValue['new']['items'] != null ? fieldValue['new']['items'] : T(java.util.List).of())}">
+                        <span th:each="entry : ${diffEntries}" class="me-1">
+                            <span th:with="changeType=${entry.changeType()}" th:switch="${changeType}">
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).ADDED_UNCHECKED}" class="audit-added"
+                                      th:text="#{audit.checklist.addedUnchecked} + ' ' + ${entry.text()}">+ ☐ item</span>
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).ADDED_CHECKED}" class="audit-added"
+                                      th:text="#{audit.checklist.addedChecked} + ' ' + ${entry.text()}">+ ☑ item</span>
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).CHECKED}" class="audit-added"
+                                      th:text="#{audit.checklist.checked} + ' ' + ${entry.text()}">☐ → ☑ item</span>
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).UNCHECKED}" class="audit-unchecked"
+                                      th:text="#{audit.checklist.unchecked} + ' ' + ${entry.text()}">☑ → ☐ item</span>
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).REMOVED_UNCHECKED}" class="audit-removed"
+                                      th:text="#{audit.checklist.removedUnchecked} + ' ' + ${entry.text()}">− ☐ item</span>
+                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).REMOVED_CHECKED}" class="audit-removed"
+                                      th:text="#{audit.checklist.removedChecked} + ' ' + ${entry.text()}">− ☑ item</span>
+                            </span>
+                        </span>
+                    </th:block>
+                </th:block>
+
+                <!--/* TEXT, DATE, NUMBER — default strikethrough → arrow */-->
+                <th:block th:case="*">
+                    <span class="text-decoration-line-through"
+                          th:text="${fieldValue['old']['value'] != null ? fieldValue['old']['value'] : ''}">old</span>
+                    &rarr;
+                    <span th:text="${fieldValue['new']['value'] != null ? fieldValue['new']['value'] : ''}">new</span>
+                </th:block>
+
+            </th:block>
+        </th:block>
+
+        <!--/* === Snapshot (single AuditField — e.g., on CREATE) === */-->
+        <th:block th:if="${fieldValue instanceof T(java.util.Map)
+                          and fieldValue['type'] != null
+                          and fieldValue['old'] == null}">
+            <th:block th:switch="${fieldValue['type']}">
+                <span th:case="'ENUM'"
+                      th:text="${@auditTemplateHelper.resolveEnumLabel(fieldValue['enumClass'], fieldValue['value'])}">value</span>
+                <span th:case="'BOOLEAN'"
+                      th:text="${fieldValue['value'] == 'true'} ? #{audit.boolean.true} : #{audit.boolean.false}">value</span>
+                <th:block th:case="'REFERENCE'">
+                    <th:block th:with="url=${@auditTemplateHelper.resolveUrl(fieldValue['refType'], fieldValue['refId'])}">
+                        <a th:if="${url != null}" th:href="${url}"
+                           th:text="${fieldValue['refName']}">value</a>
+                        <span th:unless="${url != null}"
+                              th:text="${fieldValue['refName']}">value</span>
+                    </th:block>
+                </th:block>
+                <span th:case="'COLLECTION'"
+                      th:text="${fieldValue['items'] != null ? T(java.lang.String).join(', ', fieldValue['items']) : ''}">value</span>
+                <th:block th:case="'CHECKLIST'">
+                    <span th:if="${fieldValue['items'] != null}" th:each="item, stat : ${fieldValue['items']}">
+                        <span th:text="${@auditTemplateHelper.formatItem(item)}">item</span>
+                        <th:block th:unless="${stat.last}">, </th:block>
+                    </span>
+                </th:block>
+                <span th:case="*"
+                      th:text="${fieldValue['value']}">value</span>
+            </th:block>
+        </th:block>
+    </div>
+
+</th:block>

@@ -189,10 +189,25 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Other constants: `PROFILE_UPDATED`, `PROFILE_PASSWORD_CHANGED`, `COMMENT_CREATED`, `COMMENT_DELETED`, `TAG_CREATED`, `TAG_DELETED`, `SETTING_UPDATED`, `AUTH_SUCCESS`, `AUTH_FAILURE`
   - Fields: action, entityType, entityId, principal, details
 
+- `audit/AuditField.java` - Typed audit snapshot value record
+  - `FieldType` enum: `TEXT`, `ENUM`, `DATE`, `NUMBER`, `BOOLEAN`, `REFERENCE`, `COLLECTION`, `CHECKLIST`
+  - Static factory methods: `text()`, `enumValue()`, `date()`, `number()`, `bool()`, `ref()`, `collection()`, `checklist()`
+  - Convenience overloads: `enumValue(Enum<?>)`, `ref(T, Function<T,Long>, Function<T,String>, String)`, `collection(Collection<T>, Function<T,String>)`, `checklist(Collection<T>, Predicate<T>, Function<T,String>)`
+  - `valueEquals(AuditField, AuditField)` — semantic comparison (REFERENCE by refId, COLLECTION/CHECKLIST by items)
+  - `diffChecklist(List, List)` — item-level diff between checklist snapshots
+  - Constants: `ENUM_REGISTRY`, `REF_*` entity types, `FIELD_*` JSON field names, checklist prefixes
+
 - `audit/AuditDetails.java` - Audit detail utilities
-  - `toJson(Map)` — serializes snapshot to JSON string
-  - `diff(Map before, Map after)` — computes field-level changes as `{ field: { old: ..., new: ... } }`
+  - `toJson(Map<String, ?>)` — serializes snapshot to JSON string
+  - `diff(Map<String, AuditField>, Map<String, AuditField>)` — computes typed field-level changes as `{ field: { old: AuditField, new: AuditField } }`
   - `resolveDisplayNames(Map, MessageSource, Locale)` — maps raw field keys to human-readable names via `audit.field.{key}` message keys; falls back to raw key if no message found
+
+- `audit/AuditTemplateHelper.java` - `@Component` for Thymeleaf audit rendering
+  - `resolveEnumLabel(enumClass, constant)` — translates enum constant to localized label via `ENUM_REGISTRY`
+  - `resolveUrl(refType, refId)` — resolves entity reference to URL (Project, Task)
+  - `diffChecklist(oldItems, newItems)` — delegates to `AuditField.diffChecklist()`
+  - `formatItem(item)` — decodes `[x]/[ ]` prefix to Unicode ☑/☐
+  - `isBlank(Map<String, Object>)` — detects empty typed fields in deserialized maps
 
 - `audit/AuditEventListener.java` - `@EventListener` that persists `AuditEvent` → `AuditLog`
 - `audit/AuthAuditListener.java` - `@EventListener` for Spring's `AuthenticationSuccessEvent`/`AuthenticationFailureBadCredentialsEvent`; saves directly to `AuditLogRepository` with `@Transactional` (cannot use `ApplicationEventPublisher` → `@TransactionalEventListener` because Spring Security auth events fire outside Spring-managed transactions)
@@ -1336,12 +1351,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - General settings: site name input, registration toggle, maintenance banner input; saved via `htmx.ajax()` POST
   - Theme picker: color swatch cards with `hx-post`; JS `themeSaved` listener applies theme live and updates active state
 - `templates/admin/audit.html` - Audit log page (admin only)
-- `templates/admin/audit-table.html` - Audit table fragment (HTMX partial)
+- `templates/admin/audit-table.html` - Audit table fragment (HTMX partial); uses shared `audit-diff.html` fragment
+- `templates/layouts/audit-diff.html` - Shared audit diff rendering fragment; type-dispatched rendering for diff (old/new AuditField) and snapshot (single AuditField) modes; called from `task-activity.html` and `audit-table.html`
 
 ## Static Resources
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
-- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state; recently viewed drawer styles (`.recent-views-tab` fixed left-side vertical tab, `.recent-views-drawer` slide-out panel, lg+ only via media query)
+- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state; recently viewed drawer styles (`.recent-views-tab` fixed left-side vertical tab, `.recent-views-drawer` slide-out panel, lg+ only via media query); audit diff styles (`.audit-diff-field`, `.audit-added`, `.audit-removed`, `.audit-unchecked`)
 - `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, two-column layout styles, timeline entry styles)
 - `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
 - `static/css/analytics.css` - Analytics page styles (chart container sizing: 300px default, 350px wide; responsive breakpoints at 768px)
@@ -1459,6 +1475,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `test/java/.../service/ProjectQueryServiceTest.java` - 9 unit tests (Mockito): getProjectById, getProjectsForUser, access checks (isMember, isOwner, isEditor)
 - `test/java/.../service/ProjectServiceTest.java` - 13 unit tests (Mockito): CRUD, archive, delete (with/without completed tasks), member management (add/remove/role change), last-owner protection, viewer demotion unassigns tasks
 - `test/java/.../service/NotificationServiceTest.java` - 8 unit tests (Mockito): DB-first create + WebSocket push, unread count, pagination, mark-as-read, mark-all, clear-all
+- `test/java/.../audit/AuditFieldTest.java` - 29 unit tests: factory methods, valueEquals semantics (REFERENCE by ID), isBlank, displayValue, checklist encoding/diff, JSON round-trip
+- `test/java/.../audit/AuditTemplateHelperTest.java` - 20 unit tests (MessageSource mock): enum label resolution, URL resolution, checklist diff/format, isBlank for all field types
+- `test/java/.../audit/AuditDetailsTest.java` - 12 unit tests: typed diff (text, enum, reference, collection changes), JSON serialization, backwards compat
 - `test/java/.../audit/AuditEventListenerTest.java` - 2 unit tests (Mockito): persists audit log, skips system principal
 - `test/java/.../event/NotificationEventListenerTest.java` - 8 unit tests (Mockito): task assigned/updated/comment notification routing, self-exclusion, deduplication across groups
 - `test/java/.../event/WebSocketEventListenerTest.java` - 2 unit tests (Mockito): broadcasts to correct STOMP topics
@@ -1655,6 +1674,9 @@ The following sections were moved from CLAUDE.md. They are reference material de
 | `ProjectServiceTest` | Unit (Mockito) | Write operations: CRUD, member management, last-owner protection |
 | `NotificationServiceTest` | Unit (Mockito) | DB-first create + WebSocket push, mark-as-read, pagination, clear |
 | `OwnershipGuardTest` | Unit (Mockito) | Owner access, admin access, non-owner denial |
+| `AuditFieldTest` | Unit | Factory methods, valueEquals semantics, isBlank, checklist diff, JSON round-trip |
+| `AuditTemplateHelperTest` | Unit (Mockito) | Enum label resolution, URL resolution, checklist diff/format, isBlank |
+| `AuditDetailsTest` | Unit | Typed diff, JSON serialization, backwards compat |
 | `AuditEventListenerTest` | Unit (Mockito) | Persists audit log, skips system principal |
 | `NotificationEventListenerTest` | Unit (Mockito) | Task assigned/updated/comment routing, self-exclusion, dedup |
 | `WebSocketEventListenerTest` | Unit (Mockito) | Broadcasts to correct STOMP topics |

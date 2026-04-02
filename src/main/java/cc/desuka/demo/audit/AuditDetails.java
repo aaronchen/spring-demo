@@ -3,9 +3,9 @@ package cc.desuka.demo.audit;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import org.springframework.context.MessageSource;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 public final class AuditDetails {
@@ -14,16 +14,15 @@ public final class AuditDetails {
 
     private AuditDetails() {}
 
-    public static String toJson(Map<String, Object> snapshot) {
+    public static String toJson(Map<String, ?> snapshot) {
         if (snapshot == null) return null;
         return MAPPER.writeValueAsString(snapshot);
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> fromJson(String json) {
         if (json == null || json.isBlank()) return null;
         try {
-            return MAPPER.readValue(json, Map.class);
+            return MAPPER.readValue(json, new TypeReference<>() {});
         } catch (JacksonException e) {
             return null;
         }
@@ -42,12 +41,17 @@ public final class AuditDetails {
         return resolved;
     }
 
-    public static Map<String, Object> diff(Map<String, Object> before, Map<String, Object> after) {
+    /**
+     * Compares two typed snapshots. Uses {@link AuditField#valueEquals} for semantic comparison
+     * (e.g., REFERENCE compares by ID, not display name).
+     */
+    public static Map<String, Object> diff(
+            Map<String, AuditField> before, Map<String, AuditField> after) {
         Map<String, Object> changes = new LinkedHashMap<>();
         for (String key : after.keySet()) {
-            Object oldVal = before.get(key);
-            Object newVal = after.get(key);
-            if (!Objects.equals(oldVal, newVal)) {
+            AuditField oldVal = before.get(key);
+            AuditField newVal = after.get(key);
+            if (!AuditField.valueEquals(oldVal, newVal)) {
                 changes.put(
                         key,
                         Map.of(

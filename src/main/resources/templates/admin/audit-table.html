@@ -41,20 +41,11 @@
                     </td>
                     <td th:text="${entry.principal}">user@example.com</td>
                     <td>
-                        <small th:if="${entry.detailsMap != null}">
-                            <span th:each="field, stat : ${entry.detailsMap}">
-                                <strong th:text="${field.key}">field</strong>:
-                                <th:block th:if="${field.value instanceof T(java.util.Map)}">
-                                    <span class="text-decoration-line-through text-muted"
-                                          th:text="${field.value['old']}">old</span>
-                                    &rarr;
-                                    <span th:text="${field.value['new']}">new</span>
-                                </th:block>
-                                <span th:unless="${field.value instanceof T(java.util.Map)}"
-                                      th:text="${field.value}">value</span>
-                                <span th:unless="${stat.last}">; </span>
-                            </span>
-                        </small>
+                        <div th:if="${entry.detailsMap != null}">
+                            <th:block th:each="field : ${entry.detailsMap}">
+                                <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+                            </th:block>
+                        </div>
                         <small th:unless="${entry.detailsMap != null}" th:text="${entry.details}">details</small>
                     </td>
                 </tr>

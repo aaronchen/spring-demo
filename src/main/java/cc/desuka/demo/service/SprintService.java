@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.repository.SprintRepository;
@@ -60,7 +61,7 @@ public class SprintService {
     public Sprint updateSprint(Long id, Sprint sprintDetails) {
         Sprint sprint = sprintQueryService.getSprintById(id);
 
-        Map<String, Object> before = sprint.toAuditSnapshot();
+        Map<String, AuditField> before = sprint.toAuditSnapshot();
 
         sprint.setName(sprintDetails.getName());
         sprint.setGoal(sprintDetails.getGoal());

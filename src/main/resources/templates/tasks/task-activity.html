@@ -53,20 +53,11 @@
                             <small class="text-muted ms-1"
                                    th:text="${#temporals.format(entry.timestamp(), 'MMM dd, yyyy HH:mm')}">date</small>
                         </div>
-                        <small th:if="${entry.auditDetails() != null}" class="text-muted">
-                            <span th:each="field, fstat : ${entry.auditDetails()}">
-                                <strong th:text="${field.key}">field</strong>:
-                                <th:block th:if="${field.value instanceof T(java.util.Map)}">
-                                    <span class="text-decoration-line-through"
-                                          th:text="${field.value['old']}">old</span>
-                                    &rarr;
-                                    <span th:text="${field.value['new']}">new</span>
-                                </th:block>
-                                <span th:unless="${field.value instanceof T(java.util.Map)}"
-                                      th:text="${field.value}">value</span>
-                                <span th:unless="${fstat.last}">; </span>
-                            </span>
-                        </small>
+                        <div th:if="${entry.auditDetails() != null}">
+                            <th:block th:each="field : ${entry.auditDetails()}">
+                                <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+                            </th:block>
+                        </div>
                     </div>
                 </th:block>
             </div>

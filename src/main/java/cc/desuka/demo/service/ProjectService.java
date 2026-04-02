@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.event.ProjectUpdatedEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
@@ -77,7 +78,7 @@ public class ProjectService {
 
     public Project updateProject(Long id, Project projectDetails) {
         Project project = projectQueryService.getProjectById(id);
-        Map<String, Object> before = project.toAuditSnapshot();
+        Map<String, AuditField> before = project.toAuditSnapshot();
 
         project.setName(projectDetails.getName());
         project.setDescription(projectDetails.getDescription());
@@ -230,7 +231,7 @@ public class ProjectService {
             throw new IllegalStateException(messages.get("project.member.lastOwner.demote"));
         }
 
-        Map<String, Object> before = member.toAuditSnapshot();
+        Map<String, AuditField> before = member.toAuditSnapshot();
         if (member.getRole() != newRole) {
             member.setRole(newRole);
 

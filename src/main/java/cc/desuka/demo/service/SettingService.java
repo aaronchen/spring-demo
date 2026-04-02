@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.config.Settings;
 import cc.desuka.demo.model.Setting;
 import cc.desuka.demo.repository.SettingRepository;
@@ -54,12 +55,12 @@ public class SettingService {
     public void updateValue(String key, String value) {
         Setting setting = settingRepository.findByKey(key).orElseGet(() -> new Setting(key, null));
 
-        Map<String, Object> before = setting.getId() != null ? setting.toAuditSnapshot() : null;
+        Map<String, AuditField> before = setting.getId() != null ? setting.toAuditSnapshot() : null;
         setting.setValue(value);
         Setting saved = settingRepository.save(setting);
 
         if (before != null) {
-            Map<String, Object> after = saved.toAuditSnapshot();
+            Map<String, AuditField> after = saved.toAuditSnapshot();
             Map<String, Object> diff = AuditDetails.diff(before, after);
             if (!diff.isEmpty()) {
                 eventPublisher.publishEvent(

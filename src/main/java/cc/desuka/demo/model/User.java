@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -137,12 +138,12 @@ public class User implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_NAME, name);
-        snapshot.put(FIELD_EMAIL, email);
-        snapshot.put(FIELD_ROLE, role != null ? role.name() : null);
-        snapshot.put(FIELD_ENABLED, enabled);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_NAME, AuditField.text(name));
+        snapshot.put(FIELD_EMAIL, AuditField.text(email));
+        snapshot.put(FIELD_ROLE, AuditField.enumValue(role));
+        snapshot.put(FIELD_ENABLED, AuditField.bool(enabled));
         return snapshot;
     }
 

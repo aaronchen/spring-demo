@@ -282,3 +282,18 @@ body {
     font-size: 0.95rem;
 }
 
+/* Audit diff field rendering */
+.audit-diff-field {
+    margin-bottom: 0.15rem;
+}
+.audit-added {
+    color: var(--bs-success);
+}
+.audit-removed {
+    color: var(--bs-danger);
+    text-decoration: line-through;
+}
+.audit-unchecked {
+    color: var(--bs-warning);
+}
+

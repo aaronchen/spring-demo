@@ -2,6 +2,7 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.event.TaskUpdatedEvent;
@@ -134,7 +135,7 @@ public class TaskService {
         if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
             throw new StaleDataException(Task.class, id);
         }
-        Map<String, Object> before = task.toAuditSnapshot();
+        Map<String, AuditField> before = task.toAuditSnapshot();
         User previousUser = task.getUser();
 
         TaskStatus previousStatus = task.getStatus();
@@ -216,7 +217,7 @@ public class TaskService {
 
     public Task updateField(Long id, String field, String value) {
         Task task = taskQueryService.getTaskById(id);
-        Map<String, Object> before = task.toAuditSnapshot();
+        Map<String, AuditField> before = task.toAuditSnapshot();
 
         switch (field) {
             case Task.FIELD_TITLE -> task.setTitle(value);
@@ -271,7 +272,7 @@ public class TaskService {
             return task;
         }
         requireNotBlocked(id, newStatus);
-        Map<String, Object> before = task.toAuditSnapshot();
+        Map<String, AuditField> before = task.toAuditSnapshot();
         TaskStatus previousStatus = task.getStatus();
         task.setStatus(newStatus);
         updateCompletedAt(task, previousStatus);
@@ -297,7 +298,7 @@ public class TaskService {
     // CANCELLED is not part of the cycle — it's a separate action.
     public Task advanceStatus(Long id) {
         Task task = taskQueryService.getTaskById(id);
-        Map<String, Object> before = task.toAuditSnapshot();
+        Map<String, AuditField> before = task.toAuditSnapshot();
         TaskStatus previousStatus = task.getStatus();
         TaskStatus next =
                 switch (previousStatus) {
@@ -363,7 +364,7 @@ public class TaskService {
 
     public void assignSprint(Long taskId, Long sprintId) {
         Task task = taskQueryService.getTaskById(taskId);
-        Map<String, Object> before = task.toAuditSnapshot();
+        Map<String, AuditField> before = task.toAuditSnapshot();
         task.setSprint(sprintId != null ? sprintQueryService.getSprintById(sprintId) : null);
         Task saved = taskRepository.save(task);
         Map<String, Object> changes = AuditDetails.diff(before, saved.toAuditSnapshot());

@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -294,25 +295,23 @@ public class RecurringTaskTemplate implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put(FIELD_TITLE, title);
-        snapshot.put(FIELD_DESCRIPTION, description);
-        snapshot.put(FIELD_PRIORITY, priority != null ? priority.name() : null);
-        snapshot.put(FIELD_EFFORT, effort);
-        snapshot.put(FIELD_RECURRENCE, recurrence != null ? recurrence.name() : null);
-        snapshot.put(FIELD_DAY_OF_WEEK, dayOfWeek);
-        snapshot.put(FIELD_DAY_OF_MONTH, dayOfMonth);
-        snapshot.put(FIELD_DUE_DAYS_AFTER, dueDaysAfter);
-        snapshot.put(FIELD_NEXT_RUN_DATE, nextRunDate != null ? nextRunDate.toString() : null);
-        snapshot.put(FIELD_END_DATE, endDate != null ? endDate.toString() : null);
-        snapshot.put(FIELD_ENABLED, enabled);
-        snapshot.put(FIELD_ASSIGNEE, assignee != null ? assignee.getName() : null);
+    public Map<String, AuditField> toAuditSnapshot() {
+        Map<String, AuditField> snapshot = new LinkedHashMap<>();
+        snapshot.put(FIELD_TITLE, AuditField.text(title));
+        snapshot.put(FIELD_DESCRIPTION, AuditField.text(description));
+        snapshot.put(FIELD_PRIORITY, AuditField.enumValue(priority));
+        snapshot.put(FIELD_EFFORT, AuditField.number(effort));
+        snapshot.put(FIELD_RECURRENCE, AuditField.enumValue(recurrence));
+        snapshot.put(FIELD_DAY_OF_WEEK, AuditField.number(dayOfWeek));
+        snapshot.put(FIELD_DAY_OF_MONTH, AuditField.number(dayOfMonth));
+        snapshot.put(FIELD_DUE_DAYS_AFTER, AuditField.number(dueDaysAfter));
+        snapshot.put(FIELD_NEXT_RUN_DATE, AuditField.date(nextRunDate));
+        snapshot.put(FIELD_END_DATE, AuditField.date(endDate));
+        snapshot.put(FIELD_ENABLED, AuditField.bool(enabled));
         snapshot.put(
-                FIELD_TAGS,
-                tags != null
-                        ? tags.stream().map(Tag::getName).sorted().toList()
-                        : java.util.List.of());
+                FIELD_ASSIGNEE,
+                AuditField.ref(assignee, User::getId, User::getName, AuditField.REF_USER));
+        snapshot.put(FIELD_TAGS, AuditField.collection(tags, Tag::getName));
         return snapshot;
     }
 }

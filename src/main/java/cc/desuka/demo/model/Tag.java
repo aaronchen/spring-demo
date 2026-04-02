@@ -1,5 +1,6 @@
 package cc.desuka.demo.model;
 
+import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.audit.Auditable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -65,8 +66,8 @@ public class Tag implements Auditable {
     }
 
     @Override
-    public Map<String, Object> toAuditSnapshot() {
-        return Map.of(FIELD_NAME, name);
+    public Map<String, AuditField> toAuditSnapshot() {
+        return Map.of(FIELD_NAME, AuditField.text(name));
     }
 
     // equals/hashCode on id only — same reason as always for JPA entities:
