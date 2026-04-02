@@ -171,7 +171,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_deletesTaskAndPublishesEvents() {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskWithDependencies(1L)).thenReturn(task);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
@@ -242,7 +242,7 @@ class TaskServiceTest {
     @Test
     void deleteTask_completedTask_throwsIllegalStateException() {
         task.setStatus(TaskStatus.COMPLETED);
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskWithDependencies(1L)).thenReturn(task);
 
         assertThatThrownBy(() -> taskService.deleteTask(1L))
                 .isInstanceOf(IllegalStateException.class);
@@ -250,7 +250,7 @@ class TaskServiceTest {
 
     @Test
     void deleteTask_openTask_deletesAndPublishesEvents() {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskWithDependencies(1L)).thenReturn(task);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");

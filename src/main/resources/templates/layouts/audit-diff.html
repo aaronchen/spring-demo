@@ -69,24 +69,26 @@
                     </th:block>
                 </th:block>
 
-                <!--/* CHECKLIST — item-level diff computed in Java */-->
+                <!--/* CHECKLIST — item-level diff computed in Java.
+                     Switch uses .name() string matching because Thymeleaf's T() enum resolution
+                     fails for inner types of Java records (AuditField$ChecklistChangeType). */-->
                 <th:block th:case="'CHECKLIST'">
                     <th:block th:with="diffEntries=${@auditTemplateHelper.diffChecklist(
                                            fieldValue['old']['items'] != null ? fieldValue['old']['items'] : T(java.util.List).of(),
                                            fieldValue['new']['items'] != null ? fieldValue['new']['items'] : T(java.util.List).of())}">
                         <span th:each="entry : ${diffEntries}" class="me-1">
-                            <span th:with="changeType=${entry.changeType()}" th:switch="${changeType}">
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).ADDED_UNCHECKED}" class="audit-added"
+                            <span th:switch="${entry.changeType().name()}">
+                                <span th:case="'ADDED_UNCHECKED'" class="audit-added"
                                       th:text="#{audit.checklist.addedUnchecked} + ' ' + ${entry.text()}">+ ☐ item</span>
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).ADDED_CHECKED}" class="audit-added"
+                                <span th:case="'ADDED_CHECKED'" class="audit-added"
                                       th:text="#{audit.checklist.addedChecked} + ' ' + ${entry.text()}">+ ☑ item</span>
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).CHECKED}" class="audit-added"
+                                <span th:case="'CHECKED'" class="audit-added"
                                       th:text="#{audit.checklist.checked} + ' ' + ${entry.text()}">☐ → ☑ item</span>
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).UNCHECKED}" class="audit-unchecked"
+                                <span th:case="'UNCHECKED'" class="audit-unchecked"
                                       th:text="#{audit.checklist.unchecked} + ' ' + ${entry.text()}">☑ → ☐ item</span>
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).REMOVED_UNCHECKED}" class="audit-removed"
+                                <span th:case="'REMOVED_UNCHECKED'" class="audit-removed"
                                       th:text="#{audit.checklist.removedUnchecked} + ' ' + ${entry.text()}">− ☐ item</span>
-                                <span th:case="${T(cc.desuka.demo.audit.AuditField.ChecklistChangeType).REMOVED_CHECKED}" class="audit-removed"
+                                <span th:case="'REMOVED_CHECKED'" class="audit-removed"
                                       th:text="#{audit.checklist.removedChecked} + ' ' + ${entry.text()}">− ☑ item</span>
                             </span>
                         </span>
