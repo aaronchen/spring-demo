@@ -40,6 +40,7 @@
 
     function refreshBadge() {
         fetch(APP_CONFIG.routes.apiNotificationsUnreadCount)
+            .then(requireOk)
             .then(function (res) { return res.json(); })
             .then(function (data) { updateBadge(data.count); });
     }
@@ -74,6 +75,7 @@
 
     function loadRecentNotifications() {
         fetch(`${APP_CONFIG.routes.apiNotifications}?size=10`)
+            .then(requireOk)
             .then(function (res) { return res.json(); })
             .then(function (data) { renderNotificationList(data.content); });
     }

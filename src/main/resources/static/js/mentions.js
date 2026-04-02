@@ -66,6 +66,7 @@ function initMentionInputs(root) {
                     if (cachedMembers) { cb(cachedMembers); return; }
                     const url = APP_CONFIG.routes.apiProjectMembers.resolve({ projectId });
                     fetch(url, { credentials: 'same-origin' })
+                        .then(requireOk)
                         .then(function(r) { return r.json(); })
                         .then(function(users) { cachedMembers = users; cb(users); })
                         .catch(function() { cb([]); });
@@ -73,6 +74,7 @@ function initMentionInputs(root) {
                     // No project context: server-side search across all users
                     const url = `${APP_CONFIG.routes.apiUsers}?q=${encodeURIComponent(text)}`;
                     fetch(url, { credentials: 'same-origin' })
+                        .then(requireOk)
                         .then(function(r) { return r.json(); })
                         .then(function(users) { cb(users); })
                         .catch(function() { cb([]); });

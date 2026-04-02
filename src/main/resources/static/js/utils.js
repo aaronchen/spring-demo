@@ -1,6 +1,15 @@
 // Shared browser utilities
 
 
+/**
+ * Checks a fetch Response and returns it if ok, otherwise rejects.
+ * Usage: fetch(url).then(requireOk).then(r => r.json())
+ */
+function requireOk(response) {
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response;
+}
+
 function getCookie(name) {
     const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
     return match ? match[1] : null;

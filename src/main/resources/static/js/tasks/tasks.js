@@ -536,7 +536,13 @@ function renderTagFilter() {
         const name = cb ? cb.dataset.tagName : `Tag ${tagId}`;
         const pill = document.createElement('span');
         pill.className = 'badge bg-primary me-1';
-        pill.innerHTML = `${name} <a href="#" class="text-white text-decoration-none ms-1" onclick="toggleTagFilter('${tagId}'); return false;">&times;</a>`;
+        pill.textContent = `${name} `;
+        const removeLink = document.createElement('a');
+        removeLink.href = '#';
+        removeLink.className = 'text-white text-decoration-none ms-1';
+        removeLink.textContent = '\u00d7';
+        removeLink.addEventListener('click', (e) => { e.preventDefault(); toggleTagFilter(tagId); });
+        pill.appendChild(removeLink);
         pillsContainer.appendChild(pill);
     });
     updateFilterPillsVisibility();
@@ -559,9 +565,10 @@ function highlightActiveTags() {
 
 function loadSavedViews() {
     fetch(APP_CONFIG.routes.apiViews)
+        .then(requireOk)
         .then(r => r.json())
         .then(views => renderSavedViewsList(views))
-        .catch(() => {});
+        .catch(err => console.error('Failed to load saved views:', err));
 }
 
 function renderSavedViewsList(views) {
@@ -730,7 +737,7 @@ function saveCurrentView() {
                 loadSavedViews();
                 showToast(APP_CONFIG.messages['toast.view.saved'] || 'View saved', 'success');
             }
-        }).catch(() => {});
+        }).catch(err => console.error('Failed to save view:', err));
     });
 }
 
@@ -742,7 +749,7 @@ function deleteSavedView(id) {
                 loadSavedViews();
             }
         })
-        .catch(() => {});
+        .catch(err => console.error('Failed to delete view:', err));
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -802,14 +809,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // After task saved: close modal, show toast, and refresh grid
     document.body.addEventListener('taskSaved', function() {
-        bootstrap.Modal.getInstance(document.getElementById('task-modal')).hide();
+        const modal = document.getElementById('task-modal');
+        if (modal) bootstrap.Modal.getInstance(modal)?.hide();
         showToast(APP_CONFIG.messages['toast.task.saved'], 'success');
         doSearch(false);
     });
 
     // Populate delete modal from the triggering button's data attributes
-    document.getElementById('task-delete-modal').addEventListener('show.bs.modal', function(e) {
+    const deleteModal = document.getElementById('task-delete-modal');
+    if (deleteModal) deleteModal.addEventListener('show.bs.modal', function(e) {
         const btn = e.relatedTarget;
+        if (!btn) return;
         document.getElementById('task-delete-modal-title').textContent = btn.dataset.taskTitle;
         const confirmBtn = document.getElementById('delete-confirm-btn');
         confirmBtn.setAttribute('hx-delete', `${APP_CONFIG.routes.tasks}/${btn.dataset.taskId}`);

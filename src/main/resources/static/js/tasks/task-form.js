@@ -53,6 +53,7 @@ function updateSprintDropdown(projectId) {
 
     const url = APP_CONFIG.routes.apiProjectSprints.resolve({ projectId });
     fetch(url)
+        .then(requireOk)
         .then(r => r.json())
         .then(sprints => {
             if (!sprints.length) {
