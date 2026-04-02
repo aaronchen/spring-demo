@@ -64,6 +64,21 @@ public class UserPreferenceService {
 
     /** Saves multiple preferences at once. */
     public void saveAll(Long userId, Map<String, String> preferences) {
-        preferences.forEach((key, value) -> save(userId, key, value));
+        Map<String, UserPreference> existing =
+                preferenceRepository.findByUserId(userId).stream()
+                        .collect(Collectors.toMap(UserPreference::getKey, p -> p));
+        User user = null;
+
+        for (Map.Entry<String, String> entry : preferences.entrySet()) {
+            UserPreference pref = existing.get(entry.getKey());
+            if (pref == null) {
+                if (user == null) {
+                    user = userService.getUserById(userId);
+                }
+                pref = new UserPreference(user, entry.getKey(), null);
+            }
+            pref.setValue(entry.getValue());
+            preferenceRepository.save(pref);
+        }
     }
 }

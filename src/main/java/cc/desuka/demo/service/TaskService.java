@@ -350,11 +350,9 @@ public class TaskService {
         if (newStatus != TaskStatus.COMPLETED) {
             return;
         }
-        if (taskDependencyService.hasActiveBlockers(taskId)) {
-            List<String> blockerNames =
-                    taskDependencyService.getActiveBlockers(taskId).stream()
-                            .map(Task::getTitle)
-                            .toList();
+        List<Task> activeBlockers = taskDependencyService.getActiveBlockers(taskId);
+        if (!activeBlockers.isEmpty()) {
+            List<String> blockerNames = activeBlockers.stream().map(Task::getTitle).toList();
             throw new BlockedTaskException(
                     messages.get(
                             "task.dependency.blocked.transition", String.join(", ", blockerNames)),

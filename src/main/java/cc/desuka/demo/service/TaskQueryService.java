@@ -82,7 +82,7 @@ public class TaskQueryService {
     }
 
     public long countAssignedTasks(User user) {
-        return taskRepository.findByUser(user).size();
+        return taskRepository.countByUser(user);
     }
 
     public long countByUserOverdue(User user) {

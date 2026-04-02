@@ -41,7 +41,7 @@ public class TagService {
     }
 
     public int countTasksByTagId(Long tagId) {
-        return getTagById(tagId).getTasks().size();
+        return tagRepository.countTasksByTagId(tagId);
     }
 
     public Tag createTag(Tag tag) {
