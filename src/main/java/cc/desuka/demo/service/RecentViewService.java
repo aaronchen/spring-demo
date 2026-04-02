@@ -2,13 +2,14 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.RecentViewResponse;
+import cc.desuka.demo.event.RecentViewPushEvent;
 import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.RecentViewRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +21,15 @@ public class RecentViewService {
     private static final int MAX_ENTRIES = 10;
 
     private final RecentViewRepository recentViewRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final ApplicationEventPublisher eventPublisher;
     private final AppRoutesProperties appRoutes;
 
     public RecentViewService(
             RecentViewRepository recentViewRepository,
-            SimpMessagingTemplate messagingTemplate,
+            ApplicationEventPublisher eventPublisher,
             AppRoutesProperties appRoutes) {
         this.recentViewRepository = recentViewRepository;
-        this.messagingTemplate = messagingTemplate;
+        this.eventPublisher = eventPublisher;
         this.appRoutes = appRoutes;
     }
 
@@ -58,7 +59,7 @@ public class RecentViewService {
         RecentViewResponse payload =
                 new RecentViewResponse(
                         entityType, entityId, entityTitle, href, LocalDateTime.now(), false);
-        messagingTemplate.convertAndSendToUser(user.getEmail(), "/queue/recent-views", payload);
+        eventPublisher.publishEvent(new RecentViewPushEvent(user.getEmail(), payload));
     }
 
     @Transactional(readOnly = true)
@@ -89,8 +90,7 @@ public class RecentViewService {
                             href,
                             isActor ? now : rv.getViewedAt(),
                             !isActor);
-            messagingTemplate.convertAndSendToUser(
-                    rv.getUser().getEmail(), "/queue/recent-views", payload);
+            eventPublisher.publishEvent(new RecentViewPushEvent(rv.getUser().getEmail(), payload));
         }
     }
 

@@ -1,5 +1,6 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Task;
@@ -30,6 +31,7 @@ public class ScheduledTaskService {
     private final RecurringTaskGenerationService recurringTaskGenerationService;
     private final UserPreferenceService userPreferenceService;
     private final SettingService settingService;
+    private final AppRoutesProperties appRoutes;
     private final Messages messages;
 
     public ScheduledTaskService(
@@ -39,6 +41,7 @@ public class ScheduledTaskService {
             RecurringTaskGenerationService recurringTaskGenerationService,
             UserPreferenceService userPreferenceService,
             SettingService settingService,
+            AppRoutesProperties appRoutes,
             Messages messages) {
         this.taskQueryService = taskQueryService;
         this.notificationService = notificationService;
@@ -46,6 +49,7 @@ public class ScheduledTaskService {
         this.recurringTaskGenerationService = recurringTaskGenerationService;
         this.userPreferenceService = userPreferenceService;
         this.settingService = settingService;
+        this.appRoutes = appRoutes;
         this.messages = messages;
     }
 
@@ -54,6 +58,7 @@ public class ScheduledTaskService {
      * notifies users who have the preference enabled.
      */
     @Scheduled(cron = "0 0 8 * * *")
+    @Transactional(readOnly = true)
     public void sendDueReminders() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         List<Task> tasks = taskQueryService.getTasksDueOn(tomorrow);
@@ -70,7 +75,7 @@ public class ScheduledTaskService {
                     null,
                     NotificationType.TASK_DUE_REMINDER,
                     message,
-                    "/tasks/" + task.getId());
+                    appRoutes.getTaskDetail().resolve("taskId", task.getId()));
         }
     }
 

@@ -27,7 +27,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final ProjectQueryService projectQueryService;
     private final UserService userService;
-    private final TaskQueryService taskQueryService;
+    private final TaskCommandService taskAssignmentService;
     private final SprintService sprintService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final RecentViewService recentViewService;
@@ -38,7 +38,7 @@ public class ProjectService {
             ProjectRepository projectRepository,
             ProjectQueryService projectQueryService,
             UserService userService,
-            TaskQueryService taskQueryService,
+            TaskCommandService taskAssignmentService,
             SprintService sprintService,
             RecurringTaskTemplateService recurringTaskTemplateService,
             RecentViewService recentViewService,
@@ -47,7 +47,7 @@ public class ProjectService {
         this.projectRepository = projectRepository;
         this.projectQueryService = projectQueryService;
         this.userService = userService;
-        this.taskQueryService = taskQueryService;
+        this.taskAssignmentService = taskAssignmentService;
         this.sprintService = sprintService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.recentViewService = recentViewService;
@@ -238,7 +238,7 @@ public class ProjectService {
             // Demoting to VIEWER — unassign non-terminal tasks in this project
             if (newRole == ProjectRole.VIEWER) {
                 User user = userService.getUserById(userId);
-                taskQueryService.unassignTasksInProject(user, projectId);
+                taskAssignmentService.unassignTasksInProject(user, projectId);
             }
 
             Map<String, Object> changes = AuditDetails.diff(before, member.toAuditSnapshot());

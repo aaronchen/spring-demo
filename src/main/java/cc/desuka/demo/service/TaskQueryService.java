@@ -203,30 +203,4 @@ public class TaskQueryService {
         }
         return map;
     }
-
-    // ── Write operations (cross-service) ──────────────────────────────────
-
-    @Transactional
-    public void unassignTasks(User user) {
-        List<Task> tasks = taskRepository.findByUser(user);
-        for (Task task : tasks) {
-            task.setUser(null);
-            if (!task.getStatus().isTerminal()) {
-                task.setStatus(TaskStatus.OPEN);
-            }
-        }
-        taskRepository.saveAll(tasks);
-    }
-
-    @Transactional
-    public void unassignTasksInProject(User user, Long projectId) {
-        List<Task> tasks =
-                taskRepository.findByUserAndProjectIdAndStatusNotIn(
-                        user, projectId, TaskStatus.terminalStatuses());
-        for (Task task : tasks) {
-            task.setUser(null);
-            task.setStatus(TaskStatus.OPEN);
-        }
-        taskRepository.saveAll(tasks);
-    }
 }

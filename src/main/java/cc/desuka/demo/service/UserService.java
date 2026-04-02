@@ -22,16 +22,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final TaskQueryService taskQueryService;
+    private final TaskCommandService taskAssignmentService;
     private final CommentQueryService commentQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(
             UserRepository userRepository,
             TaskQueryService taskQueryService,
+            TaskCommandService taskAssignmentService,
             CommentQueryService commentQueryService,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskQueryService = taskQueryService;
+        this.taskAssignmentService = taskAssignmentService;
         this.commentQueryService = commentQueryService;
         this.eventPublisher = eventPublisher;
     }
@@ -155,7 +158,7 @@ public class UserService {
     public User disableUser(Long userId) {
         User user = getUserById(userId);
         user.setEnabled(false);
-        taskQueryService.unassignTasks(user);
+        taskAssignmentService.unassignTasks(user);
         User saved = userRepository.save(user);
         eventPublisher.publishEvent(
                 new AuditEvent(
@@ -216,7 +219,7 @@ public class UserService {
     public void deleteUser(Long id) {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
-        taskQueryService.unassignTasks(user);
+        taskAssignmentService.unassignTasks(user);
         userRepository.delete(user);
         eventPublisher.publishEvent(
                 new AuditEvent(

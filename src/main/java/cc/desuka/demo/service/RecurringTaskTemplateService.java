@@ -4,13 +4,13 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
-import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,7 +55,7 @@ public class RecurringTaskTemplateService {
     public RecurringTaskTemplate getTemplateById(Long id) {
         return templateRepository
                 .findWithDetailsById(id)
-                .orElseThrow(() -> new EntityNotFoundException(messages.get("recurring.notFound")));
+                .orElseThrow(() -> new EntityNotFoundException(RecurringTaskTemplate.class, id));
     }
 
     public RecurringTaskTemplate createTemplate(

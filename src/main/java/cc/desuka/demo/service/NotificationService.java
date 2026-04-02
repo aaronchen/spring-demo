@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
@@ -29,7 +30,6 @@ public class NotificationService {
         this.messagingTemplate = messagingTemplate;
     }
 
-    @Transactional
     public void create(
             User recipient, User actor, NotificationType type, String message, String link) {
         Notification notification = new Notification(recipient, actor, type, message, link);
@@ -40,22 +40,24 @@ public class NotificationService {
                 recipient.getEmail(), "/queue/notifications", payload);
     }
 
+    @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUserIdAndReadFalse(userId);
     }
 
+    @Transactional(readOnly = true)
     public List<NotificationResponse> getRecentForUser(Long userId) {
         return notificationMapper.toResponseList(
                 notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(userId));
     }
 
+    @Transactional(readOnly = true)
     public Page<NotificationResponse> findAllForUser(Long userId, Pageable pageable) {
         return notificationRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, pageable)
                 .map(notificationMapper::toResponse);
     }
 
-    @Transactional
     public void markAsRead(Long id, Long userId) {
         notificationRepository
                 .findByIdAndUserId(id, userId)
@@ -66,12 +68,10 @@ public class NotificationService {
                         });
     }
 
-    @Transactional
     public void markAllAsRead(Long userId) {
         notificationRepository.markAllAsReadByUserId(userId);
     }
 
-    @Transactional
     public void clearAll(Long userId) {
         notificationRepository.deleteByUserId(userId);
     }

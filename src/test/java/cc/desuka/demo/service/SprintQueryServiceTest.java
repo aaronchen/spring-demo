@@ -6,10 +6,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.repository.SprintRepository;
-import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;

@@ -13,8 +13,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@Transactional(readOnly = true)
 public class TimelineService {
 
     private final CommentService commentService;
@@ -43,8 +45,8 @@ public class TimelineService {
                             c.getCreatedAt(),
                             c.getId(),
                             c.getText(),
-                            c.getUser().getName(),
-                            c.getUser().getId(),
+                            c.getUser() != null ? c.getUser().getName() : null,
+                            c.getUser() != null ? c.getUser().getId() : null,
                             canDelete,
                             null,
                             null,
