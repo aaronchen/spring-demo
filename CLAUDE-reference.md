@@ -219,7 +219,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `event/CommentAddedEvent.java` - Record published when a comment is created; fields: `comment` (Comment), `task` (Task), `actor` (User)
 - `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `userId` (long); serialized to JSON for JS clients
 - `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long); serialized to JSON for JS clients
-- `event/RecentViewEventListener.java` - `@TransactionalEventListener` for title sync; listens to `TaskUpdatedEvent` and `ProjectUpdatedEvent`, calls `RecentViewService.updateTitle()` to keep cached titles current
+- `event/RecentViewPushEvent.java` - Record for WebSocket recent-view push; fields: `userEmail`, `payload` (RecentViewResponse); published by `RecentViewService`, handled by `RecentViewEventListener`
+- `event/RecentViewEventListener.java` - `@TransactionalEventListener` for recent view updates and title sync; handles `TaskUpdatedEvent`, `ProjectUpdatedEvent` (title sync), and `RecentViewPushEvent` (WebSocket push via `SimpMessagingTemplate`)
 - `event/NotificationEventListener.java` - Centralized notification routing; listens for domain events (`TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent`) and decides who gets notified via `NotificationService.create()`
 - `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting; listens for `TaskChangeEvent` → `/topic/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
 
@@ -598,12 +599,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `deleteByTaskId(taskId)` — bulk deletes all comments for a task; called by `TaskService.deleteTask()`
   - `deleteComment(id)` — deletes comment, publishes `COMMENT_DELETED` audit event and `CommentChangeEvent`
 
-- `service/TaskQueryService.java` - Read-only task queries and cross-service task operations; `@Transactional(readOnly = true)` class-level
+- `service/TaskQueryService.java` - Read-only task queries; `@Transactional(readOnly = true)` class-level
   - Constructor injection: `TaskRepository`
   - Breaks circular dependency: `TaskService` → `UserService`/`CommentService` → `TaskService`
-  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `groupByStatus`
-  - `unassignTasks(user)` — sets user to null on all user's tasks, resets non-completed to OPEN; used by `UserService` when disabling/deleting users
-  - `unassignTasksInProject(user, projectId)` — unassigns non-terminal tasks for a user within a specific project; used by `ProjectService` when demoting a member to VIEWER
+  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `getIncompleteTasks(accessibleProjectIds)`, `searchTasks(keyword)`, `searchTasks(keyword, accessibleProjectIds)`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `searchForDependency`, `groupByStatus`
+  - `filterByAccessibleProjects(tasks, accessibleProjectIds)` — private helper to filter task lists by project access (null = no filter)
+
+- `service/TaskCommandService.java` - Write-only task commands for cross-service use; `@Transactional` class-level
+  - Constructor injection: `TaskRepository`
+  - `unassignTasks(user)` — sets user to null on all user's tasks, resets non-terminal to OPEN; used by `UserService` when disabling/deleting users
+  - `unassignTasksInProject(user, projectId)` — unassigns non-terminal tasks for a user within a specific project; used by `ProjectService` when removing member or demoting to VIEWER
 
 - `service/CommentQueryService.java` - Read-only comment lookups for cross-service use
   - Constructor injection: `CommentRepository`
@@ -622,25 +627,25 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Member queries: `getMembers(Long)` (returns `Set<ProjectMember>`), `isMember`, `getMemberRole`, `isOwner`, `isEditor` — used by `ProjectAccessGuard`
 
 - `service/ProjectService.java` - Project write operations with audit event publishing
-  - Constructor injection: `ProjectRepository`, `ProjectQueryService`, `UserService`, `TaskQueryService`, `ApplicationEventPublisher`, `Messages`
+  - Constructor injection: `ProjectRepository`, `ProjectQueryService`, `UserService`, `TaskCommandService`, `SprintService`, `RecurringTaskTemplateService`, `RecentViewService`, `ApplicationEventPublisher`, `Messages`
   - `createProject(Project, User)` — creator becomes OWNER via cascaded `ProjectMember`; publishes `PROJECT_CREATED` audit event
   - `updateProject(Long, Project)` — updates name/description with diff tracking; publishes `PROJECT_UPDATED` audit event and `ProjectUpdatedEvent` (with actor) if changed
   - `archiveProject(Long)` — sets status to ARCHIVED; publishes `PROJECT_ARCHIVED`
   - `unarchiveProject(Long)` — restores to ACTIVE; publishes `PROJECT_UNARCHIVED`
   - `deleteProject(Long)` — only if no COMPLETED tasks (cancelled tasks don't block); publishes `PROJECT_DELETED`
-  - Member management: `addMember` (rejects duplicates), `removeMember` (prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role; demoting to VIEWER unassigns non-terminal tasks in the project)
+  - Member management: `addMember` (rejects duplicates), `removeMember` (unassigns tasks in project before removing; prevents removing last OWNER), `updateMemberRole` (prevents demoting last OWNER, no-op if same role; demoting to VIEWER unassigns non-terminal tasks in the project)
 
 - `service/TaskService.java` - Write-only task operations with audit and domain event publishing
-  - Constructor injection: `TaskRepository`, `TaskQueryService`, `TagService`, `UserService`, `ApplicationEventPublisher`, `Messages`
+  - Constructor injection: `TaskRepository`, `TaskQueryService`, `TaskDependencyService`, `SprintQueryService`, `TagService`, `UserService`, `RecentViewService`, `ApplicationEventPublisher`, `Messages`
   - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
   - `updateTask` — two overloads (with/without checklist); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
   - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
   - `setStatus(id, TaskStatus)` — sets status directly (for kanban drop); publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
   - `updateField(id, fieldName, value)` — updates a single named field (title, description, priority, status, dueDate) in-place; used by inline editing in table view; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
-  - `groupByStatus(List<Task>)` — groups a list of tasks into a `Map<TaskStatus, List<Task>>`; preserves all statuses (empty list for statuses with no tasks); used by the kanban board view
   - `deleteTask` — blocks deletion of COMPLETED tasks; publishes `TaskChangeEvent("deleted")`
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
-  - `getIncompleteTasks()` — uses `findByStatusNotIn(terminalStatuses())` instead of single-status exclusion
+  - `assignSprint(taskId, sprintId)` — sets sprint on task; publishes audit and change events via `saveAndPublish`
+  - Private `saveAndPublish(task, before)` — DRY helper for save + audit diff + event publishing; used by `updateField`, `setStatus`, `advanceStatus`, `assignSprint`
 
 - `service/TaskDependencyService.java` - Dependency management with cycle detection and validation
   - Constructor injection: `TaskQueryService`
@@ -651,7 +656,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `wouldCreateCycle(source, target)` — BFS cycle detection; returns true if adding source→target would create a cycle
 
 - `service/UserService.java` - User business logic
-  - Constructor injection: `UserRepository`, `TaskQueryService`, `CommentQueryService`, `ApplicationEventPublisher`
+  - Constructor injection: `UserRepository`, `TaskQueryService`, `TaskCommandService`, `CommentQueryService`, `ApplicationEventPublisher`
   - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
   - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by admin user management
@@ -664,12 +669,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `canDelete(userId)` — true if user has no completed tasks and no comments (safe to hard-delete)
   - `disableUser(userId)` — sets `enabled = false`, unassigns open/in-progress tasks (resets to OPEN); publishes `USER_DISABLED`
   - `enableUser(userId)` — sets `enabled = true`; publishes `USER_ENABLED`
-  - `deleteUser` — unassigns all tasks (via `TaskQueryService.unassignTasks()`), then deletes user; prevents FK constraint failure
+  - `deleteUser` — unassigns all tasks (via `TaskCommandService.unassignTasks()`), then deletes user; prevents FK constraint failure
 
 - `service/TagService.java` - Tag business logic with audit event publishing
   - `getAllTags`, `getTagById`, `findAllByIds(List<Long>)`, `countTasksByTagId`, `createTag`, `deleteTag`
   - `findAllByIds(ids)` — returns `Set<Tag>` matching the given IDs; returns empty set for null/empty input; used by `TaskService` for tag resolution
-  - `countTasksByTagId(tagId)` — uses ORM relationship traversal (`getTagById(tagId).getTasks().size()`) instead of custom repository query
+  - `countTasksByTagId(tagId)` — uses dedicated `@Query` count instead of loading the full collection
 
 - `audit/AuditLogService.java` - Audit log business logic
   - `searchAuditLogs(category, search, from, to, pageable)` — paginated search with JPA Specifications
@@ -709,11 +714,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `exportCsv(HttpServletResponse, String filename, List<Task>)` — writes CSV to the response; uses `Messages.get(Translatable)` for translated column headers and enum values (priority, status)
   - Used by both `TaskController` (cross-project export at `GET /tasks/export`) and `ProjectController` (per-project export at `GET /projects/{id}/export`); replaces the inline `CsvWriter` call that was previously only in `TaskController`
 
-- `service/ScheduledTaskService.java` - Centralized home for all `@Scheduled` jobs
-  - Constructor injection: `TaskQueryService`, `NotificationService`, `NotificationRepository`, `RecurringTaskGenerationService`, `UserPreferenceService`, `SettingService`, `Messages`
-  - `generateRecurringTasks()` — `@Scheduled(cron = "0 0 6 * * *")` `@Transactional`; generates tasks from due recurring templates (runs before due reminders)
-  - `sendDueReminders()` — `@Scheduled(cron = "0 0 8 * * *")`; finds tasks due tomorrow, sends `TASK_DUE_REMINDER` notifications to assigned users who have the `dueReminder` preference enabled
-  - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; reads `notificationPurgeDays` from `Settings`, deletes notifications older than that
+- `service/ScheduledTaskService.java` - Centralized home for all `@Scheduled` jobs; SLF4J logging on all jobs
+  - Constructor injection: `TaskQueryService`, `NotificationService`, `NotificationRepository`, `RecurringTaskGenerationService`, `UserPreferenceService`, `SettingService`, `AppRoutesProperties`, `Messages`
+  - `generateRecurringTasks()` — `@Scheduled(cron = "0 0 6 * * *")` `@Transactional`; logs start/complete with generated count
+  - `sendDueReminders()` — `@Scheduled(cron = "0 0 8 * * *")` `@Transactional(readOnly = true)`; logs start/complete with sent/skipped/failed counts; per-item try/catch so one failure doesn't abort the batch
+  - `purgeOldNotifications()` — `@Scheduled(cron = "0 0 3 * * *")` `@Transactional`; logs start/complete with deleted count; `deleteByCreatedAtBefore` returns `int`
 
 - `service/SavedViewService.java` - Saved view CRUD; `@Transactional` class-level
   - Constructor injection: `SavedViewRepository`
@@ -749,13 +754,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `generateDueTasks()` — finds all due templates, creates tasks, advances `nextRunDate` to next future date (skips missed), auto-disables when end date reached
   - Silently skips assignee if user is disabled; logs errors per template without failing the batch
 
-- `service/RecentViewService.java` - Recently viewed items with WebSocket push
-  - Constructor injection: `RecentViewRepository`, `SimpMessagingTemplate`, `AppRoutesProperties`
-  - `recordView(User, String entityType, Long entityId, String title)` — `@Transactional`; upserts recent view (updates viewedAt if exists, creates if not), trims to 10 per user, pushes `RecentViewResponse` via WebSocket to `/queue/recent-views`
-  - `updateTitle(String entityType, Long entityId, String newTitle)` — `@Transactional(propagation = REQUIRES_NEW)`; bulk-updates title across all users' recent views, pushes `titleOnly` response to affected users via WebSocket
+- `service/RecentViewService.java` - Recently viewed items with event-driven WebSocket push
+  - Constructor injection: `RecentViewRepository`, `ApplicationEventPublisher`, `AppRoutesProperties`
+  - `recordView(User, String entityType, Long entityId, String title)` — `@Transactional`; upserts recent view, trims to 10 per user, publishes `RecentViewPushEvent`
+  - `updateTitle(String entityType, Long entityId, String newTitle, User actor)` — `@Transactional(propagation = REQUIRES_NEW)`; bulk-updates title, publishes `RecentViewPushEvent` per affected user
   - `deleteByEntity(String entityType, Long entityId)` — cleanup on entity delete
   - `deleteByUserId(Long)` — cleanup on user delete
-  - `getRecentViews(Long userId)` — returns top 10 recent views as `RecentViewResponse` list
+  - `getRecentViews(Long userId)` — `@Transactional(readOnly = true)`; returns top 10 recent views
 
 - `service/AnalyticsService.java` - Analytics chart data builder
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
@@ -1439,7 +1444,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `initFilterListeners()` — binds change events on project checkboxes and Select All; triggers re-fetch
   - `fetchAndRender()` — fetches JSON from API, renders 6 charts: status (doughnut), priority (doughnut), workload (stacked bar), burndown (line), velocity (line), overdue (bar)
   - Status/priority labels resolved via `APP_CONFIG.messages`
-- `static/js/utils.js` - Shared utilities (`getCookie`, `setCookie`); `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
+- `static/js/utils.js` - Shared utilities: `requireOk(response)` validates fetch response status (throws on non-ok); `getCookie(name)`, `setCookie(name, value)`; `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
 - Bootstrap Icons served via WebJar (`bootstrap-icons:1.13.1`); loaded globally in `base.html`

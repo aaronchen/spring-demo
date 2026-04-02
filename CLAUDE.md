@@ -219,7 +219,7 @@ Every task belongs to a project. `ProjectAccessGuard` enforces view/edit/owner a
 
 ### Cross-Service Dependency Rule
 
-Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads.
+Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads. `TaskCommandService` handles cross-cutting task write operations (e.g., bulk unassignment) needed by multiple services — extracted to break circular dependencies.
 
 ### Transactional Boundaries
 
@@ -235,6 +235,10 @@ Central utility: `SecurityUtils.getCurrentUser()`, `.getCurrentUserDetails()`, `
 ### CSRF Token Pattern for HTMX
 
 `utils.js` reads `<meta>` CSRF tags and adds token header via `htmx:configRequest`. REST API (`/api/**`) is CSRF-exempt.
+
+### JS Fetch Error Handling Pattern
+
+All `fetch()` calls must chain `.then(requireOk)` before parsing the response. `requireOk(response)` (defined in `utils.js`) throws on non-2xx status. Catch handlers should log via `console.error` — never silently swallow errors (empty `.catch(() => {})`).
 
 ### Audit Event Categories
 
@@ -295,7 +299,7 @@ Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workloa
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 303 tests, 32 test classes
+./mvnw test                               # 302 tests, 32 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 
