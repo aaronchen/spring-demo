@@ -423,7 +423,7 @@
 
 [data-theme] .form-check-input:disabled {
     background-color: var(--theme-surface-sunken);
-    border-color: transparent;
+    border-color: var(--bs-border-color, #dee2e6);
     opacity: 1;
 }
 [data-theme] .form-check-input:checked:disabled {
@@ -618,6 +618,11 @@
     background-color: var(--theme-surface-sunken);
     border-color: transparent;
     color: var(--bs-secondary-color, #6c757d);
+}
+/* Match input-group-text to adjacent disabled controls (e.g., checklist checkboxes) */
+[data-theme] .input-group:has(.form-control:disabled) .input-group-text {
+    background-color: var(--theme-surface-sunken);
+    border-color: transparent;
 }
 
 [data-theme] .form-control {

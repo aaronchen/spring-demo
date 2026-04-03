@@ -94,6 +94,18 @@ searchable-select:not(.ss-keyboard-nav) .dropdown-item.active:hover {
     color: #fff;
 }
 
+/* Readonly state — match theme's readonly form-control style (dashed border, muted text) */
+searchable-select[readonly] .ss-input,
+[data-theme] searchable-select[readonly] .ss-input {
+    background-color: #fff;
+    border-style: dashed;
+    color: var(--bs-secondary-color, #6c757d);
+    cursor: default;
+}
+searchable-select[readonly] .ss-clear {
+    display: none;
+}
+
 /* Disabled state — match theme's disabled form-control style */
 searchable-select[disabled] .ss-input {
     background-color: var(--theme-surface-sunken, var(--bs-secondary-bg, #e9ecef));

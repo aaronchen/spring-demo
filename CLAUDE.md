@@ -191,6 +191,27 @@ Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageK
 
 `showConfirm(options, onConfirm)` in `utils.js` — Bootstrap modal replacing `window.confirm()`. Created fresh per call, destroyed on hide. HTMX integration via `htmx:confirm` interception with `data-confirm-*` attributes.
 
+### Searchable Select Component
+
+`<searchable-select>` Web Component (`js/components/searchable-select.js` + `css/components/searchable-select-bootstrap5.css`). No Shadow DOM — uses Bootstrap classes from page stylesheet.
+
+**Three modes:**
+- **Local** — static `<option>` children, client-side filter
+- **Remote prefetch** — `src` + `prefetch` attr: fetch once on open, filter client-side from cache
+- **Remote server search** — `src` without `prefetch`: debounced fetch per keystroke via `query-param`
+
+**Public API** — consumers must NOT access `_`-prefixed internals:
+- **Properties:** `value` (get/set), `fetchFn` (get/set — `async (query, signal) => Array`)
+- **Methods:** `reset()`, `clear()`, `setValue(v, text)`, `getValue()`, `setSrc(url)`, `setOptions([{value, text}])`, `enable()`, `disable()`
+- **Attributes:** `name`, `placeholder`, `disabled`, `readonly`, `src`, `prefetch`, `value-field`, `text-field`, `query-param`, `debounce`
+- **Events:** `change` with `{ detail: { value, text } }`
+
+**`fetchFn`** overrides `src`-based fetching. Component handles debouncing, abort signals, loading/error states, and mapping via `value-field`/`text-field`. Dev handles URL construction, request method, auth.
+
+**`readonly` vs `disabled`:** Both prevent interaction. `readonly` submits the value (white bg, dashed border). `disabled` does not submit (sunken bg, transparent border). Use `disabled` for view-only mode (matches other form controls); use `readonly` when the form submits but a field should be locked.
+
+**Keyboard vs mouse highlight:** `ss-keyboard-nav` class suppresses `:hover` styling during arrow-key navigation. `overflow: hidden` on `.card` clips absolutely-positioned dropdowns — use `.card-clip` only on cards needing header clipping, not on cards containing searchable-select.
+
 ### WebSocket + STOMP Pattern
 
 - `/ws` endpoint (SockJS fallback), broker on `/topic` (broadcast) and `/queue` (user-specific)

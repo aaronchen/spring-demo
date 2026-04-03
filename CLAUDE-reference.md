@@ -1398,7 +1398,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Saved views: `applySavedView(view)` restores filter state from stored JSON and sets `activeViewName`; `saveCurrentView()` POSTs current state to `POST /api/views`; `deleteSavedView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown. `renderActiveViewLabel()` updates button text/style/icon; `clearActiveView()` resets to default. `_keepActiveView` flag prevents `doSearch` from clearing the label when called from `applySavedView`
   - Sort entries use `{field, direction}` objects in `activeSorts` array; `SORT_LABELS` maps `"field,direction"` keys to display labels
 - `static/js/tasks/task-form.js` - Task form logic (checklist management, project-aware assignee list); moved from `static/js/task-form.js` in Phase 8
-  - `bindProjectChange()` — updates assignee searchable-select `_src` to `/api/projects/{id}/members/assignable` when project dropdown changes; clears cache and current selection; binds on DOMContentLoaded and htmx:afterSwap (for modal)
+  - `bindProjectChange()` — updates assignee searchable-select via `setSrc()` + `reset()` when project dropdown changes; binds on DOMContentLoaded and htmx:afterSwap (for modal)
   - `addChecklistItem()`, `removeChecklistItem(btn)`, `updateChecklistHeading()`, drag-and-drop reorder handlers (`checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`)
   - Loaded page-specifically on task pages (via `tasks.html` script block)
 - `static/js/tasks/bulk-actions.js` - Cross-page bulk selection and actions for table view
@@ -1423,7 +1423,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `dragend` — clears dragging styles regardless of outcome
   - Updates card position in DOM optimistically; reverts on server error
 - `static/js/tasks/task-dependencies.js` - Dependency picker and management
-  - Binds `.dep-picker` elements, creates dependency items with hidden inputs, manages exclude lists dynamically
+  - Binds `.dep-picker` elements via `dataset.depBound` guard, creates dependency items with hidden inputs
+  - `updateDepExcludeLists()` — rebuilds search URL and calls `setSrc()` on each picker
   - Re-binds on `htmx:afterSettle` for modal support
 - `static/js/tasks/keyboard-shortcuts.js` - Keyboard shortcut handler for task pages
   - `h` — open keyboard help modal; `n` — open new task modal; `s` / `/` — focus search input
@@ -1446,7 +1447,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Status/priority labels resolved via `APP_CONFIG.messages`
 - `static/js/utils.js` - Shared utilities: `requireOk(response)` validates fetch response status (throws on non-ok); `getCookie(name)`, `setCookie(name, value)`; `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
 - `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
-- `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component
+- `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component with public API
+  - Three modes: local (static options), remote prefetch (`prefetch` attr), remote server search
+  - Public methods: `reset()`, `clear()`, `setValue()`, `getValue()`, `setSrc()`, `setOptions()`, `enable()`, `disable()`
+  - Properties: `value` (get/set), `fetchFn` (get/set — `async (query, signal) => Array`)
+  - Attributes: `disabled`, `readonly`, `src`, `prefetch`, `value-field`, `text-field`, `query-param`, `debounce`
 - Bootstrap Icons served via WebJar (`bootstrap-icons:1.13.1`); loaded globally in `base.html`
 - Tribute.js served via WebJar (`github-com-zurb-tribute:5.1.3`); loaded globally in `base.html`
 

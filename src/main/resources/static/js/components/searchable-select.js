@@ -1,21 +1,57 @@
 // <searchable-select> — reusable searchable dropdown Web Component.
 //
-// Local mode (static options):
-//   <searchable-select name="userId" placeholder="Search users...">
-//       <option value="">Unassigned</option>
-//       <option value="1" selected>Alice Johnson</option>
-//       <option value="2">Bob Smith</option>
-//   </searchable-select>
+// Three modes:
 //
-// Remote mode (fetches from API):
-//   <searchable-select name="userId" placeholder="Search users..."
-//                      src="/api/users" value-field="id" text-field="name">
-//       <option value="">Unassigned</option>
-//       <option value="1" selected>Alice Johnson</option>
-//   </searchable-select>
+// 1. Local (static options, client-side filter):
+//    <searchable-select name="status" placeholder="Pick one...">
+//        <option value="">-- None --</option>
+//        <option value="OPEN" selected>Open</option>
+//        <option value="CLOSED">Closed</option>
+//    </searchable-select>
 //
-// Attributes: name, placeholder, disabled, src, value-field, text-field, query-param, debounce
-// Form submission: hidden <input> carries the selected value.
+// 2. Remote prefetch (fetch once, client-side filter from cache):
+//    <searchable-select name="userId" placeholder="Search users..."
+//                       src="/api/users" value-field="id" text-field="name" prefetch>
+//        <option value="">Unassigned</option>
+//        <option value="1" selected>Alice Johnson</option>
+//    </searchable-select>
+//
+// 3. Remote server search (debounced fetch per keystroke):
+//    <searchable-select name="taskId" placeholder="Search tasks..."
+//                       src="/api/tasks/search" value-field="id" text-field="title"
+//                       query-param="q" debounce="300">
+//        <option value="">---</option>
+//    </searchable-select>
+//
+// Attributes:
+//   name          — form field name (carried by hidden <input>)
+//   placeholder   — input placeholder text
+//   disabled      — disables the control (grayed out, no interaction, value NOT submitted)
+//   readonly      — read-only display (dashed border, no interaction, value IS submitted)
+//   src           — remote endpoint URL (enables remote mode)
+//   prefetch      — boolean; when present with src/fetchFn, fetch once and filter client-side
+//   value-field   — JSON field for option values (default: "id")
+//   text-field    — JSON field for option display text (default: "name")
+//   query-param   — URL parameter name for search query (default: "q")
+//   debounce      — milliseconds to debounce remote searches (default: "300")
+//
+// Public properties:
+//   value         — get/set selected value (no change event on set)
+//   fetchFn       — async (query, signal) => Array<Object>; overrides src-based fetching
+//
+// Public methods:
+//   reset()           — clear selection, no change event
+//   clear()           — clear selection, fires change event
+//   setValue(v, text)  — set selection programmatically, no change event
+//   getValue()        — returns { value, text }
+//   setSrc(url)       — change remote URL, clears cache
+//   setOptions(opts)  — replace local dataset with [{value, text}, ...]
+//   enable()          — remove disabled attribute
+//   disable()         — set disabled attribute
+//
+// Events:
+//   change — { detail: { value, text }, bubbles: true } on user selection
+//
 // CSS: load searchable-select-bootstrap5.css (or your own theme).
 
 class SearchableSelect extends HTMLElement {
@@ -23,6 +59,7 @@ class SearchableSelect extends HTMLElement {
     connectedCallback() {
         this._src = this.getAttribute('src');
         this._isRemote = !!this._src;
+        this._fetchFn = null;
         this._valueField = this.getAttribute('value-field') || 'id';
         this._textField = this.getAttribute('text-field') || 'name';
         this._queryParam = this.getAttribute('query-param') || 'q';
@@ -54,7 +91,7 @@ class SearchableSelect extends HTMLElement {
         }
 
         // Remote state
-        this._cache = null;        // cached full-list response
+        this._cache = null;        // cached full-list response (prefetch mode only)
         this._debounceTimer = null;
         this._abortController = null;
 
@@ -73,21 +110,141 @@ class SearchableSelect extends HTMLElement {
         if (this._abortController) this._abortController.abort();
     }
 
-    static get observedAttributes() { return ['disabled']; }
+    static get observedAttributes() { return ['disabled', 'readonly', 'src', 'prefetch']; }
 
     attributeChangedCallback(name) {
-        if (name === 'disabled' && this._input) {
+        // Guard: callbacks fire during parsing, before connectedCallback builds the DOM
+        if (!this._input) return;
+
+        if (name === 'disabled') {
             const isDisabled = this.hasAttribute('disabled');
             this._input.disabled = isDisabled;
             if (isDisabled) this._close();
             this._updateClear();
         }
+        if (name === 'readonly') {
+            const isReadonly = this.hasAttribute('readonly');
+            this._input.readOnly = isReadonly;
+            if (isReadonly) this._close();
+            this._updateClear();
+        }
+        if (name === 'src') {
+            this._src = this.getAttribute('src');
+            this._isRemote = !!this._src;
+            this._cache = null;
+        }
+        // 'prefetch' — no runtime action needed; read via hasAttribute at fetch time
     }
+
+    // --- Public properties ---
+
+    get value() { return this._selectedValue; }
+
+    set value(val) {
+        const strVal = String(val ?? '');
+        // Look up display text from current options
+        const all = [...this._staticOptions, ...this._options];
+        const match = all.find(o => String(o.value) === strVal);
+        const text = match ? match.text : '';
+        this._selectedValue = strVal;
+        this._selectedText = text;
+        if (this._hidden) this._hidden.value = strVal;
+        if (this._input) this._input.value = text;
+        this._updateClear();
+    }
+
+    get fetchFn() { return this._fetchFn; }
+
+    set fetchFn(fn) {
+        this._fetchFn = fn;
+        this._isRemote = true;
+        this._cache = null;
+    }
+
+    // --- Public methods ---
+
+    /** Clear selection without firing change event. */
+    reset() {
+        const empty = this._emptyOption;
+        this._selectedValue = empty ? empty.value : '';
+        this._selectedText = empty ? empty.text : '';
+        if (this._hidden) this._hidden.value = this._selectedValue;
+        if (this._input) this._input.value = this._selectedText;
+        this._updateClear();
+    }
+
+    /** Clear selection and fire change event. */
+    clear() {
+        const empty = this._emptyOption;
+        this._select(empty ? empty.value : '', empty ? empty.text : '');
+    }
+
+    /** Set selection programmatically without firing change event. */
+    setValue(value, text) {
+        const strVal = String(value ?? '');
+        if (text === undefined || text === null) {
+            // Look up display text from current options
+            const all = [...this._staticOptions, ...this._options];
+            const match = all.find(o => String(o.value) === strVal);
+            text = match ? match.text : '';
+        }
+        this._selectedValue = strVal;
+        this._selectedText = String(text);
+        if (this._hidden) this._hidden.value = strVal;
+        if (this._input) this._input.value = this._selectedText;
+        this._updateClear();
+    }
+
+    /** Returns current selection as { value, text }. */
+    getValue() {
+        return { value: this._selectedValue, text: this._selectedText };
+    }
+
+    /** Change remote URL. Clears cache and sets remote mode. */
+    setSrc(url) {
+        // Use setAttribute so attributeChangedCallback handles _src, _isRemote, _cache
+        if (url) {
+            this.setAttribute('src', url);
+        } else {
+            this.removeAttribute('src');
+            this._src = null;
+            this._isRemote = !!this._fetchFn;
+            this._cache = null;
+        }
+    }
+
+    /** Replace local dataset with an array of { value, text } objects. Switches to local mode. */
+    setOptions(options) {
+        this._isRemote = false;
+        this._src = null;
+        this._fetchFn = null;
+        this._cache = null;
+        this._emptyOption = null;
+        this._staticOptions = options.map(o => {
+            const entry = { value: String(o.value ?? ''), text: String(o.text ?? ''), selected: false };
+            if (entry.value === '') this._emptyOption = entry;
+            return entry;
+        });
+        this._options = this._staticOptions.slice();
+        if (this._isOpen) {
+            this._buildItems(this._options);
+            this._updateRingHeight();
+        }
+    }
+
+    /** Remove disabled attribute. */
+    enable() { this.removeAttribute('disabled'); }
+
+    /** Set disabled attribute. */
+    disable() { this.setAttribute('disabled', ''); }
+
+    // --- DOM construction ---
 
     _buildDOM() {
         const name = this.getAttribute('name') || '';
         const placeholder = this.getAttribute('placeholder') || 'Search...';
         const isDisabled = this.hasAttribute('disabled');
+        const isReadonly = this.hasAttribute('readonly');
 
         this.innerHTML = '';
 
@@ -110,6 +267,7 @@ class SearchableSelect extends HTMLElement {
         this._input.placeholder = placeholder;
         this._input.autocomplete = 'off';
         this._input.disabled = isDisabled;
+        this._input.readOnly = isReadonly;
         this._input.value = this._selectedText;
         this._wrapper.appendChild(this._input);
 
@@ -176,7 +334,10 @@ class SearchableSelect extends HTMLElement {
 
         if (!hasMatch) {
             const li = document.createElement('li');
-            li.innerHTML = '<span class="dropdown-item text-muted">No results</span>';
+            const span = document.createElement('span');
+            span.className = 'dropdown-item text-muted';
+            span.textContent = 'No results';
+            li.appendChild(span);
             this._menu.appendChild(li);
         }
     }
@@ -184,7 +345,10 @@ class SearchableSelect extends HTMLElement {
     _showStatus(message) {
         this._menu.innerHTML = '';
         const li = document.createElement('li');
-        li.innerHTML = `<span class="dropdown-item text-muted">${message}</span>`;
+        const span = document.createElement('span');
+        span.className = 'dropdown-item text-muted';
+        span.textContent = message;
+        li.appendChild(span);
         this._menu.appendChild(li);
     }
 
@@ -202,7 +366,13 @@ class SearchableSelect extends HTMLElement {
                 this._menu.classList.add('show');
             }
             if (this._isRemote) {
-                this._debouncedFetch(this._input.value);
+                if (this._isPrefetch() && this._cache) {
+                    // Prefetch mode with cache: filter client-side, no server call
+                    this._buildItems(this._cache, this._input.value);
+                    this._updateRingHeight();
+                } else {
+                    this._debouncedFetch(this._input.value);
+                }
             } else {
                 this._buildItems(this._options, this._input.value);
                 this._updateRingHeight();
@@ -234,6 +404,7 @@ class SearchableSelect extends HTMLElement {
 
         this._clearBtn.addEventListener('mousedown', (e) => {
             e.preventDefault(); // prevent focus shift
+            if (this.hasAttribute('disabled') || this.hasAttribute('readonly')) return;
             const empty = this._emptyOption;
             this._select(empty ? empty.value : '', empty ? empty.text : '');
             this._close();
@@ -297,38 +468,31 @@ class SearchableSelect extends HTMLElement {
         }
     }
 
-    /** Programmatically clear the selection without firing change. */
-    reset() {
-        const empty = this._emptyOption;
-        this._selectedValue = empty ? empty.value : '';
-        this._selectedText = empty ? empty.text : '';
-        this._hidden.value = this._selectedValue;
-        this._input.value = this._selectedText;
-        this._cache = null;
-        this._updateClear();
-    }
-
     _updateClear() {
-        const show = this._selectedValue !== '' && !this.hasAttribute('disabled');
+        if (!this._clearBtn) return;
+        const show = this._selectedValue !== ''
+            && !this.hasAttribute('disabled')
+            && !this.hasAttribute('readonly');
         this._clearBtn.style.display = show ? '' : 'none';
-        this._input.classList.toggle('has-clear', show);
+        if (this._input) this._input.classList.toggle('has-clear', show);
     }
 
     _open() {
-        if (this._input.disabled) return;
+        if (this._input.disabled || this._input.readOnly) return;
+        if (this._isOpen) return; // guard against Safari focus+click double-fire
         this._isOpen = true;
         this._input.value = '';
         this._wrapper.classList.add('open');
 
         if (this._isRemote) {
-            if (this._cache) {
-                // Use cached full list
+            if (this._isPrefetch() && this._cache) {
+                // Prefetch mode with cache: show cached list, filter client-side
                 this._options = this._cache;
                 this._buildItems(this._options);
                 this._menu.classList.add('show');
                 this._updateRingHeight();
             } else {
-                // Fetch full list
+                // Fetch from server (prefetch cache miss, or server-search mode)
                 this._menu.classList.add('show');
                 this._fetchRemote('');
             }
@@ -358,6 +522,10 @@ class SearchableSelect extends HTMLElement {
         });
     }
 
+    _isPrefetch() {
+        return this.hasAttribute('prefetch');
+    }
+
     // --- Remote data ---
 
     _debouncedFetch(query) {
@@ -372,9 +540,6 @@ class SearchableSelect extends HTMLElement {
         if (this._abortController) this._abortController.abort();
         this._abortController = new AbortController();
 
-        const url = new URL(this._src, window.location.origin);
-        if (query) url.searchParams.set(this._queryParam, query);
-
         this._showStatus('Loading\u2026');
         if (this._isOpen) {
             this._menu.classList.add('show');
@@ -382,20 +547,30 @@ class SearchableSelect extends HTMLElement {
         }
 
         try {
-            const resp = await fetch(url.toString(), {
-                signal: this._abortController.signal,
-                headers: { 'Accept': 'application/json' }
-            });
-            if (!resp.ok) throw new Error(resp.statusText);
-            const data = await resp.json();
+            let data;
+            if (this._fetchFn) {
+                // Custom fetch function — dev controls the request entirely
+                data = await this._fetchFn(query, this._abortController.signal);
+            } else {
+                // Default: build URL from src + query-param
+                const url = new URL(this._src, window.location.origin);
+                if (query) url.searchParams.set(this._queryParam, query);
+
+                const resp = await fetch(url.toString(), {
+                    signal: this._abortController.signal,
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (!resp.ok) throw new Error(resp.statusText);
+                data = await resp.json();
+            }
 
             const options = data.map(item => ({
                 value: String(item[this._valueField] ?? ''),
                 text: String(item[this._textField] ?? '')
             }));
 
-            // Cache the full-list response (no query)
-            if (!query) this._cache = options;
+            // Cache only in prefetch mode on initial (empty query) fetch
+            if (!query && this._isPrefetch()) this._cache = options;
 
             this._options = options;
             this._buildItems(options);

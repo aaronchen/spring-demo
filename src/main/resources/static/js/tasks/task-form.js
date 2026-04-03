@@ -19,22 +19,10 @@ function bindProjectChange() {
         const assigneeSelect = document.getElementById('assigneeId');
         if (!assigneeSelect) return;
         const projectId = this.value;
-        if (projectId) {
-            assigneeSelect._src = APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId });
-        } else {
-            assigneeSelect._src = APP_CONFIG.routes.apiUsers;
-        }
-        assigneeSelect._cache = null;
-        // Clear current selection since user may not be in the new project
-        if (assigneeSelect._selectedValue) {
-            assigneeSelect._selectedValue = '';
-            assigneeSelect._selectedText = '';
-            if (assigneeSelect._hidden) assigneeSelect._hidden.value = '';
-            if (assigneeSelect._input) {
-                assigneeSelect._input.value = '';
-                assigneeSelect._input.placeholder = assigneeSelect.getAttribute('placeholder') || '';
-            }
-        }
+        assigneeSelect.setSrc(projectId
+            ? APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId })
+            : APP_CONFIG.routes.apiUsers);
+        assigneeSelect.reset();
         // Update sprint dropdown for the selected project
         updateSprintDropdown(projectId);
     });

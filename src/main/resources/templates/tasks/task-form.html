@@ -81,7 +81,7 @@
         <label for="assigneeId" class="form-label fw-bold" th:text="#{task.field.user}">Assigned To</label>
         <searchable-select name="assigneeId" id="assigneeId"
                            th:src="${task.project != null ? appRoutes.apiProjectMembersAssignable.resolve('projectId', task.project.id) : appRoutes.apiUsers}"
-                           value-field="id" text-field="name"
+                           value-field="id" text-field="name" prefetch
                            th:placeholder="#{task.field.user.placeholder}"
                            th:disabled="${mode == 'view'}">
             <option value="" th:text="#{task.field.user.unassigned}">Unassigned</option>

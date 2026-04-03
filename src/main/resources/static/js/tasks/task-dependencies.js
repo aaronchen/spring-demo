@@ -5,8 +5,8 @@
 (function () {
     function bindPickers() {
         document.querySelectorAll('searchable-select.dep-picker').forEach(function (select) {
-            if (select._depBound) return;
-            select._depBound = true;
+            if (select.dataset.depBound) return;
+            select.dataset.depBound = 'true';
             select.addEventListener('change', function (e) {
                 const taskId = e.detail?.value;
                 const taskTitle = e.detail?.text;
@@ -80,9 +80,7 @@ function updateDepExcludeLists() {
     const src = `${APP_CONFIG.routes.apiTaskSearchForDependency}?projectId=${projectId}&excludeTaskIds=${idsParam}`;
 
     pickers.forEach(function (picker) {
-        picker._src = src;
-        picker._isRemote = true;
-        picker._cache = null;
+        picker.setSrc(src);
     });
 }
 

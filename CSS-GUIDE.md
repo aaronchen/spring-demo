@@ -144,6 +144,8 @@ Each shadow combines a tight contact shadow + a soft ambient shadow:
 
 Applies consistently to `form-control`, `form-select`, and `searchable-select`.
 
+**Note:** Native `<select>` (`form-select`) only supports **editable** and **disabled** — HTML has no `readonly` for selects. The `<searchable-select>` Web Component supports all three states via `readonly` and `disabled` attributes, making it visually consistent with `<input>` and `<textarea>` in read-only forms.
+
 ### `form-select` Padding
 
 Never override right padding on `form-select` — Bootstrap reserves ~2.25rem for the dropdown arrow. Only set `padding-top`, `padding-bottom`, and `padding-left`.

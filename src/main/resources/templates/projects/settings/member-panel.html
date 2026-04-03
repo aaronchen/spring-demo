@@ -19,6 +19,7 @@
                        th:text="#{project.member.field.user}">User</label>
                 <searchable-select name="userId" id="memberUserId"
                                    th:src="${appRoutes.apiUsers}" value-field="id" text-field="name"
+                                   prefetch
                                    th:placeholder="#{project.member.field.user.placeholder}">
                     <option value="">---</option>
                 </searchable-select>
