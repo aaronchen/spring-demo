@@ -1,5 +1,6 @@
 package cc.desuka.demo.presence;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.PresenceResponse;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
@@ -16,11 +17,15 @@ public class PresenceEventListener {
 
     private final PresenceService presenceService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AppRoutesProperties appRoutes;
 
     public PresenceEventListener(
-            PresenceService presenceService, SimpMessagingTemplate messagingTemplate) {
+            PresenceService presenceService,
+            SimpMessagingTemplate messagingTemplate,
+            AppRoutesProperties appRoutes) {
         this.presenceService = presenceService;
         this.messagingTemplate = messagingTemplate;
+        this.appRoutes = appRoutes;
     }
 
     @EventListener
@@ -47,6 +52,6 @@ public class PresenceEventListener {
         PresenceResponse payload =
                 new PresenceResponse(
                         presenceService.getOnlineUsers(), presenceService.getOnlineCount());
-        messagingTemplate.convertAndSend("/topic/presence", payload);
+        messagingTemplate.convertAndSend(appRoutes.getTopicPresence().toString(), payload);
     }
 }

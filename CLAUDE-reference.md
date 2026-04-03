@@ -217,18 +217,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `event/TaskUpdatedEvent.java` - Record published when task fields change; fields: `task` (Task), `actor` (User)
 - `event/ProjectUpdatedEvent.java` - Record published when project fields change; fields: `project` (Project), `actor` (User)
 - `event/CommentAddedEvent.java` - Record published when a comment is created; fields: `comment` (Comment), `task` (Task), `actor` (User)
-- `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `userId` (long); serialized to JSON for JS clients
+- `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `projectId` (long), `userId` (long); serialized to JSON for JS clients
 - `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long); serialized to JSON for JS clients
 - `event/RecentViewPushEvent.java` - Record for WebSocket recent-view push; fields: `userEmail`, `payload` (RecentViewResponse); published by `RecentViewService`, handled by `RecentViewEventListener`
 - `event/RecentViewEventListener.java` - `@TransactionalEventListener` for recent view updates and title sync; handles `TaskUpdatedEvent`, `ProjectUpdatedEvent` (title sync), and `RecentViewPushEvent` (WebSocket push via `SimpMessagingTemplate`)
 - `event/NotificationEventListener.java` - Centralized notification routing; listens for domain events (`TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent`) and decides who gets notified via `NotificationService.create()`
-- `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting; listens for `TaskChangeEvent` → `/topic/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
+- `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting via `AppRoutesProperties` topic templates; listens for `TaskChangeEvent` → `/topic/projects/{projectId}/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
 
 ### Presence Package
 - `presence/PresenceService.java` - Online user tracking via `ConcurrentHashMap<String, Long>` (session ID → user ID)
   - Handles multi-tab: same user with multiple sessions tracked as separate entries, `getOnlineUsers()` returns distinct sorted names resolved via `UserService`
   - `userConnected(sessionId, userId)`, `userDisconnected(sessionId)`, `getOnlineUsers()`, `getOnlineCount()`
-- `presence/PresenceEventListener.java` - WebSocket session lifecycle listener
+- `presence/PresenceEventListener.java` - WebSocket session lifecycle listener; broadcasts via `AppRoutesProperties.topicPresence`
   - `@EventListener` for `SessionConnectEvent` and `SessionDisconnectEvent`
   - On connect: resolves user via `SecurityUtils.getUserFrom(principal)`, registers user ID with `PresenceService`
   - On disconnect: removes session from `PresenceService`

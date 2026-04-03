@@ -862,18 +862,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load saved views
     loadSavedViews();
 
-    // ── Live task updates via WebSocket ──────────────────────────────────
+    // ── Live task updates via WebSocket (per-project channels) ──────────
     const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
     const staleBanner = document.getElementById('stale-banner');
     const staleRefresh = document.getElementById('stale-banner-refresh');
+    const wsProjectIds = document.querySelector('meta[name="_wsProjectIds"]')?.content;
 
-    if (window.stompClient && staleBanner) {
+    if (window.stompClient && staleBanner && wsProjectIds) {
         window.stompClient.onConnect(function(client) {
-            client.subscribe('/topic/tasks', function(message) {
-                const data = JSON.parse(message.body);
-                // Ignore own actions
-                if (currentUserId && String(data.userId) === currentUserId) return;
-                staleBanner.classList.remove('d-none');
+            wsProjectIds.split(',').forEach(function(id) {
+                const topic = APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() });
+                client.subscribe(topic, function(message) {
+                    const data = JSON.parse(message.body);
+                    if (currentUserId && String(data.userId) === currentUserId) return;
+                    staleBanner.classList.remove('d-none');
+                });
             });
         });
 

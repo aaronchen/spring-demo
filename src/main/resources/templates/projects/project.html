@@ -100,6 +100,7 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
+    <meta name="_wsProjectIds" th:content="${project.id}">
     <!--/* Set project-scoped base URL for tasks.js */-->
     <script th:inline="javascript">
         window.TASKS_BASE_OVERRIDE = /*[[${appRoutes.projects + '/' + project.id}]]*/ '/projects/1';

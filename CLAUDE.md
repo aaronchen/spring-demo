@@ -97,6 +97,7 @@ Two categories of routes:
 - **Parameterized web routes**: `projectDetail`, `projectSettings`, `taskDetail` — URL templates for redirects
 - **API resource routes**: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit` — used for fetch calls and HTMX attributes
 - **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens, resolved via `RouteTemplate.resolve()`
+- **STOMP topic routes**: `topicProjectTasks`, `topicTaskComments`, `topicPresence` — WebSocket broadcast channels, also `RouteTemplate` fields (auto-exposed in `/config.js`)
 
 **RouteTemplate resolve API** (symmetric Java/JS):
 - Java: `route.resolve("projectId", id)`, `route.resolve(Map.of("projectId", id))`, `route.resolve(Map.of("projectId", id), Map.of("q", "test"))`
@@ -217,7 +218,7 @@ Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageK
 - `/ws` endpoint (SockJS fallback), broker on `/topic` (broadcast) and `/queue` (user-specific)
 - `PresenceService` — `ConcurrentHashMap` tracks online users by session
 - `NotificationService.create()` — DB-first, then pushes via `SimpMessagingTemplate`
-- Live update banners — clients subscribe to `/topic/tasks`, show banner on changes by other users, "Refresh" re-fetches. Self-filtering via `<meta name="_userId">`
+- Live update banners — per-project scoped via `/topic/projects/{projectId}/tasks`. Clients subscribe only to their accessible projects (passed via `<meta name="_wsProjectIds">`). Self-filtering via `<meta name="_userId">`. Regular users only see alerts for their projects; admins see all active projects.
 - Notification event bus (`notifications.js`) — custom DOM events (`notification:received/read/allRead/cleared`) decouple producers from consumers
 
 **Payload convention:** `*Response` in `dto/` for data returned to clients, `*Event` in `event/` for push-only broadcasts.

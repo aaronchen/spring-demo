@@ -40,6 +40,7 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
+    <meta name="_wsProjectIds" th:content="${#strings.listJoin(wsProjectIds, ',')}">
     <div th:replace="~{tasks/keyboard-help-modal}"></div>
     <script th:src="@{/js/tasks/task-form.js}"></script>
     <script th:src="@{/js/tasks/task-dependencies.js}"></script>

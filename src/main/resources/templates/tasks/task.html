@@ -75,6 +75,7 @@
     <script th:if="${mode != 'create'}" th:inline="javascript">
         (function() {
             const taskId = /*[[${task.id}]]*/ 0;
+            const projectId = /*[[${task.project.id}]]*/ 0;
             const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
             const staleBanner = document.getElementById('stale-banner');
             const staleRefresh = document.getElementById('stale-banner-refresh');
@@ -82,7 +83,7 @@
             if (!window.stompClient || !staleBanner) return;
 
             window.stompClient.onConnect(function(client) {
-                client.subscribe('/topic/tasks', function(message) {
+                client.subscribe(APP_CONFIG.routes.topicProjectTasks.resolve({ projectId }), function(message) {
                     const data = JSON.parse(message.body);
                     if (currentUserId && String(data.userId) === currentUserId) return;
                     if (data.taskId !== taskId) return;
@@ -90,7 +91,7 @@
                 });
 
                 // Live comment updates — refresh activity timeline
-                client.subscribe(`/topic/tasks/${taskId}/comments`, function(message) {
+                client.subscribe(APP_CONFIG.routes.topicTaskComments.resolve({ taskId }), function(message) {
                     const data = JSON.parse(message.body);
                     if (currentUserId && String(data.userId) === currentUserId) return;
                     htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/activity`,

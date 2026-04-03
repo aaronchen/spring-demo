@@ -46,5 +46,11 @@ public class DashboardController {
                         ? null
                         : projectQueryService.getAccessibleProjectIds(currentUser.getId());
         model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
+        // Project IDs for WebSocket subscriptions (always a concrete list, never null)
+        List<Long> wsProjectIds =
+                accessibleProjectIds != null
+                        ? accessibleProjectIds
+                        : projectQueryService.getAllActiveProjectIds();
+        model.addAttribute("wsProjectIds", wsProjectIds);
     }
 }

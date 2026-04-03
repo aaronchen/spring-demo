@@ -152,6 +152,13 @@ public class TaskController {
                         : projectQueryService.getAccessibleProjectIds(
                                 currentDetails.getUser().getId());
 
+        // Project IDs for WebSocket subscriptions (always a concrete list, never null)
+        List<Long> wsProjectIds =
+                accessibleProjectIds != null
+                        ? accessibleProjectIds
+                        : projectQueryService.getAllActiveProjectIds();
+        model.addAttribute("wsProjectIds", wsProjectIds);
+
         model.addAttribute("allTags", tagService.getAllTags());
         model.addAttribute("view", resolvedView);
         model.addAttribute("selectedUserId", query.getSelectedUserId());

@@ -9,7 +9,7 @@
     }
 
     window.stompClient.onConnect(function (client) {
-        client.subscribe('/topic/presence', function (message) {
+        client.subscribe(APP_CONFIG.routes.topicPresence.toString(), function (message) {
             const data = JSON.parse(message.body);
             updatePresenceUI(data.count, data.users);
         });

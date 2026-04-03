@@ -92,7 +92,11 @@ public class TaskService {
         User actor = SecurityUtils.getCurrentUser();
         eventPublisher.publishEvent(new TaskAssignedEvent(saved, actor));
         eventPublisher.publishEvent(
-                new TaskChangeEvent(TaskChangeEvent.ACTION_CREATED, saved.getId(), actorId(actor)));
+                new TaskChangeEvent(
+                        TaskChangeEvent.ACTION_CREATED,
+                        saved.getId(),
+                        saved.getProject().getId(),
+                        actorId(actor)));
         return saved;
     }
 
@@ -188,7 +192,11 @@ public class TaskService {
             eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
         }
         eventPublisher.publishEvent(
-                new TaskChangeEvent(TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+                new TaskChangeEvent(
+                        TaskChangeEvent.ACTION_UPDATED,
+                        saved.getId(),
+                        saved.getProject().getId(),
+                        actorId(actor)));
         return saved;
     }
 
@@ -222,6 +230,7 @@ public class TaskService {
                 new TaskChangeEvent(
                         TaskChangeEvent.ACTION_DELETED,
                         id,
+                        task.getProject().getId(),
                         actorId(SecurityUtils.getCurrentUser())));
     }
 
@@ -309,7 +318,10 @@ public class TaskService {
             eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
             eventPublisher.publishEvent(
                     new TaskChangeEvent(
-                            TaskChangeEvent.ACTION_UPDATED, saved.getId(), actorId(actor)));
+                            TaskChangeEvent.ACTION_UPDATED,
+                            saved.getId(),
+                            saved.getProject().getId(),
+                            actorId(actor)));
         }
         return saved;
     }

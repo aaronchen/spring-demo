@@ -1,5 +1,6 @@
 package cc.desuka.demo.event;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -13,18 +14,23 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class WebSocketEventListener {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final AppRoutesProperties appRoutes;
 
-    public WebSocketEventListener(SimpMessagingTemplate messagingTemplate) {
+    public WebSocketEventListener(
+            SimpMessagingTemplate messagingTemplate, AppRoutesProperties appRoutes) {
         this.messagingTemplate = messagingTemplate;
+        this.appRoutes = appRoutes;
     }
 
     @TransactionalEventListener
     public void onTaskChange(TaskChangeEvent event) {
-        messagingTemplate.convertAndSend("/topic/tasks", event);
+        messagingTemplate.convertAndSend(
+                appRoutes.getTopicProjectTasks().resolve("projectId", event.projectId()), event);
     }
 
     @TransactionalEventListener
     public void onCommentChange(CommentChangeEvent event) {
-        messagingTemplate.convertAndSend("/topic/tasks/" + event.taskId() + "/comments", event);
+        messagingTemplate.convertAndSend(
+                appRoutes.getTopicTaskComments().resolve("taskId", event.taskId()), event);
     }
 }

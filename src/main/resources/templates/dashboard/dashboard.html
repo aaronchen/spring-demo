@@ -36,6 +36,7 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
 
+    <meta name="_wsProjectIds" th:content="${#strings.listJoin(wsProjectIds, ',')}">
     <script>
         (function() {
             const statsContainer = document.getElementById('dashboard-stats');
@@ -47,12 +48,17 @@
                     {target: '#dashboard-stats', swap: 'outerHTML'});
             }
 
+            const wsProjectIds = document.querySelector('meta[name="_wsProjectIds"]')?.content;
             window.stompClient.onConnect(function(client) {
-                client.subscribe('/topic/tasks', function() {
-                    refreshStats();
-                });
+                if (wsProjectIds) {
+                    wsProjectIds.split(',').forEach(function(id) {
+                        client.subscribe(
+                            APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() }),
+                            function() { refreshStats(); });
+                    });
+                }
 
-                client.subscribe('/topic/presence', function() {
+                client.subscribe(APP_CONFIG.routes.topicPresence.toString(), function() {
                     refreshStats();
                 });
             });

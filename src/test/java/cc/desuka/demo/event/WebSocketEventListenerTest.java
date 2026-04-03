@@ -2,10 +2,12 @@ package cc.desuka.demo.event;
 
 import static org.mockito.Mockito.verify;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -14,15 +16,17 @@ class WebSocketEventListenerTest {
 
     @Mock private SimpMessagingTemplate messagingTemplate;
 
+    @Spy private AppRoutesProperties appRoutes = new AppRoutesProperties();
+
     @InjectMocks private WebSocketEventListener listener;
 
     @Test
-    void onTaskChange_broadcastsToTasksTopic() {
-        TaskChangeEvent event = new TaskChangeEvent("created", 1L, 2L);
+    void onTaskChange_broadcastsToProjectTopic() {
+        TaskChangeEvent event = new TaskChangeEvent("created", 1L, 10L, 2L);
 
         listener.onTaskChange(event);
 
-        verify(messagingTemplate).convertAndSend("/topic/tasks", event);
+        verify(messagingTemplate).convertAndSend("/topic/projects/10/tasks", event);
     }
 
     @Test

@@ -76,6 +76,13 @@ public class ProjectQueryService {
                 .toList();
     }
 
+    public List<Long> getAllActiveProjectIds() {
+        return projectRepository.findAll().stream()
+                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
+                .map(Project::getId)
+                .toList();
+    }
+
     public List<Project> getEditableProjectsForUser(Long userId) {
         return memberRepository.findByUserId(userId).stream()
                 .filter(
