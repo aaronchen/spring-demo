@@ -14,6 +14,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.NotificationRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,6 +31,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
     @Mock private NotificationRepository notificationRepository;
     @Mock private NotificationMapper notificationMapper;
     @Mock private SimpMessagingTemplate messagingTemplate;
@@ -42,9 +46,9 @@ class NotificationServiceTest {
     @BeforeEach
     void setUp() {
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
     }
 
     // ── create ───────────────────────────────────────────────────────────
@@ -89,9 +93,9 @@ class NotificationServiceTest {
 
     @Test
     void getUnreadCount_delegatesToRepository() {
-        when(notificationRepository.countByUserIdAndReadFalse(1L)).thenReturn(3L);
+        when(notificationRepository.countByUserIdAndReadFalse(ID_1)).thenReturn(3L);
 
-        assertThat(notificationService.getUnreadCount(1L)).isEqualTo(3L);
+        assertThat(notificationService.getUnreadCount(ID_1)).isEqualTo(3L);
     }
 
     // ── getRecentForUser ─────────────────────────────────────────────────
@@ -101,11 +105,11 @@ class NotificationServiceTest {
         Notification notification =
                 new Notification(alice, bob, NotificationType.COMMENT_ADDED, "msg", "/link");
         NotificationResponse response = new NotificationResponse();
-        when(notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(1L))
+        when(notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(ID_1))
                 .thenReturn(List.of(notification));
         when(notificationMapper.toResponseList(anyList())).thenReturn(List.of(response));
 
-        List<NotificationResponse> result = notificationService.getRecentForUser(1L);
+        List<NotificationResponse> result = notificationService.getRecentForUser(ID_1);
 
         assertThat(result).hasSize(1);
     }
@@ -119,11 +123,11 @@ class NotificationServiceTest {
         NotificationResponse response = new NotificationResponse();
         Pageable pageable = PageRequest.of(0, 10);
         Page<Notification> page = new PageImpl<>(List.of(notification), pageable, 1);
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(1L, pageable))
+        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(ID_1, pageable))
                 .thenReturn(page);
         when(notificationMapper.toResponse(any(Notification.class))).thenReturn(response);
 
-        Page<NotificationResponse> result = notificationService.findAllForUser(1L, pageable);
+        Page<NotificationResponse> result = notificationService.findAllForUser(ID_1, pageable);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
     }
@@ -135,10 +139,10 @@ class NotificationServiceTest {
         Notification notification =
                 new Notification(alice, bob, NotificationType.TASK_ASSIGNED, "msg", "/link");
         notification.setId(1L);
-        when(notificationRepository.findByIdAndUserId(1L, 1L))
+        when(notificationRepository.findByIdAndUserId(1L, ID_1))
                 .thenReturn(Optional.of(notification));
 
-        notificationService.markAsRead(1L, 1L);
+        notificationService.markAsRead(1L, ID_1);
 
         assertThat(notification.isRead()).isTrue();
         verify(notificationRepository).save(notification);
@@ -146,9 +150,9 @@ class NotificationServiceTest {
 
     @Test
     void markAsRead_notFound_doesNothing() {
-        when(notificationRepository.findByIdAndUserId(99L, 1L)).thenReturn(Optional.empty());
+        when(notificationRepository.findByIdAndUserId(99L, ID_1)).thenReturn(Optional.empty());
 
-        notificationService.markAsRead(99L, 1L);
+        notificationService.markAsRead(99L, ID_1);
 
         verify(notificationRepository, never()).save(any());
     }
@@ -157,17 +161,17 @@ class NotificationServiceTest {
 
     @Test
     void markAllAsRead_delegatesToRepository() {
-        notificationService.markAllAsRead(1L);
+        notificationService.markAllAsRead(ID_1);
 
-        verify(notificationRepository).markAllAsReadByUserId(1L);
+        verify(notificationRepository).markAllAsReadByUserId(ID_1);
     }
 
     // ── clearAll ─────────────────────────────────────────────────────────
 
     @Test
     void clearAll_delegatesToRepository() {
-        notificationService.clearAll(1L);
+        notificationService.clearAll(ID_1);
 
-        verify(notificationRepository).deleteByUserId(1L);
+        verify(notificationRepository).deleteByUserId(ID_1);
     }
 }

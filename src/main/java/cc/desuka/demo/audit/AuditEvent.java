@@ -75,15 +75,15 @@ public class AuditEvent {
 
     private final String action;
     private final String entityType;
-    private final Long entityId;
+    private final String entityId;
     private final String principal;
     private final String details;
 
     public AuditEvent(
-            String action, Class<?> entityType, Long entityId, String principal, String details) {
+            String action, Class<?> entityType, Object entityId, String principal, String details) {
         this.action = action;
         this.entityType = entityType != null ? entityType.getSimpleName() : null;
-        this.entityId = entityId;
+        this.entityId = entityId != null ? entityId.toString() : null;
         this.principal = principal;
         this.details = details;
     }
@@ -96,7 +96,7 @@ public class AuditEvent {
         return entityType;
     }
 
-    public Long getEntityId() {
+    public String getEntityId() {
         return entityId;
     }
 

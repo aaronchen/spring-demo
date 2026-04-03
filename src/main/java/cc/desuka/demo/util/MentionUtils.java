@@ -1,7 +1,10 @@
 package cc.desuka.demo.util;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -9,23 +12,29 @@ import org.springframework.stereotype.Component;
 /**
  * Utilities for parsing and rendering @mention tokens in comment text.
  *
- * <p>Encoded format: @[Display Name](userId:3) Rendered as: <span class="mention">@Display
- * Name</span>
+ * <p>Encoded format: {@code @[Display Name](userId:<uuid>)} Rendered as: {@code <a
+ * class="mention">@Display Name</a>}
  */
 @Component("mentionUtils")
 public class MentionUtils {
 
-    // Matches @[Display Name](userId:123)
+    // Matches @[Display Name](userId:<uuid>)
     private static final Pattern MENTION_PATTERN =
-            Pattern.compile("@\\[([^\\]]+)]\\(userId:(\\d+)\\)");
+            Pattern.compile("@\\[([^\\]]+)]\\(userId:([0-9a-fA-F\\-]+)\\)");
+
+    private final AppRoutesProperties appRoutes;
+
+    public MentionUtils(AppRoutesProperties appRoutes) {
+        this.appRoutes = appRoutes;
+    }
 
     /** Extract all mentioned user IDs from text containing encoded mention tokens. */
-    public static List<Long> extractMentionedUserIds(String text) {
-        List<Long> ids = new ArrayList<>();
+    public static List<UUID> extractMentionedUserIds(String text) {
+        List<UUID> ids = new ArrayList<>();
         if (text == null) return ids;
         Matcher matcher = MENTION_PATTERN.matcher(text);
         while (matcher.find()) {
-            ids.add(Long.parseLong(matcher.group(2)));
+            ids.add(UUID.fromString(matcher.group(2)));
         }
         return ids;
     }
@@ -43,8 +52,9 @@ public class MentionUtils {
             sb.append(escapeHtml(text.substring(lastEnd, matcher.start())));
             String displayName = escapeHtml(matcher.group(1));
             String userId = matcher.group(2);
-            sb.append("<a href=\"/tasks?selectedUserId=")
-                    .append(userId)
+            String href = appRoutes.getTasks().resolve(Map.of(), Map.of("selectedUserId", userId));
+            sb.append("<a href=\"")
+                    .append(escapeHtml(href))
                     .append("\" class=\"mention\">@")
                     .append(displayName)
                     .append("</a>");

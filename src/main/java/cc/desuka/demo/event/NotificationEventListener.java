@@ -1,5 +1,6 @@
 package cc.desuka.demo.event;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Task;
@@ -12,6 +13,7 @@ import cc.desuka.demo.util.Messages;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -26,16 +28,19 @@ public class NotificationEventListener {
     private final CommentService commentService;
     private final UserService userService;
     private final Messages messages;
+    private final AppRoutesProperties appRoutes;
 
     public NotificationEventListener(
             NotificationService notificationService,
             CommentService commentService,
             UserService userService,
-            Messages messages) {
+            Messages messages,
+            AppRoutesProperties appRoutes) {
         this.notificationService = notificationService;
         this.commentService = commentService;
         this.userService = userService;
         this.messages = messages;
+        this.appRoutes = appRoutes;
     }
 
     @TransactionalEventListener
@@ -59,7 +64,7 @@ public class NotificationEventListener {
                 actor,
                 NotificationType.TASK_ASSIGNED,
                 message,
-                "/tasks/" + task.getId() + "/edit");
+                appRoutes.getTaskEdit().resolve("taskId", task.getId()));
     }
 
     @TransactionalEventListener
@@ -70,9 +75,9 @@ public class NotificationEventListener {
 
         String message =
                 messages.get("notification.task.updated", actor.getName(), task.getTitle());
-        String link = "/tasks/" + task.getId();
+        String link = appRoutes.getTaskDetail().resolve("taskId", task.getId());
 
-        Set<Long> notifiedIds = new HashSet<>();
+        Set<UUID> notifiedIds = new HashSet<>();
         notifiedIds.add(actor.getId()); // Don't notify self
 
         // Notify task owner
@@ -82,7 +87,7 @@ public class NotificationEventListener {
         }
 
         // Notify commenters and @mentioned users
-        for (Long subscriberId : commentService.getSubscriberIds(task.getId())) {
+        for (UUID subscriberId : commentService.getSubscriberIds(task.getId())) {
             if (notifiedIds.add(subscriberId)) {
                 User subscriber = userService.findUserById(subscriberId);
                 if (subscriber != null) {
@@ -101,9 +106,9 @@ public class NotificationEventListener {
 
         String message =
                 messages.get("notification.comment.added", actor.getName(), task.getTitle());
-        String link = "/tasks/" + task.getId();
+        String link = appRoutes.getTaskDetail().resolve("taskId", task.getId());
 
-        Set<Long> notifiedIds = new HashSet<>();
+        Set<UUID> notifiedIds = new HashSet<>();
         notifiedIds.add(actor.getId()); // Don't notify self
 
         // Notify task owner
@@ -114,7 +119,7 @@ public class NotificationEventListener {
         }
 
         // Notify previous commenters
-        for (Long commenterId : commentService.getCommenterIds(task.getId())) {
+        for (UUID commenterId : commentService.getCommenterIds(task.getId())) {
             if (notifiedIds.add(commenterId)) {
                 User commenter = userService.findUserById(commenterId);
                 if (commenter != null) {
@@ -125,7 +130,7 @@ public class NotificationEventListener {
         }
 
         // Notify previously @mentioned users (subscribed to conversation)
-        for (Long mentionedId : commentService.getPreviouslyMentionedUserIds(task.getId())) {
+        for (UUID mentionedId : commentService.getPreviouslyMentionedUserIds(task.getId())) {
             if (notifiedIds.add(mentionedId)) {
                 User mentioned = userService.findUserById(mentionedId);
                 if (mentioned != null) {
@@ -136,12 +141,12 @@ public class NotificationEventListener {
         }
 
         // Notify @mentioned users in this comment (with COMMENT_MENTIONED type)
-        List<Long> mentionedInThisComment = MentionUtils.extractMentionedUserIds(comment.getText());
+        List<UUID> mentionedInThisComment = MentionUtils.extractMentionedUserIds(comment.getText());
         if (!mentionedInThisComment.isEmpty()) {
             String mentionMessage =
                     messages.get(
                             "notification.comment.mentioned", actor.getName(), task.getTitle());
-            for (Long mentionedId : mentionedInThisComment) {
+            for (UUID mentionedId : mentionedInThisComment) {
                 if (notifiedIds.add(mentionedId)) {
                     User mentioned = userService.findUserById(mentionedId);
                     if (mentioned != null) {

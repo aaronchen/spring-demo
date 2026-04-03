@@ -16,6 +16,7 @@ import cc.desuka.demo.service.SprintService;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,9 @@ import tools.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 class SprintApiControllerTest {
 
+    private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
@@ -45,7 +49,7 @@ class SprintApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         regularDetails = new CustomUserDetails(regularUser);
 
         sprint = new Sprint();
@@ -62,10 +66,10 @@ class SprintApiControllerTest {
     void listSprints_returns200() throws Exception {
         doNothing()
                 .when(projectAccessGuard)
-                .requireViewAccess(eq(1L), any(CustomUserDetails.class));
-        when(sprintQueryService.getSprintsByProject(1L)).thenReturn(List.of(sprint));
+                .requireViewAccess(eq(PROJECT_ID), any(CustomUserDetails.class));
+        when(sprintQueryService.getSprintsByProject(PROJECT_ID)).thenReturn(List.of(sprint));
 
-        mockMvc.perform(get("/api/projects/1/sprints").with(user(regularDetails)))
+        mockMvc.perform(get("/api/projects/" + PROJECT_ID + "/sprints").with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Sprint 1"))
                 .andExpect(jsonPath("$[0].goal").value("Deliver MVP"));
@@ -77,8 +81,8 @@ class SprintApiControllerTest {
     void createSprint_returns201() throws Exception {
         doNothing()
                 .when(projectAccessGuard)
-                .requireEditAccess(eq(1L), any(CustomUserDetails.class));
-        when(sprintService.createSprint(eq(1L), any(Sprint.class))).thenReturn(sprint);
+                .requireEditAccess(eq(PROJECT_ID), any(CustomUserDetails.class));
+        when(sprintService.createSprint(eq(PROJECT_ID), any(Sprint.class))).thenReturn(sprint);
 
         String body =
                 objectMapper.writeValueAsString(
@@ -89,7 +93,7 @@ class SprintApiControllerTest {
                                 "endDate", "2026-04-14"));
 
         mockMvc.perform(
-                        post("/api/projects/1/sprints")
+                        post("/api/projects/" + PROJECT_ID + "/sprints")
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -101,12 +105,12 @@ class SprintApiControllerTest {
     void createSprint_invalidData_returns400() throws Exception {
         doNothing()
                 .when(projectAccessGuard)
-                .requireEditAccess(eq(1L), any(CustomUserDetails.class));
+                .requireEditAccess(eq(PROJECT_ID), any(CustomUserDetails.class));
 
         String body = objectMapper.writeValueAsString(Map.of("goal", "No name or dates"));
 
         mockMvc.perform(
-                        post("/api/projects/1/sprints")
+                        post("/api/projects/" + PROJECT_ID + "/sprints")
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -119,7 +123,7 @@ class SprintApiControllerTest {
     void updateSprint_returns200() throws Exception {
         doNothing()
                 .when(projectAccessGuard)
-                .requireEditAccess(eq(1L), any(CustomUserDetails.class));
+                .requireEditAccess(eq(PROJECT_ID), any(CustomUserDetails.class));
         sprint.setName("Updated Sprint");
         when(sprintService.updateSprint(eq(1L), any(Sprint.class))).thenReturn(sprint);
 
@@ -132,7 +136,7 @@ class SprintApiControllerTest {
                                 "endDate", "2026-04-14"));
 
         mockMvc.perform(
-                        put("/api/projects/1/sprints/1")
+                        put("/api/projects/" + PROJECT_ID + "/sprints/1")
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -146,9 +150,11 @@ class SprintApiControllerTest {
     void deleteSprint_returns204() throws Exception {
         doNothing()
                 .when(projectAccessGuard)
-                .requireEditAccess(eq(1L), any(CustomUserDetails.class));
+                .requireEditAccess(eq(PROJECT_ID), any(CustomUserDetails.class));
 
-        mockMvc.perform(delete("/api/projects/1/sprints/1").with(user(regularDetails)))
+        mockMvc.perform(
+                        delete("/api/projects/" + PROJECT_ID + "/sprints/1")
+                                .with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
         verify(sprintService).deleteSprint(1L);

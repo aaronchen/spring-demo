@@ -1,9 +1,10 @@
 package cc.desuka.demo.dto;
 
 import cc.desuka.demo.model.Project;
+import java.util.UUID;
 
 public record ProjectSummary(
-        Long id,
+        UUID id,
         String name,
         long openTasks,
         long inProgressTasks,

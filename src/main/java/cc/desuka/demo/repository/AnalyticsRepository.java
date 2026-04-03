@@ -6,6 +6,7 @@ import jakarta.persistence.TypedQuery;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -27,7 +28,7 @@ public class AnalyticsRepository {
     // ── Workload: group by user + status ─────────────────────────────────
 
     public List<Object[]> countByUserAndStatus(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, t.status, COUNT(t) FROM Task t"
                         + projectWhereClause(projectId, projectIds)
@@ -42,7 +43,7 @@ public class AnalyticsRepository {
     // ── Burndown: created per day ────────────────────────────────────────
 
     public List<Object[]> countCreatedPerDay(
-            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
+            UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.createdAt AS LocalDate), COUNT(t) FROM Task t"
                         + " WHERE t.createdAt >= :from"
@@ -60,7 +61,7 @@ public class AnalyticsRepository {
     // ── Burndown: completed per day ──────────────────────────────────────
 
     public List<Object[]> countCompletedPerDay(
-            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
+            UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), COUNT(t) FROM Task t"
                         + " WHERE t.completedAt IS NOT NULL AND t.completedAt >= :from"
@@ -78,8 +79,8 @@ public class AnalyticsRepository {
     // ── Burndown: initial open count at start date ───────────────────────
 
     public long countOpenAtDate(
-            Long projectId,
-            List<Long> projectIds,
+            UUID projectId,
+            List<UUID> projectIds,
             Long sprintId,
             LocalDateTime from,
             Collection<TaskStatus> terminalStatuses) {
@@ -101,8 +102,8 @@ public class AnalyticsRepository {
     // ── Overdue by assignee ──────────────────────────────────────────────
 
     public List<Object[]> countOverdueByUser(
-            Long projectId,
-            List<Long> projectIds,
+            UUID projectId,
+            List<UUID> projectIds,
             Long sprintId,
             Collection<TaskStatus> terminalStatuses) {
         String jpql =
@@ -121,7 +122,7 @@ public class AnalyticsRepository {
 
     // ── Effort by assignee ────────────────────────────────────────────────
 
-    public List<Object[]> sumEffortByUser(Long projectId, List<Long> projectIds, Long sprintId) {
+    public List<Object[]> sumEffortByUser(UUID projectId, List<UUID> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, SUM(t.effort) FROM Task t"
                         + " WHERE t.effort IS NOT NULL"
@@ -137,7 +138,7 @@ public class AnalyticsRepository {
     // ── Effort completed per day ────────────────────────────────────────
 
     public List<Object[]> sumEffortCompletedPerDay(
-            Long projectId, List<Long> projectIds, Long sprintId, LocalDateTime from) {
+            UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), SUM(t.effort) FROM Task t"
                         + " WHERE t.completedAt IS NOT NULL AND t.completedAt >= :from"
@@ -156,7 +157,7 @@ public class AnalyticsRepository {
     // ── Helpers ──────────────────────────────────────────────────────────
 
     /** Returns a WHERE clause for project scoping. Used when there is no preceding WHERE. */
-    private String projectWhereClause(Long projectId, List<Long> projectIds) {
+    private String projectWhereClause(UUID projectId, List<UUID> projectIds) {
         if (projectId != null) {
             return " WHERE t.project.id = :projectId";
         } else if (projectIds != null) {
@@ -166,7 +167,7 @@ public class AnalyticsRepository {
     }
 
     /** Returns an AND clause for project scoping. Used when there is already a WHERE. */
-    private String projectAndClause(Long projectId, List<Long> projectIds) {
+    private String projectAndClause(UUID projectId, List<UUID> projectIds) {
         if (projectId != null) {
             return " AND t.project.id = :projectId";
         } else if (projectIds != null) {
@@ -175,7 +176,7 @@ public class AnalyticsRepository {
         return "";
     }
 
-    private void bindProjectParams(TypedQuery<?> query, Long projectId, List<Long> projectIds) {
+    private void bindProjectParams(TypedQuery<?> query, UUID projectId, List<UUID> projectIds) {
         if (projectId != null) {
             query.setParameter("projectId", projectId);
         } else if (projectIds != null) {

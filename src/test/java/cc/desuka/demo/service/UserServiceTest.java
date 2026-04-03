@@ -14,6 +14,7 @@ import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,10 @@ import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
+
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
     @Mock private UserRepository userRepository;
     @Mock private TaskQueryService taskQueryService;
@@ -40,27 +45,27 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
     }
 
     // ── getUserById ──────────────────────────────────────────────────────
 
     @Test
     void getUserById_found() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(ID_1)).thenReturn(Optional.of(alice));
 
-        User result = userService.getUserById(1L);
+        User result = userService.getUserById(ID_1);
 
         assertThat(result).isEqualTo(alice);
     }
 
     @Test
     void getUserById_notFound_throwsEntityNotFoundException() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(ID_99)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> userService.getUserById(99L))
+        assertThatThrownBy(() -> userService.getUserById(ID_99))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -68,9 +73,9 @@ class UserServiceTest {
 
     @Test
     void findUserById_found() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(alice));
+        when(userRepository.findById(ID_1)).thenReturn(Optional.of(alice));
 
-        assertThat(userService.findUserById(1L)).isEqualTo(alice);
+        assertThat(userService.findUserById(ID_1)).isEqualTo(alice);
     }
 
     @Test
@@ -80,9 +85,9 @@ class UserServiceTest {
 
     @Test
     void findUserById_notFound_returnsNull() {
-        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+        when(userRepository.findById(ID_99)).thenReturn(Optional.empty());
 
-        assertThat(userService.findUserById(99L)).isNull();
+        assertThat(userService.findUserById(ID_99)).isNull();
     }
 
     // ── searchUsers ──────────────────────────────────────────────────────
@@ -138,13 +143,13 @@ class UserServiceTest {
 
     @Test
     void updateUser_updatesFieldsAndPublishesEvent() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            User result = userService.updateUser(2L, "Robert", "robert@example.com", Role.ADMIN);
+            User result = userService.updateUser(ID_2, "Robert", "robert@example.com", Role.ADMIN);
 
             assertThat(result.getName()).isEqualTo("Robert");
             assertThat(result.getEmail()).isEqualTo("robert@example.com");
@@ -157,13 +162,13 @@ class UserServiceTest {
 
     @Test
     void updateProfile_changedFields_publishesAuditWithDiff() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("bob@example.com");
 
-            User result = userService.updateProfile(2L, "Robert", "bob@example.com");
+            User result = userService.updateProfile(ID_2, "Robert", "bob@example.com");
 
             assertThat(result.getName()).isEqualTo("Robert");
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
@@ -172,13 +177,13 @@ class UserServiceTest {
 
     @Test
     void updateProfile_noChanges_doesNotPublishEvent() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("bob@example.com");
 
-            userService.updateProfile(2L, "Bob", "bob@example.com");
+            userService.updateProfile(ID_2, "Bob", "bob@example.com");
 
             verify(eventPublisher, never()).publishEvent(any());
         }
@@ -188,12 +193,12 @@ class UserServiceTest {
 
     @Test
     void changePassword_updatesAndPublishesEvent() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("bob@example.com");
 
-            userService.changePassword(2L, "$2a$10$encoded");
+            userService.changePassword(ID_2, "$2a$10$encoded");
 
             assertThat(bob.getPassword()).isEqualTo("$2a$10$encoded");
             verify(userRepository).save(bob);
@@ -205,41 +210,41 @@ class UserServiceTest {
 
     @Test
     void canDelete_noCompletedTasksNoComments_returnsTrue() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(2L)).thenReturn(0L);
+        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
 
-        assertThat(userService.canDelete(2L)).isTrue();
+        assertThat(userService.canDelete(ID_2)).isTrue();
     }
 
     @Test
     void canDelete_hasCompletedTasks_returnsFalse() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(3L);
 
-        assertThat(userService.canDelete(2L)).isFalse();
+        assertThat(userService.canDelete(ID_2)).isFalse();
     }
 
     @Test
     void canDelete_hasComments_returnsFalse() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(2L)).thenReturn(5L);
+        when(commentQueryService.countByUserId(ID_2)).thenReturn(5L);
 
-        assertThat(userService.canDelete(2L)).isFalse();
+        assertThat(userService.canDelete(ID_2)).isFalse();
     }
 
     // ── disableUser ──────────────────────────────────────────────────────
 
     @Test
     void disableUser_disablesAndUnassignsTasks() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            User result = userService.disableUser(2L);
+            User result = userService.disableUser(ID_2);
 
             assertThat(result.isEnabled()).isFalse();
             verify(taskAssignmentService).unassignTasks(bob);
@@ -252,13 +257,13 @@ class UserServiceTest {
     @Test
     void enableUser_enablesUser() {
         bob.setEnabled(false);
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            User result = userService.enableUser(2L);
+            User result = userService.enableUser(ID_2);
 
             assertThat(result.isEnabled()).isTrue();
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
@@ -269,12 +274,12 @@ class UserServiceTest {
 
     @Test
     void deleteUser_unassignsTasksAndDeletes() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            userService.deleteUser(2L);
+            userService.deleteUser(ID_2);
 
             var inOrder = inOrder(taskAssignmentService, userRepository);
             inOrder.verify(taskAssignmentService).unassignTasks(bob);
@@ -287,13 +292,13 @@ class UserServiceTest {
 
     @Test
     void updateRole_changesRoleAndPublishesEvent() {
-        when(userRepository.findById(2L)).thenReturn(Optional.of(bob));
+        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            User result = userService.updateRole(2L, Role.ADMIN);
+            User result = userService.updateRole(ID_2, Role.ADMIN);
 
             assertThat(result.getRole()).isEqualTo(Role.ADMIN);
 

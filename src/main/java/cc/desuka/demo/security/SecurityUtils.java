@@ -2,6 +2,7 @@ package cc.desuka.demo.security;
 
 import cc.desuka.demo.model.User;
 import java.security.Principal;
+import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -57,7 +58,7 @@ public class SecurityUtils {
     }
 
     /** Returns {@code true} if the given user ID belongs to the currently logged-in user. */
-    public static boolean isCurrentUser(Long userId) {
+    public static boolean isCurrentUser(UUID userId) {
         User current = getCurrentUser();
         return current != null && current.getId().equals(userId);
     }

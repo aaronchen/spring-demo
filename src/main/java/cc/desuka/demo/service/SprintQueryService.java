@@ -6,6 +6,7 @@ import cc.desuka.demo.repository.SprintRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,12 +26,12 @@ public class SprintQueryService {
                 .orElseThrow(() -> new EntityNotFoundException(Sprint.class, id));
     }
 
-    public List<Sprint> getSprintsByProject(Long projectId) {
+    public List<Sprint> getSprintsByProject(UUID projectId) {
         return sprintRepository.findByProjectIdOrderByStartDateDesc(projectId);
     }
 
     /** Find the sprint whose date range contains today. */
-    public Optional<Sprint> getActiveSprint(Long projectId) {
+    public Optional<Sprint> getActiveSprint(UUID projectId) {
         return sprintRepository.findActiveByProjectId(projectId, LocalDate.now());
     }
 }

@@ -5,6 +5,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.model.UserPreference;
 import cc.desuka.demo.repository.UserPreferenceRepository;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.beans.BeanWrapper;
 import org.springframework.beans.BeanWrapperImpl;
@@ -29,7 +30,7 @@ public class UserPreferenceService {
      * match a field name are set automatically via {@link BeanWrapper}. Missing keys fall back to
      * the defaults defined in {@link UserPreferences}.
      */
-    public UserPreferences load(Long userId) {
+    public UserPreferences load(UUID userId) {
         Map<String, String> db =
                 preferenceRepository.findByUserId(userId).stream()
                         .collect(
@@ -49,7 +50,7 @@ public class UserPreferenceService {
     }
 
     /** Creates or updates a single preference for a user. */
-    public void save(Long userId, String key, String value) {
+    public void save(UUID userId, String key, String value) {
         UserPreference pref =
                 preferenceRepository
                         .findByUserIdAndKey(userId, key)
@@ -63,7 +64,7 @@ public class UserPreferenceService {
     }
 
     /** Saves multiple preferences at once. */
-    public void saveAll(Long userId, Map<String, String> preferences) {
+    public void saveAll(UUID userId, Map<String, String> preferences) {
         Map<String, UserPreference> existing =
                 preferenceRepository.findByUserId(userId).stream()
                         .collect(Collectors.toMap(UserPreference::getKey, p -> p));

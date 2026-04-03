@@ -6,6 +6,7 @@ import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.SavedViewRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,7 +20,7 @@ public class SavedViewService {
         this.savedViewRepository = savedViewRepository;
     }
 
-    public List<SavedView> getViewsForUser(Long userId) {
+    public List<SavedView> getViewsForUser(UUID userId) {
         return savedViewRepository.findByUserIdOrderByNameAsc(userId);
     }
 

@@ -5,6 +5,7 @@ import cc.desuka.demo.model.TaskStatus;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -15,8 +16,8 @@ import lombok.Data;
  */
 @Data
 public class TaskResponse {
-    private Long id;
-    private Long projectId;
+    private UUID id;
+    private UUID projectId;
     private String projectName;
     private String title;
     private String description;

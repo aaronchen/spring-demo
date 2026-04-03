@@ -10,6 +10,7 @@ import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.AnalyticsService;
 import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,7 +37,7 @@ public class ProjectApiController {
     // GET /api/projects/{id}/members — all enabled members
     @GetMapping("/{id}/members")
     public List<UserResponse> getProjectMembers(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
         List<User> members =
                 projectQueryService.getMembers(id).stream()
@@ -49,7 +50,7 @@ public class ProjectApiController {
     // GET /api/projects/{id}/members/assignable — editors and owners only (for task assignment)
     @GetMapping("/{id}/members/assignable")
     public List<UserResponse> getAssignableMembers(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
         List<User> members =
                 projectQueryService.getMembers(id).stream()
@@ -63,7 +64,7 @@ public class ProjectApiController {
     // GET /api/projects/{id}/analytics — project analytics data
     @GetMapping("/{id}/analytics")
     public AnalyticsResponse getProjectAnalytics(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(required = false) Long sprintId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(id, currentDetails);

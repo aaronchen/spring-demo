@@ -7,6 +7,7 @@ import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.NotificationRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -41,24 +42,24 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public long getUnreadCount(Long userId) {
+    public long getUnreadCount(UUID userId) {
         return notificationRepository.countByUserIdAndReadFalse(userId);
     }
 
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getRecentForUser(Long userId) {
+    public List<NotificationResponse> getRecentForUser(UUID userId) {
         return notificationMapper.toResponseList(
                 notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(userId));
     }
 
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> findAllForUser(Long userId, Pageable pageable) {
+    public Page<NotificationResponse> findAllForUser(UUID userId, Pageable pageable) {
         return notificationRepository
                 .findByUserIdOrderByCreatedAtDesc(userId, pageable)
                 .map(notificationMapper::toResponse);
     }
 
-    public void markAsRead(Long id, Long userId) {
+    public void markAsRead(Long id, UUID userId) {
         notificationRepository
                 .findByIdAndUserId(id, userId)
                 .ifPresent(
@@ -68,11 +69,11 @@ public class NotificationService {
                         });
     }
 
-    public void markAllAsRead(Long userId) {
+    public void markAllAsRead(UUID userId) {
         notificationRepository.markAllAsReadByUserId(userId);
     }
 
-    public void clearAll(Long userId) {
+    public void clearAll(UUID userId) {
         notificationRepository.deleteByUserId(userId);
     }
 }

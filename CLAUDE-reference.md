@@ -1166,7 +1166,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
 
 - `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
-  - Encoded format: `@[Display Name](userId:3)` — stored in DB as-is
+  - Encoded format: `@[Display Name](userId:<uuid>)` — stored in DB as-is; injects `AppRoutesProperties` for link generation
   - `extractMentionedUserIds(String)` — static; parses encoded mention tokens, returns list of user IDs; used by `CommentService` for mention notifications
   - `renderHtml(String)` — instance method; converts encoded tokens to `<a href="/tasks?selectedUserId=N" class="mention">@Name</a>` with HTML escaping; exposed to Thymeleaf as `${@mentionUtils.renderHtml(text)}`; clicking a mention navigates to the task list filtered by that user
   - Regex pattern: `@\[([^\]]+)\]\(userId:(\d+)\)`
@@ -1340,7 +1340,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tags/tags.html` - Tag list page (table, badge links to task filter)
 - `templates/users/users.html` - User list page (HTMX live search)
 - `templates/users/user-table.html` - User table fragment (bare file)
-- `templates/login.html` - Login page (Spring Security handles POST)
+- `templates/login.html` - Login page (Spring Security handles POST); demo credentials block gated by `dev` profile via `@environment.acceptsProfiles`
 - `templates/register.html` - Registration page
 - `templates/error/400.html` - Bad Request error page
 - `templates/error/403.html` - Access Denied page

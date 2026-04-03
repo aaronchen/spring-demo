@@ -12,7 +12,7 @@ package cc.desuka.demo.exception;
  */
 public class EntityNotFoundException extends RuntimeException {
 
-    public EntityNotFoundException(Class<?> entityType, Long id) {
+    public EntityNotFoundException(Class<?> entityType, Object id) {
         super(entityType.getSimpleName() + " not found with id: " + id);
     }
 }

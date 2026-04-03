@@ -12,18 +12,19 @@ import cc.desuka.demo.model.User;
 import jakarta.persistence.criteria.JoinType;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
 public class TaskSpecifications {
 
-    public static Specification<Task> withProjectId(Long projectId) {
+    public static Specification<Task> withProjectId(UUID projectId) {
         return (root, query, cb) -> {
             if (projectId == null) return cb.conjunction();
             return cb.equal(root.get(Task.FIELD_PROJECT).get(Project.FIELD_ID), projectId);
         };
     }
 
-    public static Specification<Task> withProjectIds(List<Long> projectIds) {
+    public static Specification<Task> withProjectIds(List<UUID> projectIds) {
         return (root, query, cb) -> {
             if (projectIds == null) return cb.conjunction();
             return root.get(Task.FIELD_PROJECT).get(Project.FIELD_ID).in(projectIds);
@@ -50,7 +51,7 @@ public class TaskSpecifications {
         };
     }
 
-    public static Specification<Task> withUserId(Long userId) {
+    public static Specification<Task> withUserId(UUID userId) {
         return (root, query, cb) -> {
             if (userId == null) return cb.conjunction();
             return cb.equal(root.get(Task.FIELD_USER).get(User.FIELD_ID), userId);

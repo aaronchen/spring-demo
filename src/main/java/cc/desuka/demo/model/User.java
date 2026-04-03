@@ -10,6 +10,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 
 // Inverse side of the @OneToMany relationship — Task owns the FK column (user_id).
 // mappedBy = "user" points to the field name in Task, not a column or table name.
@@ -26,8 +27,8 @@ public class User implements Auditable {
     public static final String FIELD_TASKS = "tasks";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @NotBlank(message = "{user.name.notBlank}")
     @Size(max = 100, message = "{user.name.size}")
@@ -81,11 +82,11 @@ public class User implements Auditable {
         this.role = role;
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

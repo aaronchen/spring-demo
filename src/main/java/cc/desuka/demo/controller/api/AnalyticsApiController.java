@@ -6,6 +6,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.AnalyticsService;
 import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,17 +28,17 @@ public class AnalyticsApiController {
 
     @GetMapping
     public AnalyticsResponse getCrossProjectAnalytics(
-            @RequestParam(required = false) List<Long> projectIds,
+            @RequestParam(required = false) List<UUID> projectIds,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         boolean isAdmin = AuthExpressions.isAdmin(currentDetails.getUser());
 
         // If caller specified projectIds, intersect with accessible set for security
-        List<Long> effectiveProjectIds;
+        List<UUID> effectiveProjectIds;
         if (isAdmin) {
             // Admin: use caller's filter or null (all projects)
             effectiveProjectIds = (projectIds != null && !projectIds.isEmpty()) ? projectIds : null;
         } else {
-            List<Long> accessibleProjectIds =
+            List<UUID> accessibleProjectIds =
                     projectQueryService.getAccessibleProjectIds(currentDetails.getUser().getId());
             effectiveProjectIds =
                     (projectIds != null && !projectIds.isEmpty())

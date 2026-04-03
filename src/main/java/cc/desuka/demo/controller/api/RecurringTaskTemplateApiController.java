@@ -9,6 +9,7 @@ import cc.desuka.demo.service.RecurringTaskGenerationService;
 import cc.desuka.demo.service.RecurringTaskTemplateService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -35,7 +36,7 @@ public class RecurringTaskTemplateApiController {
 
     @GetMapping
     public List<RecurringTaskTemplateResponse> listTemplates(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
         return recurringTaskTemplateMapper.toResponseList(
@@ -44,7 +45,7 @@ public class RecurringTaskTemplateApiController {
 
     @GetMapping("/{id}")
     public RecurringTaskTemplateResponse getTemplate(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
@@ -54,7 +55,7 @@ public class RecurringTaskTemplateApiController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public RecurringTaskTemplateResponse createTemplate(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @Valid @RequestBody RecurringTaskTemplateRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
@@ -64,7 +65,7 @@ public class RecurringTaskTemplateApiController {
 
     @PutMapping("/{id}")
     public RecurringTaskTemplateResponse updateTemplate(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @Valid @RequestBody RecurringTaskTemplateRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
@@ -74,7 +75,7 @@ public class RecurringTaskTemplateApiController {
 
     @PostMapping("/{id}/toggle")
     public RecurringTaskTemplateResponse toggleEnabled(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
@@ -85,7 +86,7 @@ public class RecurringTaskTemplateApiController {
     @PostMapping("/{id}/generate")
     @ResponseStatus(HttpStatus.CREATED)
     public void generateFromTemplate(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
@@ -96,7 +97,7 @@ public class RecurringTaskTemplateApiController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTemplate(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);

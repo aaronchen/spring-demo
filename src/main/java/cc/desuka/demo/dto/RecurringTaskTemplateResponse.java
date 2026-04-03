@@ -5,6 +5,7 @@ import cc.desuka.demo.model.Recurrence;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 @Data
@@ -24,7 +25,7 @@ public class RecurringTaskTemplateResponse {
     private boolean enabled;
     private LocalDateTime lastGeneratedAt;
     private LocalDateTime createdAt;
-    private Long assigneeId;
+    private UUID assigneeId;
     private String assigneeName;
     private String createdByName;
     private List<TagResponse> tags;

@@ -122,7 +122,7 @@ function executeBulkAction(action, value) {
     if (csrfToken) headers[csrfHeader] = csrfToken;
 
     const body = {
-        taskIds: Array.from(bulkSelectedIds).map(Number),
+        taskIds: Array.from(bulkSelectedIds),
         action: action,
         value: value || '',
     };

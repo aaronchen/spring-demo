@@ -65,9 +65,10 @@ class AuditFieldTest {
 
     @Test
     void refFactoryStoresIdAndNameAndType() {
-        AuditField field = AuditField.ref(5L, "My Project", "Project");
+        AuditField field =
+                AuditField.ref("00000000-0000-0000-0000-000000000005", "My Project", "Project");
         assertThat(field.type()).isEqualTo(AuditField.FieldType.REFERENCE);
-        assertThat(field.refId()).isEqualTo(5L);
+        assertThat(field.refId()).isEqualTo("00000000-0000-0000-0000-000000000005");
         assertThat(field.refName()).isEqualTo("My Project");
         assertThat(field.refType()).isEqualTo("Project");
         assertThat(field.displayValue()).isEqualTo("My Project");
@@ -112,15 +113,19 @@ class AuditFieldTest {
 
     @Test
     void valueEqualsReferenceComparesById() {
-        AuditField ref1 = AuditField.ref(5L, "Old Name", "Project");
-        AuditField ref2 = AuditField.ref(5L, "New Name", "Project");
+        AuditField ref1 =
+                AuditField.ref("00000000-0000-0000-0000-000000000005", "Old Name", "Project");
+        AuditField ref2 =
+                AuditField.ref("00000000-0000-0000-0000-000000000005", "New Name", "Project");
         assertThat(AuditField.valueEquals(ref1, ref2)).isTrue();
     }
 
     @Test
     void valueEqualsReferenceDifferentIds() {
-        AuditField ref1 = AuditField.ref(5L, "Project A", "Project");
-        AuditField ref2 = AuditField.ref(7L, "Project B", "Project");
+        AuditField ref1 =
+                AuditField.ref("00000000-0000-0000-0000-000000000005", "Project A", "Project");
+        AuditField ref2 =
+                AuditField.ref("00000000-0000-0000-0000-000000000007", "Project B", "Project");
         assertThat(AuditField.valueEquals(ref1, ref2)).isFalse();
     }
 
@@ -145,12 +150,13 @@ class AuditFieldTest {
     @Test
     @SuppressWarnings("unchecked")
     void jsonRoundTripPreservesAuditField() {
-        AuditField field = AuditField.ref(5L, "Test", "Project");
+        AuditField field =
+                AuditField.ref("00000000-0000-0000-0000-000000000005", "Test", "Project");
         String json = MAPPER.writeValueAsString(field);
 
         Map<String, Object> parsed = MAPPER.readValue(json, Map.class);
         assertThat(parsed.get("type")).isEqualTo("REFERENCE");
-        assertThat(((Number) parsed.get("refId")).longValue()).isEqualTo(5L);
+        assertThat(parsed.get("refId")).isEqualTo("00000000-0000-0000-0000-000000000005");
         assertThat(parsed.get("refName")).isEqualTo("Test");
         assertThat(parsed.get("refType")).isEqualTo("Project");
     }

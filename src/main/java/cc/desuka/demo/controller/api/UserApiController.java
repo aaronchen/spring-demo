@@ -9,6 +9,7 @@ import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.Messages;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +36,7 @@ public class UserApiController {
 
     // GET /api/users/{id}
     @GetMapping("/{id}")
-    public UserResponse getUserById(@PathVariable Long id) {
+    public UserResponse getUserById(@PathVariable UUID id) {
         return userMapper.toResponse(userService.getUserById(id));
     }
 
@@ -50,7 +51,7 @@ public class UserApiController {
     // DELETE /api/users/{id}
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable Long id) {
+    public void deleteUser(@PathVariable UUID id) {
         if (SecurityUtils.isCurrentUser(id)) {
             throw new IllegalArgumentException(messages.get("admin.users.self.cannotRemove"));
         }

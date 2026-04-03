@@ -3,6 +3,7 @@ package cc.desuka.demo.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
+import java.util.UUID;
 
 public class BulkTaskRequest {
 
@@ -13,17 +14,17 @@ public class BulkTaskRequest {
     public static final String ACTION_SPRINT = "SPRINT";
     public static final String ACTION_DELETE = "DELETE";
 
-    @NotEmpty private List<Long> taskIds;
+    @NotEmpty private List<UUID> taskIds;
 
     @NotBlank private String action;
 
     private String value;
 
-    public List<Long> getTaskIds() {
+    public List<UUID> getTaskIds() {
         return taskIds;
     }
 
-    public void setTaskIds(List<Long> taskIds) {
+    public void setTaskIds(List<UUID> taskIds) {
         this.taskIds = taskIds;
     }
 

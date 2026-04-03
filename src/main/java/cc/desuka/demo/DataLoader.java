@@ -46,6 +46,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -2369,14 +2370,14 @@ public class DataLoader implements CommandLineRunner {
     private AuditLog auditLog(
             String action,
             Class<?> entityType,
-            Long entityId,
+            Object entityId,
             String principal,
             String details,
             LocalDateTime timestamp) {
         AuditLog log = new AuditLog();
         log.setAction(action);
         log.setEntityType(entityType.getSimpleName());
-        log.setEntityId(entityId);
+        log.setEntityId(entityId != null ? entityId.toString() : null);
         log.setPrincipal(principal);
         log.setDetails(details);
         log.setTimestamp(timestamp.atZone(ZoneId.systemDefault()).toInstant());
@@ -2396,14 +2397,14 @@ public class DataLoader implements CommandLineRunner {
     }
 
     private TaskListQuery taskQuery(
-            TaskStatusFilter statusFilter, Priority priority, Long selectedUserId) {
+            TaskStatusFilter statusFilter, Priority priority, UUID selectedUserId) {
         return taskQuery(statusFilter, priority, selectedUserId, false);
     }
 
     private TaskListQuery taskQuery(
             TaskStatusFilter statusFilter,
             Priority priority,
-            Long selectedUserId,
+            UUID selectedUserId,
             boolean overdue) {
         TaskListQuery q = new TaskListQuery();
         if (statusFilter != null) q.setStatusFilter(statusFilter);

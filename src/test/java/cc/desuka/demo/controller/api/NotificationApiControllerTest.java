@@ -12,6 +12,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.NotificationService;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class NotificationApiControllerTest {
 
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private NotificationService notificationService;
@@ -37,7 +40,7 @@ class NotificationApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         regularDetails = new CustomUserDetails(regularUser);
     }
 
@@ -45,7 +48,7 @@ class NotificationApiControllerTest {
 
     @Test
     void getUnreadCount_returnsCountJson() throws Exception {
-        when(notificationService.getUnreadCount(2L)).thenReturn(5L);
+        when(notificationService.getUnreadCount(ID_2)).thenReturn(5L);
 
         mockMvc.perform(get("/api/notifications/unread-count").with(user(regularDetails)))
                 .andExpect(status().isOk())
@@ -59,7 +62,7 @@ class NotificationApiControllerTest {
         NotificationResponse response = new NotificationResponse();
         response.setId(1L);
         response.setMessage("Test notification");
-        when(notificationService.findAllForUser(eq(2L), any()))
+        when(notificationService.findAllForUser(eq(ID_2), any()))
                 .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
 
         mockMvc.perform(get("/api/notifications").with(user(regularDetails)))
@@ -70,7 +73,7 @@ class NotificationApiControllerTest {
 
     @Test
     void getNotifications_customPageSize() throws Exception {
-        when(notificationService.findAllForUser(eq(2L), any()))
+        when(notificationService.findAllForUser(eq(ID_2), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 5), 0));
 
         mockMvc.perform(
@@ -80,7 +83,7 @@ class NotificationApiControllerTest {
                                 .with(user(regularDetails)))
                 .andExpect(status().isOk());
 
-        verify(notificationService).findAllForUser(eq(2L), eq(PageRequest.of(1, 5)));
+        verify(notificationService).findAllForUser(eq(ID_2), eq(PageRequest.of(1, 5)));
     }
 
     // ── PATCH /api/notifications/{id}/read ────────────────────────────────
@@ -90,7 +93,7 @@ class NotificationApiControllerTest {
         mockMvc.perform(patch("/api/notifications/1/read").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
-        verify(notificationService).markAsRead(1L, 2L);
+        verify(notificationService).markAsRead(1L, ID_2);
     }
 
     // ── PATCH /api/notifications/read-all ─────────────────────────────────
@@ -100,7 +103,7 @@ class NotificationApiControllerTest {
         mockMvc.perform(patch("/api/notifications/read-all").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
-        verify(notificationService).markAllAsRead(2L);
+        verify(notificationService).markAllAsRead(ID_2);
     }
 
     // ── DELETE /api/notifications ──────────────────────────────────────────
@@ -110,6 +113,6 @@ class NotificationApiControllerTest {
         mockMvc.perform(delete("/api/notifications").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
-        verify(notificationService).clearAll(2L);
+        verify(notificationService).clearAll(ID_2);
     }
 }

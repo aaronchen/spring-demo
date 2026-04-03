@@ -4,6 +4,7 @@ import cc.desuka.demo.model.RecurringTaskTemplate;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,7 +17,7 @@ public interface RecurringTaskTemplateRepository
         extends JpaRepository<RecurringTaskTemplate, Long> {
 
     @EntityGraph(attributePaths = {"assignee", "createdBy", "tags"})
-    List<RecurringTaskTemplate> findByProjectIdOrderByCreatedAtDesc(Long projectId);
+    List<RecurringTaskTemplate> findByProjectIdOrderByCreatedAtDesc(UUID projectId);
 
     @EntityGraph(attributePaths = {"project", "assignee", "createdBy", "tags"})
     Optional<RecurringTaskTemplate> findWithDetailsById(Long id);
@@ -43,5 +44,5 @@ public interface RecurringTaskTemplateRepository
     @Query(
             "UPDATE RecurringTaskTemplate t SET t.enabled = false "
                     + "WHERE t.project.id = :projectId AND t.enabled = true")
-    int disableAllByProjectId(Long projectId);
+    int disableAllByProjectId(UUID projectId);
 }

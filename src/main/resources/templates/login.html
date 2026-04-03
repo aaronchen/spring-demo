@@ -65,8 +65,9 @@
                         <a th:href="@{/register}" th:text="#{nav.register}">Sign Up</a>
                     </p>
 
-                    <!-- Dev hint — remove for production -->
-                    <div class="alert alert-light border text-center mt-3 small mb-0" role="alert">
+                    <!-- Dev hint — only shown in dev profile -->
+                    <div th:if="${@environment.acceptsProfiles(T(org.springframework.core.env.Profiles).of('dev'))}"
+                         class="alert alert-light border text-center mt-3 small mb-0" role="alert">
                         <div class="fw-bold mb-2">
                             <i class="bi bi-info-circle"></i> <span th:text="#{login.hint.heading}">Demo Credentials</span>
                         </div>

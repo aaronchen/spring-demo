@@ -23,6 +23,7 @@ import cc.desuka.demo.service.TaskQueryService;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ import tools.jackson.databind.ObjectMapper;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class CommentApiControllerTest {
+
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
@@ -57,21 +61,21 @@ class CommentApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         User adminUser = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        adminUser.setId(1L);
+        adminUser.setId(ID_1);
         regularDetails = new CustomUserDetails(regularUser);
         adminDetails = new CustomUserDetails(adminUser);
 
         Project project = new Project();
-        project.setId(1L);
+        project.setId(ID_1);
         project.setName("Test Project");
 
         Task task = new Task("Test Task", "Description");
-        task.setId(1L);
+        task.setId(ID_1);
         task.setProject(project);
 
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
 
         comment = new Comment();
         comment.setId(1L);
@@ -82,10 +86,10 @@ class CommentApiControllerTest {
         commentResponse = new CommentResponse();
         commentResponse.setId(1L);
         commentResponse.setText("A comment");
-        commentResponse.setTaskId(1L);
+        commentResponse.setTaskId(ID_1);
         commentResponse.setCreatedAt(LocalDateTime.now());
         UserResponse userResponse = new UserResponse();
-        userResponse.setId(2L);
+        userResponse.setId(ID_2);
         userResponse.setName("Bob");
         commentResponse.setUser(userResponse);
     }
@@ -94,51 +98,53 @@ class CommentApiControllerTest {
 
     @Test
     void getComments_returnsJsonList() throws Exception {
-        when(commentService.getCommentsByTaskId(1L)).thenReturn(List.of(comment));
+        when(commentService.getCommentsByTaskId(ID_1)).thenReturn(List.of(comment));
         when(commentMapper.toResponseList(anyList())).thenReturn(List.of(commentResponse));
 
-        mockMvc.perform(get("/api/tasks/1/comments").with(user(regularDetails)))
+        mockMvc.perform(get("/api/tasks/" + ID_1 + "/comments").with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].text").value("A comment"))
-                .andExpect(jsonPath("$[0].taskId").value(1));
+                .andExpect(jsonPath("$[0].taskId").value(ID_1.toString()));
     }
 
     @Test
     void getComments_unauthenticated_returns401() throws Exception {
-        mockMvc.perform(get("/api/tasks/1/comments")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/tasks/" + ID_1 + "/comments"))
+                .andExpect(status().isUnauthorized());
     }
 
     // ── POST /api/tasks/{taskId}/comments ────────────────────────────────
 
     @Test
     void createComment_validRequest_returns201() throws Exception {
-        when(commentService.createComment(eq("New comment"), eq(1L), eq(2L))).thenReturn(comment);
+        when(commentService.createComment(eq("New comment"), eq(ID_1), eq(ID_2)))
+                .thenReturn(comment);
         when(commentMapper.toResponse(any(Comment.class))).thenReturn(commentResponse);
 
         String body = objectMapper.writeValueAsString(Map.of("text", "New comment"));
 
         mockMvc.perform(
-                        post("/api/tasks/1/comments")
+                        post("/api/tasks/" + ID_1 + "/comments")
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1));
 
-        verify(commentService).createComment("New comment", 1L, 2L);
+        verify(commentService).createComment("New comment", ID_1, ID_2);
     }
 
     @Test
     void createComment_anyUserCanComment() throws Exception {
         // Even non-owners can comment on any task
-        when(commentService.createComment(anyString(), eq(1L), eq(1L))).thenReturn(comment);
+        when(commentService.createComment(anyString(), eq(ID_1), eq(ID_1))).thenReturn(comment);
         when(commentMapper.toResponse(any(Comment.class))).thenReturn(commentResponse);
 
         String body = objectMapper.writeValueAsString(Map.of("text", "Admin comment"));
 
         mockMvc.perform(
-                        post("/api/tasks/1/comments")
+                        post("/api/tasks/" + ID_1 + "/comments")
                                 .with(user(adminDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -151,7 +157,7 @@ class CommentApiControllerTest {
     void deleteComment_owner_returns204() throws Exception {
         when(commentService.getCommentById(1L)).thenReturn(comment);
 
-        mockMvc.perform(delete("/api/tasks/1/comments/1").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/1").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
         verify(commentService).deleteComment(1L);
@@ -161,7 +167,7 @@ class CommentApiControllerTest {
     void deleteComment_admin_returns204() throws Exception {
         when(commentService.getCommentById(1L)).thenReturn(comment);
 
-        mockMvc.perform(delete("/api/tasks/1/comments/1").with(user(adminDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/1").with(user(adminDetails)))
                 .andExpect(status().isNoContent());
 
         verify(commentService).deleteComment(1L);
@@ -174,7 +180,7 @@ class CommentApiControllerTest {
                 .when(ownershipGuard)
                 .requireAccess(any(Comment.class), any(CustomUserDetails.class));
 
-        mockMvc.perform(delete("/api/tasks/1/comments/1").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/1").with(user(regularDetails)))
                 .andExpect(status().isForbidden());
 
         verify(commentService, never()).deleteComment(any());
@@ -185,7 +191,7 @@ class CommentApiControllerTest {
         when(commentService.getCommentById(99L))
                 .thenThrow(new EntityNotFoundException(Comment.class, 99L));
 
-        mockMvc.perform(delete("/api/tasks/1/comments/99").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/99").with(user(regularDetails)))
                 .andExpect(status().isNotFound());
     }
 }

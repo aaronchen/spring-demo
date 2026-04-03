@@ -1,6 +1,7 @@
 package cc.desuka.demo.service;
 
 import cc.desuka.demo.repository.CommentRepository;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
@@ -16,7 +17,7 @@ public class CommentQueryService {
         this.commentRepository = commentRepository;
     }
 
-    public long countByUserId(Long userId) {
+    public long countByUserId(UUID userId) {
         return commentRepository.countByUserId(userId);
     }
 }

@@ -12,6 +12,7 @@ import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TaskQueryService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -43,7 +44,7 @@ public class CommentApiController {
     // Project members only.
     @GetMapping
     public List<CommentResponse> getComments(
-            @PathVariable Long taskId, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID taskId, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return commentMapper.toResponseList(commentService.getCommentsByTaskId(taskId));
@@ -54,7 +55,7 @@ public class CommentApiController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponse createComment(
-            @PathVariable Long taskId,
+            @PathVariable UUID taskId,
             @Valid @RequestBody CommentRequest commentRequest,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(taskId);
@@ -69,7 +70,7 @@ public class CommentApiController {
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteComment(
-            @PathVariable Long taskId,
+            @PathVariable UUID taskId,
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(taskId);

@@ -27,7 +27,7 @@ public record DashboardStats(
         long totalOverdue,
         int onlineCount,
         List<AuditLog> recentActivity,
-        Map<Long, String> activityTaskTitles,
+        Map<String, String> activityTaskTitles,
 
         // Editable projects for "New Task" button
         List<Project> editableProjects) {}

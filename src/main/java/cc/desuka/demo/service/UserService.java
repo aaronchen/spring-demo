@@ -12,6 +12,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,13 +44,13 @@ public class UserService {
         return userRepository.findAllByOrderByNameAsc();
     }
 
-    public User getUserById(Long id) {
+    public User getUserById(UUID id) {
         return userRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(User.class, id));
     }
 
-    public User findUserById(Long id) {
+    public User findUserById(UUID id) {
         if (id == null) return null;
         return userRepository.findById(id).orElse(null);
     }
@@ -88,7 +89,7 @@ public class UserService {
         return saved;
     }
 
-    public User updateUser(Long userId, String name, String email, Role role) {
+    public User updateUser(UUID userId, String name, String email, Role role) {
         User user = getUserById(userId);
         Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
@@ -108,7 +109,7 @@ public class UserService {
         return saved;
     }
 
-    public User updateProfile(Long userId, String name, String email) {
+    public User updateProfile(UUID userId, String name, String email) {
         User user = getUserById(userId);
         Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
@@ -128,7 +129,7 @@ public class UserService {
         return saved;
     }
 
-    public void changePassword(Long userId, String encodedPassword) {
+    public void changePassword(UUID userId, String encodedPassword) {
         User user = getUserById(userId);
         user.setPassword(encodedPassword);
         userRepository.save(user);
@@ -141,25 +142,25 @@ public class UserService {
                         AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
     }
 
-    public long countCompletedTasks(Long userId) {
+    public long countCompletedTasks(UUID userId) {
         User user = getUserById(userId);
         return taskQueryService.countByUserAndStatus(user, TaskStatus.COMPLETED);
     }
 
-    public long countComments(Long userId) {
+    public long countComments(UUID userId) {
         return commentQueryService.countByUserId(userId);
     }
 
-    public long countAssignedTasks(Long userId) {
+    public long countAssignedTasks(UUID userId) {
         User user = getUserById(userId);
         return taskQueryService.countAssignedTasks(user);
     }
 
-    public boolean canDelete(Long userId) {
+    public boolean canDelete(UUID userId) {
         return countCompletedTasks(userId) == 0 && countComments(userId) == 0;
     }
 
-    public User disableUser(Long userId) {
+    public User disableUser(UUID userId) {
         User user = getUserById(userId);
         user.setEnabled(false);
         taskAssignmentService.unassignTasks(user);
@@ -174,7 +175,7 @@ public class UserService {
         return saved;
     }
 
-    public User enableUser(Long userId) {
+    public User enableUser(UUID userId) {
         User user = getUserById(userId);
         user.setEnabled(true);
         User saved = userRepository.save(user);
@@ -188,7 +189,7 @@ public class UserService {
         return saved;
     }
 
-    public void resetPassword(Long userId, String encodedPassword) {
+    public void resetPassword(UUID userId, String encodedPassword) {
         User user = getUserById(userId);
         user.setPassword(encodedPassword);
         userRepository.save(user);
@@ -201,7 +202,7 @@ public class UserService {
                         AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
     }
 
-    public User updateRole(Long userId, Role role) {
+    public User updateRole(UUID userId, Role role) {
         User user = getUserById(userId);
         user.setRole(role);
         User saved = userRepository.save(user);
@@ -220,7 +221,7 @@ public class UserService {
         return saved;
     }
 
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
         taskAssignmentService.unassignTasks(user);

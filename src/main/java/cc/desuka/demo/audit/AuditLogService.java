@@ -39,7 +39,7 @@ public class AuditLogService {
         return auditLogRepository.findTop10ByActionInOrderByTimestampDesc(actions);
     }
 
-    public List<AuditLog> getEntityHistory(Class<?> entityType, Long entityId) {
+    public List<AuditLog> getEntityHistory(Class<?> entityType, String entityId) {
         List<AuditLog> entries =
                 auditLogRepository.findByEntityTypeAndEntityIdOrderByTimestampDesc(
                         entityType.getSimpleName(), entityId);

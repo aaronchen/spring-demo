@@ -15,6 +15,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserService;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,10 @@ import tools.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 class UserApiControllerTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
+
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
@@ -44,14 +49,14 @@ class UserApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         User adminUser = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        adminUser.setId(1L);
+        adminUser.setId(ID_1);
         regularDetails = new CustomUserDetails(regularUser);
         adminDetails = new CustomUserDetails(adminUser);
 
         userResponse = new UserResponse();
-        userResponse.setId(1L);
+        userResponse.setId(ID_1);
         userResponse.setName("Alice");
         userResponse.setEmail("alice@example.com");
     }
@@ -84,11 +89,11 @@ class UserApiControllerTest {
     @Test
     void getUserById_returnsJson() throws Exception {
         User alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
-        when(userService.getUserById(1L)).thenReturn(alice);
+        alice.setId(ID_1);
+        when(userService.getUserById(ID_1)).thenReturn(alice);
         when(userMapper.toResponse(alice)).thenReturn(userResponse);
 
-        mockMvc.perform(get("/api/users/1").with(user(regularDetails)))
+        mockMvc.perform(get("/api/users/" + ID_1).with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Alice"));
     }
@@ -98,9 +103,9 @@ class UserApiControllerTest {
     @Test
     void createUser_admin_returns201() throws Exception {
         User newUser = new User("Charlie", "charlie@example.com", null, Role.USER);
-        newUser.setId(3L);
+        newUser.setId(ID_3);
         UserResponse newResponse = new UserResponse();
-        newResponse.setId(3L);
+        newResponse.setId(ID_3);
         newResponse.setName("Charlie");
         when(userMapper.toEntity(any())).thenReturn(newUser);
         when(userService.createUser(any(User.class))).thenReturn(newUser);
@@ -138,21 +143,21 @@ class UserApiControllerTest {
     @Test
     void deleteUser_admin_returns204() throws Exception {
         try (var mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(() -> SecurityUtils.isCurrentUser(2L)).thenReturn(false);
+            mocked.when(() -> SecurityUtils.isCurrentUser(ID_2)).thenReturn(false);
 
-            mockMvc.perform(delete("/api/users/2").with(user(adminDetails)))
+            mockMvc.perform(delete("/api/users/" + ID_2).with(user(adminDetails)))
                     .andExpect(status().isNoContent());
 
-            verify(userService).deleteUser(2L);
+            verify(userService).deleteUser(ID_2);
         }
     }
 
     @Test
     void deleteUser_self_returns400() throws Exception {
         try (var mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(() -> SecurityUtils.isCurrentUser(1L)).thenReturn(true);
+            mocked.when(() -> SecurityUtils.isCurrentUser(ID_1)).thenReturn(true);
 
-            mockMvc.perform(delete("/api/users/1").with(user(adminDetails)))
+            mockMvc.perform(delete("/api/users/" + ID_1).with(user(adminDetails)))
                     .andExpect(status().isBadRequest());
 
             verify(userService, never()).deleteUser(any());
@@ -161,7 +166,7 @@ class UserApiControllerTest {
 
     @Test
     void deleteUser_regularUser_returns403() throws Exception {
-        mockMvc.perform(delete("/api/users/2").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/users/" + ID_2).with(user(regularDetails)))
                 .andExpect(status().isForbidden());
 
         verify(userService, never()).deleteUser(any());

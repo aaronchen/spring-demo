@@ -8,6 +8,7 @@ import cc.desuka.demo.repository.UserRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,15 +29,15 @@ class UniqueValidatorTest {
 
     @Unique(entity = User.class, field = User.FIELD_EMAIL, message = "Email already exists")
     static class TestUserDto {
-        private Long id;
+        private UUID id;
         private String email;
 
-        TestUserDto(Long id, String email) {
+        TestUserDto(UUID id, String email) {
             this.id = id;
             this.email = email;
         }
 
-        public Long getId() {
+        public UUID getId() {
             return id;
         }
 

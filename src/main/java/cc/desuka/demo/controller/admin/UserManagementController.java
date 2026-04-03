@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -50,7 +51,7 @@ public class UserManagementController {
     }
 
     @GetMapping("/{id}/edit")
-    public String editUserForm(@PathVariable Long id, Model model) {
+    public String editUserForm(@PathVariable UUID id, Model model) {
         User user = userService.getUserById(id);
         AdminUserRequest request = new AdminUserRequest();
         request.setId(id);
@@ -94,7 +95,7 @@ public class UserManagementController {
 
     @PutMapping("/{id}")
     public Object updateUser(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @ModelAttribute AdminUserRequest adminUserRequest,
             BindingResult result,
             Model model) {
@@ -118,7 +119,7 @@ public class UserManagementController {
 
     @DeleteMapping("/{id}")
     @ResponseBody
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         if (SecurityUtils.isCurrentUser(id)) {
             return ResponseEntity.badRequest().build();
         }
@@ -128,7 +129,7 @@ public class UserManagementController {
 
     @PostMapping("/{id}/disable")
     @ResponseBody
-    public ResponseEntity<Void> disableUser(@PathVariable Long id) {
+    public ResponseEntity<Void> disableUser(@PathVariable UUID id) {
         if (SecurityUtils.isCurrentUser(id)) {
             return ResponseEntity.badRequest().build();
         }
@@ -138,7 +139,7 @@ public class UserManagementController {
 
     @PostMapping("/{id}/enable")
     @ResponseBody
-    public ResponseEntity<Void> enableUser(@PathVariable Long id) {
+    public ResponseEntity<Void> enableUser(@PathVariable UUID id) {
         userService.enableUser(id);
         return HtmxUtils.triggerEvent("userSaved");
     }
@@ -146,7 +147,7 @@ public class UserManagementController {
     @PostMapping("/{id}/reset-password")
     @ResponseBody
     public ResponseEntity<Void> resetPassword(
-            @PathVariable Long id, @RequestParam String password) {
+            @PathVariable UUID id, @RequestParam String password) {
         if (password.length() < 8 || password.length() > 72) {
             return ResponseEntity.badRequest().build();
         }
@@ -156,7 +157,7 @@ public class UserManagementController {
 
     @GetMapping("/{id}/info")
     @ResponseBody
-    public Map<String, Object> getUserInfo(@PathVariable Long id) {
+    public Map<String, Object> getUserInfo(@PathVariable UUID id) {
         User user = userService.getUserById(id);
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("name", user.getName());

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -57,22 +58,22 @@ public class AnalyticsService {
         this.messages = messages;
     }
 
-    public AnalyticsResponse getProjectAnalytics(Long projectId) {
+    public AnalyticsResponse getProjectAnalytics(UUID projectId) {
         return buildAnalytics(projectId, null, null);
     }
 
-    public AnalyticsResponse getProjectAnalytics(Long projectId, Long sprintId) {
+    public AnalyticsResponse getProjectAnalytics(UUID projectId, Long sprintId) {
         return buildAnalytics(projectId, null, sprintId);
     }
 
     /**
      * @param accessibleProjectIds null = admin (all projects); non-null = scoped
      */
-    public AnalyticsResponse getCrossProjectAnalytics(List<Long> accessibleProjectIds) {
+    public AnalyticsResponse getCrossProjectAnalytics(List<UUID> accessibleProjectIds) {
         return buildAnalytics(null, accessibleProjectIds, null);
     }
 
-    private AnalyticsResponse buildAnalytics(Long projectId, List<Long> projectIds, Long sprintId) {
+    private AnalyticsResponse buildAnalytics(UUID projectId, List<UUID> projectIds, Long sprintId) {
         return new AnalyticsResponse(
                 buildStatusBreakdown(projectId, projectIds, sprintId),
                 buildPriorityBreakdown(projectId, projectIds, sprintId),
@@ -86,7 +87,7 @@ public class AnalyticsService {
     // ── Status Breakdown ─────────────────────────────────────────────────
 
     private StatusBreakdown buildStatusBreakdown(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         Specification<cc.desuka.demo.model.Task> scope =
                 projectScope(projectId, projectIds).and(TaskSpecifications.withSprintId(sprintId));
         Map<String, Long> counts = new LinkedHashMap<>();
@@ -102,7 +103,7 @@ public class AnalyticsService {
     // ── Priority Breakdown ───────────────────────────────────────────────
 
     private PriorityBreakdown buildPriorityBreakdown(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         Specification<cc.desuka.demo.model.Task> scope =
                 projectScope(projectId, projectIds).and(TaskSpecifications.withSprintId(sprintId));
         Map<String, Long> counts = new LinkedHashMap<>();
@@ -119,25 +120,25 @@ public class AnalyticsService {
     // ── Workload Distribution ────────────────────────────────────────────
 
     private WorkloadDistribution buildWorkloadDistribution(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         List<Object[]> rows =
                 analyticsRepository.countByUserAndStatus(projectId, projectIds, sprintId);
 
         // Collect unique user IDs preserving order, null = unassigned
-        List<Long> userIds = new ArrayList<>();
+        List<UUID> userIds = new ArrayList<>();
         for (Object[] row : rows) {
-            Long userId = (Long) row[0];
+            UUID userId = (UUID) row[0];
             if (!userIds.contains(userId)) {
                 userIds.add(userId);
             }
         }
 
         // Resolve names
-        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assigneeNames = new ArrayList<>();
-        Map<Long, Integer> userIndex = new LinkedHashMap<>();
+        Map<UUID, Integer> userIndex = new LinkedHashMap<>();
         for (int i = 0; i < userIds.size(); i++) {
-            Long uid = userIds.get(i);
+            UUID uid = userIds.get(i);
             userIndex.put(uid, i);
             assigneeNames.add(resolveUserName(uid, nameMap));
         }
@@ -153,7 +154,7 @@ public class AnalyticsService {
         }
 
         for (Object[] row : rows) {
-            Long userId = (Long) row[0];
+            UUID userId = (UUID) row[0];
             TaskStatus status = (TaskStatus) row[1];
             Long count = (Long) row[2];
             int idx = userIndex.get(userId);
@@ -166,7 +167,7 @@ public class AnalyticsService {
     // ── Burndown Chart ───────────────────────────────────────────────────
 
     private List<BurndownPoint> buildBurndown(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         // When scoped to a sprint, use the sprint's date range instead of rolling 30 days
         LocalDate startDate;
         LocalDate endDate;
@@ -208,7 +209,7 @@ public class AnalyticsService {
     // ── Velocity ─────────────────────────────────────────────────────────
 
     private List<VelocityPoint> buildVelocity(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         LocalDate now = LocalDate.now();
         LocalDate weekStart = now.minusWeeks(VELOCITY_WEEKS).with(DayOfWeek.MONDAY);
         LocalDateTime from = weekStart.atStartOfDay();
@@ -255,16 +256,16 @@ public class AnalyticsService {
     // ── Overdue Analysis ─────────────────────────────────────────────────
 
     private OverdueAnalysis buildOverdueAnalysis(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         List<TaskStatus> terminal = TaskStatus.terminalStatuses();
         List<Object[]> rows =
                 analyticsRepository.countOverdueByUser(projectId, projectIds, sprintId, terminal);
 
-        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assignees = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
         for (Object[] row : rows) {
-            Long userId = (Long) row[0];
+            UUID userId = (UUID) row[0];
             Long count = (Long) row[1];
             assignees.add(resolveUserName(userId, nameMap));
             counts.add(count);
@@ -276,14 +277,14 @@ public class AnalyticsService {
     // ── Effort Distribution ─────────────────────────────────────────────
 
     private EffortDistribution buildEffortDistribution(
-            Long projectId, List<Long> projectIds, Long sprintId) {
+            UUID projectId, List<UUID> projectIds, Long sprintId) {
         List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds, sprintId);
 
-        Map<Long, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
         List<String> assignees = new ArrayList<>();
         List<Long> efforts = new ArrayList<>();
         for (Object[] row : rows) {
-            Long userId = (Long) row[0];
+            UUID userId = (UUID) row[0];
             Long effort = (Long) row[1];
             assignees.add(resolveUserName(userId, nameMap));
             efforts.add(effort);
@@ -294,10 +295,10 @@ public class AnalyticsService {
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private Map<Long, String> buildUserNameMap(List<Object[]> rows, int userIdIndex) {
-        List<Long> userIds =
+    private Map<UUID, String> buildUserNameMap(List<Object[]> rows, int userIdIndex) {
+        List<UUID> userIds =
                 rows.stream()
-                        .map(row -> (Long) row[userIdIndex])
+                        .map(row -> (UUID) row[userIdIndex])
                         .filter(Objects::nonNull)
                         .distinct()
                         .toList();
@@ -306,7 +307,7 @@ public class AnalyticsService {
                 .collect(Collectors.toMap(User::getId, User::getName));
     }
 
-    private String resolveUserName(Long userId, Map<Long, String> nameMap) {
+    private String resolveUserName(UUID userId, Map<UUID, String> nameMap) {
         if (userId == null) {
             return messages.get("analytics.label.unassigned");
         }
@@ -314,7 +315,7 @@ public class AnalyticsService {
     }
 
     private Specification<cc.desuka.demo.model.Task> projectScope(
-            Long projectId, List<Long> projectIds) {
+            UUID projectId, List<UUID> projectIds) {
         if (projectId != null) {
             return TaskSpecifications.withProjectId(projectId);
         } else if (projectIds != null) {

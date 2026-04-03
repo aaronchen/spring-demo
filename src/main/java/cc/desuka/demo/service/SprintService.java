@@ -9,6 +9,7 @@ import cc.desuka.demo.repository.SprintRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +40,7 @@ public class SprintService {
         this.messages = messages;
     }
 
-    public Sprint createSprint(Long projectId, Sprint sprintDetails) {
+    public Sprint createSprint(UUID projectId, Sprint sprintDetails) {
         Project project = projectQueryService.getProjectById(projectId);
         validateDates(sprintDetails);
         validateNoOverlap(projectId, 0L, sprintDetails);
@@ -86,7 +87,7 @@ public class SprintService {
         return saved;
     }
 
-    public void clearSprintAssignments(Long projectId) {
+    public void clearSprintAssignments(UUID projectId) {
         taskService.clearSprintAssignments(projectId);
     }
 
@@ -115,7 +116,7 @@ public class SprintService {
         }
     }
 
-    private void validateNoOverlap(Long projectId, Long excludeId, Sprint sprint) {
+    private void validateNoOverlap(UUID projectId, Long excludeId, Sprint sprint) {
         if (sprintRepository.existsOverlapping(
                 projectId, excludeId, sprint.getStartDate(), sprint.getEndDate())) {
             throw new IllegalArgumentException(messages.get("sprint.error.overlapping"));

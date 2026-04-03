@@ -4,6 +4,7 @@ import cc.desuka.demo.model.Priority;
 import jakarta.validation.constraints.*;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -14,7 +15,7 @@ import lombok.Data;
 public class TaskRequest {
 
     // Required on create — task must belong to a project
-    private Long projectId;
+    private UUID projectId;
 
     @NotBlank(message = "{task.title.notBlank}")
     @Size(min = 1, max = 100, message = "{task.title.size}")
@@ -38,7 +39,7 @@ public class TaskRequest {
     private List<Long> tagIds;
 
     // null = unassigned (task not assigned to any user)
-    private Long userId;
+    private UUID userId;
 
     // null on create, present on update (optimistic locking)
     private Long version;

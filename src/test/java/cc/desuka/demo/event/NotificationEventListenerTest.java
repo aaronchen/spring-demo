@@ -3,26 +3,35 @@ package cc.desuka.demo.event;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.model.*;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.NotificationService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.Messages;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationEventListenerTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    private static final UUID TASK_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
+
     @Mock private NotificationService notificationService;
     @Mock private CommentService commentService;
     @Mock private UserService userService;
     @Mock private Messages messages;
+    @Spy private AppRoutesProperties appRoutes = new AppRoutesProperties();
 
     @InjectMocks private NotificationEventListener listener;
 
@@ -34,14 +43,14 @@ class NotificationEventListenerTest {
     @BeforeEach
     void setUp() {
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
         charlie = new User("Charlie", "charlie@example.com", "password", Role.USER);
-        charlie.setId(3L);
+        charlie.setId(ID_3);
 
         task = new Task("Test Task", "Description");
-        task.setId(1L);
+        task.setId(TASK_ID);
         task.setUser(alice);
     }
 
@@ -87,8 +96,8 @@ class NotificationEventListenerTest {
     void onTaskUpdated_notifiesOwnerAndSubscribers() {
         when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Bob updated Test Task");
-        when(commentService.getSubscriberIds(1L)).thenReturn(Set.of(3L));
-        when(userService.findUserById(3L)).thenReturn(charlie);
+        when(commentService.getSubscriberIds(TASK_ID)).thenReturn(Set.of(ID_3));
+        when(userService.findUserById(ID_3)).thenReturn(charlie);
 
         listener.onTaskUpdated(new TaskUpdatedEvent(task, bob));
 
@@ -115,7 +124,7 @@ class NotificationEventListenerTest {
         task.setUser(alice);
         when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Alice updated Test Task");
-        when(commentService.getSubscriberIds(1L)).thenReturn(Set.of());
+        when(commentService.getSubscriberIds(TASK_ID)).thenReturn(Set.of());
 
         listener.onTaskUpdated(new TaskUpdatedEvent(task, alice));
 
@@ -135,7 +144,7 @@ class NotificationEventListenerTest {
         // Alice is owner AND subscriber (she commented before)
         when(messages.get(eq("notification.task.updated"), any(Object[].class)))
                 .thenReturn("Bob updated Test Task");
-        when(commentService.getSubscriberIds(1L)).thenReturn(Set.of(1L));
+        when(commentService.getSubscriberIds(TASK_ID)).thenReturn(Set.of(ID_1));
 
         listener.onTaskUpdated(new TaskUpdatedEvent(task, bob));
 
@@ -149,7 +158,7 @@ class NotificationEventListenerTest {
     void onCommentAdded_notifiesOwnerCommentersAndMentioned() {
         Comment comment = new Comment();
         comment.setId(1L);
-        comment.setText("Hey @[Charlie](userId:3)");
+        comment.setText("Hey @[Charlie](userId:" + ID_3 + ")");
         comment.setTask(task);
         comment.setUser(bob);
 
@@ -157,9 +166,9 @@ class NotificationEventListenerTest {
                 .thenReturn("Bob commented on Test Task");
         when(messages.get(eq("notification.comment.mentioned"), any(Object[].class)))
                 .thenReturn("Bob mentioned you on Test Task");
-        when(commentService.getCommenterIds(1L)).thenReturn(Set.of());
-        when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of());
-        when(userService.findUserById(3L)).thenReturn(charlie);
+        when(commentService.getCommenterIds(TASK_ID)).thenReturn(Set.of());
+        when(commentService.getPreviouslyMentionedUserIds(TASK_ID)).thenReturn(Set.of());
+        when(userService.findUserById(ID_3)).thenReturn(charlie);
 
         listener.onCommentAdded(new CommentAddedEvent(comment, task, bob));
 
@@ -192,8 +201,8 @@ class NotificationEventListenerTest {
         task.setUser(alice);
         when(messages.get(eq("notification.comment.added"), any(Object[].class)))
                 .thenReturn("Alice commented on Test Task");
-        when(commentService.getCommenterIds(1L)).thenReturn(Set.of());
-        when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of());
+        when(commentService.getCommenterIds(TASK_ID)).thenReturn(Set.of());
+        when(commentService.getPreviouslyMentionedUserIds(TASK_ID)).thenReturn(Set.of());
 
         listener.onCommentAdded(new CommentAddedEvent(comment, task, alice));
 
@@ -208,14 +217,14 @@ class NotificationEventListenerTest {
 
         Comment comment = new Comment();
         comment.setId(1L);
-        comment.setText("@[Charlie](userId:3)");
+        comment.setText("@[Charlie](userId:" + ID_3 + ")");
         comment.setTask(task);
         comment.setUser(bob);
 
         when(messages.get(eq("notification.comment.added"), any(Object[].class)))
                 .thenReturn("Bob commented on Test Task");
-        when(commentService.getCommenterIds(1L)).thenReturn(Set.of(3L));
-        when(commentService.getPreviouslyMentionedUserIds(1L)).thenReturn(Set.of(3L));
+        when(commentService.getCommenterIds(TASK_ID)).thenReturn(Set.of(ID_3));
+        when(commentService.getPreviouslyMentionedUserIds(TASK_ID)).thenReturn(Set.of(ID_3));
 
         listener.onCommentAdded(new CommentAddedEvent(comment, task, bob));
 

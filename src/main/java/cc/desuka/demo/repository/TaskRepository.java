@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -16,10 +17,10 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificationExecutor<Task> {
+public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificationExecutor<Task> {
 
     @EntityGraph(attributePaths = {"tags", "user", "project", "sprint", "checklistItems"})
-    Optional<Task> findById(Long id);
+    Optional<Task> findById(UUID id);
 
     @EntityGraph(
             attributePaths = {
@@ -31,7 +32,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
                 "blocks",
                 "template"
             })
-    Optional<Task> findWithDependenciesById(Long id);
+    Optional<Task> findWithDependenciesById(UUID id);
 
     @EntityGraph(attributePaths = {"tags", "user", "project", "sprint"})
     List<Task> findAll();
@@ -42,7 +43,7 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     List<Task> findByUser(User user);
 
     List<Task> findByUserAndProjectIdAndStatusNotIn(
-            User user, Long projectId, Collection<TaskStatus> statuses);
+            User user, UUID projectId, Collection<TaskStatus> statuses);
 
     @EntityGraph(attributePaths = {"tags", "user"})
     List<Task> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(

@@ -16,6 +16,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,7 +77,7 @@ public class ProjectService {
         return saved;
     }
 
-    public Project updateProject(Long id, Project projectDetails) {
+    public Project updateProject(UUID id, Project projectDetails) {
         Project project = projectQueryService.getProjectById(id);
         Map<String, AuditField> before = project.toAuditSnapshot();
 
@@ -113,7 +114,7 @@ public class ProjectService {
         return saved;
     }
 
-    public void archiveProject(Long id) {
+    public void archiveProject(UUID id) {
         Project project = projectQueryService.getProjectById(id);
         project.setStatus(ProjectStatus.ARCHIVED);
         projectRepository.save(project);
@@ -127,7 +128,7 @@ public class ProjectService {
                         null));
     }
 
-    public void unarchiveProject(Long id) {
+    public void unarchiveProject(UUID id) {
         Project project = projectQueryService.getProjectById(id);
         project.setStatus(ProjectStatus.ACTIVE);
         projectRepository.save(project);
@@ -145,7 +146,7 @@ public class ProjectService {
      * Deletes a project if it has no completed tasks. Projects with completed work should be
      * archived instead. Cancelled tasks don't block deletion — they represent abandoned work.
      */
-    public void deleteProject(Long id) {
+    public void deleteProject(UUID id) {
         Project project = projectQueryService.getProjectById(id);
 
         boolean hasCompletedTasks =
@@ -169,7 +170,7 @@ public class ProjectService {
 
     // ── Member management ─────────────────────────────────────────────────
 
-    public ProjectMember addMember(Long projectId, Long userId, ProjectRole role) {
+    public ProjectMember addMember(UUID projectId, UUID userId, ProjectRole role) {
         Project project = projectQueryService.getProjectById(projectId);
         User user = userService.getUserById(userId);
 
@@ -191,7 +192,7 @@ public class ProjectService {
         return member;
     }
 
-    public void removeMember(Long projectId, Long userId) {
+    public void removeMember(UUID projectId, UUID userId) {
         Project project = projectQueryService.getProjectById(projectId);
         ProjectMember member =
                 findMember(project, userId)
@@ -217,7 +218,7 @@ public class ProjectService {
                         snapshot));
     }
 
-    public void updateMemberRole(Long projectId, Long userId, ProjectRole newRole) {
+    public void updateMemberRole(UUID projectId, UUID userId, ProjectRole newRole) {
         Project project = projectQueryService.getProjectById(projectId);
         ProjectMember member =
                 findMember(project, userId)
@@ -255,7 +256,7 @@ public class ProjectService {
 
     // ── Private helpers ─────────────────────────────────────────────────
 
-    private Optional<ProjectMember> findMember(Project project, Long userId) {
+    private Optional<ProjectMember> findMember(Project project, UUID userId) {
         return project.getMembers().stream()
                 .filter(m -> m.getUser().getId().equals(userId))
                 .findFirst();

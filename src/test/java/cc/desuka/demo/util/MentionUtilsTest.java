@@ -2,56 +2,67 @@ package cc.desuka.demo.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cc.desuka.demo.config.AppRoutesProperties;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class MentionUtilsTest {
 
-    private final MentionUtils mentionUtils = new MentionUtils();
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+    private final MentionUtils mentionUtils = new MentionUtils(new AppRoutesProperties());
 
     // ── extractMentionedUserIds ──────────────────────────────────────────
 
     @Test
     void extractMentionedUserIds_singleMention() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds("Hello @[Alice](userId:1)");
+        List<UUID> ids =
+                MentionUtils.extractMentionedUserIds("Hello @[Alice](userId:" + ID_1 + ")");
 
-        assertThat(ids).containsExactly(1L);
+        assertThat(ids).containsExactly(ID_1);
     }
 
     @Test
     void extractMentionedUserIds_multipleMentions() {
-        List<Long> ids =
+        List<UUID> ids =
                 MentionUtils.extractMentionedUserIds(
-                        "@[Alice](userId:1) and @[Bob](userId:2) please review");
+                        "@[Alice](userId:"
+                                + ID_1
+                                + ") and @[Bob](userId:"
+                                + ID_2
+                                + ") please review");
 
-        assertThat(ids).containsExactly(1L, 2L);
+        assertThat(ids).containsExactly(ID_1, ID_2);
     }
 
     @Test
     void extractMentionedUserIds_duplicateMentions_preservesAll() {
-        List<Long> ids =
-                MentionUtils.extractMentionedUserIds("@[Alice](userId:1) hey @[Alice](userId:1)");
+        List<UUID> ids =
+                MentionUtils.extractMentionedUserIds(
+                        "@[Alice](userId:" + ID_1 + ") hey @[Alice](userId:" + ID_1 + ")");
 
-        assertThat(ids).containsExactly(1L, 1L);
+        assertThat(ids).containsExactly(ID_1, ID_1);
     }
 
     @Test
     void extractMentionedUserIds_noMentions() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds("Plain text comment");
+        List<UUID> ids = MentionUtils.extractMentionedUserIds("Plain text comment");
 
         assertThat(ids).isEmpty();
     }
 
     @Test
     void extractMentionedUserIds_nullText() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds(null);
+        List<UUID> ids = MentionUtils.extractMentionedUserIds(null);
 
         assertThat(ids).isEmpty();
     }
 
     @Test
     void extractMentionedUserIds_malformedMention_ignored() {
-        List<Long> ids = MentionUtils.extractMentionedUserIds("@[Alice](user:1)");
+        List<UUID> ids = MentionUtils.extractMentionedUserIds("@[Alice](user:1)");
 
         assertThat(ids).isEmpty();
     }
@@ -60,23 +71,30 @@ class MentionUtilsTest {
 
     @Test
     void renderHtml_convertsMentionToLink() {
-        String result = mentionUtils.renderHtml("Hey @[Alice](userId:1)!");
+        String result = mentionUtils.renderHtml("Hey @[Alice](userId:" + ID_1 + ")!");
 
         assertThat(result)
-                .isEqualTo("Hey <a href=\"/tasks?selectedUserId=1\" class=\"mention\">@Alice</a>!");
+                .isEqualTo(
+                        "Hey <a href=\"/tasks?selectedUserId="
+                                + ID_1
+                                + "\" class=\"mention\">@Alice</a>!");
     }
 
     @Test
     void renderHtml_multipleMentions() {
-        String result = mentionUtils.renderHtml("@[Alice](userId:1) and @[Bob](userId:2)");
+        String result =
+                mentionUtils.renderHtml(
+                        "@[Alice](userId:" + ID_1 + ") and @[Bob](userId:" + ID_2 + ")");
 
-        assertThat(result).contains("selectedUserId=1");
-        assertThat(result).contains("selectedUserId=2");
+        assertThat(result).contains("selectedUserId=" + ID_1);
+        assertThat(result).contains("selectedUserId=" + ID_2);
     }
 
     @Test
     void renderHtml_escapesHtmlInSurroundingText() {
-        String result = mentionUtils.renderHtml("<script>alert('xss')</script> @[Alice](userId:1)");
+        String result =
+                mentionUtils.renderHtml(
+                        "<script>alert('xss')</script> @[Alice](userId:" + ID_1 + ")");
 
         assertThat(result).doesNotContain("<script>");
         assertThat(result).contains("&lt;script&gt;");
@@ -84,7 +102,7 @@ class MentionUtilsTest {
 
     @Test
     void renderHtml_escapesHtmlInDisplayName() {
-        String result = mentionUtils.renderHtml("@[<b>Evil</b>](userId:1)");
+        String result = mentionUtils.renderHtml("@[<b>Evil</b>](userId:" + ID_1 + ")");
 
         assertThat(result).doesNotContain("<b>");
         assertThat(result).contains("&lt;b&gt;Evil&lt;/b&gt;");

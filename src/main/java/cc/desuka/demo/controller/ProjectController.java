@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -176,7 +177,7 @@ public class ProjectController {
     // GET /projects/{id} - Project home with task list
     @GetMapping("/{id}")
     public String showProject(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @ModelAttribute TaskListQuery query,
             @RequestParam(required = false) String view,
             @RequestParam(required = false) YearMonth month,
@@ -253,8 +254,8 @@ public class ProjectController {
         }
 
         // Resolve filtered user's name
-        Long currentId = currentDetails.getUser().getId();
-        Long selectedUserId = query.getSelectedUserId();
+        UUID currentId = currentDetails.getUser().getId();
+        UUID selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
             try {
                 model.addAttribute(
@@ -305,7 +306,7 @@ public class ProjectController {
     // GET /projects/{id}/export - Download CSV of project tasks (same filters as project view)
     @GetMapping("/{id}/export")
     public void exportProjectTasks(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @ModelAttribute TaskListQuery query,
             @PageableDefault(sort = Task.FIELD_CREATED_AT, direction = Sort.Direction.DESC)
                     Pageable pageable,
@@ -325,7 +326,7 @@ public class ProjectController {
     // GET /projects/{id}/settings - Project settings (owner or admin only)
     @GetMapping("/{id}/settings")
     public String showSettings(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -347,7 +348,7 @@ public class ProjectController {
     // POST /projects/{id} - Update project
     @PostMapping("/{id}")
     public Object updateProject(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @ModelAttribute ProjectRequest projectRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -370,7 +371,7 @@ public class ProjectController {
     // POST /projects/{id}/archive - Archive project
     @PostMapping("/{id}/archive")
     public Object archiveProject(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -384,7 +385,7 @@ public class ProjectController {
     // POST /projects/{id}/unarchive - Restore archived project
     @PostMapping("/{id}/unarchive")
     public Object unarchiveProject(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -398,12 +399,17 @@ public class ProjectController {
     // POST /projects/{id}/members - Add member
     @PostMapping("/{id}/members")
     public String addMember(
-            @PathVariable Long id,
-            @RequestParam Long userId,
+            @PathVariable UUID id,
+            @RequestParam(required = false) UUID userId,
             @RequestParam ProjectRole role,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
+        if (userId == null) {
+            model.addAttribute("memberError", messages.get("project.member.error.noUser"));
+            populateMemberModel(id, model);
+            return "projects/settings/member-panel";
+        }
         try {
             projectService.addMember(id, userId, role);
             model.addAttribute("memberAdded", true);
@@ -417,8 +423,8 @@ public class ProjectController {
     // PATCH /projects/{id}/members/{userId}/role - Change member role
     @PatchMapping("/{id}/members/{userId}/role")
     public String updateMemberRole(
-            @PathVariable Long id,
-            @PathVariable Long userId,
+            @PathVariable UUID id,
+            @PathVariable UUID userId,
             @RequestParam ProjectRole role,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -436,8 +442,8 @@ public class ProjectController {
     // DELETE /projects/{id}/members/{userId} - Remove member
     @DeleteMapping("/{id}/members/{userId}")
     public String removeMember(
-            @PathVariable Long id,
-            @PathVariable Long userId,
+            @PathVariable UUID id,
+            @PathVariable UUID userId,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -454,7 +460,7 @@ public class ProjectController {
     // GET /projects/{id}/analytics - Project analytics page
     @GetMapping("/{id}/analytics")
     public String projectAnalytics(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireViewAccess(id, currentDetails);
@@ -476,7 +482,7 @@ public class ProjectController {
     // GET /projects/{id}/sprints/panel — return panel in create mode (used by cancel button)
     @GetMapping("/{id}/sprints/panel")
     public String sprintPanel(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -488,7 +494,7 @@ public class ProjectController {
     // GET /projects/{id}/sprints/{sid}/edit — return panel in edit mode
     @GetMapping("/{id}/sprints/{sid}/edit")
     public String editSprintForm(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long sid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -504,7 +510,7 @@ public class ProjectController {
     // POST /projects/{id}/sprints — create sprint
     @PostMapping("/{id}/sprints")
     public String createSprint(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -532,7 +538,7 @@ public class ProjectController {
     // POST /projects/{id}/sprints/{sid} — update sprint
     @PostMapping("/{id}/sprints/{sid}")
     public String updateSprint(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long sid,
             @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
             BindingResult result,
@@ -563,7 +569,7 @@ public class ProjectController {
     // DELETE /projects/{id}/sprints/{sid} — delete sprint
     @DeleteMapping("/{id}/sprints/{sid}")
     public String deleteSprint(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long sid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -580,7 +586,7 @@ public class ProjectController {
     // GET /projects/{id}/recurring-templates/panel — return panel in create mode
     @GetMapping("/{id}/recurring-templates/panel")
     public String recurringPanel(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
@@ -592,7 +598,7 @@ public class ProjectController {
     // GET /projects/{id}/recurring-templates/{tid}/edit — return panel in edit mode
     @GetMapping("/{id}/recurring-templates/{tid}/edit")
     public String editRecurringForm(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -611,7 +617,7 @@ public class ProjectController {
     // POST /projects/{id}/recurring-templates — create recurring template
     @PostMapping("/{id}/recurring-templates")
     public String createRecurringTemplate(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @ModelAttribute("recurringRequest")
                     RecurringTaskTemplateRequest recurringRequest,
             BindingResult result,
@@ -640,7 +646,7 @@ public class ProjectController {
     // POST /projects/{id}/recurring-templates/{tid} — update recurring template
     @PostMapping("/{id}/recurring-templates/{tid}")
     public String updateRecurringTemplate(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long tid,
             @Valid @ModelAttribute("recurringRequest")
                     RecurringTaskTemplateRequest recurringRequest,
@@ -672,7 +678,7 @@ public class ProjectController {
     // POST /projects/{id}/recurring-templates/{tid}/toggle — toggle enabled
     @PostMapping("/{id}/recurring-templates/{tid}/toggle")
     public String toggleRecurringTemplate(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -687,7 +693,7 @@ public class ProjectController {
     // POST /projects/{id}/recurring-templates/{tid}/generate — generate task now
     @PostMapping("/{id}/recurring-templates/{tid}/generate")
     public String generateRecurringTemplate(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -710,7 +716,7 @@ public class ProjectController {
     // DELETE /projects/{id}/recurring-templates/{tid} — delete recurring template
     @DeleteMapping("/{id}/recurring-templates/{tid}")
     public String deleteRecurringTemplate(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
@@ -724,14 +730,14 @@ public class ProjectController {
 
     // ── Panel model helpers ─────────────────────────────────────────────
 
-    private void populateSprintPanelModel(Long projectId, Model model) {
+    private void populateSprintPanelModel(UUID projectId, Model model) {
         model.addAttribute("sprints", sprintQueryService.getSprintsByProject(projectId));
         if (!model.containsAttribute("sprintRequest")) {
             model.addAttribute("sprintRequest", new SprintRequest());
         }
     }
 
-    private void populateRecurringPanelModel(Long projectId, Model model) {
+    private void populateRecurringPanelModel(UUID projectId, Model model) {
         model.addAttribute(
                 "recurringTemplates",
                 recurringTaskTemplateService.getTemplatesByProject(projectId));
@@ -742,7 +748,7 @@ public class ProjectController {
         }
     }
 
-    private void populateMemberModel(Long projectId, Model model) {
+    private void populateMemberModel(UUID projectId, Model model) {
         model.addAttribute("project", projectQueryService.getProjectById(projectId));
         model.addAttribute("projectMembers", projectQueryService.getMembers(projectId));
         model.addAttribute("projectRoles", ProjectRole.values());

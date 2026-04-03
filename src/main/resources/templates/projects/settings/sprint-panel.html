@@ -54,18 +54,21 @@
                         <div class="invalid-feedback" th:if="${#fields.hasErrors('endDate')}"
                              th:errors="*{endDate}">Date error</div>
                     </div>
-                    <div class="col-md-4 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-sm btn-primary w-100">
-                            <i class="bi bi-check-circle"></i>
-                            <span th:text="${editSprint != null} ? #{action.save} : #{sprint.action.create}">Create</span>
-                        </button>
-                        <button th:if="${editSprint != null}" type="button"
-                                class="btn btn-sm btn-outline-secondary w-100"
-                                th:attr="hx-get=@{/projects/{pId}/sprints/panel(pId=${project.id})}"
-                                hx-target="#sprint-panel-content"
-                                hx-swap="outerHTML">
-                            <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
-                        </button>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold d-none d-md-block invisible">.</label>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-sm btn-primary w-100">
+                                <i class="bi bi-check-circle"></i>
+                                <span th:text="${editSprint != null} ? #{action.save} : #{sprint.action.create}">Create</span>
+                            </button>
+                            <button th:if="${editSprint != null}" type="button"
+                                    class="btn btn-sm btn-outline-secondary w-100"
+                                    th:attr="hx-get=@{/projects/{pId}/sprints/panel(pId=${project.id})}"
+                                    hx-target="#sprint-panel-content"
+                                    hx-swap="outerHTML">
+                                <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </form>

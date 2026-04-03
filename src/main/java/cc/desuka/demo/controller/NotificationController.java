@@ -2,6 +2,7 @@ package cc.desuka.demo.controller;
 
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.NotificationService;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
@@ -28,7 +29,7 @@ public class NotificationController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size,
             Model model) {
-        Long userId = user.getUser().getId();
+        UUID userId = user.getUser().getId();
         model.addAttribute(
                 "notifications",
                 notificationService.findAllForUser(userId, PageRequest.of(page, size)));

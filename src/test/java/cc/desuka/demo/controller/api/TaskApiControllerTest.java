@@ -23,6 +23,7 @@ import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,10 @@ import tools.jackson.databind.ObjectMapper;
 @ActiveProfiles("test")
 class TaskApiControllerTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
+
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
@@ -59,17 +64,17 @@ class TaskApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         User adminUser = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        adminUser.setId(1L);
+        adminUser.setId(ID_1);
         regularDetails = new CustomUserDetails(regularUser);
         adminDetails = new CustomUserDetails(adminUser);
 
         Project project = new Project("Test Project", "Desc");
-        project.setId(1L);
+        project.setId(ID_1);
 
         task = new Task("Test Task", "Description");
-        task.setId(1L);
+        task.setId(ID_1);
         task.setVersion(0L);
         task.setUser(regularUser);
         task.setProject(project);
@@ -77,7 +82,7 @@ class TaskApiControllerTest {
         task.setPriority(Priority.MEDIUM);
 
         taskResponse = new TaskResponse();
-        taskResponse.setId(1L);
+        taskResponse.setId(ID_1);
         taskResponse.setTitle("Test Task");
         taskResponse.setStatus(TaskStatus.OPEN);
         taskResponse.setPriority(Priority.MEDIUM);
@@ -89,14 +94,14 @@ class TaskApiControllerTest {
 
     @Test
     void getTasks_returnsPaginatedResults() throws Exception {
-        when(projectQueryService.getAccessibleProjectIds(2L)).thenReturn(List.of(1L));
+        when(projectQueryService.getAccessibleProjectIds(ID_2)).thenReturn(List.of(ID_1));
         when(taskQueryService.searchTasks(any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(task)));
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         mockMvc.perform(get("/api/tasks").with(user(regularDetails)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].id").value(1))
+                .andExpect(jsonPath("$.content[0].id").value(ID_1.toString()))
                 .andExpect(jsonPath("$.content[0].title").value("Test Task"))
                 .andExpect(jsonPath("$.page.totalElements").value(1));
     }
@@ -110,20 +115,20 @@ class TaskApiControllerTest {
 
     @Test
     void getTaskById_found_returnsJson() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         when(taskMapper.toResponse(task)).thenReturn(taskResponse);
 
-        mockMvc.perform(get("/api/tasks/1").with(user(regularDetails)))
+        mockMvc.perform(get("/api/tasks/" + ID_1).with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Test Task"));
     }
 
     @Test
     void getTaskById_notFound_returns404() throws Exception {
-        when(taskQueryService.getTaskById(99L))
-                .thenThrow(new EntityNotFoundException(Task.class, 99L));
+        when(taskQueryService.getTaskById(ID_99))
+                .thenThrow(new EntityNotFoundException(Task.class, ID_99));
 
-        mockMvc.perform(get("/api/tasks/99").with(user(regularDetails)))
+        mockMvc.perform(get("/api/tasks/" + ID_99).with(user(regularDetails)))
                 .andExpect(status().isNotFound());
     }
 
@@ -131,12 +136,14 @@ class TaskApiControllerTest {
 
     @Test
     void createTask_validRequest_returns201() throws Exception {
-        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(ID_1)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("New Task", null));
-        when(taskService.createTask(any(Task.class), any(), eq(2L))).thenReturn(task);
+        when(taskService.createTask(any(Task.class), any(), eq(ID_2))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
-        String body = objectMapper.writeValueAsString(Map.of("title", "New Task", "projectId", 1));
+        String body =
+                objectMapper.writeValueAsString(
+                        Map.of("title", "New Task", "projectId", ID_1.toString()));
 
         mockMvc.perform(
                         post("/api/tasks")
@@ -144,7 +151,7 @@ class TaskApiControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1));
+                .andExpect(jsonPath("$.id").value(ID_1.toString()));
     }
 
     @Test
@@ -161,14 +168,20 @@ class TaskApiControllerTest {
 
     @Test
     void createTask_adminCanAssignToOtherUser() throws Exception {
-        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(ID_1)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("Admin Task", null));
-        when(taskService.createTask(any(), any(), eq(2L))).thenReturn(task);
+        when(taskService.createTask(any(), any(), eq(ID_2))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         String body =
                 objectMapper.writeValueAsString(
-                        Map.of("title", "Admin Task", "userId", 2, "projectId", 1));
+                        Map.of(
+                                "title",
+                                "Admin Task",
+                                "userId",
+                                ID_2.toString(),
+                                "projectId",
+                                ID_1.toString()));
 
         mockMvc.perform(
                         post("/api/tasks")
@@ -177,19 +190,25 @@ class TaskApiControllerTest {
                                 .content(body))
                 .andExpect(status().isCreated());
 
-        verify(taskService).createTask(any(), any(), eq(2L));
+        verify(taskService).createTask(any(), any(), eq(ID_2));
     }
 
     @Test
     void createTask_regularUserCannotAssignToOtherUser() throws Exception {
-        when(projectQueryService.getProjectById(1L)).thenReturn(task.getProject());
+        when(projectQueryService.getProjectById(ID_1)).thenReturn(task.getProject());
         when(taskMapper.toEntity(any())).thenReturn(new Task("My Task", null));
-        when(taskService.createTask(any(), any(), eq(2L))).thenReturn(task);
+        when(taskService.createTask(any(), any(), eq(ID_2))).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         String body =
                 objectMapper.writeValueAsString(
-                        Map.of("title", "My Task", "userId", 1, "projectId", 1));
+                        Map.of(
+                                "title",
+                                "My Task",
+                                "userId",
+                                ID_1.toString(),
+                                "projectId",
+                                ID_1.toString()));
 
         mockMvc.perform(
                         post("/api/tasks")
@@ -198,23 +217,23 @@ class TaskApiControllerTest {
                                 .content(body))
                 .andExpect(status().isCreated());
 
-        // Should be assigned to the caller (2), not the requested user (1)
-        verify(taskService).createTask(any(), any(), eq(2L));
+        // Should be assigned to the caller (ID_2), not the requested user (ID_1)
+        verify(taskService).createTask(any(), any(), eq(ID_2));
     }
 
     // ── PUT /api/tasks/{id} ─────────────────────────────────────────────
 
     @Test
     void updateTask_owner_succeeds() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
-        when(taskService.updateTask(eq(1L), any(), any(), any(), any())).thenReturn(task);
+        when(taskService.updateTask(eq(ID_1), any(), any(), any(), any())).thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         String body = objectMapper.writeValueAsString(Map.of("title", "Updated", "version", 0));
 
         mockMvc.perform(
-                        put("/api/tasks/1")
+                        put("/api/tasks/" + ID_1)
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -223,15 +242,15 @@ class TaskApiControllerTest {
 
     @Test
     void updateTask_notEditor_returns403() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(projectAccessGuard)
-                .requireEditAccess(eq(1L), any(CustomUserDetails.class));
+                .requireEditAccess(eq(ID_1), any(CustomUserDetails.class));
 
         String body = objectMapper.writeValueAsString(Map.of("title", "Hacked", "version", 0));
 
         mockMvc.perform(
-                        put("/api/tasks/1")
+                        put("/api/tasks/" + ID_1)
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -240,15 +259,15 @@ class TaskApiControllerTest {
 
     @Test
     void updateTask_staleVersion_returns409() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
-        when(taskService.updateTask(eq(1L), any(), any(), any(), any()))
-                .thenThrow(new StaleDataException(Task.class, 1L));
+        when(taskService.updateTask(eq(ID_1), any(), any(), any(), any()))
+                .thenThrow(new StaleDataException(Task.class, ID_1));
 
         String body = objectMapper.writeValueAsString(Map.of("title", "Updated", "version", 999));
 
         mockMvc.perform(
-                        put("/api/tasks/1")
+                        put("/api/tasks/" + ID_1)
                                 .with(user(regularDetails))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
@@ -259,27 +278,27 @@ class TaskApiControllerTest {
 
     @Test
     void deleteTask_owner_returns204() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
 
-        mockMvc.perform(delete("/api/tasks/1").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1).with(user(regularDetails)))
                 .andExpect(status().isNoContent());
 
-        verify(taskService).deleteTask(1L);
+        verify(taskService).deleteTask(ID_1);
     }
 
     @Test
     void deleteTask_notCreatorNotProjectOwnerNotAdmin_returns403() throws Exception {
-        // Task created by admin (userId=1), caller is regular user (userId=2)
+        // Task created by admin (userId=ID_1), caller is regular user (userId=ID_2)
         // Regular user is not admin, not the task creator, and not a project owner
         User adminUser = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        adminUser.setId(1L);
+        adminUser.setId(ID_1);
         task.setUser(adminUser);
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(projectAccessGuard)
-                .requireOwnerAccess(eq(1L), any(CustomUserDetails.class));
+                .requireOwnerAccess(eq(ID_1), any(CustomUserDetails.class));
 
-        mockMvc.perform(delete("/api/tasks/1").with(user(regularDetails)))
+        mockMvc.perform(delete("/api/tasks/" + ID_1).with(user(regularDetails)))
                 .andExpect(status().isForbidden());
 
         verify(taskService, never()).deleteTask(any());
@@ -289,13 +308,13 @@ class TaskApiControllerTest {
 
     @Test
     void advanceStatus_returnsUpdatedTask() throws Exception {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
+        when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         task.setStatus(TaskStatus.IN_PROGRESS);
-        when(taskService.advanceStatus(1L)).thenReturn(task);
+        when(taskService.advanceStatus(ID_1)).thenReturn(task);
         taskResponse.setStatus(TaskStatus.IN_PROGRESS);
         when(taskMapper.toResponse(task)).thenReturn(taskResponse);
 
-        mockMvc.perform(patch("/api/tasks/1/toggle").with(user(regularDetails)))
+        mockMvc.perform(patch("/api/tasks/" + ID_1 + "/toggle").with(user(regularDetails)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
     }
