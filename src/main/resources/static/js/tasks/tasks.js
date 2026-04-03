@@ -493,24 +493,13 @@ function updateFilterPillsVisibility() {
 
 // ── Tag filter ──
 
-function toggleTagFilter(tagId) {
-    tagId = String(tagId);
+function toggleTagFilter(elOrId) {
+    const tagId = String(typeof elOrId === 'object' ? elOrId.dataset.tagId : elOrId);
     const idx = selectedTagIds.indexOf(tagId);
     if (idx >= 0) {
         selectedTagIds.splice(idx, 1);
     } else {
         selectedTagIds.push(tagId);
-    }
-    renderTagFilter();
-    doSearch(true);
-}
-
-function onTagCheckboxChange(checkbox) {
-    const tagId = String(checkbox.dataset.tagId);
-    if (checkbox.checked) {
-        if (!selectedTagIds.includes(tagId)) selectedTagIds.push(tagId);
-    } else {
-        selectedTagIds = selectedTagIds.filter(id => id !== tagId);
     }
     renderTagFilter();
     doSearch(true);
@@ -523,9 +512,12 @@ function clearAllTags() {
 }
 
 function renderTagFilter() {
-    // Sync dropdown checkboxes
-    document.querySelectorAll('.tag-filter-checkbox').forEach(cb => {
-        cb.checked = selectedTagIds.includes(String(cb.dataset.tagId));
+    // Sync checkmark visibility
+    document.querySelectorAll('.tag-filter-item').forEach(item => {
+        const check = item.querySelector('.filter-check');
+        if (check) {
+            check.style.visibility = selectedTagIds.includes(String(item.dataset.tagId)) ? 'visible' : 'hidden';
+        }
     });
 
     // Update dropdown button label
@@ -552,8 +544,8 @@ function renderTagFilter() {
 
     clearAllLink.classList.remove('d-none');
     selectedTagIds.forEach(tagId => {
-        const cb = document.querySelector(`.tag-filter-checkbox[data-tag-id="${tagId}"]`);
-        const name = cb ? cb.dataset.tagName : `Tag ${tagId}`;
+        const item = document.querySelector(`.tag-filter-item[data-tag-id="${tagId}"]`);
+        const name = item ? item.dataset.tagName : `Tag ${tagId}`;
         const pill = document.createElement('span');
         pill.className = 'badge bg-primary me-1';
         pill.textContent = `${name} `;

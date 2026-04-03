@@ -161,8 +161,7 @@ body {
     min-height: 120px;
     max-height: 70vh;
     overflow-y: auto;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    border-radius: 0;
     border: none;
 }
 
