@@ -12,6 +12,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,9 +28,10 @@ public class TimelineService {
         this.auditLogService = auditLogService;
     }
 
-    public List<TimelineEntry> getTimeline(Long taskId, User currentUser) {
+    public List<TimelineEntry> getTimeline(UUID taskId, User currentUser) {
         List<Comment> comments = commentService.getCommentsByTaskId(taskId);
-        List<AuditLog> auditEntries = auditLogService.getEntityHistory(Task.class, taskId);
+        List<AuditLog> auditEntries =
+                auditLogService.getEntityHistory(Task.class, taskId.toString());
 
         List<TimelineEntry> timeline = new ArrayList<>();
 

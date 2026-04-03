@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.Data;
 
 @Data
@@ -14,7 +15,7 @@ import lombok.Data;
 public class AdminUserRequest {
 
     // Null on create, set on edit — used by @Unique to exclude self
-    private Long id;
+    private UUID id;
 
     @NotBlank(message = "{user.name.notBlank}")
     @Size(max = 100, message = "{user.name.size}")

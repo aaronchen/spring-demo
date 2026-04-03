@@ -66,27 +66,29 @@ class AuditTemplateHelperTest {
 
     @Test
     void resolvesProjectUrl() {
-        assertThat(helper.resolveUrl("Project", 5L)).isEqualTo("/projects/5");
+        assertThat(helper.resolveUrl("Project", "00000000-0000-0000-0000-000000000005"))
+                .isEqualTo("/projects/00000000-0000-0000-0000-000000000005");
     }
 
     @Test
     void resolvesTaskUrl() {
-        assertThat(helper.resolveUrl("Task", 42L)).isEqualTo("/tasks/42");
+        assertThat(helper.resolveUrl("Task", "00000000-0000-0000-0000-000000000042"))
+                .isEqualTo("/tasks/00000000-0000-0000-0000-000000000042");
     }
 
     @Test
     void returnsNullForUserType() {
-        assertThat(helper.resolveUrl("User", 1L)).isNull();
+        assertThat(helper.resolveUrl("User", "00000000-0000-0000-0000-000000000001")).isNull();
     }
 
     @Test
     void returnsNullForSprintType() {
-        assertThat(helper.resolveUrl("Sprint", 1L)).isNull();
+        assertThat(helper.resolveUrl("Sprint", "1")).isNull();
     }
 
     @Test
     void returnsNullForNullRefType() {
-        assertThat(helper.resolveUrl(null, 1L)).isNull();
+        assertThat(helper.resolveUrl(null, "00000000-0000-0000-0000-000000000001")).isNull();
     }
 
     @Test

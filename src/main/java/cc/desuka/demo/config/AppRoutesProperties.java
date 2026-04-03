@@ -38,6 +38,7 @@ public class AppRoutesProperties {
     private RouteTemplate projectDetail = new RouteTemplate("/projects/{projectId}");
     private RouteTemplate projectSettings = new RouteTemplate("/projects/{projectId}/settings");
     private RouteTemplate taskDetail = new RouteTemplate("/tasks/{taskId}");
+    private RouteTemplate taskEdit = new RouteTemplate("/tasks/{taskId}/edit");
 
     // ── API resource routes ───────────────────────────────────────────
     private RouteTemplate apiTasks = new RouteTemplate("/api/tasks");

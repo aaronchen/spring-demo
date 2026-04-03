@@ -10,6 +10,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.service.UserPreferenceService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
@@ -126,7 +127,7 @@ public class ProfileController {
             @RequestParam(defaultValue = "false") boolean dueReminder,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             RedirectAttributes redirectAttributes) {
-        Long userId = currentDetails.getUser().getId();
+        UUID userId = currentDetails.getUser().getId();
         userPreferenceService.save(userId, UserPreferences.KEY_TASK_VIEW, taskView);
         userPreferenceService.save(
                 userId, UserPreferences.KEY_DEFAULT_USER_FILTER, defaultUserFilter);

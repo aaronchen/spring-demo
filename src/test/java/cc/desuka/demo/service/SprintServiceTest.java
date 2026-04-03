@@ -14,6 +14,7 @@ import cc.desuka.demo.repository.SprintRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,8 @@ import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class SprintServiceTest {
+
+    private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Mock private SprintRepository sprintRepository;
     @Mock private TaskService taskService;
@@ -40,7 +43,7 @@ class SprintServiceTest {
     @BeforeEach
     void setUp() {
         project = new Project("Test Project", "Description");
-        project.setId(1L);
+        project.setId(PROJECT_ID);
         project.setStatus(ProjectStatus.ACTIVE);
 
         sprint = new Sprint();
@@ -56,8 +59,9 @@ class SprintServiceTest {
 
     @Test
     void createSprint_validDates_savesAndPublishesAuditEvent() {
-        when(projectQueryService.getProjectById(1L)).thenReturn(project);
-        when(sprintRepository.existsOverlapping(eq(1L), eq(0L), any(), any())).thenReturn(false);
+        when(projectQueryService.getProjectById(PROJECT_ID)).thenReturn(project);
+        when(sprintRepository.existsOverlapping(eq(PROJECT_ID), eq(0L), any(), any()))
+                .thenReturn(false);
         when(sprintRepository.save(any(Sprint.class)))
                 .thenAnswer(
                         inv -> {
@@ -74,7 +78,7 @@ class SprintServiceTest {
             newSprint.setStartDate(LocalDate.of(2026, 4, 1));
             newSprint.setEndDate(LocalDate.of(2026, 4, 14));
 
-            Sprint result = sprintService.createSprint(1L, newSprint);
+            Sprint result = sprintService.createSprint(PROJECT_ID, newSprint);
 
             assertThat(result.getProject()).isEqualTo(project);
             assertThat(result.getName()).isEqualTo("Sprint 1");
@@ -85,7 +89,7 @@ class SprintServiceTest {
 
     @Test
     void createSprint_invalidDates_throwsException() {
-        when(projectQueryService.getProjectById(1L)).thenReturn(project);
+        when(projectQueryService.getProjectById(PROJECT_ID)).thenReturn(project);
         when(messages.get("sprint.error.endBeforeStart"))
                 .thenReturn("End date must be after start date");
 
@@ -94,14 +98,15 @@ class SprintServiceTest {
         badSprint.setStartDate(LocalDate.of(2026, 4, 14));
         badSprint.setEndDate(LocalDate.of(2026, 4, 1));
 
-        assertThatThrownBy(() -> sprintService.createSprint(1L, badSprint))
+        assertThatThrownBy(() -> sprintService.createSprint(PROJECT_ID, badSprint))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void createSprint_overlappingDates_throwsException() {
-        when(projectQueryService.getProjectById(1L)).thenReturn(project);
-        when(sprintRepository.existsOverlapping(eq(1L), eq(0L), any(), any())).thenReturn(true);
+        when(projectQueryService.getProjectById(PROJECT_ID)).thenReturn(project);
+        when(sprintRepository.existsOverlapping(eq(PROJECT_ID), eq(0L), any(), any()))
+                .thenReturn(true);
         when(messages.get("sprint.error.overlapping")).thenReturn("Sprint dates overlap");
 
         Sprint newSprint = new Sprint();
@@ -109,7 +114,7 @@ class SprintServiceTest {
         newSprint.setStartDate(LocalDate.of(2026, 4, 1));
         newSprint.setEndDate(LocalDate.of(2026, 4, 14));
 
-        assertThatThrownBy(() -> sprintService.createSprint(1L, newSprint))
+        assertThatThrownBy(() -> sprintService.createSprint(PROJECT_ID, newSprint))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -118,7 +123,8 @@ class SprintServiceTest {
     @Test
     void updateSprint_changesFieldsAndPublishesEvent() {
         when(sprintQueryService.getSprintById(1L)).thenReturn(sprint);
-        when(sprintRepository.existsOverlapping(eq(1L), eq(1L), any(), any())).thenReturn(false);
+        when(sprintRepository.existsOverlapping(eq(PROJECT_ID), eq(1L), any(), any()))
+                .thenReturn(false);
         when(sprintRepository.save(any(Sprint.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -143,7 +149,8 @@ class SprintServiceTest {
     @Test
     void updateSprint_overlappingDates_throwsException() {
         when(sprintQueryService.getSprintById(1L)).thenReturn(sprint);
-        when(sprintRepository.existsOverlapping(eq(1L), eq(1L), any(), any())).thenReturn(true);
+        when(sprintRepository.existsOverlapping(eq(PROJECT_ID), eq(1L), any(), any()))
+                .thenReturn(true);
         when(messages.get("sprint.error.overlapping")).thenReturn("Sprint dates overlap");
 
         Sprint details = new Sprint();

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +35,7 @@ public class TaskDependencyService {
      *
      * <p>Null means "not submitted" (leave unchanged). Empty list means "clear all".
      */
-    public void reconcile(Task task, List<Long> blockedByIds, List<Long> blocksIds) {
+    public void reconcile(Task task, List<UUID> blockedByIds, List<UUID> blocksIds) {
         if (blockedByIds != null) {
             reconcileBlockedBy(task, blockedByIds);
         }
@@ -45,14 +46,14 @@ public class TaskDependencyService {
 
     /** Returns non-terminal tasks that block the given task. */
     @Transactional(readOnly = true)
-    public List<Task> getActiveBlockers(Long taskId) {
+    public List<Task> getActiveBlockers(UUID taskId) {
         Task task = taskQueryService.getTaskById(taskId);
         return task.getBlockedBy().stream().filter(t -> !t.getStatus().isTerminal()).toList();
     }
 
     /** Returns true if the task has at least one non-terminal blocker. */
     @Transactional(readOnly = true)
-    public boolean hasActiveBlockers(Long taskId) {
+    public boolean hasActiveBlockers(UUID taskId) {
         Task task = taskQueryService.getTaskById(taskId);
         return task.getBlockedBy().stream().anyMatch(t -> !t.getStatus().isTerminal());
     }
@@ -62,13 +63,13 @@ public class TaskDependencyService {
      * create a cycle. A cycle exists if blockedTask can reach blockingTask by following the
      * "blocks" edges — meaning blockingTask is already (transitively) blocked by blockedTask.
      */
-    public boolean wouldCreateCycle(Long blockedTaskId, Long blockingTaskId) {
-        Set<Long> visited = new HashSet<>();
-        Queue<Long> queue = new ArrayDeque<>();
+    public boolean wouldCreateCycle(UUID blockedTaskId, UUID blockingTaskId) {
+        Set<UUID> visited = new HashSet<>();
+        Queue<UUID> queue = new ArrayDeque<>();
         queue.add(blockedTaskId);
 
         while (!queue.isEmpty()) {
-            Long current = queue.poll();
+            UUID current = queue.poll();
             if (current.equals(blockingTaskId)) {
                 return true;
             }
@@ -84,10 +85,10 @@ public class TaskDependencyService {
 
     // blockedBy is the inverse side (mappedBy = "blocks").
     // To add/remove, we must manipulate each blocker's owning "blocks" set.
-    private void reconcileBlockedBy(Task task, List<Long> blockedByIds) {
-        Set<Long> currentIds =
+    private void reconcileBlockedBy(Task task, List<UUID> blockedByIds) {
+        Set<UUID> currentIds =
                 task.getBlockedBy().stream().map(Task::getId).collect(Collectors.toSet());
-        Set<Long> newIds = new HashSet<>(blockedByIds);
+        Set<UUID> newIds = new HashSet<>(blockedByIds);
 
         // Remove: blockers no longer in the list
         for (Task blocker : new HashSet<>(task.getBlockedBy())) {
@@ -98,7 +99,7 @@ public class TaskDependencyService {
         }
 
         // Add: new blockers
-        for (Long blockerId : newIds) {
+        for (UUID blockerId : newIds) {
             if (!currentIds.contains(blockerId)) {
                 validateNewEdge(task, blockerId);
                 // "blockerId blocks task" → wouldCreateCycle(task.id, blockerId)
@@ -117,16 +118,16 @@ public class TaskDependencyService {
     }
 
     // blocks is the owning side — manipulate task.blocks directly.
-    private void reconcileBlocks(Task task, List<Long> blocksIds) {
-        Set<Long> currentIds =
+    private void reconcileBlocks(Task task, List<UUID> blocksIds) {
+        Set<UUID> currentIds =
                 task.getBlocks().stream().map(Task::getId).collect(Collectors.toSet());
-        Set<Long> newIds = new HashSet<>(blocksIds);
+        Set<UUID> newIds = new HashSet<>(blocksIds);
 
         // Remove: tasks no longer blocked
         task.getBlocks().removeIf(t -> !newIds.contains(t.getId()));
 
         // Add: newly blocked tasks
-        for (Long blockedId : newIds) {
+        for (UUID blockedId : newIds) {
             if (!currentIds.contains(blockedId)) {
                 validateNewEdge(task, blockedId);
                 // "task blocks blockedId" → wouldCreateCycle(blockedId, task.id)
@@ -143,7 +144,7 @@ public class TaskDependencyService {
         }
     }
 
-    private void validateNewEdge(Task task, Long targetId) {
+    private void validateNewEdge(Task task, UUID targetId) {
         if (task.getId().equals(targetId)) {
             throw new IllegalArgumentException(messages.get("task.dependency.error.selfReference"));
         }

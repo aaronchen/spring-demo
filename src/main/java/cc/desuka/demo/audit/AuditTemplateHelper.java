@@ -47,7 +47,7 @@ public class AuditTemplateHelper {
 
     // --- Reference URL resolution ---
 
-    public String resolveUrl(String refType, Long refId) {
+    public String resolveUrl(String refType, String refId) {
         if (refType == null || refId == null) return null;
         return switch (refType) {
             case AuditField.REF_PROJECT -> appRoutes.getProjectDetail().resolve("projectId", refId);

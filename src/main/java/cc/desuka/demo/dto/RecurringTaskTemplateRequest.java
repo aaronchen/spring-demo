@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -44,7 +45,7 @@ public class RecurringTaskTemplateRequest {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
-    private Long assigneeId;
+    private UUID assigneeId;
 
     private List<Long> tagIds;
 }

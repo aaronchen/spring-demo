@@ -74,8 +74,8 @@
 
     <script th:if="${mode != 'create'}" th:inline="javascript">
         (function() {
-            const taskId = /*[[${task.id}]]*/ 0;
-            const projectId = /*[[${task.project.id}]]*/ 0;
+            const taskId = /*[[${task.id}]]*/ '';
+            const projectId = /*[[${task.project.id}]]*/ '';
             const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
             const staleBanner = document.getElementById('stale-banner');
             const staleRefresh = document.getElementById('stale-banner-refresh');

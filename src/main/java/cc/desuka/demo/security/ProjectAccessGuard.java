@@ -1,6 +1,7 @@
 package cc.desuka.demo.security;
 
 import cc.desuka.demo.service.ProjectQueryService;
+import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
@@ -23,7 +24,7 @@ public class ProjectAccessGuard {
     }
 
     /** Throws {@link AccessDeniedException} unless the user has project access or is admin. */
-    public void requireViewAccess(Long projectId, CustomUserDetails currentDetails) {
+    public void requireViewAccess(UUID projectId, CustomUserDetails currentDetails) {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }
@@ -36,7 +37,7 @@ public class ProjectAccessGuard {
      * Throws {@link AccessDeniedException} unless the user can edit within the project (EDITOR or
      * OWNER role, or system admin).
      */
-    public void requireEditAccess(Long projectId, CustomUserDetails currentDetails) {
+    public void requireEditAccess(UUID projectId, CustomUserDetails currentDetails) {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }
@@ -46,7 +47,7 @@ public class ProjectAccessGuard {
     }
 
     /** Returns true if the user can edit within the project (EDITOR/OWNER or admin). */
-    public boolean canEdit(Long projectId, CustomUserDetails currentDetails) {
+    public boolean canEdit(UUID projectId, CustomUserDetails currentDetails) {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return true;
         }
@@ -54,7 +55,7 @@ public class ProjectAccessGuard {
     }
 
     /** Throws {@link AccessDeniedException} unless the user is a project OWNER or system admin. */
-    public void requireOwnerAccess(Long projectId, CustomUserDetails currentDetails) {
+    public void requireOwnerAccess(UUID projectId, CustomUserDetails currentDetails) {
         if (AuthExpressions.isAdmin(currentDetails.getUser())) {
             return;
         }

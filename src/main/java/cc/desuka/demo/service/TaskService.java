@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -64,14 +65,14 @@ public class TaskService {
 
     // tagIds and assigneeId come from the caller (API or web controller).
     // The mapper cannot do DB lookups, so that responsibility lives here.
-    public Task createTask(Task task, List<Long> tagIds, Long assigneeId) {
+    public Task createTask(Task task, List<Long> tagIds, UUID assigneeId) {
         return createTask(task, tagIds, assigneeId, null, null);
     }
 
     public Task createTask(
             Task task,
             List<Long> tagIds,
-            Long assigneeId,
+            UUID assigneeId,
             List<String> checklistTexts,
             List<Boolean> checklistChecked) {
         if (task.getProject() == null) {
@@ -101,16 +102,16 @@ public class TaskService {
     }
 
     public Task updateTask(
-            Long id, Task taskDetails, List<Long> tagIds, Long assigneeId, Long expectedVersion) {
+            UUID id, Task taskDetails, List<Long> tagIds, UUID assigneeId, Long expectedVersion) {
         return updateTask(
                 id, taskDetails, tagIds, assigneeId, expectedVersion, null, null, null, null);
     }
 
     public Task updateTask(
-            Long id,
+            UUID id,
             Task taskDetails,
             List<Long> tagIds,
-            Long assigneeId,
+            UUID assigneeId,
             Long expectedVersion,
             List<String> checklistTexts,
             List<Boolean> checklistChecked) {
@@ -127,15 +128,15 @@ public class TaskService {
     }
 
     public Task updateTask(
-            Long id,
+            UUID id,
             Task taskDetails,
             List<Long> tagIds,
-            Long assigneeId,
+            UUID assigneeId,
             Long expectedVersion,
             List<String> checklistTexts,
             List<Boolean> checklistChecked,
-            List<Long> blockedByIds,
-            List<Long> blocksIds) {
+            List<UUID> blockedByIds,
+            List<UUID> blocksIds) {
         Task task = taskQueryService.getTaskById(id);
         if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
             throw new StaleDataException(Task.class, id);
@@ -200,7 +201,7 @@ public class TaskService {
         return saved;
     }
 
-    public void deleteTask(Long id) {
+    public void deleteTask(UUID id) {
         Task task = taskQueryService.getTaskWithDependencies(id);
 
         if (task.getStatus() == TaskStatus.COMPLETED) {
@@ -234,7 +235,7 @@ public class TaskService {
                         actorId(SecurityUtils.getCurrentUser())));
     }
 
-    public Task updateField(Long id, String field, String value) {
+    public Task updateField(UUID id, String field, String value) {
         Task task = taskQueryService.getTaskById(id);
         Map<String, AuditField> before = task.toAuditSnapshot();
 
@@ -259,7 +260,7 @@ public class TaskService {
             case Task.FIELD_USER_ID ->
                     task.setUser(
                             value != null && !value.isBlank()
-                                    ? userService.findUserById(Long.valueOf(value))
+                                    ? userService.findUserById(UUID.fromString(value))
                                     : null);
             default ->
                     throw new IllegalArgumentException(
@@ -269,7 +270,7 @@ public class TaskService {
         return saveAndPublish(task, before);
     }
 
-    public Task setStatus(Long id, TaskStatus newStatus) {
+    public Task setStatus(UUID id, TaskStatus newStatus) {
         Task task = taskQueryService.getTaskById(id);
         if (task.getStatus() == newStatus) {
             return task;
@@ -284,7 +285,7 @@ public class TaskService {
 
     // Advance status: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN
     // CANCELLED is not part of the cycle — it's a separate action.
-    public Task advanceStatus(Long id) {
+    public Task advanceStatus(UUID id) {
         Task task = taskQueryService.getTaskById(id);
         Map<String, AuditField> before = task.toAuditSnapshot();
         TaskStatus previousStatus = task.getStatus();
@@ -326,8 +327,8 @@ public class TaskService {
         return saved;
     }
 
-    private static long actorId(User user) {
-        return user != null ? user.getId() : 0L;
+    private static UUID actorId(User user) {
+        return user != null ? user.getId() : null;
     }
 
     private void applyChecklist(Task task, List<String> texts, List<Boolean> checked) {
@@ -344,7 +345,7 @@ public class TaskService {
         }
     }
 
-    private void requireNotBlocked(Long taskId, TaskStatus newStatus) {
+    private void requireNotBlocked(UUID taskId, TaskStatus newStatus) {
         // Only block completion — other transitions are allowed even when blocked
         if (newStatus != TaskStatus.COMPLETED) {
             return;
@@ -359,14 +360,14 @@ public class TaskService {
         }
     }
 
-    public void assignSprint(Long taskId, Long sprintId) {
+    public void assignSprint(UUID taskId, Long sprintId) {
         Task task = taskQueryService.getTaskById(taskId);
         Map<String, AuditField> before = task.toAuditSnapshot();
         task.setSprint(sprintId != null ? sprintQueryService.getSprintById(sprintId) : null);
         saveAndPublish(task, before);
     }
 
-    public void clearSprintAssignments(Long projectId) {
+    public void clearSprintAssignments(UUID projectId) {
         taskRepository
                 .findAll(
                         (root, query, cb) ->

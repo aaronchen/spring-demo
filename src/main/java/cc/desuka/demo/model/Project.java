@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "projects")
@@ -30,8 +31,8 @@ public class Project implements Auditable {
     public static final String FIELD_ROLE = "role";
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @NotBlank(message = "{project.name.notBlank}")
     @Size(min = 1, max = 100, message = "{project.name.size}")
@@ -98,11 +99,11 @@ public class Project implements Auditable {
 
     // Getters and Setters
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 

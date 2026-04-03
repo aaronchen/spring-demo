@@ -6,6 +6,7 @@ import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.service.DashboardService;
 import cc.desuka.demo.service.ProjectQueryService;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -41,13 +42,13 @@ public class DashboardController {
 
     private void addStats(CustomUserDetails currentDetails, Model model) {
         User currentUser = currentDetails.getUser();
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentUser)
                         ? null
                         : projectQueryService.getAccessibleProjectIds(currentUser.getId());
         model.addAttribute("stats", dashboardService.buildStats(currentUser, accessibleProjectIds));
         // Project IDs for WebSocket subscriptions (always a concrete list, never null)
-        List<Long> wsProjectIds =
+        List<UUID> wsProjectIds =
                 accessibleProjectIds != null
                         ? accessibleProjectIds
                         : projectQueryService.getAllActiveProjectIds();

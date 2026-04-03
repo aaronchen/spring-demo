@@ -10,6 +10,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.presence.PresenceService;
 import cc.desuka.demo.security.CustomUserDetails;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class PresenceApiControllerTest {
 
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private PresenceService presenceService;
@@ -33,7 +36,7 @@ class PresenceApiControllerTest {
     @BeforeEach
     void setUp() {
         User regularUser = new User("Bob", "bob@example.com", "password", Role.USER);
-        regularUser.setId(2L);
+        regularUser.setId(ID_2);
         regularDetails = new CustomUserDetails(regularUser);
     }
 

@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 public record RecentViewResponse(
         String entityType,
-        Long entityId,
+        String entityId,
         String entityTitle,
         String href,
         LocalDateTime viewedAt,

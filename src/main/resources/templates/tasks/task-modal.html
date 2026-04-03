@@ -49,8 +49,8 @@
 </div>
 <script th:if="${mode != 'create'}" th:inline="javascript">
     (function() {
-        const taskId = /*[[${task.id}]]*/ 0;
-        const projectId = /*[[${task.project.id}]]*/ 0;
+        const taskId = /*[[${task.id}]]*/ '';
+        const projectId = /*[[${task.project.id}]]*/ '';
         const refreshUrl = /*[[${mode == 'edit' ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}]]*/ '';
         const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
         const banner = document.getElementById('modal-stale-banner');

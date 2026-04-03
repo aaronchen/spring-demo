@@ -68,6 +68,15 @@ body {
     color: var(--bs-danger);
 }
 
+/* Chrome/Edge native date picker icon overlaps Bootstrap's validation feedback icon.
+   Shift the validation icon left only in WebKit/Blink (which render the picker indicator). */
+@supports selector(::-webkit-calendar-picker-indicator) {
+    input[type="date"].is-invalid,
+    input[type="date"].is-valid {
+        background-position: right 2rem center;
+    }
+}
+
 /* Match radio-button groups to form-control height for alignment in rows */
 .form-check-row {
     min-height: 2.375rem;

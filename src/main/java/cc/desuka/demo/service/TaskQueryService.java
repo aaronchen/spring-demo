@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,13 +37,13 @@ public class TaskQueryService {
 
     // ── Single-entity lookups ─────────────────────────────────────────────
 
-    public Task getTaskById(Long id) {
+    public Task getTaskById(UUID id) {
         return taskRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
     }
 
-    public Task getTaskWithDependencies(Long id) {
+    public Task getTaskWithDependencies(UUID id) {
         Task task =
                 taskRepository
                         .findWithDependenciesById(id)
@@ -61,7 +62,7 @@ public class TaskQueryService {
         return taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
     }
 
-    public List<Task> getIncompleteTasks(List<Long> accessibleProjectIds) {
+    public List<Task> getIncompleteTasks(List<UUID> accessibleProjectIds) {
         List<Task> tasks = taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
         return filterByAccessibleProjects(tasks, accessibleProjectIds);
     }
@@ -74,7 +75,7 @@ public class TaskQueryService {
                 keyword, keyword);
     }
 
-    public List<Task> searchTasks(String keyword, List<Long> accessibleProjectIds) {
+    public List<Task> searchTasks(String keyword, List<UUID> accessibleProjectIds) {
         List<Task> tasks = searchTasks(keyword);
         return filterByAccessibleProjects(tasks, accessibleProjectIds);
     }
@@ -117,11 +118,11 @@ public class TaskQueryService {
 
     // ── Counts (project-scoped) ───────────────────────────────────────────
 
-    public long countForProjects(List<Long> projectIds) {
+    public long countForProjects(List<UUID> projectIds) {
         return taskRepository.count(TaskSpecifications.withProjectIds(projectIds));
     }
 
-    public long countByStatusForProjects(List<Long> projectIds, TaskStatus status) {
+    public long countByStatusForProjects(List<UUID> projectIds, TaskStatus status) {
         return taskRepository.count(
                 TaskSpecifications.withProjectIds(projectIds)
                         .and(
@@ -129,17 +130,17 @@ public class TaskQueryService {
                                         TaskStatusFilter.valueOf(status.name()))));
     }
 
-    public long countOverdueForProjects(List<Long> projectIds) {
+    public long countOverdueForProjects(List<UUID> projectIds) {
         return taskRepository.count(
                 TaskSpecifications.withProjectIds(projectIds)
                         .and(TaskSpecifications.withOverdue(true)));
     }
 
-    public long countForProject(Long projectId) {
+    public long countForProject(UUID projectId) {
         return taskRepository.count(TaskSpecifications.withProjectId(projectId));
     }
 
-    public long countByStatusForProject(Long projectId, TaskStatus status) {
+    public long countByStatusForProject(UUID projectId, TaskStatus status) {
         return taskRepository.count(
                 TaskSpecifications.withProjectId(projectId)
                         .and(
@@ -147,7 +148,7 @@ public class TaskQueryService {
                                         TaskStatusFilter.valueOf(status.name()))));
     }
 
-    public long countOverdueForProject(Long projectId) {
+    public long countOverdueForProject(UUID projectId) {
         return taskRepository.count(
                 TaskSpecifications.withProjectId(projectId)
                         .and(TaskSpecifications.withOverdue(true)));
@@ -170,7 +171,7 @@ public class TaskQueryService {
         return taskRepository.findByDueDateAndStatusNotIn(date, TaskStatus.terminalStatuses());
     }
 
-    public Map<Long, String> getTitlesByIds(List<Long> ids) {
+    public Map<UUID, String> getTitlesByIds(List<UUID> ids) {
         if (ids.isEmpty()) return Map.of();
         return taskRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Task::getId, Task::getTitle));
@@ -179,7 +180,7 @@ public class TaskQueryService {
     // ── Dependency picker search ──────────────────────────────────────────
 
     public List<Map<String, Object>> searchForDependency(
-            Long projectId, String query, List<Long> excludeTaskIds) {
+            UUID projectId, String query, List<UUID> excludeTaskIds) {
         return taskRepository
                 .findAll(
                         TaskSpecifications.withProjectId(projectId),
@@ -204,7 +205,7 @@ public class TaskQueryService {
     // ── Grouping ──────────────────────────────────────────────────────────
 
     private List<Task> filterByAccessibleProjects(
-            List<Task> tasks, List<Long> accessibleProjectIds) {
+            List<Task> tasks, List<UUID> accessibleProjectIds) {
         if (accessibleProjectIds == null) return tasks;
         return tasks.stream()
                 .filter(t -> accessibleProjectIds.contains(t.getProject().getId()))

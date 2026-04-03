@@ -15,6 +15,7 @@ import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class ProjectQueryServiceTest {
+
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectMemberRepository memberRepository;
@@ -37,12 +42,12 @@ class ProjectQueryServiceTest {
     @BeforeEach
     void setUp() {
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
 
         project = new Project("Test Project", "Description");
-        project.setId(1L);
+        project.setId(ID_1);
         project.setCreatedBy(alice);
         project.setStatus(ProjectStatus.ACTIVE);
     }
@@ -51,18 +56,18 @@ class ProjectQueryServiceTest {
 
     @Test
     void getProjectById_found() {
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(projectRepository.findById(ID_1)).thenReturn(Optional.of(project));
 
-        Project result = projectQueryService.getProjectById(1L);
+        Project result = projectQueryService.getProjectById(ID_1);
 
         assertThat(result).isEqualTo(project);
     }
 
     @Test
     void getProjectById_notFound_throwsEntityNotFoundException() {
-        when(projectRepository.findById(99L)).thenReturn(Optional.empty());
+        when(projectRepository.findById(ID_99)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> projectQueryService.getProjectById(99L))
+        assertThatThrownBy(() -> projectQueryService.getProjectById(ID_99))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -71,16 +76,16 @@ class ProjectQueryServiceTest {
     @Test
     void getProjectsForUser_returnsActiveOnly() {
         Project archived = new Project("Archived", "Old project");
-        archived.setId(2L);
+        archived.setId(ID_2);
         archived.setStatus(ProjectStatus.ARCHIVED);
 
-        when(memberRepository.findByUserId(1L))
+        when(memberRepository.findByUserId(ID_1))
                 .thenReturn(
                         List.of(
                                 new ProjectMember(project, alice, ProjectRole.OWNER),
                                 new ProjectMember(archived, alice, ProjectRole.EDITOR)));
 
-        List<Project> result = projectQueryService.getProjectsForUser(1L);
+        List<Project> result = projectQueryService.getProjectsForUser(ID_1);
 
         assertThat(result).containsExactly(project);
     }
@@ -89,48 +94,49 @@ class ProjectQueryServiceTest {
 
     @Test
     void isMember_true() {
-        when(memberRepository.existsByProjectIdAndUserId(1L, 1L)).thenReturn(true);
+        when(memberRepository.existsByProjectIdAndUserId(ID_1, ID_1)).thenReturn(true);
 
-        assertThat(projectQueryService.isMember(1L, 1L)).isTrue();
+        assertThat(projectQueryService.isMember(ID_1, ID_1)).isTrue();
     }
 
     @Test
     void isMember_false() {
-        when(memberRepository.existsByProjectIdAndUserId(1L, 99L)).thenReturn(false);
+        when(memberRepository.existsByProjectIdAndUserId(ID_1, ID_99)).thenReturn(false);
 
-        assertThat(projectQueryService.isMember(1L, 99L)).isFalse();
+        assertThat(projectQueryService.isMember(ID_1, ID_99)).isFalse();
     }
 
     @Test
     void isOwner_true() {
         ProjectMember ownerMember = new ProjectMember(project, alice, ProjectRole.OWNER);
-        when(memberRepository.findByProjectIdAndUserId(1L, 1L))
+        when(memberRepository.findByProjectIdAndUserId(ID_1, ID_1))
                 .thenReturn(Optional.of(ownerMember));
 
-        assertThat(projectQueryService.isOwner(1L, 1L)).isTrue();
+        assertThat(projectQueryService.isOwner(ID_1, ID_1)).isTrue();
     }
 
     @Test
     void isEditor_editorCanEdit() {
         ProjectMember memberShip = new ProjectMember(project, bob, ProjectRole.EDITOR);
-        when(memberRepository.findByProjectIdAndUserId(1L, 2L)).thenReturn(Optional.of(memberShip));
+        when(memberRepository.findByProjectIdAndUserId(ID_1, ID_2))
+                .thenReturn(Optional.of(memberShip));
 
-        assertThat(projectQueryService.isEditor(1L, 2L)).isTrue();
+        assertThat(projectQueryService.isEditor(ID_1, ID_2)).isTrue();
     }
 
     @Test
     void isEditor_viewerCannotEdit() {
         ProjectMember viewerMember = new ProjectMember(project, bob, ProjectRole.VIEWER);
-        when(memberRepository.findByProjectIdAndUserId(1L, 2L))
+        when(memberRepository.findByProjectIdAndUserId(ID_1, ID_2))
                 .thenReturn(Optional.of(viewerMember));
 
-        assertThat(projectQueryService.isEditor(1L, 2L)).isFalse();
+        assertThat(projectQueryService.isEditor(ID_1, ID_2)).isFalse();
     }
 
     @Test
     void isEditor_nonMemberCannotEdit() {
-        when(memberRepository.findByProjectIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
+        when(memberRepository.findByProjectIdAndUserId(ID_1, ID_99)).thenReturn(Optional.empty());
 
-        assertThat(projectQueryService.isEditor(1L, 99L)).isFalse();
+        assertThat(projectQueryService.isEditor(ID_1, ID_99)).isFalse();
     }
 }

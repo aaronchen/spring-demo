@@ -18,6 +18,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,10 @@ import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class CommentServiceTest {
+
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID TASK_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
 
     @Mock private CommentRepository commentRepository;
     @Mock private TaskQueryService taskQueryService;
@@ -45,12 +50,12 @@ class CommentServiceTest {
     @BeforeEach
     void setUp() {
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
 
         task = new Task("Test Task", "Description");
-        task.setId(1L);
+        task.setId(TASK_ID);
 
         comment = new Comment();
         comment.setId(1L);
@@ -82,9 +87,10 @@ class CommentServiceTest {
 
     @Test
     void getCommentsByTaskId_delegatesToRepository() {
-        when(commentRepository.findByTaskIdOrderByCreatedAtAsc(1L)).thenReturn(List.of(comment));
+        when(commentRepository.findByTaskIdOrderByCreatedAtAsc(TASK_ID))
+                .thenReturn(List.of(comment));
 
-        List<Comment> result = commentService.getCommentsByTaskId(1L);
+        List<Comment> result = commentService.getCommentsByTaskId(TASK_ID);
 
         assertThat(result).containsExactly(comment);
     }
@@ -93,8 +99,8 @@ class CommentServiceTest {
 
     @Test
     void createComment_savesAndPublishesEvents() {
-        when(taskQueryService.getTaskById(1L)).thenReturn(task);
-        when(userService.getUserById(1L)).thenReturn(alice);
+        when(taskQueryService.getTaskById(TASK_ID)).thenReturn(task);
+        when(userService.getUserById(ID_1)).thenReturn(alice);
         when(commentRepository.save(any(Comment.class)))
                 .thenAnswer(
                         inv -> {
@@ -106,7 +112,7 @@ class CommentServiceTest {
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
-            Comment result = commentService.createComment("New comment", 1L, 1L);
+            Comment result = commentService.createComment("New comment", TASK_ID, ID_1);
 
             assertThat(result.getText()).isEqualTo("New comment");
             assertThat(result.getTask()).isEqualTo(task);
@@ -157,68 +163,72 @@ class CommentServiceTest {
 
     @Test
     void deleteByTaskId_delegatesToRepository() {
-        commentService.deleteByTaskId(1L);
+        commentService.deleteByTaskId(TASK_ID);
 
-        verify(commentRepository).deleteByTaskId(1L);
+        verify(commentRepository).deleteByTaskId(TASK_ID);
     }
 
     // ── getSubscriberIds ─────────────────────────────────────────────────
 
     @Test
     void getSubscriberIds_mergesCommentersAndMentionedUsers() {
-        when(commentRepository.findDistinctUsersByTaskId(1L)).thenReturn(List.of(alice));
-        when(commentRepository.findCommentTextsByTaskId(1L))
-                .thenReturn(List.of("Hello @[Bob](userId:2)"));
+        when(commentRepository.findDistinctUsersByTaskId(TASK_ID)).thenReturn(List.of(alice));
+        when(commentRepository.findCommentTextsByTaskId(TASK_ID))
+                .thenReturn(List.of("Hello @[Bob](userId:" + ID_2 + ")"));
 
-        Set<Long> result = commentService.getSubscriberIds(1L);
+        Set<UUID> result = commentService.getSubscriberIds(TASK_ID);
 
-        assertThat(result).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(result).containsExactlyInAnyOrder(ID_1, ID_2);
     }
 
     @Test
     void getSubscriberIds_deduplicates() {
         // Alice is both a commenter and mentioned
-        when(commentRepository.findDistinctUsersByTaskId(1L)).thenReturn(List.of(alice));
-        when(commentRepository.findCommentTextsByTaskId(1L))
-                .thenReturn(List.of("@[Alice](userId:1) see this"));
+        when(commentRepository.findDistinctUsersByTaskId(TASK_ID)).thenReturn(List.of(alice));
+        when(commentRepository.findCommentTextsByTaskId(TASK_ID))
+                .thenReturn(List.of("@[Alice](userId:" + ID_1 + ") see this"));
 
-        Set<Long> result = commentService.getSubscriberIds(1L);
+        Set<UUID> result = commentService.getSubscriberIds(TASK_ID);
 
-        assertThat(result).containsExactly(1L);
+        assertThat(result).containsExactly(ID_1);
     }
 
     // ── getCommenterIds ──────────────────────────────────────────────────
 
     @Test
     void getCommenterIds_returnsDistinctUserIds() {
-        when(commentRepository.findDistinctUsersByTaskId(1L)).thenReturn(List.of(alice, bob));
+        when(commentRepository.findDistinctUsersByTaskId(TASK_ID)).thenReturn(List.of(alice, bob));
 
-        Set<Long> result = commentService.getCommenterIds(1L);
+        Set<UUID> result = commentService.getCommenterIds(TASK_ID);
 
-        assertThat(result).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(result).containsExactlyInAnyOrder(ID_1, ID_2);
     }
 
     // ── getPreviouslyMentionedUserIds ────────────────────────────────────
 
     @Test
     void getPreviouslyMentionedUserIds_parsesEncodedMentions() {
-        when(commentRepository.findCommentTextsByTaskId(1L))
+        when(commentRepository.findCommentTextsByTaskId(TASK_ID))
                 .thenReturn(
                         List.of(
-                                "Hey @[Alice](userId:1)",
-                                "cc @[Bob](userId:2) and @[Alice](userId:1)"));
+                                "Hey @[Alice](userId:" + ID_1 + ")",
+                                "cc @[Bob](userId:"
+                                        + ID_2
+                                        + ") and @[Alice](userId:"
+                                        + ID_1
+                                        + ")"));
 
-        Set<Long> result = commentService.getPreviouslyMentionedUserIds(1L);
+        Set<UUID> result = commentService.getPreviouslyMentionedUserIds(TASK_ID);
 
-        assertThat(result).containsExactlyInAnyOrder(1L, 2L);
+        assertThat(result).containsExactlyInAnyOrder(ID_1, ID_2);
     }
 
     @Test
     void getPreviouslyMentionedUserIds_noMentions_returnsEmpty() {
-        when(commentRepository.findCommentTextsByTaskId(1L))
+        when(commentRepository.findCommentTextsByTaskId(TASK_ID))
                 .thenReturn(List.of("Plain text comment"));
 
-        Set<Long> result = commentService.getPreviouslyMentionedUserIds(1L);
+        Set<UUID> result = commentService.getPreviouslyMentionedUserIds(TASK_ID);
 
         assertThat(result).isEmpty();
     }

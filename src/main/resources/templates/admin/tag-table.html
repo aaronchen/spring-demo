@@ -4,21 +4,18 @@
     <!-- Create Tag Form -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <form th:object="${tagRequest}" hx-post="/admin/tags" hx-target="#tag-management-content" hx-swap="outerHTML"
-                  class="row g-2 align-items-end">
-                <div class="col">
-                    <label class="form-label fw-bold form-label-required" th:text="#{tag.field.name}">Name</label>
+            <form th:object="${tagRequest}" hx-post="/admin/tags" hx-target="#tag-management-content" hx-swap="outerHTML">
+                <label class="form-label fw-bold form-label-required" th:text="#{tag.field.name}">Name</label>
+                <div class="input-group">
                     <input type="text" class="form-control" name="name"
                            th:placeholder="#{tag.field.name.placeholder}"
                            th:classappend="${#fields.hasErrors('name') ? 'is-invalid' : ''}"
                            th:value="${tagName}">
-                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
-                         th:errors="*{name}">Error</div>
-                </div>
-                <div class="col-auto">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-plus-circle"></i> <span th:text="#{admin.tags.create}">Add Tag</span>
                     </button>
+                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}"
+                         th:errors="*{name}">Error</div>
                 </div>
             </form>
         </div>

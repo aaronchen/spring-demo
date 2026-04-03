@@ -10,9 +10,11 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.presence.PresenceService;
 import cc.desuka.demo.security.AuthExpressions;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +44,7 @@ public class DashboardService {
     /**
      * @param accessibleProjectIds null = admin (show all); non-null = scoped to these projects
      */
-    public DashboardStats buildStats(User user, List<Long> accessibleProjectIds) {
+    public DashboardStats buildStats(User user, List<UUID> accessibleProjectIds) {
         long myOpen = taskQueryService.countByUserAndStatus(user, TaskStatus.OPEN);
         long myInProgress = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_PROGRESS);
         long myInReview = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_REVIEW);
@@ -83,13 +85,17 @@ public class DashboardService {
         }
 
         List<AuditLog> activity = auditLogService.getRecentByActions(TASK_ACTIONS);
-        List<Long> taskIds =
+        List<UUID> taskIds =
                 activity.stream()
                         .map(AuditLog::getEntityId)
                         .filter(Objects::nonNull)
+                        .map(UUID::fromString)
                         .distinct()
                         .toList();
-        Map<Long, String> activityTaskTitles = taskQueryService.getTitlesByIds(taskIds);
+        Map<String, String> activityTaskTitles = new LinkedHashMap<>();
+        taskQueryService
+                .getTitlesByIds(taskIds)
+                .forEach((id, title) -> activityTaskTitles.put(id.toString(), title));
 
         return new DashboardStats(
                 myOpen,
@@ -112,7 +118,7 @@ public class DashboardService {
     }
 
     private ProjectSummary buildProjectSummary(Project project) {
-        Long pid = project.getId();
+        UUID pid = project.getId();
         long open = taskQueryService.countByStatusForProject(pid, TaskStatus.OPEN);
         long inProgress = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_PROGRESS);
         long inReview = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_REVIEW);

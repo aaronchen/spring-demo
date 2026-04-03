@@ -13,6 +13,7 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,7 +48,7 @@ public class RecurringTaskTemplateService {
     }
 
     @Transactional(readOnly = true)
-    public List<RecurringTaskTemplate> getTemplatesByProject(Long projectId) {
+    public List<RecurringTaskTemplate> getTemplatesByProject(UUID projectId) {
         return templateRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
     }
 
@@ -59,7 +60,7 @@ public class RecurringTaskTemplateService {
     }
 
     public RecurringTaskTemplate createTemplate(
-            Long projectId, RecurringTaskTemplateRequest request) {
+            UUID projectId, RecurringTaskTemplateRequest request) {
         Project project = projectQueryService.getProjectById(projectId);
         validateNotSprintEnabled(project);
         validateEndDate(request);
@@ -128,7 +129,7 @@ public class RecurringTaskTemplateService {
      * Disables all enabled recurring templates for a project. Called when sprints are enabled on
      * the project, since recurring tasks and sprints are mutually exclusive.
      */
-    public int disableAllForProject(Long projectId) {
+    public int disableAllForProject(UUID projectId) {
         return templateRepository.disableAllByProjectId(projectId);
     }
 

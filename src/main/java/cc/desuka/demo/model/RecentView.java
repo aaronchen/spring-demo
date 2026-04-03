@@ -32,7 +32,7 @@ public class RecentView {
     private String entityType;
 
     @Column(name = "entity_id", nullable = false)
-    private Long entityId;
+    private String entityId;
 
     @Column(name = "entity_title", nullable = false, length = 200)
     private String entityTitle;
@@ -42,7 +42,7 @@ public class RecentView {
 
     public RecentView() {}
 
-    public RecentView(User user, String entityType, Long entityId, String entityTitle) {
+    public RecentView(User user, String entityType, String entityId, String entityTitle) {
         this.user = user;
         this.entityType = entityType;
         this.entityId = entityId;
@@ -74,11 +74,11 @@ public class RecentView {
         this.entityType = entityType;
     }
 
-    public Long getEntityId() {
+    public String getEntityId() {
         return entityId;
     }
 
-    public void setEntityId(Long entityId) {
+    public void setEntityId(String entityId) {
         this.entityId = entityId;
     }
 

@@ -111,6 +111,10 @@ Two categories of routes:
 - Always use `resolve()` for parameterized routes — never concatenate path segments manually
 - Adding a new `RouteTemplate` field to `AppRoutesProperties` auto-exposes it in `/config.js` (reflection-based)
 
+### Entity ID Strategy
+
+User, Project, Task use `UUID` primary keys (`@GeneratedValue(strategy = GenerationType.UUID)`). All other entities (Comment, Sprint, Tag, ProjectMember, Notification, etc.) use `Long` (`GenerationType.IDENTITY`). Polymorphic ID columns (`AuditLog.entityId`, `RecentView.entityId`) are `String` to accommodate both types. Services that accept entity IDs for these (`RecentViewService.recordView`, `deleteByEntity`, `updateTitle`; `AuditEvent` constructor) take `Object` and call `.toString()` internally — callers pass the raw ID.
+
 ### Entity Collection Convention
 
 `Set` (not `List`) for `@ManyToMany` and `@OneToMany` associations — avoids Hibernate multiple-bags exception and matches relational semantics. Use `LinkedHashSet` for initialization. Only use `List` with `@OrderColumn` (e.g., `checklistItems` for drag-and-drop ordering). `@OrderBy` works with both `Set` and `List` — prefer `Set` with `LinkedHashSet` to preserve iteration order.
@@ -343,7 +347,7 @@ DevTools hot-reloads most changes. MapStruct mapper changes require `./mvnw comp
 - **`prod`** — PostgreSQL, Flyway migrations, no demo data, Swagger UI disabled
 - **`test`** — H2 (`testdb`), no SQL logging, Flyway disabled
 
-Profile-gated: `DataLoader` (dev), `H2DevConfig` (dev), `DevSecurityConfig` (dev)
+Profile-gated: `DataLoader` (dev), `H2DevConfig` (dev), `DevSecurityConfig` (dev), login page demo credentials (dev)
 
 ### Test Patterns
 

@@ -37,10 +37,14 @@ class AuditDetailsTest {
     @Test
     void diffTypedReferenceComparesById() {
         Map<String, AuditField> before = new LinkedHashMap<>();
-        before.put("project", AuditField.ref(1L, "Old Name", "Project"));
+        before.put(
+                "project",
+                AuditField.ref("00000000-0000-0000-0000-000000000001", "Old Name", "Project"));
 
         Map<String, AuditField> after = new LinkedHashMap<>();
-        after.put("project", AuditField.ref(1L, "New Name", "Project"));
+        after.put(
+                "project",
+                AuditField.ref("00000000-0000-0000-0000-000000000001", "New Name", "Project"));
 
         Map<String, Object> changes = AuditDetails.diff(before, after);
         assertThat(changes).isEmpty();
@@ -49,10 +53,14 @@ class AuditDetailsTest {
     @Test
     void diffTypedReferenceDetectsDifferentId() {
         Map<String, AuditField> before = new LinkedHashMap<>();
-        before.put("project", AuditField.ref(1L, "Project A", "Project"));
+        before.put(
+                "project",
+                AuditField.ref("00000000-0000-0000-0000-000000000001", "Project A", "Project"));
 
         Map<String, AuditField> after = new LinkedHashMap<>();
-        after.put("project", AuditField.ref(2L, "Project B", "Project"));
+        after.put(
+                "project",
+                AuditField.ref("00000000-0000-0000-0000-000000000002", "Project B", "Project"));
 
         Map<String, Object> changes = AuditDetails.diff(before, after);
         assertThat(changes).containsKey("project");

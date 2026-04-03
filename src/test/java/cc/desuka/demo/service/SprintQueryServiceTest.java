@@ -13,6 +13,7 @@ import cc.desuka.demo.repository.SprintRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +23,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class SprintQueryServiceTest {
+
+    private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Mock private SprintRepository sprintRepository;
 
@@ -33,7 +36,7 @@ class SprintQueryServiceTest {
     @BeforeEach
     void setUp() {
         project = new Project("Test Project", "Description");
-        project.setId(1L);
+        project.setId(PROJECT_ID);
 
         sprint = new Sprint();
         sprint.setId(1L);
@@ -67,9 +70,10 @@ class SprintQueryServiceTest {
 
     @Test
     void getSprintsByProject_delegatesToRepository() {
-        when(sprintRepository.findByProjectIdOrderByStartDateDesc(1L)).thenReturn(List.of(sprint));
+        when(sprintRepository.findByProjectIdOrderByStartDateDesc(PROJECT_ID))
+                .thenReturn(List.of(sprint));
 
-        List<Sprint> result = sprintQueryService.getSprintsByProject(1L);
+        List<Sprint> result = sprintQueryService.getSprintsByProject(PROJECT_ID);
 
         assertThat(result).containsExactly(sprint);
     }
@@ -78,20 +82,20 @@ class SprintQueryServiceTest {
 
     @Test
     void getActiveSprint_found() {
-        when(sprintRepository.findActiveByProjectId(eq(1L), any(LocalDate.class)))
+        when(sprintRepository.findActiveByProjectId(eq(PROJECT_ID), any(LocalDate.class)))
                 .thenReturn(Optional.of(sprint));
 
-        Optional<Sprint> result = sprintQueryService.getActiveSprint(1L);
+        Optional<Sprint> result = sprintQueryService.getActiveSprint(PROJECT_ID);
 
         assertThat(result).contains(sprint);
     }
 
     @Test
     void getActiveSprint_empty() {
-        when(sprintRepository.findActiveByProjectId(eq(1L), any(LocalDate.class)))
+        when(sprintRepository.findActiveByProjectId(eq(PROJECT_ID), any(LocalDate.class)))
                 .thenReturn(Optional.empty());
 
-        Optional<Sprint> result = sprintQueryService.getActiveSprint(1L);
+        Optional<Sprint> result = sprintQueryService.getActiveSprint(PROJECT_ID);
 
         assertThat(result).isEmpty();
     }

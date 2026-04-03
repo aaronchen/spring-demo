@@ -14,6 +14,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class TaskQueryServiceTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
+
     @Mock private TaskRepository taskRepository;
 
     @InjectMocks private TaskQueryService taskQueryService;
@@ -33,13 +37,13 @@ class TaskQueryServiceTest {
     @BeforeEach
     void setUp() {
         User alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
 
         Project project = new Project("Test Project", "Description");
-        project.setId(1L);
+        project.setId(ID_1);
 
         task = new Task("Test Task", "Description");
-        task.setId(1L);
+        task.setId(ID_1);
         task.setVersion(0L);
         task.setUser(alice);
         task.setProject(project);
@@ -51,18 +55,18 @@ class TaskQueryServiceTest {
 
     @Test
     void getTaskById_found() {
-        when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+        when(taskRepository.findById(ID_1)).thenReturn(Optional.of(task));
 
-        Task result = taskQueryService.getTaskById(1L);
+        Task result = taskQueryService.getTaskById(ID_1);
 
         assertThat(result).isEqualTo(task);
     }
 
     @Test
     void getTaskById_notFound_throwsEntityNotFoundException() {
-        when(taskRepository.findById(99L)).thenReturn(Optional.empty());
+        when(taskRepository.findById(ID_99)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskQueryService.getTaskById(99L))
+        assertThatThrownBy(() -> taskQueryService.getTaskById(ID_99))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 

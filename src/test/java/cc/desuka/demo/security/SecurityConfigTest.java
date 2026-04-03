@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,17 +21,20 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("test")
 class SecurityConfigTest {
 
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
     @Autowired private MockMvc mockMvc;
 
     private CustomUserDetails regularUser() {
         User user = new User("Bob", "bob@example.com", "password", Role.USER);
-        user.setId(2L);
+        user.setId(ID_2);
         return new CustomUserDetails(user);
     }
 
     private CustomUserDetails adminUser() {
         User user = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        user.setId(1L);
+        user.setId(ID_1);
         return new CustomUserDetails(user);
     }
 

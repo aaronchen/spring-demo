@@ -3,6 +3,7 @@ package cc.desuka.demo.dto;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.TaskStatusFilter;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Binds the shared filter query parameters for task list endpoints. Used by both web controllers
@@ -16,19 +17,19 @@ public class TaskListQuery {
     private TaskStatusFilter statusFilter = TaskStatusFilter.ALL;
     private boolean overdue;
     private Priority priority;
-    private Long selectedUserId;
+    private UUID selectedUserId;
     private Long sprintId;
     private List<Long> tags;
 
     /** Populates a {@link TaskSearchCriteria} from these filter values. */
-    public TaskSearchCriteria toCriteria(List<Long> accessibleProjectIds) {
+    public TaskSearchCriteria toCriteria(List<UUID> accessibleProjectIds) {
         TaskSearchCriteria criteria = TaskSearchCriteria.forProjects(accessibleProjectIds);
         applyCriteria(criteria);
         return criteria;
     }
 
     /** Populates a {@link TaskSearchCriteria} scoped to a single project. */
-    public TaskSearchCriteria toCriteria(Long projectId) {
+    public TaskSearchCriteria toCriteria(UUID projectId) {
         TaskSearchCriteria criteria = TaskSearchCriteria.forProject(projectId);
         applyCriteria(criteria);
         return criteria;
@@ -76,11 +77,11 @@ public class TaskListQuery {
         this.priority = priority;
     }
 
-    public Long getSelectedUserId() {
+    public UUID getSelectedUserId() {
         return selectedUserId;
     }
 
-    public void setSelectedUserId(Long selectedUserId) {
+    public void setSelectedUserId(UUID selectedUserId) {
         this.selectedUserId = selectedUserId;
     }
 

@@ -15,6 +15,7 @@ import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,7 +59,7 @@ public class TaskApiController {
                     @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
                     Pageable pageable,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
                         : projectQueryService.getAccessibleProjectIds(
@@ -70,7 +71,7 @@ public class TaskApiController {
     // GET /api/tasks/5
     @GetMapping("/{id}")
     public TaskResponse getTaskById(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         return taskMapper.toResponse(task);
@@ -85,7 +86,7 @@ public class TaskApiController {
             @Valid @RequestBody TaskRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(request.getProjectId(), currentDetails);
-        Long assigneeId = currentDetails.getUser().getId();
+        UUID assigneeId = currentDetails.getUser().getId();
         if (request.getUserId() != null && AuthExpressions.isAdmin(currentDetails.getUser())) {
             assigneeId = request.getUserId();
         }
@@ -98,7 +99,7 @@ public class TaskApiController {
     // Project EDITOR or OWNER (or admin) may update.
     @PutMapping("/{id}")
     public TaskResponse updateTask(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @RequestBody TaskRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task existing = taskQueryService.getTaskById(id);
@@ -117,7 +118,7 @@ public class TaskApiController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteTask(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(id);
         requireDeleteAccess(task, currentDetails);
         taskService.deleteTask(id);
@@ -128,7 +129,7 @@ public class TaskApiController {
     public List<TaskResponse> searchTasks(
             @RequestParam String keyword,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
                         : projectQueryService.getAccessibleProjectIds(
@@ -143,9 +144,9 @@ public class TaskApiController {
     // UI).
     @GetMapping("/search-for-dependency")
     public List<Map<String, Object>> searchForDependency(
-            @RequestParam Long projectId,
+            @RequestParam UUID projectId,
             @RequestParam(required = false, defaultValue = "") String q,
-            @RequestParam List<Long> excludeTaskIds,
+            @RequestParam List<UUID> excludeTaskIds,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
         return taskQueryService.searchForDependency(projectId, q, excludeTaskIds);
@@ -155,7 +156,7 @@ public class TaskApiController {
     @GetMapping("/incomplete")
     public List<TaskResponse> getIncompleteTasks(
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
                         : projectQueryService.getAccessibleProjectIds(
@@ -167,7 +168,7 @@ public class TaskApiController {
     // Advances status: OPEN → IN_PROGRESS → COMPLETED → OPEN.
     @PatchMapping("/{id}/toggle")
     public TaskResponse advanceStatus(
-            @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
+            @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         return taskMapper.toResponse(taskService.advanceStatus(id));

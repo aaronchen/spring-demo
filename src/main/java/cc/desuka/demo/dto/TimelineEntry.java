@@ -2,6 +2,7 @@ package cc.desuka.demo.dto;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * A single entry in the unified activity timeline. Represents either a comment or an audit log
@@ -14,7 +15,7 @@ public record TimelineEntry(
         Long commentId,
         String commentText,
         String commentUserName,
-        Long commentUserId,
+        UUID commentUserId,
         boolean canDelete,
         // Audit fields
         String auditAction,

@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,7 @@ public class ProjectQueryService {
         this.memberRepository = memberRepository;
     }
 
-    public Project getProjectById(Long id) {
+    public Project getProjectById(UUID id) {
         return projectRepository
                 .findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(Project.class, id));
@@ -48,7 +49,7 @@ public class ProjectQueryService {
                 : projectRepository.findByStatusOrderByNameAsc(ProjectStatus.ACTIVE);
     }
 
-    public List<Project> getProjectsForUser(Long userId) {
+    public List<Project> getProjectsForUser(UUID userId) {
         return memberRepository.findByUserId(userId).stream()
                 .map(ProjectMember::getProject)
                 .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
@@ -56,7 +57,7 @@ public class ProjectQueryService {
                 .toList();
     }
 
-    public List<Project> getProjectsForUser(Long userId, boolean includeArchived, String sort) {
+    public List<Project> getProjectsForUser(UUID userId, boolean includeArchived, String sort) {
         Comparator<Project> comparator =
                 "newest".equals(sort)
                         ? Comparator.comparing(Project::getCreatedAt, Comparator.reverseOrder())
@@ -68,7 +69,7 @@ public class ProjectQueryService {
                 .toList();
     }
 
-    public List<Long> getAccessibleProjectIds(Long userId) {
+    public List<UUID> getAccessibleProjectIds(UUID userId) {
         return memberRepository.findByUserId(userId).stream()
                 .map(ProjectMember::getProject)
                 .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
@@ -76,14 +77,14 @@ public class ProjectQueryService {
                 .toList();
     }
 
-    public List<Long> getAllActiveProjectIds() {
+    public List<UUID> getAllActiveProjectIds() {
         return projectRepository.findAll().stream()
                 .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
                 .map(Project::getId)
                 .toList();
     }
 
-    public List<Project> getEditableProjectsForUser(Long userId) {
+    public List<Project> getEditableProjectsForUser(UUID userId) {
         return memberRepository.findByUserId(userId).stream()
                 .filter(
                         m ->
@@ -97,28 +98,28 @@ public class ProjectQueryService {
 
     // ── Member queries ────────────────────────────────────────────────────
 
-    public Set<ProjectMember> getMembers(Long projectId) {
+    public Set<ProjectMember> getMembers(UUID projectId) {
         Project project = getProjectById(projectId);
         return project.getMembers();
     }
 
-    public boolean isMember(Long projectId, Long userId) {
+    public boolean isMember(UUID projectId, UUID userId) {
         return memberRepository.existsByProjectIdAndUserId(projectId, userId);
     }
 
-    public Optional<ProjectRole> getMemberRole(Long projectId, Long userId) {
+    public Optional<ProjectRole> getMemberRole(UUID projectId, UUID userId) {
         return memberRepository
                 .findByProjectIdAndUserId(projectId, userId)
                 .map(ProjectMember::getRole);
     }
 
-    public boolean isOwner(Long projectId, Long userId) {
+    public boolean isOwner(UUID projectId, UUID userId) {
         return getMemberRole(projectId, userId)
                 .map(role -> role == ProjectRole.OWNER)
                 .orElse(false);
     }
 
-    public boolean isEditor(Long projectId, Long userId) {
+    public boolean isEditor(UUID projectId, UUID userId) {
         return getMemberRole(projectId, userId)
                 .map(role -> role == ProjectRole.OWNER || role == ProjectRole.EDITOR)
                 .orElse(false);

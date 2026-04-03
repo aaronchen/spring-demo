@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -146,14 +147,14 @@ public class TaskController {
                                 ? userPreferences.getTaskView()
                                 : UserPreferences.VIEW_CARDS);
         // Scope to user's accessible projects (admins see all)
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
                         : projectQueryService.getAccessibleProjectIds(
                                 currentDetails.getUser().getId());
 
         // Project IDs for WebSocket subscriptions (always a concrete list, never null)
-        List<Long> wsProjectIds =
+        List<UUID> wsProjectIds =
                 accessibleProjectIds != null
                         ? accessibleProjectIds
                         : projectQueryService.getAllActiveProjectIds();
@@ -165,8 +166,8 @@ public class TaskController {
         addEditableProjects(model, currentDetails);
 
         // Resolve filtered user's name for the user filter button label
-        Long currentId = currentDetails.getUser().getId();
-        Long selectedUserId = query.getSelectedUserId();
+        UUID currentId = currentDetails.getUser().getId();
+        UUID selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
             try {
                 model.addAttribute(
@@ -226,7 +227,7 @@ public class TaskController {
             HttpServletResponse response)
             throws IOException {
 
-        List<Long> accessibleProjectIds =
+        List<UUID> accessibleProjectIds =
                 AuthExpressions.isAdmin(currentDetails.getUser())
                         ? null
                         : projectQueryService.getAccessibleProjectIds(
@@ -242,7 +243,7 @@ public class TaskController {
     // GET /tasks/{id} - Show task in view (read-only) mode
     @GetMapping("/{id}")
     public String showTask(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
@@ -267,7 +268,7 @@ public class TaskController {
     // projectId is optional — if omitted, user picks from a dropdown of editable projects.
     @GetMapping("/new")
     public String showCreateForm(
-            @RequestParam(required = false) Long projectId,
+            @RequestParam(required = false) UUID projectId,
             @RequestParam(required = false)
                     @org.springframework.format.annotation.DateTimeFormat(
                             iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
@@ -308,9 +309,9 @@ public class TaskController {
     public Object createTask(
             @Valid @ModelAttribute TaskFormRequest taskFormRequest,
             BindingResult result,
-            @RequestParam Long projectId,
+            @RequestParam UUID projectId,
             @RequestParam(required = false) List<Long> tagIds,
-            @RequestParam(required = false) Long assigneeId,
+            @RequestParam(required = false) UUID assigneeId,
             @RequestParam(required = false) List<String> checklistTexts,
             @RequestParam(required = false) List<Boolean> checklistChecked,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -348,7 +349,7 @@ public class TaskController {
     // Project EDITOR or OWNER (or admin) may edit.
     @GetMapping("/{id}/edit")
     public String showEditForm(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             Model model,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
@@ -374,15 +375,15 @@ public class TaskController {
     // tagIds: null means remove all tags. assigneeId comes from the user select dropdown.
     @PostMapping("/{id}")
     public Object updateTask(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @Valid @ModelAttribute TaskFormRequest taskFormRequest,
             BindingResult result,
             @RequestParam(required = false) List<Long> tagIds,
-            @RequestParam(required = false) Long assigneeId,
+            @RequestParam(required = false) UUID assigneeId,
             @RequestParam(required = false) List<String> checklistTexts,
             @RequestParam(required = false) List<Boolean> checklistChecked,
-            @RequestParam(required = false) List<Long> blockedByIds,
-            @RequestParam(required = false) List<Long> blocksIds,
+            @RequestParam(required = false) List<UUID> blockedByIds,
+            @RequestParam(required = false) List<UUID> blocksIds,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
@@ -421,7 +422,7 @@ public class TaskController {
     // Task creator, project OWNER, or system admin may delete.
     @DeleteMapping("/{id}")
     public Object deleteTask(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
@@ -437,7 +438,7 @@ public class TaskController {
     // GET /tasks/{id}/activity - Fetch activity timeline fragment (HTMX live refresh)
     @GetMapping("/{id}/activity")
     public String getActivity(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             Model model,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(id);
@@ -451,7 +452,7 @@ public class TaskController {
     // Any project member may comment on tasks in their project.
     @PostMapping("/{id}/comments")
     public Object addComment(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String text,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
@@ -471,7 +472,7 @@ public class TaskController {
     // Owner of the comment or admin may delete.
     @DeleteMapping("/{id}/comments/{commentId}")
     public Object deleteComment(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @PathVariable Long commentId,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
@@ -492,7 +493,7 @@ public class TaskController {
     // PATCH /tasks/{id}/field - Inline edit a single field (used by table view inline editing)
     @PatchMapping("/{id}/field")
     public String updateField(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String field,
             @RequestParam(required = false) String value,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -508,7 +509,7 @@ public class TaskController {
     // POST /tasks/{id}/status - Set explicit status (used by Kanban drag-and-drop)
     @PostMapping("/{id}/status")
     public Object setStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam TaskStatus status,
             @RequestParam(required = false, defaultValue = "board") String view,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
@@ -527,7 +528,7 @@ public class TaskController {
     // POST /tasks/{id}/toggle - Advance status (OPEN → IN_PROGRESS → COMPLETED → OPEN)
     @PostMapping("/{id}/toggle")
     public Object advanceStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam(required = false, defaultValue = "cards") String view,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
@@ -557,16 +558,16 @@ public class TaskController {
             @Valid @RequestBody BulkTaskRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
 
-        List<Long> taskIds = request.getTaskIds();
+        List<UUID> taskIds = request.getTaskIds();
         String action = request.getAction();
         String value = request.getValue();
 
         // Load all tasks and verify access (fail-fast)
         List<Task> tasks = new ArrayList<>(taskIds.size());
-        Set<Long> checkedProjectIds = new HashSet<>();
-        for (Long taskId : taskIds) {
+        Set<UUID> checkedProjectIds = new HashSet<>();
+        for (UUID taskId : taskIds) {
             Task task = taskQueryService.getTaskById(taskId);
-            Long projectId = task.getProject().getId();
+            UUID projectId = task.getProject().getId();
             if (BulkTaskRequest.ACTION_DELETE.equals(action)) {
                 // Delete requires per-task check (creator, project OWNER, or admin)
                 requireDeleteAccess(task, currentDetails);
@@ -649,10 +650,10 @@ public class TaskController {
             model.addAttribute("canEditProject", true);
             return;
         }
-        Long userId = currentDetails.getUser().getId();
-        Map<Long, Boolean> editByProject = new java.util.HashMap<>();
+        UUID userId = currentDetails.getUser().getId();
+        Map<UUID, Boolean> editByProject = new java.util.HashMap<>();
         for (Task task : tasks) {
-            Long projectId = task.getProject().getId();
+            UUID projectId = task.getProject().getId();
             editByProject.computeIfAbsent(
                     projectId, pid -> projectQueryService.isEditor(pid, userId));
         }
@@ -663,7 +664,7 @@ public class TaskController {
         model.addAttribute("canEditDependencies", canEdit);
     }
 
-    private void addTimelineAttributes(Model model, Long taskId, CustomUserDetails currentDetails) {
+    private void addTimelineAttributes(Model model, UUID taskId, CustomUserDetails currentDetails) {
         var currentUser = currentDetails.getUser();
         var timeline = timelineService.getTimeline(taskId, currentUser);
         model.addAttribute("timeline", timeline);

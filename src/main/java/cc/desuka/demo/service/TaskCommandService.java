@@ -5,6 +5,7 @@ import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,7 +30,7 @@ public class TaskCommandService {
         taskRepository.saveAll(tasks);
     }
 
-    public void unassignTasksInProject(User user, Long projectId) {
+    public void unassignTasksInProject(User user, UUID projectId) {
         List<Task> tasks =
                 taskRepository.findByUserAndProjectIdAndStatusNotIn(
                         user, projectId, TaskStatus.terminalStatuses());

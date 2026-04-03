@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.access.AccessDeniedException;
 
 class OwnershipGuardTest {
+
+    private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
 
     private OwnershipGuard guard;
     private User alice;
@@ -23,9 +27,9 @@ class OwnershipGuardTest {
         guard = new OwnershipGuard();
 
         alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
-        alice.setId(1L);
+        alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
-        bob.setId(2L);
+        bob.setId(ID_2);
 
         aliceDetails = new CustomUserDetails(alice);
         bobDetails = new CustomUserDetails(bob);

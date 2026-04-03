@@ -4,6 +4,7 @@ import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.TaskStatusFilter;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Encapsulates task search/filter parameters for the service and repository layers.
@@ -20,8 +21,8 @@ public class TaskSearchCriteria {
 
     // ── Scoping ───────────────────────────────────────────────────────────
 
-    private Long projectId;
-    private List<Long> projectIds;
+    private UUID projectId;
+    private List<UUID> projectIds;
 
     // ── Filters ───────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ public class TaskSearchCriteria {
     private TaskStatusFilter statusFilter = TaskStatusFilter.ALL;
     private boolean overdue;
     private Priority priority;
-    private Long userId;
+    private UUID userId;
     private Long sprintId;
     private List<Long> tagIds;
 
@@ -40,13 +41,13 @@ public class TaskSearchCriteria {
 
     // ── Static factories ──────────────────────────────────────────────────
 
-    public static TaskSearchCriteria forProject(Long projectId) {
+    public static TaskSearchCriteria forProject(UUID projectId) {
         TaskSearchCriteria criteria = new TaskSearchCriteria();
         criteria.projectId = projectId;
         return criteria;
     }
 
-    public static TaskSearchCriteria forProjects(List<Long> accessibleProjectIds) {
+    public static TaskSearchCriteria forProjects(List<UUID> accessibleProjectIds) {
         TaskSearchCriteria criteria = new TaskSearchCriteria();
         criteria.projectIds = accessibleProjectIds;
         return criteria;
@@ -54,19 +55,19 @@ public class TaskSearchCriteria {
 
     // ── Getters and setters ───────────────────────────────────────────────
 
-    public Long getProjectId() {
+    public UUID getProjectId() {
         return projectId;
     }
 
-    public void setProjectId(Long projectId) {
+    public void setProjectId(UUID projectId) {
         this.projectId = projectId;
     }
 
-    public List<Long> getProjectIds() {
+    public List<UUID> getProjectIds() {
         return projectIds;
     }
 
-    public void setProjectIds(List<Long> projectIds) {
+    public void setProjectIds(List<UUID> projectIds) {
         this.projectIds = projectIds;
     }
 
@@ -102,11 +103,11 @@ public class TaskSearchCriteria {
         this.priority = priority;
     }
 
-    public Long getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(UUID userId) {
         this.userId = userId;
     }
 

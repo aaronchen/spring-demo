@@ -1,3 +1,5 @@
 package cc.desuka.demo.event;
 
-public record CommentChangeEvent(String action, long taskId, long commentId, long userId) {}
+import java.util.UUID;
+
+public record CommentChangeEvent(String action, UUID taskId, long commentId, UUID userId) {}

@@ -10,6 +10,7 @@ import cc.desuka.demo.service.SprintQueryService;
 import cc.desuka.demo.service.SprintService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,7 @@ public class SprintApiController {
 
     @GetMapping
     public List<SprintResponse> listSprints(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
         return sprintMapper.toResponseList(sprintQueryService.getSprintsByProject(projectId));
@@ -45,7 +46,7 @@ public class SprintApiController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SprintResponse createSprint(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @Valid @RequestBody SprintRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
@@ -55,7 +56,7 @@ public class SprintApiController {
 
     @PutMapping("/{id}")
     public SprintResponse updateSprint(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @Valid @RequestBody SprintRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
@@ -67,7 +68,7 @@ public class SprintApiController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteSprint(
-            @PathVariable Long projectId,
+            @PathVariable UUID projectId,
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);

@@ -25,7 +25,7 @@ public record AuditField(
         FieldType type,
         String value,
         String enumClass,
-        Long refId,
+        String refId,
         String refName,
         String refType,
         List<String> items) {
@@ -135,12 +135,19 @@ public record AuditField(
                 null);
     }
 
-    public static AuditField ref(Long id, String name, String entityType) {
-        return new AuditField(FieldType.REFERENCE, null, null, id, name, entityType, null);
+    public static AuditField ref(Object id, String name, String entityType) {
+        return new AuditField(
+                FieldType.REFERENCE,
+                null,
+                null,
+                id != null ? id.toString() : null,
+                name,
+                entityType,
+                null);
     }
 
     public static <T> AuditField ref(
-            T entity, Function<T, Long> id, Function<T, String> name, String entityType) {
+            T entity, Function<T, ?> id, Function<T, String> name, String entityType) {
         return ref(
                 entity != null ? id.apply(entity) : null,
                 entity != null ? name.apply(entity) : null,

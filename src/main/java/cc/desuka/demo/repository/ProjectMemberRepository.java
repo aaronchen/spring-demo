@@ -4,6 +4,7 @@ import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -12,16 +13,16 @@ import org.springframework.stereotype.Repository;
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Long> {
 
     @EntityGraph(attributePaths = {"user"})
-    List<ProjectMember> findByProjectId(Long projectId);
+    List<ProjectMember> findByProjectId(UUID projectId);
 
-    Optional<ProjectMember> findByProjectIdAndUserId(Long projectId, Long userId);
+    Optional<ProjectMember> findByProjectIdAndUserId(UUID projectId, UUID userId);
 
-    boolean existsByProjectIdAndUserId(Long projectId, Long userId);
+    boolean existsByProjectIdAndUserId(UUID projectId, UUID userId);
 
-    long countByProjectIdAndRole(Long projectId, ProjectRole role);
+    long countByProjectIdAndRole(UUID projectId, ProjectRole role);
 
     @EntityGraph(attributePaths = {"project", "project.createdBy"})
-    List<ProjectMember> findByUserId(Long userId);
+    List<ProjectMember> findByUserId(UUID userId);
 
-    void deleteByProjectIdAndUserId(Long projectId, Long userId);
+    void deleteByProjectIdAndUserId(UUID projectId, UUID userId);
 }
