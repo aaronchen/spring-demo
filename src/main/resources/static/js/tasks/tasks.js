@@ -486,11 +486,6 @@ function renderPriorityButton() {
     }
 }
 
-function updateFilterPillsVisibility() {
-    const wrapper = document.getElementById('filter-pills');
-    wrapper.classList.toggle('d-none', selectedTagIds.length === 0);
-}
-
 // ── Tag filter ──
 
 function toggleTagFilter(elOrId) {
@@ -529,39 +524,6 @@ function renderTagFilter() {
             ? `${baseLabel} (${selectedTagIds.length})`
             : baseLabel;
     }
-
-    // Render tag pills
-    const pillsContainer = document.getElementById('tag-pills-container');
-    const clearAllLink = document.getElementById('tag-clear-all');
-    if (!pillsContainer) return;
-    pillsContainer.innerHTML = '';
-
-    if (selectedTagIds.length === 0) {
-        clearAllLink.classList.add('d-none');
-        updateFilterPillsVisibility();
-        return;
-    }
-
-    clearAllLink.classList.remove('d-none');
-    selectedTagIds.forEach(tagId => {
-        const item = document.querySelector(`.tag-filter-item[data-tag-id="${tagId}"]`);
-        const name = item ? item.dataset.tagName : `Tag ${tagId}`;
-        const pill = document.createElement('span');
-        pill.className = 'badge bg-primary me-1';
-        pill.textContent = `${name} `;
-        const removeLink = document.createElement('a');
-        removeLink.href = '#';
-        removeLink.className = 'text-white text-decoration-none ms-1';
-        removeLink.textContent = '\u00d7';
-        removeLink.addEventListener('click', (e) => { e.preventDefault(); toggleTagFilter(tagId); });
-        pill.appendChild(removeLink);
-        pillsContainer.appendChild(pill);
-    });
-    updateFilterPillsVisibility();
-
-    // Show "Clear all" only when 2+ tags
-    const clearAll = document.getElementById('tag-clear-all');
-    if (clearAll) clearAll.classList.toggle('d-none', selectedTagIds.length < 2);
 
     // Highlight active tags on cards/rows
     highlightActiveTags();
