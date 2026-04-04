@@ -341,7 +341,7 @@
              style="max-height: 50vh; overflow-y: auto; overscroll-behavior: contain;">
                 <a class="dropdown-item d-flex align-items-center gap-2" href="#"
                    onclick="clearAllTags(); return false;">
-                    <i class="bi bi-funnel"></i>
+                    <i class="bi bi-arrow-counterclockwise"></i>
                     <span th:text="#{task.filter.tags.clearAll}">Clear All</span>
                 </a>
                 <hr class="dropdown-divider">
@@ -368,13 +368,13 @@
             <i class="bi bi-bookmark"></i> <span id="saved-views-label" th:text="#{task.views.saved}">Views</span>
         </button>
         <div class="dropdown-menu dropdown-menu-end" aria-labelledby="savedViewsDropdown" style="min-width: 220px;">
-            <div id="saved-views-list">
-                <!--/* Populated by JS */-->
-            </div>
-            <div class="dropdown-divider"></div>
             <a class="dropdown-item" href="#" onclick="saveCurrentView(); return false;">
                 <i class="bi bi-plus-circle me-1"></i> <span th:text="#{task.views.save}">Save current view</span>
             </a>
+            <div class="dropdown-divider"></div>
+            <div id="saved-views-list">
+                <!--/* Populated by JS */-->
+            </div>
         </div>
     </div>
 

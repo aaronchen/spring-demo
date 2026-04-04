@@ -18,10 +18,6 @@
                 const list = document.getElementById(listId);
                 if (!list) return;
 
-                // Hide "No blockers" / "Does not block" empty message
-                const emptyMsg = list.querySelector('.dep-empty-msg');
-                if (emptyMsg) emptyMsg.classList.add('d-none');
-
                 // Build new list item with hidden input
                 const item = document.createElement('div');
                 item.className = 'list-group-item d-flex align-items-center px-0 py-1 dep-item';
@@ -90,13 +86,6 @@ function removeDependencyItem(btn) {
     if (!item) return;
     const list = item.parentElement;
     item.remove();
-
-    // Show empty message if list has no more dep-items
-    const remaining = list.querySelectorAll('.dep-item');
-    if (remaining.length === 0) {
-        const emptyMsg = list.querySelector('.dep-empty-msg');
-        if (emptyMsg) emptyMsg.classList.remove('d-none');
-    }
 
     // Update exclude lists so removed task reappears in dropdowns
     updateDepExcludeLists();

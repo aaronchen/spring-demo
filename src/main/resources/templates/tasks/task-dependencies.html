@@ -10,11 +10,16 @@
             <i class="bi bi-lock-fill text-warning"></i>
             <span th:text="#{task.dependency.blockedBy}">Blocked By</span>
         </label>
-        <div id="dep-list-blockedBy" class="list-group list-group-flush mb-2">
-            <div th:if="${task.blockedBy == null || task.blockedBy.isEmpty()}"
-                 class="text-muted small dep-empty-msg" data-direction="blockedBy">
-                <span th:text="#{task.dependency.empty.blockedBy}">No blockers</span>
-            </div>
+        <searchable-select th:if="${canEditDependencies}"
+                           class="dep-picker mb-2" data-direction="blockedBy"
+                           th:data-task-id="${task.id}"
+                           th:data-project-id="${task.project.id}"
+                           value-field="id" text-field="title"
+                           th:placeholder="#{task.dependency.add.blockedBy.placeholder}">
+        </searchable-select>
+        <div id="dep-list-blockedBy" class="list-group list-group-flush">
+            <div th:if="${!canEditDependencies && (task.blockedBy == null || task.blockedBy.isEmpty())}"
+                 class="text-muted small" th:text="#{task.dependency.empty.blockedBy}">No blockers</div>
             <div th:each="blocker : ${task.blockedBy}"
                  class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
                 <input type="hidden" name="blockedByIds" th:value="${blocker.id}">
@@ -34,14 +39,6 @@
                 </button>
             </div>
         </div>
-        <searchable-select th:if="${canEditDependencies}"
-                           class="dep-picker" data-direction="blockedBy"
-                           th:data-task-id="${task.id}"
-                           th:data-project-id="${task.project.id}"
-                           value-field="id" text-field="title"
-                           th:placeholder="#{task.dependency.add.blockedBy.placeholder}">
-            <option value="">---</option>
-        </searchable-select>
     </div>
 
     <!-- Blocks -->
@@ -50,11 +47,16 @@
             <i class="bi bi-unlock-fill text-muted"></i>
             <span th:text="#{task.dependency.blocks}">Blocks</span>
         </label>
-        <div id="dep-list-blocks" class="list-group list-group-flush mb-2">
-            <div th:if="${task.blocks == null || task.blocks.isEmpty()}"
-                 class="text-muted small dep-empty-msg" data-direction="blocks">
-                <span th:text="#{task.dependency.empty.blocks}">Does not block any tasks</span>
-            </div>
+        <searchable-select th:if="${canEditDependencies}"
+                           class="dep-picker mb-2" data-direction="blocks"
+                           th:data-task-id="${task.id}"
+                           th:data-project-id="${task.project.id}"
+                           value-field="id" text-field="title"
+                           th:placeholder="#{task.dependency.add.blocks.placeholder}">
+        </searchable-select>
+        <div id="dep-list-blocks" class="list-group list-group-flush">
+            <div th:if="${!canEditDependencies && (task.blocks == null || task.blocks.isEmpty())}"
+                 class="text-muted small" th:text="#{task.dependency.empty.blocks}">Does not block any tasks</div>
             <div th:each="blocked : ${task.blocks}"
                  class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
                 <input type="hidden" name="blocksIds" th:value="${blocked.id}">
@@ -74,14 +76,6 @@
                 </button>
             </div>
         </div>
-        <searchable-select th:if="${canEditDependencies}"
-                           class="dep-picker" data-direction="blocks"
-                           th:data-task-id="${task.id}"
-                           th:data-project-id="${task.project.id}"
-                           value-field="id" text-field="title"
-                           th:placeholder="#{task.dependency.add.blocks.placeholder}">
-            <option value="">---</option>
-        </searchable-select>
     </div>
 
 </div>
