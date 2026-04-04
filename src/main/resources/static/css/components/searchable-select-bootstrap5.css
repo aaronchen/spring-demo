@@ -6,6 +6,9 @@
 searchable-select .ss-wrapper {
     position: relative;
 }
+searchable-select .ss-wrapper.open {
+    z-index: 10;
+}
 
 /* Input */
 searchable-select .ss-input {
