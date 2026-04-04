@@ -228,7 +228,7 @@ class SearchableSelect extends HTMLElement {
         this._options = this._staticOptions.slice();
         if (this._isOpen) {
             this._buildItems(this._options);
-            this._updateRingHeight();
+            this._updateDropDirection();
         }
     }
 
@@ -369,13 +369,13 @@ class SearchableSelect extends HTMLElement {
                 if (this._isPrefetch() && this._cache) {
                     // Prefetch mode with cache: filter client-side, no server call
                     this._buildItems(this._cache, this._input.value);
-                    this._updateRingHeight();
+                    this._updateDropDirection();
                 } else {
                     this._debouncedFetch(this._input.value);
                 }
             } else {
                 this._buildItems(this._options, this._input.value);
-                this._updateRingHeight();
+                this._updateDropDirection();
             }
         });
 
@@ -490,7 +490,7 @@ class SearchableSelect extends HTMLElement {
                 this._options = this._cache;
                 this._buildItems(this._options);
                 this._menu.classList.add('show');
-                this._updateRingHeight();
+                this._updateDropDirection();
             } else {
                 // Fetch from server (prefetch cache miss, or server-search mode)
                 this._menu.classList.add('show');
@@ -499,7 +499,7 @@ class SearchableSelect extends HTMLElement {
         } else {
             this._buildItems(this._options);
             this._menu.classList.add('show');
-            this._updateRingHeight();
+            this._updateDropDirection();
         }
     }
 
@@ -507,19 +507,46 @@ class SearchableSelect extends HTMLElement {
         this._isOpen = false;
         this._menu.classList.remove('show');
         this._wrapper.classList.remove('open');
+        this._wrapper.classList.remove('dropup');
         this._wrapper.style.removeProperty('--ss-ring-height');
         if (this._input) this._input.value = this._selectedText;
         if (this._debounceTimer) clearTimeout(this._debounceTimer);
     }
 
-    _updateRingHeight() {
+    _updateDropDirection() {
         // Defer to next frame so the menu has rendered and has its final height
         requestAnimationFrame(() => {
             if (!this._isOpen) return;
-            const inputH = this._input.offsetHeight;
+            const inputRect = this._input.getBoundingClientRect();
             const menuH = this._menu.offsetHeight;
+            const container = this._findScrollParent();
+            const containerBottom = container
+                ? container.getBoundingClientRect().bottom
+                : window.innerHeight;
+            const containerTop = container
+                ? container.getBoundingClientRect().top
+                : 0;
+            const spaceBelow = containerBottom - inputRect.bottom;
+            const spaceAbove = inputRect.top - containerTop;
+
+            // Flip to dropup if not enough space below but more space above
+            const shouldFlip = menuH > spaceBelow && spaceAbove > spaceBelow;
+            this._wrapper.classList.toggle('dropup', shouldFlip);
+
+            const inputH = this._input.offsetHeight;
             this._wrapper.style.setProperty('--ss-ring-height', `${inputH + menuH - 1}px`);
         });
+    }
+
+    /** Walk up the DOM to find the nearest scrollable ancestor. */
+    _findScrollParent() {
+        let el = this.parentElement;
+        while (el && el !== document.body) {
+            const overflow = getComputedStyle(el).overflowY;
+            if (overflow === 'auto' || overflow === 'scroll') return el;
+            el = el.parentElement;
+        }
+        return null;
     }
 
     _isPrefetch() {
@@ -543,7 +570,7 @@ class SearchableSelect extends HTMLElement {
         this._showStatus('Loading\u2026');
         if (this._isOpen) {
             this._menu.classList.add('show');
-            this._updateRingHeight();
+            this._updateDropDirection();
         }
 
         try {
@@ -574,11 +601,11 @@ class SearchableSelect extends HTMLElement {
 
             this._options = options;
             this._buildItems(options);
-            if (this._isOpen) this._updateRingHeight();
+            if (this._isOpen) this._updateDropDirection();
         } catch (err) {
             if (err.name === 'AbortError') return; // request was superseded
             this._showStatus('Error loading results');
-            if (this._isOpen) this._updateRingHeight();
+            if (this._isOpen) this._updateDropDirection();
         }
     }
 }

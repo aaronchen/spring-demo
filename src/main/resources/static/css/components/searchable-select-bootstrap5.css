@@ -33,6 +33,7 @@ searchable-select .ss-menu {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     margin-top: -1px;
+    box-shadow: none;
     scrollbar-width: thin;
     scrollbar-color: var(--bs-tertiary-color, rgba(0, 0, 0, 0.2)) transparent;
 }
@@ -81,6 +82,11 @@ searchable-select .ss-clear {
 searchable-select .ss-clear:hover {
     color: #343a40;
 }
+searchable-select .ss-wrapper.dropup .ss-clear {
+    top: auto;
+    bottom: 0;
+    z-index: 4;
+}
 
 /* Highlighted item — keyboard or hover, but not both at once */
 searchable-select .dropdown-item.ss-highlighted,
@@ -92,6 +98,43 @@ searchable-select .dropdown-item.active.ss-highlighted,
 searchable-select:not(.ss-keyboard-nav) .dropdown-item.active:hover {
     background-color: var(--theme-primary-active, #0a58ca);
     color: #fff;
+}
+
+/* ── Dropup: menu above input when insufficient space below ────────── */
+
+/* Input: keep bottom corners rounded, flatten top corners (connects to menu above).
+   White background ensures no bleed-through from the menu behind it. */
+searchable-select .ss-wrapper.open.dropup .ss-input {
+    border-radius: 0 0 var(--radius-sm, var(--bs-border-radius, 0.375rem))
+                       var(--radius-sm, var(--bs-border-radius, 0.375rem));
+    border-color: var(--theme-focus-border, #86b7fe);
+    background-color: #fff;
+    z-index: 3;
+}
+
+/* Menu: position above, top corners rounded, bottom corners flat.
+   Bottom border stays visible as the divider line between menu and input.
+   Remove box-shadow — the unified focus ring provides the glow. */
+[data-theme] searchable-select .ss-wrapper.open.dropup .ss-menu,
+searchable-select .ss-wrapper.open.dropup .ss-menu {
+    top: auto;
+    bottom: 100%;
+    margin-top: 0;
+    margin-bottom: -1px;
+    border-radius: var(--radius-md, var(--bs-border-radius, 0.375rem))
+                   var(--radius-md, var(--bs-border-radius, 0.375rem)) 0 0;
+    border-color: var(--theme-focus-border, #86b7fe);
+    box-shadow: none;
+}
+
+/* Focus ring: anchor to bottom, top corners match menu, bottom match input */
+searchable-select .ss-wrapper.open.dropup::after {
+    top: auto;
+    bottom: 0;
+    border-top-left-radius: var(--radius-md, var(--bs-border-radius, 0.375rem));
+    border-top-right-radius: var(--radius-md, var(--bs-border-radius, 0.375rem));
+    border-bottom-left-radius: var(--radius-sm, var(--bs-border-radius, 0.375rem));
+    border-bottom-right-radius: var(--radius-sm, var(--bs-border-radius, 0.375rem));
 }
 
 /* Readonly state — match theme's readonly form-control style (dashed border, muted text) */
