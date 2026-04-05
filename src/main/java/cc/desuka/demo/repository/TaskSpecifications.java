@@ -51,6 +51,16 @@ public class TaskSpecifications {
         };
     }
 
+    public static Specification<Task> withTitleContaining(String keyword) {
+        return (root, query, cb) -> {
+            if (keyword == null || keyword.trim().isEmpty()) {
+                return cb.conjunction();
+            }
+            String pattern = "%" + keyword.toLowerCase() + "%";
+            return cb.like(cb.lower(root.get(Task.FIELD_TITLE)), pattern);
+        };
+    }
+
     public static Specification<Task> withUserId(UUID userId) {
         return (root, query, cb) -> {
             if (userId == null) return cb.conjunction();

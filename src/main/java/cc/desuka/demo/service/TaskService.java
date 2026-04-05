@@ -3,6 +3,7 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
+import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.event.TaskUpdatedEvent;
@@ -101,44 +102,10 @@ public class TaskService {
         return saved;
     }
 
-    public Task updateTask(
-            UUID id, Task taskDetails, List<Long> tagIds, UUID assigneeId, Long expectedVersion) {
-        return updateTask(
-                id, taskDetails, tagIds, assigneeId, expectedVersion, null, null, null, null);
-    }
-
-    public Task updateTask(
-            UUID id,
-            Task taskDetails,
-            List<Long> tagIds,
-            UUID assigneeId,
-            Long expectedVersion,
-            List<String> checklistTexts,
-            List<Boolean> checklistChecked) {
-        return updateTask(
-                id,
-                taskDetails,
-                tagIds,
-                assigneeId,
-                expectedVersion,
-                checklistTexts,
-                checklistChecked,
-                null,
-                null);
-    }
-
-    public Task updateTask(
-            UUID id,
-            Task taskDetails,
-            List<Long> tagIds,
-            UUID assigneeId,
-            Long expectedVersion,
-            List<String> checklistTexts,
-            List<Boolean> checklistChecked,
-            List<UUID> blockedByIds,
-            List<UUID> blocksIds) {
+    public Task updateTask(UUID id, Task taskDetails, TaskUpdateCriteria params) {
         Task task = taskQueryService.getTaskById(id);
-        if (expectedVersion != null && !expectedVersion.equals(task.getVersion())) {
+        if (params.expectedVersion() != null
+                && !params.expectedVersion().equals(task.getVersion())) {
             throw new StaleDataException(Task.class, id);
         }
         Map<String, AuditField> before = task.toAuditSnapshot();
@@ -156,18 +123,18 @@ public class TaskService {
         task.setDueDate(taskDetails.getDueDate());
         task.setEffort(taskDetails.getEffort());
         task.setSprint(taskDetails.getSprint());
-        task.setTags(tagService.findAllByIds(tagIds));
+        task.setTags(tagService.findAllByIds(params.tagIds()));
         updateCompletedAt(task, previousStatus);
         // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
-        User newUser = userService.findUserById(assigneeId);
+        User newUser = userService.findUserById(params.assigneeId());
         if (task.getStatus() == TaskStatus.IN_PROGRESS
                 && newUser != null
                 && (task.getUser() == null || !task.getUser().getId().equals(newUser.getId()))) {
             task.setStatus(TaskStatus.OPEN);
         }
         task.setUser(newUser);
-        applyChecklist(task, checklistTexts, checklistChecked);
-        taskDependencyService.reconcile(task, blockedByIds, blocksIds);
+        applyChecklist(task, params.checklistTexts(), params.checklistChecked());
+        taskDependencyService.reconcile(task, params.blockedByIds(), params.blocksIds());
 
         Task saved = taskRepository.save(task);
 

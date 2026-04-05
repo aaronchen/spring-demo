@@ -117,11 +117,11 @@ public class SecurityConfig {
                                         // doesn't apply. Web UI forms keep CSRF protection via
                                         // Thymeleaf.
                                         .ignoringRequestMatchers("/api/**")
-                                        // WebSocket handshake is a GET upgrade — CSRF tokens aren't
-                                        // sent.
-                                        // The connection is already authenticated via the session
-                                        // cookie.
-                                        .ignoringRequestMatchers("/ws"))
+                                        // WebSocket handshake is a GET upgrade. SockJS fallback
+                                        // transports may use POST, but they don't carry
+                                        // form-encoded data — CSRF protection is not applicable.
+                                        // The connection is authenticated via the session cookie.
+                                        .ignoringRequestMatchers("/ws", "/ws/**"))
 
                 // ── Headers ──────────────────────────────────────────────────────
                 .headers(headers -> headers.frameOptions(frame -> frame.deny()));

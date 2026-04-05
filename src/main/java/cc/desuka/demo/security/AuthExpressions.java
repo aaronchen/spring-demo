@@ -65,7 +65,28 @@ public class AuthExpressions {
      * belong in the controller or template.
      */
     public boolean canEdit(OwnedEntity entity) {
-        return isAdmin() || isOwner(entity);
+        return canEdit(this.currentUser, entity);
+    }
+
+    /**
+     * Returns {@code true} if the current user can delete the given entity — either as its owner or
+     * as an admin.
+     *
+     * <p>Does NOT check project-level ownership — that requires a service call and is handled by
+     * {@link ProjectAccessGuard#requireDeleteAccess}.
+     */
+    public boolean canDelete(OwnedEntity entity) {
+        return canDelete(this.currentUser, entity);
+    }
+
+    /** Static overload for server-side edit access checks. */
+    public static boolean canEdit(User currentUser, OwnedEntity entity) {
+        return isAdmin(currentUser) || isOwner(currentUser, entity);
+    }
+
+    /** Static overload for server-side delete access checks. */
+    public static boolean canDelete(User currentUser, OwnedEntity entity) {
+        return isAdmin(currentUser) || isOwner(currentUser, entity);
     }
 
     /**

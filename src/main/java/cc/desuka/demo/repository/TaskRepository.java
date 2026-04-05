@@ -40,6 +40,10 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
     @EntityGraph(attributePaths = {"tags", "user"})
     List<Task> findByStatusNotIn(Collection<TaskStatus> statuses);
 
+    @EntityGraph(attributePaths = {"tags", "user"})
+    List<Task> findByProjectIdInAndStatusNotIn(
+            Collection<UUID> projectIds, Collection<TaskStatus> statuses);
+
     List<Task> findByUser(User user);
 
     List<Task> findByUserAndProjectIdAndStatusNotIn(

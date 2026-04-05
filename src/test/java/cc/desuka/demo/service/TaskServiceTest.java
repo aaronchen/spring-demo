@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.event.TaskAssignedEvent;
 import cc.desuka.demo.event.TaskChangeEvent;
 import cc.desuka.demo.exception.StaleDataException;
@@ -142,7 +143,10 @@ class TaskServiceTest {
     void updateTask_optimisticLock_throwsStaleDataException() {
         when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
 
-        assertThatThrownBy(() -> taskService.updateTask(ID_1, task, List.of(), ID_1, 999L))
+        assertThatThrownBy(
+                        () ->
+                                taskService.updateTask(
+                                        ID_1, task, new TaskUpdateCriteria(List.of(), ID_1, 999L)))
                 .isInstanceOf(StaleDataException.class);
     }
 
@@ -163,7 +167,9 @@ class TaskServiceTest {
             details.setStatus(TaskStatus.IN_PROGRESS);
             details.setPriority(Priority.HIGH);
 
-            Task result = taskService.updateTask(ID_1, details, List.of(), ID_2, 0L);
+            Task result =
+                    taskService.updateTask(
+                            ID_1, details, new TaskUpdateCriteria(List.of(), ID_2, 0L));
 
             // Reassigning resets IN_PROGRESS to OPEN
             assertThat(result.getStatus()).isEqualTo(TaskStatus.OPEN);

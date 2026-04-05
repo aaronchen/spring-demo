@@ -1,32 +1,23 @@
 // Inline editing for table view — toggle edit mode to make cells editable
 
-const INLINE_PRIORITY_OPTIONS = [
-    { value: 'LOW',    label: 'Low' },
-    { value: 'MEDIUM', label: 'Medium' },
-    { value: 'HIGH',   label: 'High' },
-];
+function enumToCamelCase(value) {
+    return value.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+}
 
-const INLINE_STATUS_OPTIONS = [
-    { value: 'BACKLOG',     label: 'Backlog' },
-    { value: 'OPEN',        label: 'Open' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'IN_REVIEW',   label: 'In Review' },
-    { value: 'COMPLETED',   label: 'Completed' },
-    { value: 'CANCELLED',   label: 'Cancelled' },
-];
+function resolveLabel(prefix, value) {
+    const key = `${prefix}.${enumToCamelCase(value)}`;
+    return APP_CONFIG.messages[key] || value;
+}
+
+const INLINE_PRIORITY_OPTIONS = ['LOW', 'MEDIUM', 'HIGH']
+    .map(v => ({ value: v, label: resolveLabel('task.priority', v) }));
+
+const INLINE_STATUS_OPTIONS = ['BACKLOG', 'OPEN', 'IN_PROGRESS', 'IN_REVIEW', 'COMPLETED', 'CANCELLED']
+    .map(v => ({ value: v, label: resolveLabel('task.status', v) }));
 
 let editModeActive = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Populate labels from messages
-    INLINE_PRIORITY_OPTIONS.forEach(opt => {
-        const key = `task.priority.${opt.value.toLowerCase()}`;
-        if (APP_CONFIG.messages[key]) opt.label = APP_CONFIG.messages[key];
-    });
-    INLINE_STATUS_OPTIONS.forEach(opt => {
-        const key = `task.status.${opt.value === 'IN_PROGRESS' ? 'inProgress' : (opt.value === 'IN_REVIEW' ? 'inReview' : opt.value.toLowerCase())}`;
-        if (APP_CONFIG.messages[key]) opt.label = APP_CONFIG.messages[key];
-    });
 
     const tasksView = document.getElementById('tasks-view');
     if (!tasksView) return;

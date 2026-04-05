@@ -4,6 +4,7 @@ import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.mapper.TaskMapper;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.security.AuthExpressions;
@@ -108,9 +109,8 @@ public class TaskApiController {
                 taskService.updateTask(
                         id,
                         taskMapper.toEntity(request),
-                        request.getTagIds(),
-                        request.getUserId(),
-                        request.getVersion()));
+                        new TaskUpdateCriteria(
+                                request.getTagIds(), request.getUserId(), request.getVersion())));
     }
 
     // DELETE /api/tasks/5
@@ -120,7 +120,7 @@ public class TaskApiController {
     public void deleteTask(
             @PathVariable UUID id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(id);
-        requireDeleteAccess(task, currentDetails);
+        projectAccessGuard.requireDeleteAccess(task, task.getProject().getId(), currentDetails);
         taskService.deleteTask(id);
     }
 
@@ -143,13 +143,13 @@ public class TaskApiController {
     // excludeTaskIds: self + existing blockedBy + existing blocks (prevents duplicates/cycles in
     // UI).
     @GetMapping("/search-for-dependency")
-    public List<Map<String, Object>> searchForDependency(
+    public List<Map<String, Object>> searchByTitleForDependency(
             @RequestParam UUID projectId,
             @RequestParam(required = false, defaultValue = "") String q,
             @RequestParam List<UUID> excludeTaskIds,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
-        return taskQueryService.searchForDependency(projectId, q, excludeTaskIds);
+        return taskQueryService.searchByTitleForDependency(projectId, q, excludeTaskIds);
     }
 
     // GET /api/tasks/incomplete
@@ -172,16 +172,5 @@ public class TaskApiController {
         Task task = taskQueryService.getTaskById(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         return taskMapper.toResponse(taskService.advanceStatus(id));
-    }
-
-    private void requireDeleteAccess(Task task, CustomUserDetails currentDetails) {
-        if (AuthExpressions.isAdmin(currentDetails.getUser())) {
-            return;
-        }
-        if (task.getUser() != null
-                && task.getUser().getId().equals(currentDetails.getUser().getId())) {
-            return;
-        }
-        projectAccessGuard.requireOwnerAccess(task.getProject().getId(), currentDetails);
     }
 }

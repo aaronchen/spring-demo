@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,8 +64,11 @@ public class TaskQueryService {
     }
 
     public List<Task> getIncompleteTasks(List<UUID> accessibleProjectIds) {
-        List<Task> tasks = taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
-        return filterByAccessibleProjects(tasks, accessibleProjectIds);
+        if (accessibleProjectIds == null) {
+            return taskRepository.findByStatusNotIn(TaskStatus.terminalStatuses());
+        }
+        return taskRepository.findByProjectIdInAndStatusNotIn(
+                accessibleProjectIds, TaskStatus.terminalStatuses());
     }
 
     public List<Task> searchTasks(String keyword) {
@@ -179,20 +183,17 @@ public class TaskQueryService {
 
     // ── Dependency picker search ──────────────────────────────────────────
 
-    public List<Map<String, Object>> searchForDependency(
+    public List<Map<String, Object>> searchByTitleForDependency(
             UUID projectId, String query, List<UUID> excludeTaskIds) {
-        return taskRepository
-                .findAll(
-                        TaskSpecifications.withProjectId(projectId),
-                        Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT))
-                .stream()
-                .filter(t -> !excludeTaskIds.contains(t.getId()))
-                .filter(
-                        t ->
-                                query == null
-                                        || query.isBlank()
-                                        || t.getTitle().toLowerCase().contains(query.toLowerCase()))
-                .limit(20)
+        Specification<Task> spec = TaskSpecifications.withProjectId(projectId);
+        if (query != null && !query.isBlank()) {
+            spec = spec.and(TaskSpecifications.withTitleContaining(query));
+        }
+        if (excludeTaskIds != null && !excludeTaskIds.isEmpty()) {
+            spec = spec.and((root, q, cb) -> cb.not(root.get(Task.FIELD_ID).in(excludeTaskIds)));
+        }
+        Sort sort = Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT);
+        return taskRepository.findAll(spec, sort).stream()
                 .map(
                         t ->
                                 Map.<String, Object>of(

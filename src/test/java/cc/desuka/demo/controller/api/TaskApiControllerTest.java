@@ -7,9 +7,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import cc.desuka.demo.dto.TaskResponse;
+import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.mapper.TaskMapper;
+import cc.desuka.demo.model.OwnedEntity;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Role;
@@ -227,7 +229,8 @@ class TaskApiControllerTest {
     void updateTask_owner_succeeds() throws Exception {
         when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
-        when(taskService.updateTask(eq(ID_1), any(), any(), any(), any())).thenReturn(task);
+        when(taskService.updateTask(eq(ID_1), any(), any(TaskUpdateCriteria.class)))
+                .thenReturn(task);
         when(taskMapper.toResponse(any(Task.class))).thenReturn(taskResponse);
 
         String body = objectMapper.writeValueAsString(Map.of("title", "Updated", "version", 0));
@@ -261,7 +264,7 @@ class TaskApiControllerTest {
     void updateTask_staleVersion_returns409() throws Exception {
         when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         when(taskMapper.toEntity(any())).thenReturn(new Task("Updated", null));
-        when(taskService.updateTask(eq(ID_1), any(), any(), any(), any()))
+        when(taskService.updateTask(eq(ID_1), any(), any(TaskUpdateCriteria.class)))
                 .thenThrow(new StaleDataException(Task.class, ID_1));
 
         String body = objectMapper.writeValueAsString(Map.of("title", "Updated", "version", 999));
@@ -296,7 +299,8 @@ class TaskApiControllerTest {
         when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(projectAccessGuard)
-                .requireOwnerAccess(eq(ID_1), any(CustomUserDetails.class));
+                .requireDeleteAccess(
+                        any(OwnedEntity.class), eq(ID_1), any(CustomUserDetails.class));
 
         mockMvc.perform(delete("/api/tasks/" + ID_1).with(user(regularDetails)))
                 .andExpect(status().isForbidden());

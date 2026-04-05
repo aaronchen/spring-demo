@@ -321,7 +321,7 @@ function renderUserFilter(userName) {
         label.textContent = defaultLabel;
         clearIcon.classList.add('d-none');
     } else {
-        label.textContent = userName || 'User';
+        label.textContent = userName || APP_CONFIG.messages['task.field.user'];
         clearIcon.classList.remove('d-none');
     }
 }
@@ -705,24 +705,22 @@ function saveCurrentView() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, data }),
-        }).then(r => {
-            if (r.ok) {
-                activeViewName = name;
-                renderActiveViewLabel();
-                loadSavedViews();
-                showToast(APP_CONFIG.messages['toast.view.saved'] || 'View saved', 'success');
-            }
+        }).then(requireOk)
+        .then(() => {
+            activeViewName = name;
+            renderActiveViewLabel();
+            loadSavedViews();
+            showToast(APP_CONFIG.messages['toast.view.saved'] || 'View saved', 'success');
         }).catch(err => console.error('Failed to save view:', err));
     });
 }
 
 function deleteSavedView(id) {
     fetch(APP_CONFIG.routes.apiViewById.resolve({ id }), { method: 'DELETE' })
-        .then(r => {
-            if (r.ok) {
-                clearActiveView();
-                loadSavedViews();
-            }
+        .then(requireOk)
+        .then(() => {
+            clearActiveView();
+            loadSavedViews();
         })
         .catch(err => console.error('Failed to delete view:', err));
 }

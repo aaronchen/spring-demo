@@ -27,16 +27,19 @@ public class DashboardService {
 
     private final TaskQueryService taskQueryService;
     private final ProjectQueryService projectQueryService;
+    private final AnalyticsService analyticsService;
     private final AuditLogService auditLogService;
     private final PresenceService presenceService;
 
     public DashboardService(
             TaskQueryService taskQueryService,
             ProjectQueryService projectQueryService,
+            AnalyticsService analyticsService,
             AuditLogService auditLogService,
             PresenceService presenceService) {
         this.taskQueryService = taskQueryService;
         this.projectQueryService = projectQueryService;
+        this.analyticsService = analyticsService;
         this.auditLogService = auditLogService;
         this.presenceService = presenceService;
     }
@@ -54,15 +57,14 @@ public class DashboardService {
 
         boolean isAdmin = AuthExpressions.isAdmin(user);
 
-        // Per-project summaries
+        // Per-project summaries (2 aggregate queries instead of 6N)
         List<Project> userProjects;
         if (isAdmin) {
             userProjects = projectQueryService.getActiveProjects();
         } else {
             userProjects = projectQueryService.getProjectsForUser(user.getId());
         }
-        List<ProjectSummary> projectSummaries =
-                userProjects.stream().map(this::buildProjectSummary).toList();
+        List<ProjectSummary> projectSummaries = buildProjectSummaries(userProjects);
 
         // Editable projects for "New Task" button
         List<Project> editableProjects;
@@ -117,14 +119,28 @@ public class DashboardService {
                 editableProjects);
     }
 
-    private ProjectSummary buildProjectSummary(Project project) {
-        UUID pid = project.getId();
-        long open = taskQueryService.countByStatusForProject(pid, TaskStatus.OPEN);
-        long inProgress = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_PROGRESS);
-        long inReview = taskQueryService.countByStatusForProject(pid, TaskStatus.IN_REVIEW);
-        long completed = taskQueryService.countByStatusForProject(pid, TaskStatus.COMPLETED);
-        long overdue = taskQueryService.countOverdueForProject(pid);
-        long total = taskQueryService.countForProject(pid);
-        return ProjectSummary.of(project, open, inProgress, inReview, completed, overdue, total);
+    private List<ProjectSummary> buildProjectSummaries(List<Project> projects) {
+        if (projects.isEmpty()) return List.of();
+
+        List<UUID> projectIds = projects.stream().map(Project::getId).toList();
+        Map<UUID, Map<TaskStatus, Long>> statusByProject =
+                analyticsService.countByProjectAndStatus(projectIds);
+        Map<UUID, Long> overdueByProject = analyticsService.countOverdueByProject(projectIds);
+
+        return projects.stream()
+                .map(
+                        project -> {
+                            Map<TaskStatus, Long> counts =
+                                    statusByProject.getOrDefault(project.getId(), Map.of());
+                            long open = counts.getOrDefault(TaskStatus.OPEN, 0L);
+                            long inProgress = counts.getOrDefault(TaskStatus.IN_PROGRESS, 0L);
+                            long inReview = counts.getOrDefault(TaskStatus.IN_REVIEW, 0L);
+                            long completed = counts.getOrDefault(TaskStatus.COMPLETED, 0L);
+                            long overdue = overdueByProject.getOrDefault(project.getId(), 0L);
+                            long total = counts.values().stream().mapToLong(Long::longValue).sum();
+                            return ProjectSummary.of(
+                                    project, open, inProgress, inReview, completed, overdue, total);
+                        })
+                .toList();
     }
 }
