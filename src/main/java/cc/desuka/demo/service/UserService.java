@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +43,12 @@ public class UserService {
 
     public List<User> getAllUsers() {
         return userRepository.findAllByOrderByNameAsc();
+    }
+
+    public Map<UUID, String> getNamesByIds(List<UUID> ids) {
+        if (ids.isEmpty()) return Map.of();
+        return userRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(User::getId, User::getName));
     }
 
     public User getUserById(UUID id) {
@@ -85,6 +92,18 @@ public class UserService {
                         User.class,
                         saved.getId(),
                         SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    public User registerUser(User user) {
+        User saved = userRepository.save(user);
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_REGISTERED,
+                        User.class,
+                        saved.getId(),
+                        saved.getEmail(),
                         AuditDetails.toJson(saved.toAuditSnapshot())));
         return saved;
     }

@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -26,4 +27,7 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
     @EntityGraph(attributePaths = {"createdBy"})
     List<Project> findAllByOrderByCreatedAtDesc();
+
+    @Query("SELECT p.id FROM Project p WHERE p.status = :status")
+    List<UUID> findIdsByStatus(ProjectStatus status);
 }

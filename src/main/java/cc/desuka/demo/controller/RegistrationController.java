@@ -1,7 +1,5 @@
 package cc.desuka.demo.controller;
 
-import cc.desuka.demo.audit.AuditDetails;
-import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.RegistrationRequest;
 import cc.desuka.demo.model.User;
@@ -9,7 +7,6 @@ import cc.desuka.demo.service.SettingService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
 import java.util.Map;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,19 +20,16 @@ public class RegistrationController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final ApplicationEventPublisher eventPublisher;
     private final SettingService settingService;
     private final AppRoutesProperties appRoutes;
 
     public RegistrationController(
             UserService userService,
             PasswordEncoder passwordEncoder,
-            ApplicationEventPublisher eventPublisher,
             SettingService settingService,
             AppRoutesProperties appRoutes) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
-        this.eventPublisher = eventPublisher;
         this.settingService = settingService;
         this.appRoutes = appRoutes;
     }
@@ -70,14 +64,7 @@ public class RegistrationController {
                         registrationRequest.getName(),
                         registrationRequest.getEmail(),
                         passwordEncoder.encode(registrationRequest.getPassword()));
-        User saved = userService.createUser(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_REGISTERED,
-                        User.class,
-                        saved.getId(),
-                        saved.getEmail(),
-                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        userService.registerUser(user);
 
         return "redirect:" + appRoutes.getLogin().resolve(Map.of(), Map.of("registered", ""));
     }

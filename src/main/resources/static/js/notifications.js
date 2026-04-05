@@ -143,7 +143,9 @@
         item.addEventListener('click', function () {
             if (!n.read) {
                 fetch(APP_CONFIG.routes.apiNotificationRead.resolve({ id: n.id }), { method: 'PATCH' })
-                    .then(function () { fire('notification:read', { id: n.id }); });
+                    .then(requireOk)
+                    .then(function () { fire('notification:read', { id: n.id }); })
+                    .catch(function (err) { console.error('Failed to mark notification as read:', err); });
                 item.classList.remove('fw-semibold');
                 n.read = true;
             }
@@ -157,7 +159,9 @@
         e.preventDefault();
         e.stopPropagation();
         fetch(APP_CONFIG.routes.apiNotificationsReadAll, { method: 'PATCH' })
-            .then(function () { fire('notification:allRead'); });
+            .then(requireOk)
+            .then(function () { fire('notification:allRead'); })
+            .catch(function (err) { console.error('Failed to mark all as read:', err); });
     });
 
     // ── Shared helpers (exposed for notifications page) ─────────────────────

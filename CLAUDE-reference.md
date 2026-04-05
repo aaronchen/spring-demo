@@ -278,6 +278,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `build(projectId, keyword, statusFilter, overdue, priority, userId, tagIds, dueDateFrom, dueDateTo)` - single-project with date range
   - `buildForProjects(accessibleProjectIds, keyword, statusFilter, overdue, priority, userId, tagIds)` - cross-project query (for `/tasks`, `/api/tasks`)
   - `buildForProjects(accessibleProjectIds, keyword, statusFilter, overdue, priority, userId, tagIds, dueDateFrom, dueDateTo)` - cross-project with date range
+  - `withTitleContaining(String)` — title substring filter (case-insensitive)
   - `withProjectId(Long)` — filters tasks by single project
   - `withProjectIds(List<Long>)` — filters tasks by project membership; null = no filter (admin sees all)
   - `withStatusFilter(TaskStatusFilter)` — maps filter enum name directly to `TaskStatus` enum (ALL returns all; others filter by matching status)
@@ -481,6 +482,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Unique(entity = User.class, field = User.FIELD_EMAIL)` — class-level uniqueness validation
   - Lombok `@Data`
 
+- `dto/TaskUpdateCriteria.java` - Java record encapsulating all task update parameters (replaces telescoping overloads on `TaskService.updateTask`)
+  - Fields: `task` (Task entity), `tagIds`, `assigneeId`, `checklistTexts`, `checklistChecked`, `blockedByIds`, `blocksIds`
+
 - `dto/BulkTaskRequest.java` - Bulk action input DTO (web controller `POST /tasks/bulk`)
   - Fields: `taskIds` (required, `@NotEmpty`, `List<Long>`), `action` (required, `@NotBlank`), `value` (optional)
   - Action constants: `ACTION_STATUS`, `ACTION_PRIORITY`, `ACTION_ASSIGN`, `ACTION_EFFORT`, `ACTION_DELETE`
@@ -602,7 +606,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/TaskQueryService.java` - Read-only task queries; `@Transactional(readOnly = true)` class-level
   - Constructor injection: `TaskRepository`
   - Breaks circular dependency: `TaskService` → `UserService`/`CommentService` → `TaskService`
-  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `getIncompleteTasks(accessibleProjectIds)`, `searchTasks(keyword)`, `searchTasks(keyword, accessibleProjectIds)`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `searchForDependency`, `groupByStatus`
+  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `getIncompleteTasks(accessibleProjectIds)`, `searchTasks(keyword)`, `searchTasks(keyword, accessibleProjectIds)`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `searchByTitleForDependency`, `groupByStatus`
   - `filterByAccessibleProjects(tasks, accessibleProjectIds)` — private helper to filter task lists by project access (null = no filter)
 
 - `service/TaskCommandService.java` - Write-only task commands for cross-service use; `@Transactional` class-level
@@ -638,12 +642,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/TaskService.java` - Write-only task operations with audit and domain event publishing
   - Constructor injection: `TaskRepository`, `TaskQueryService`, `TaskDependencyService`, `SprintQueryService`, `TagService`, `UserService`, `RecentViewService`, `ApplicationEventPublisher`, `Messages`
   - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
-  - `updateTask` — two overloads (with/without checklist); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
+  - `updateTask(id, TaskUpdateCriteria)` — accepts `TaskUpdateCriteria` record (replaces telescoping overloads); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
   - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
   - `setStatus(id, TaskStatus)` — sets status directly (for kanban drop); publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
   - `updateField(id, fieldName, value)` — updates a single named field (title, description, priority, status, dueDate) in-place; used by inline editing in table view; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
   - `deleteTask` — blocks deletion of COMPLETED tasks; publishes `TaskChangeEvent("deleted")`
-  - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started)
+  - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started); uses `TaskUpdateCriteria` record for all update parameters
   - `assignSprint(taskId, sprintId)` — sets sprint on task; publishes audit and change events via `saveAndPublish`
   - Private `saveAndPublish(task, before)` — DRY helper for save + audit diff + event publishing; used by `updateField`, `setStatus`, `advanceStatus`, `assignSprint`
 
@@ -657,7 +661,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/UserService.java` - User business logic
   - Constructor injection: `UserRepository`, `TaskQueryService`, `TaskCommandService`, `CommentQueryService`, `ApplicationEventPublisher`
-  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`
+  - `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`, `createUser`, `registerUser`, `updateUser`, `updateProfile`, `changePassword`, `updateRole`, `deleteUser`, `disableUser`, `enableUser`, `canDelete`, `countCompletedTasks`, `countComments`, `countAssignedTasks`, `getNamesByIds`
   - `findUserById(Long id)` — returns null if id is null or not found (vs `getUserById` which throws `EntityNotFoundException`); used by `TaskService` for user resolution
   - `searchUsers(String query)` — returns all users if query is blank, otherwise searches by name or email (case-insensitive substring); used by admin user management
   - `getEnabledUsers()` / `searchEnabledUsers(query)` — only enabled users; used by public user list, API, and assignment dropdowns (hides disabled users)
@@ -766,6 +770,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Transactional(readOnly = true)`, constructor injection: `TaskRepository`, `AnalyticsRepository`, `UserService`, `Messages`
   - `getProjectAnalytics(Long projectId)` — single-project analytics
   - `getCrossProjectAnalytics(List<Long> accessibleProjectIds)` — cross-project; null = admin (all projects)
+  - `countByProjectAndStatus(List<UUID>)` — task counts grouped by project and status
+  - `countOverdueByProject(List<UUID>)` — overdue task counts grouped by project
   - Private builders: `buildStatusBreakdown` (spec-based counts per status), `buildPriorityBreakdown` (spec-based counts per priority), `buildWorkloadDistribution` (grouped by user + status via `AnalyticsRepository`), `buildBurndown` (30-day rolling: initial open + daily created − daily completed), `buildVelocity` (12-week completed per ISO week, includes effort-based velocity), `buildOverdueAnalysis` (overdue grouped by assignee), `buildEffortDistribution` (total effort by assignee)
   - `projectScope()` helper returns `Specification` — `cb.conjunction()` for no-filter case
 
@@ -1021,6 +1027,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `requireViewAccess(projectId, currentDetails)` — throws `AccessDeniedException` unless member or admin
   - `requireEditAccess(projectId, currentDetails)` — throws unless EDITOR/OWNER or admin
   - `requireOwnerAccess(projectId, currentDetails)` — throws unless OWNER or admin
+  - `requireDeleteAccess(OwnedEntity, UUID, CustomUserDetails)` — throws unless admin, entity owner, or project owner
   - Used by `ProjectController` and `TaskApiController` for project-scoped security
 
 - `security/OwnershipGuard.java` - Reusable access control component
@@ -1031,7 +1038,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `security/AuthExpressions.java` - Ownership and role check logic (shared between templates and Java)
   - Exposed as `${#auth}` in Thymeleaf templates via `AuthDialect`
   - Instance methods (template use): `isOwner(OwnedEntity)`, `isAdmin()`, `canEdit(OwnedEntity)` (admin OR owner)
-  - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)` — reused by `OwnershipGuard`
+  - Static methods (Java use): `isOwner(User, OwnedEntity)`, `isAdmin(User)`, `canEdit(User, OwnedEntity)`, `canDelete(User, OwnedEntity)` — reused by `OwnershipGuard` and `ProjectAccessGuard`
   - Unassigned entities (`entity.getUser() == null`): `isOwner()` and `canEdit()` return false — business rules for unassigned entities belong in the controller/template, not here
 
 - `security/AuthDialect.java` - Thymeleaf `IExpressionObjectDialect` implementation
@@ -1079,7 +1086,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Auth entry point: `/api/**` → 401 Unauthorized (no redirect); HTMX → `HX-Redirect` to login; browser → redirect to login
   - Form login: custom login page at `/login`, success → `/`, failure → `/login?error`
   - Logout: `POST /logout` → `/login?logout`, invalidates session, deletes JSESSIONID
-  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/ws` (WebSocket endpoint)
+  - CSRF: enabled for web forms (Thymeleaf auto-injects); disabled for `/api/**` and `/ws/**` (WebSocket endpoint)
   - Headers: `X-Frame-Options: DENY`
 
 - `config/DevSecurityConfig.java` - Dev-only security rules (`@Profile("dev")`)
@@ -1164,6 +1171,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `util/HtmxUtils.java` - HTMX helper methods
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
+
+- `util/CalendarHelper.java` - Utility for building calendar grid data (weeks of `CalendarDay` records) from a `YearMonth` and task list; used by `TaskController` for calendar view
 
 - `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
   - Encoded format: `@[Display Name](userId:<uuid>)` — stored in DB as-is; injects `AppRoutesProperties` for link generation

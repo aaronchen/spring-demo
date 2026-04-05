@@ -3,10 +3,10 @@ package cc.desuka.demo.controller;
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.BulkTaskRequest;
-import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.TaskFormMapper;
@@ -30,18 +30,20 @@ import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.CalendarHelper;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,6 +74,7 @@ public class TaskController {
     private final CommentService commentService;
     private final TimelineService timelineService;
     private final RecentViewService recentViewService;
+    private final CalendarHelper calendarHelper;
     private final OwnershipGuard ownershipGuard;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
@@ -89,6 +92,7 @@ public class TaskController {
             CommentService commentService,
             TimelineService timelineService,
             RecentViewService recentViewService,
+            CalendarHelper calendarHelper,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
@@ -104,6 +108,7 @@ public class TaskController {
         this.commentService = commentService;
         this.timelineService = timelineService;
         this.recentViewService = recentViewService;
+        this.calendarHelper = calendarHelper;
         this.ownershipGuard = ownershipGuard;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
@@ -180,10 +185,11 @@ public class TaskController {
 
         if (UserPreferences.VIEW_CALENDAR.equals(resolvedView)) {
             YearMonth calendarMonth = (month != null) ? month : YearMonth.now();
-            List<List<CalendarDay>> calendarWeeks =
-                    buildCalendarWeeks(calendarMonth, criteria, model);
-            model.addAttribute("calendarWeeks", calendarWeeks);
+            CalendarHelper.CalendarResult calendarResult =
+                    calendarHelper.buildCalendarWeeks(calendarMonth, criteria);
+            model.addAttribute("calendarWeeks", calendarResult.weeks());
             model.addAttribute("calendarMonth", calendarMonth);
+            model.addAttribute("undatedCount", calendarResult.undatedCount());
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-calendar :: grid";
             }
@@ -405,13 +411,14 @@ public class TaskController {
         taskService.updateTask(
                 id,
                 taskDetails,
-                tagIds,
-                assigneeId,
-                taskFormRequest.getVersion(),
-                checklistTexts,
-                checklistChecked,
-                blockedByIds,
-                blocksIds);
+                new TaskUpdateCriteria(
+                        tagIds,
+                        assigneeId,
+                        taskFormRequest.getVersion(),
+                        checklistTexts,
+                        checklistChecked,
+                        blockedByIds,
+                        blocksIds));
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
@@ -427,7 +434,7 @@ public class TaskController {
             HttpServletRequest request,
             Model model) {
         Task task = taskQueryService.getTaskById(id);
-        requireDeleteAccess(task, currentDetails);
+        projectAccessGuard.requireDeleteAccess(task, task.getProject().getId(), currentDetails);
         taskService.deleteTask(id);
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskDeleted");
@@ -570,7 +577,8 @@ public class TaskController {
             UUID projectId = task.getProject().getId();
             if (BulkTaskRequest.ACTION_DELETE.equals(action)) {
                 // Delete requires per-task check (creator, project OWNER, or admin)
-                requireDeleteAccess(task, currentDetails);
+                projectAccessGuard.requireDeleteAccess(
+                        task, task.getProject().getId(), currentDetails);
             } else if (checkedProjectIds.add(projectId)) {
                 // Edit requires project-level EDITOR/OWNER check (cache per project)
                 projectAccessGuard.requireEditAccess(projectId, currentDetails);
@@ -634,7 +642,7 @@ public class TaskController {
             }
         }
 
-        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("count", count);
         if (skipped > 0) {
             result.put("skipped", skipped);
@@ -651,7 +659,7 @@ public class TaskController {
             return;
         }
         UUID userId = currentDetails.getUser().getId();
-        Map<UUID, Boolean> editByProject = new java.util.HashMap<>();
+        Map<UUID, Boolean> editByProject = new HashMap<>();
         for (Task task : tasks) {
             UUID projectId = task.getProject().getId();
             editByProject.computeIfAbsent(
@@ -671,58 +679,6 @@ public class TaskController {
         model.addAttribute("activityCount", timeline.size());
     }
 
-    private List<List<CalendarDay>> buildCalendarWeeks(
-            YearMonth month, TaskSearchCriteria criteria, Model model) {
-        LocalDate firstOfMonth = month.atDay(1);
-        LocalDate lastOfMonth = month.atEndOfMonth();
-
-        // Grid starts on Monday of the week containing the 1st
-        LocalDate gridStart = firstOfMonth.with(DayOfWeek.MONDAY);
-        // Grid ends on Sunday of the week containing the last day
-        LocalDate gridEnd = lastOfMonth.with(DayOfWeek.SUNDAY);
-
-        // Query tasks with dates overlapping the visible grid range
-        criteria.setDueDateFrom(gridStart);
-        criteria.setDueDateTo(gridEnd);
-        Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_DUE_DATE));
-        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
-
-        // Place each task on one date: due date if present, otherwise start date.
-        // Tasks with neither date are counted but not shown on the grid.
-        Map<LocalDate, List<Task>> tasksByDate = new java.util.LinkedHashMap<>();
-        long undatedCount = 0;
-
-        for (Task task : tasks) {
-            LocalDate date = (task.getDueDate() != null) ? task.getDueDate() : task.getStartDate();
-            if (date == null) {
-                undatedCount++;
-                continue;
-            }
-            tasksByDate.computeIfAbsent(date, k -> new ArrayList<>()).add(task);
-        }
-
-        model.addAttribute("undatedCount", undatedCount);
-
-        LocalDate today = LocalDate.now();
-        List<List<CalendarDay>> weeks = new ArrayList<>();
-        LocalDate cursor = gridStart;
-
-        while (!cursor.isAfter(gridEnd)) {
-            List<CalendarDay> week = new ArrayList<>(7);
-            for (int i = 0; i < 7; i++) {
-                week.add(
-                        new CalendarDay(
-                                cursor,
-                                !cursor.isBefore(firstOfMonth) && !cursor.isAfter(lastOfMonth),
-                                cursor.equals(today),
-                                tasksByDate.getOrDefault(cursor, List.of())));
-                cursor = cursor.plusDays(1);
-            }
-            weeks.add(week);
-        }
-        return weeks;
-    }
-
     private void addSprintAttributes(Project project, Model model) {
         if (project != null && project.isSprintEnabled()) {
             model.addAttribute(
@@ -740,19 +696,5 @@ public class TaskController {
                             currentDetails.getUser().getId());
         }
         model.addAttribute("editableProjects", editableProjects);
-    }
-
-    /** Task delete access: task creator, project OWNER, or system admin. */
-    private void requireDeleteAccess(Task task, CustomUserDetails currentDetails) {
-        if (AuthExpressions.isAdmin(currentDetails.getUser())) {
-            return;
-        }
-        // Task creator can delete their own task
-        if (task.getUser() != null
-                && task.getUser().getId().equals(currentDetails.getUser().getId())) {
-            return;
-        }
-        // Project OWNER can delete any task in the project
-        projectAccessGuard.requireOwnerAccess(task.getProject().getId(), currentDetails);
     }
 }

@@ -43,6 +43,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1490,7 +1491,7 @@ public class DataLoader implements CommandLineRunner {
         weeklyAudit.setProject(securityProject);
         weeklyAudit.setAssignee(david);
         weeklyAudit.setCreatedBy(alice);
-        weeklyAudit.setTags(new java.util.LinkedHashSet<>(List.of(securityTag)));
+        weeklyAudit.setTags(new LinkedHashSet<>(List.of(securityTag)));
 
         RecurringTaskTemplate monthlyCompliance = new RecurringTaskTemplate();
         monthlyCompliance.setTitle("Monthly Compliance Report");

@@ -25,6 +25,32 @@ public class AnalyticsRepository {
         this.em = em;
     }
 
+    // ── Dashboard: project summaries (batch) ────────────────────────────
+
+    public List<Object[]> countByProjectAndStatus(List<UUID> projectIds) {
+        String jpql =
+                "SELECT t.project.id, t.status, COUNT(t) FROM Task t"
+                        + " WHERE t.project.id IN :projectIds"
+                        + " GROUP BY t.project.id, t.status";
+        return em.createQuery(jpql, Object[].class)
+                .setParameter("projectIds", projectIds)
+                .getResultList();
+    }
+
+    public List<Object[]> countOverdueByProject(
+            List<UUID> projectIds, Collection<TaskStatus> terminalStatuses) {
+        String jpql =
+                "SELECT t.project.id, COUNT(t) FROM Task t"
+                        + " WHERE t.project.id IN :projectIds"
+                        + " AND t.dueDate < CURRENT_DATE"
+                        + " AND t.status NOT IN :terminalStatuses"
+                        + " GROUP BY t.project.id";
+        return em.createQuery(jpql, Object[].class)
+                .setParameter("projectIds", projectIds)
+                .setParameter("terminalStatuses", terminalStatuses)
+                .getResultList();
+    }
+
     // ── Workload: group by user + status ─────────────────────────────────
 
     public List<Object[]> countByUserAndStatus(

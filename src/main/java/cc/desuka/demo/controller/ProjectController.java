@@ -2,7 +2,6 @@ package cc.desuka.demo.controller;
 
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
-import cc.desuka.demo.dto.CalendarDay;
 import cc.desuka.demo.dto.ProjectListQuery;
 import cc.desuka.demo.dto.ProjectRequest;
 import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
@@ -34,18 +33,15 @@ import cc.desuka.demo.service.SprintService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.util.CalendarHelper;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -74,6 +70,7 @@ public class ProjectController {
     private final TagService tagService;
     private final UserService userService;
     private final RecentViewService recentViewService;
+    private final CalendarHelper calendarHelper;
     private final ProjectAccessGuard projectAccessGuard;
     private final TaskReport taskReport;
     private final AppRoutesProperties appRoutes;
@@ -93,6 +90,7 @@ public class ProjectController {
             TagService tagService,
             UserService userService,
             RecentViewService recentViewService,
+            CalendarHelper calendarHelper,
             ProjectAccessGuard projectAccessGuard,
             TaskReport taskReport,
             AppRoutesProperties appRoutes,
@@ -110,6 +108,7 @@ public class ProjectController {
         this.tagService = tagService;
         this.userService = userService;
         this.recentViewService = recentViewService;
+        this.calendarHelper = calendarHelper;
         this.projectAccessGuard = projectAccessGuard;
         this.taskReport = taskReport;
         this.appRoutes = appRoutes;
@@ -268,10 +267,11 @@ public class ProjectController {
 
         if (UserPreferences.VIEW_CALENDAR.equals(resolvedView)) {
             YearMonth calendarMonth = (month != null) ? month : YearMonth.now();
-            List<List<CalendarDay>> calendarWeeks =
-                    buildCalendarWeeks(calendarMonth, criteria, model);
-            model.addAttribute("calendarWeeks", calendarWeeks);
+            CalendarHelper.CalendarResult calendarResult =
+                    calendarHelper.buildCalendarWeeks(calendarMonth, criteria);
+            model.addAttribute("calendarWeeks", calendarResult.weeks());
             model.addAttribute("calendarMonth", calendarMonth);
+            model.addAttribute("undatedCount", calendarResult.undatedCount());
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-calendar :: grid";
             }
@@ -752,48 +752,5 @@ public class ProjectController {
         model.addAttribute("project", projectQueryService.getProjectById(projectId));
         model.addAttribute("projectMembers", projectQueryService.getMembers(projectId));
         model.addAttribute("projectRoles", ProjectRole.values());
-    }
-
-    private List<List<CalendarDay>> buildCalendarWeeks(
-            YearMonth month, TaskSearchCriteria criteria, Model model) {
-        LocalDate firstOfMonth = month.atDay(1);
-        LocalDate lastOfMonth = month.atEndOfMonth();
-        LocalDate gridStart = firstOfMonth.with(DayOfWeek.MONDAY);
-        LocalDate gridEnd = lastOfMonth.with(DayOfWeek.SUNDAY);
-
-        criteria.setDueDateFrom(gridStart);
-        criteria.setDueDateTo(gridEnd);
-        Pageable unpaged = Pageable.unpaged(Sort.by(Sort.Direction.ASC, Task.FIELD_DUE_DATE));
-        List<Task> tasks = taskQueryService.searchTasks(criteria, unpaged).getContent();
-
-        Map<LocalDate, List<Task>> tasksByDate = new java.util.LinkedHashMap<>();
-        long undatedCount = 0;
-        for (Task task : tasks) {
-            LocalDate date = (task.getDueDate() != null) ? task.getDueDate() : task.getStartDate();
-            if (date == null) {
-                undatedCount++;
-                continue;
-            }
-            tasksByDate.computeIfAbsent(date, k -> new ArrayList<>()).add(task);
-        }
-        model.addAttribute("undatedCount", undatedCount);
-
-        LocalDate today = LocalDate.now();
-        List<List<CalendarDay>> weeks = new ArrayList<>();
-        LocalDate cursor = gridStart;
-        while (!cursor.isAfter(gridEnd)) {
-            List<CalendarDay> week = new ArrayList<>(7);
-            for (int i = 0; i < 7; i++) {
-                week.add(
-                        new CalendarDay(
-                                cursor,
-                                !cursor.isBefore(firstOfMonth) && !cursor.isAfter(lastOfMonth),
-                                cursor.equals(today),
-                                tasksByDate.getOrDefault(cursor, List.of())));
-                cursor = cursor.plusDays(1);
-            }
-            weeks.add(week);
-        }
-        return weeks;
     }
 }

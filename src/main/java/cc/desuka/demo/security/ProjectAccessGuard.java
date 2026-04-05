@@ -1,5 +1,6 @@
 package cc.desuka.demo.security;
 
+import cc.desuka.demo.model.OwnedEntity;
 import cc.desuka.demo.service.ProjectQueryService;
 import java.util.UUID;
 import org.springframework.security.access.AccessDeniedException;
@@ -52,6 +53,18 @@ public class ProjectAccessGuard {
             return true;
         }
         return projectQueryService.isEditor(projectId, currentDetails.getUser().getId());
+    }
+
+    /**
+     * Throws {@link AccessDeniedException} unless the user is the entity owner, a project OWNER, or
+     * a system admin.
+     */
+    public void requireDeleteAccess(
+            OwnedEntity entity, UUID projectId, CustomUserDetails currentDetails) {
+        if (AuthExpressions.canDelete(currentDetails.getUser(), entity)) {
+            return;
+        }
+        requireOwnerAccess(projectId, currentDetails);
     }
 
     /** Throws {@link AccessDeniedException} unless the user is a project OWNER or system admin. */

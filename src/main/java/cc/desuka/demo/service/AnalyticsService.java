@@ -11,7 +11,6 @@ import cc.desuka.demo.dto.AnalyticsResponse.WorkloadDistribution;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.TaskStatus;
-import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.AnalyticsRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.TaskSpecifications;
@@ -27,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -293,6 +291,29 @@ public class AnalyticsService {
         return new EffortDistribution(assignees, efforts);
     }
 
+    // ── Dashboard aggregates ─────────────────────────────────────────────
+
+    public Map<UUID, Map<TaskStatus, Long>> countByProjectAndStatus(List<UUID> projectIds) {
+        Map<UUID, Map<TaskStatus, Long>> result = new LinkedHashMap<>();
+        for (Object[] row : analyticsRepository.countByProjectAndStatus(projectIds)) {
+            UUID pid = (UUID) row[0];
+            TaskStatus status = (TaskStatus) row[1];
+            long count = (Long) row[2];
+            result.computeIfAbsent(pid, k -> new LinkedHashMap<>()).put(status, count);
+        }
+        return result;
+    }
+
+    public Map<UUID, Long> countOverdueByProject(List<UUID> projectIds) {
+        Map<UUID, Long> result = new LinkedHashMap<>();
+        for (Object[] row :
+                analyticsRepository.countOverdueByProject(
+                        projectIds, TaskStatus.terminalStatuses())) {
+            result.put((UUID) row[0], (Long) row[1]);
+        }
+        return result;
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────
 
     private Map<UUID, String> buildUserNameMap(List<Object[]> rows, int userIdIndex) {
@@ -302,9 +323,7 @@ public class AnalyticsService {
                         .filter(Objects::nonNull)
                         .distinct()
                         .toList();
-        return userService.getAllUsers().stream()
-                .filter(u -> userIds.contains(u.getId()))
-                .collect(Collectors.toMap(User::getId, User::getName));
+        return userService.getNamesByIds(userIds);
     }
 
     private String resolveUserName(UUID userId, Map<UUID, String> nameMap) {
