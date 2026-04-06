@@ -30,6 +30,7 @@ public class SecurityConfig {
                                 auth.requestMatchers(
                                                 "/webjars/**",
                                                 "/css/**",
+                                                "/fonts/**",
                                                 "/js/**",
                                                 "/tribute/**",
                                                 "/bootstrap-icons/**",
