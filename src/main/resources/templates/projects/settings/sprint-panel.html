@@ -75,16 +75,6 @@
         </div>
     </div>
 
-    <!-- Toast Triggers -->
-    <th:block th:if="${sprintCreated}">
-        <script>showToast(APP_CONFIG.messages['sprint.action.created'], 'success');</script>
-    </th:block>
-    <th:block th:if="${sprintSaved}">
-        <script>showToast(APP_CONFIG.messages['sprint.action.saved'], 'success');</script>
-    </th:block>
-    <th:block th:if="${sprintDeleted}">
-        <script>showToast(APP_CONFIG.messages['sprint.action.deleted'], 'success');</script>
-    </th:block>
 
     <!-- Sprint List -->
     <div class="card shadow-sm">

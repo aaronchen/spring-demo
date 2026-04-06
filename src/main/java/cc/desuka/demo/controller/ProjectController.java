@@ -403,7 +403,8 @@ public class ProjectController {
             @RequestParam(required = false) UUID userId,
             @RequestParam ProjectRole role,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         if (userId == null) {
             model.addAttribute("memberError", messages.get("project.member.error.noUser"));
@@ -412,7 +413,9 @@ public class ProjectController {
         }
         try {
             projectService.addMember(id, userId, role);
-            model.addAttribute("memberAdded", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("toast.project.member.added"), "success"));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -427,11 +430,15 @@ public class ProjectController {
             @PathVariable UUID userId,
             @RequestParam ProjectRole role,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         try {
             projectService.updateMemberRole(id, userId, role);
-            model.addAttribute("roleChanged", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(
+                            messages.get("toast.project.member.roleChanged"), "success"));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -445,11 +452,15 @@ public class ProjectController {
             @PathVariable UUID id,
             @PathVariable UUID userId,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         try {
             projectService.removeMember(id, userId);
-            model.addAttribute("memberRemoved", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(
+                            messages.get("toast.project.member.removed"), "success"));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -514,7 +525,8 @@ public class ProjectController {
             @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
@@ -525,7 +537,9 @@ public class ProjectController {
 
         try {
             sprintService.createSprint(id, sprintMapper.toEntity(sprintRequest));
-            model.addAttribute("sprintCreated", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("sprint.action.created"), "success"));
             model.addAttribute("sprintRequest", new SprintRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("sprintError", e.getMessage());
@@ -543,7 +557,8 @@ public class ProjectController {
             @Valid @ModelAttribute("sprintRequest") SprintRequest sprintRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
@@ -555,7 +570,9 @@ public class ProjectController {
 
         try {
             sprintService.updateSprint(sid, sprintMapper.toEntity(sprintRequest));
-            model.addAttribute("sprintSaved", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("sprint.action.saved"), "success"));
             model.addAttribute("sprintRequest", new SprintRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("sprintError", e.getMessage());
@@ -572,11 +589,14 @@ public class ProjectController {
             @PathVariable UUID id,
             @PathVariable Long sid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         sprintService.deleteSprint(sid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
-        model.addAttribute("sprintDeleted", true);
+        response.setHeader(
+                "HX-Trigger",
+                HtmxUtils.toastTrigger(messages.get("sprint.action.deleted"), "success"));
         populateSprintPanelModel(id, model);
         return "projects/settings/sprint-panel";
     }
@@ -622,7 +642,8 @@ public class ProjectController {
                     RecurringTaskTemplateRequest recurringRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
@@ -633,7 +654,9 @@ public class ProjectController {
 
         try {
             recurringTaskTemplateService.createTemplate(id, recurringRequest);
-            model.addAttribute("templateCreated", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("recurring.action.createdOk"), "success"));
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("recurringError", e.getMessage());
@@ -652,7 +675,8 @@ public class ProjectController {
                     RecurringTaskTemplateRequest recurringRequest,
             BindingResult result,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
@@ -664,7 +688,9 @@ public class ProjectController {
 
         try {
             recurringTaskTemplateService.updateTemplate(tid, recurringRequest);
-            model.addAttribute("templateSaved", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("recurring.action.saved"), "success"));
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("recurringError", e.getMessage());
@@ -681,11 +707,14 @@ public class ProjectController {
             @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         recurringTaskTemplateService.toggleEnabled(tid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
-        model.addAttribute("templateToggled", true);
+        response.setHeader(
+                "HX-Trigger",
+                HtmxUtils.toastTrigger(messages.get("recurring.action.toggled"), "success"));
         populateRecurringPanelModel(id, model);
         return "projects/settings/recurring-panel";
     }
@@ -696,7 +725,8 @@ public class ProjectController {
             @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         RecurringTaskTemplate template = recurringTaskTemplateService.getTemplateById(tid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
@@ -706,7 +736,9 @@ public class ProjectController {
         } else {
             recurringTaskGenerationService.generateFromTemplate(
                     template, currentDetails.getUsername());
-            model.addAttribute("templateGenerated", true);
+            response.setHeader(
+                    "HX-Trigger",
+                    HtmxUtils.toastTrigger(messages.get("recurring.action.generated"), "success"));
         }
 
         populateRecurringPanelModel(id, model);
@@ -719,11 +751,14 @@ public class ProjectController {
             @PathVariable UUID id,
             @PathVariable Long tid,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         recurringTaskTemplateService.deleteTemplate(tid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
-        model.addAttribute("templateDeleted", true);
+        response.setHeader(
+                "HX-Trigger",
+                HtmxUtils.toastTrigger(messages.get("recurring.action.deletedOk"), "success"));
         populateRecurringPanelModel(id, model);
         return "projects/settings/recurring-panel";
     }

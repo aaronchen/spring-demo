@@ -42,17 +42,6 @@
         </form>
     </div>
 
-    <!-- Toast Triggers -->
-    <th:block th:if="${memberAdded}">
-        <script>showToast(APP_CONFIG.messages['toast.project.member.added'], 'success');</script>
-    </th:block>
-    <th:block th:if="${memberRemoved}">
-        <script>showToast(APP_CONFIG.messages['toast.project.member.removed'], 'success');</script>
-    </th:block>
-    <th:block th:if="${roleChanged}">
-        <script>showToast(APP_CONFIG.messages['toast.project.member.roleChanged'], 'success');</script>
-    </th:block>
-
     <!-- Members Table -->
     <div class="table-responsive">
         <table class="table table-hover mb-0">

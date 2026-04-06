@@ -1,8 +1,15 @@
 import { Application } from "@hotwired/stimulus";
 
-// Expose showToast/showConfirm on window for inline <script> blocks
-// in admin pages and OOB HTMX panel responses.
+// Global HX-Trigger listener for toast notifications.
+// Spring controllers set HX-Trigger: {"showToast": {"message": "...", "type": "success"}}
+// to show toasts without inline <script> blocks in HTMX responses.
 import { showToast } from "lib/toast";
+document.addEventListener("showToast", (e) => {
+    showToast(e.detail.message, e.detail.type || "success");
+});
+
+// Expose showToast/showConfirm on window for remaining inline <script> blocks
+// in admin pages (users, tags, settings, profile).
 import { showConfirm } from "lib/confirm";
 window.showToast = showToast;
 window.showConfirm = showConfirm;

@@ -26,6 +26,19 @@ public class HtmxUtils {
         return ResponseEntity.ok().header("HX-Trigger", eventName).build();
     }
 
+    /**
+     * Set an HX-Trigger header on the response that fires a {@code showToast} event, picked up by
+     * the global listener in {@code application.js}.
+     *
+     * @param message the already-resolved message text
+     * @param type toast type: "success", "danger", "warning", "info"
+     */
+    public static String toastTrigger(String message, String type) {
+        // JSON: {"showToast":{"message":"...","type":"..."}}
+        String escapedMessage = message.replace("\\", "\\\\").replace("\"", "\\\"");
+        return "{\"showToast\":{\"message\":\"" + escapedMessage + "\",\"type\":\"" + type + "\"}}";
+    }
+
     // Private constructor to prevent instantiation
     private HtmxUtils() {
         throw new UnsupportedOperationException("Utility class");
