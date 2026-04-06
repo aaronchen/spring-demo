@@ -332,7 +332,10 @@ public class TaskController {
             model.addAttribute("task", task);
             model.addAttribute("mode", "create");
             model.addAttribute("tags", tagService.getAllTags());
+            model.addAttribute("timeline", Collections.emptyList());
+            model.addAttribute("activityCount", 0);
             addEditableProjects(model, currentDetails);
+            addSprintAttributes(project, model);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
@@ -399,7 +402,9 @@ public class TaskController {
             model.addAttribute("task", existing);
             model.addAttribute("mode", "edit");
             model.addAttribute("tags", tagService.getAllTags());
-            model.addAttribute("canEditDependencies", true);
+            addSprintAttributes(existing.getProject(), model);
+            addDependencyAttributes(existing, true, model);
+            addTimelineAttributes(model, id, currentDetails);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
