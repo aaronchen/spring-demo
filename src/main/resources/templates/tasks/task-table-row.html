@@ -22,7 +22,7 @@
         <input type="checkbox" class="form-check-input bulk-select-checkbox"
                th:data-task-id="${task.id}"
                th:data-project-id="${task.project.id}"
-               onchange="onBulkSelectChange(this)">
+               data-action="change->tasks--bulk-actions#onSelectChange">
     </td>
     <td th:data-editable="${canEdit ? 'true' : null}" data-field="title"
         th:data-task-id="${task.id}" th:data-value="${task.title}">
@@ -44,7 +44,7 @@
             <a th:each="tag : ${task.tags}" href="#"
                class="badge bg-secondary text-decoration-none text-white"
                th:data-tag-id="${tag.id}"
-               onclick="toggleTagFilter(this.dataset.tagId); return false;">
+               data-action="click->tasks--list#toggleTagFilter:prevent">
                 <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
             </a>
         </div>
@@ -59,53 +59,53 @@
             <a href="#" class="text-muted text-decoration-none user-link"
                th:data-user-id="${task.user.id}"
                th:data-user-name="${task.user.name}"
-               onclick="setUserFilter(this.dataset.userId, this.dataset.userName); return false;"
+               data-action="click->tasks--list#setUserFilter:prevent"
                th:text="${task.user.name}">User</a>
         </small>
     </td>
     <td style="white-space: nowrap;" th:data-editable="${canEdit ? 'true' : null}"
         data-field="priority" th:data-task-id="${task.id}" th:data-value="${task.priority.name()}">
         <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
-           onclick="setPriorityFilter('HIGH'); return false;">
+           data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="HIGH">
             <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>
         </a>
         <a href="#" th:if="${task.priority.name() == 'MEDIUM'}" class="badge bg-warning text-dark text-decoration-none"
-           onclick="setPriorityFilter('MEDIUM'); return false;">
+           data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="MEDIUM">
             <i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span>
         </a>
         <a href="#" th:if="${task.priority.name() == 'LOW'}" class="badge bg-success text-decoration-none text-white"
-           onclick="setPriorityFilter('LOW'); return false;">
+           data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="LOW">
             <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
         </a>
     </td>
     <td style="white-space: nowrap;" th:data-editable="${canEdit ? 'true' : null}"
         data-field="status" th:data-task-id="${task.id}" th:data-value="${task.status.name()}">
         <a href="#" th:if="${isCompleted}" class="badge bg-success text-decoration-none text-white"
-           onclick="setStatusFilter('COMPLETED'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="COMPLETED">
             <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
         </a>
         <a href="#" th:if="${isCancelled}" class="badge bg-dark text-decoration-none text-white"
-           onclick="setStatusFilter('CANCELLED'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="CANCELLED">
             <i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span>
         </a>
         <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
-           onclick="setStatusFilter('OVERDUE'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="OVERDUE">
             <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
         </a>
         <a href="#" th:if="${isInReview && !overdue}" class="badge bg-info text-decoration-none text-white"
-           onclick="setStatusFilter('IN_REVIEW'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="IN_REVIEW">
             <i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span>
         </a>
         <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-warning text-dark text-decoration-none"
-           onclick="setStatusFilter('IN_PROGRESS'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="IN_PROGRESS">
             <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
         </a>
         <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-backlog text-decoration-none"
-           onclick="setStatusFilter('BACKLOG'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="BACKLOG">
             <i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span>
         </a>
         <a href="#" th:if="${isOpen && !overdue}" class="badge bg-secondary text-decoration-none text-white"
-           onclick="setStatusFilter('OPEN'); return false;">
+           data-action="click->tasks--list#setStatusFilter:prevent" data-status="OPEN">
             <i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span>
         </a>
     </td>
@@ -133,7 +133,7 @@
     <td>
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
-            <button th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
+            <button th:if="${canEdit}" th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
                     th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
                     th:title="${isBacklog} ? #{action.toggle.backlog.next} : (${isOpen} ? #{action.toggle.open.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : (${isInReview} ? #{action.toggle.inReview.next} : (${isCancelled} ? #{action.toggle.cancelled.next} : #{action.toggle.completed.next}))))">

@@ -5,12 +5,12 @@
 
     <div th:replace="~{layouts/base :: navbar}"></div>
 
-    <main class="container flex-grow-1 mb-4">
+    <main class="container flex-grow-1 mb-4" data-controller="notifications--page">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="display-4 mb-0" th:text="#{page.title.notifications}">Notifications</h1>
-            <button id="clear-all-btn"
-                    th:if="${!notifications.isEmpty()}"
+            <button th:if="${!notifications.isEmpty()}"
                     class="btn btn-outline-danger btn-sm"
+                    data-notifications--page-target="clearBtn"
                     th:hx-delete="${appRoutes.apiNotifications}"
                     th:attr="hx-confirm=#{notification.clearAll.confirm},
                              data-confirm-title=#{notification.clearAll.title},
@@ -21,14 +21,14 @@
         </div>
 
         <!-- Empty state -->
-        <div id="page-empty" class="text-center text-muted py-5"
+        <div data-notifications--page-target="empty" class="text-center text-muted py-5"
              th:classappend="${!notifications.isEmpty()} ? 'd-none' : ''">
             <i class="bi bi-bell-slash" style="font-size: 3rem;"></i>
             <p class="mt-3" th:text="#{notification.empty}">No notifications</p>
         </div>
 
         <!-- Notification list -->
-        <div id="page-list" class="list-group shadow-sm"
+        <div data-notifications--page-target="list" class="list-group shadow-sm"
              th:classappend="${notifications.isEmpty()} ? 'd-none' : ''">
             <div th:each="n : ${notifications.content}"
                  class="list-group-item list-group-item-action"
@@ -77,93 +77,5 @@
 
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
-
-    <script>
-        const pageList = document.getElementById('page-list');
-        const pageEmpty = document.getElementById('page-empty');
-        const helpers = window.notificationHelpers;
-
-        // ── Producers: fire events from HTMX actions ────────────────────────
-
-        document.body.addEventListener('htmx:afterRequest', function(e) {
-            const el = e.detail.elt;
-            if (el.getAttribute('hx-delete') == APP_CONFIG.routes.apiNotifications) {
-                helpers.fire('notification:cleared');
-                return;
-            }
-            if (el.getAttribute('hx-patch')?.includes('/read')) {
-                el.classList.remove('list-group-item-light', 'fw-semibold');
-                const badge = el.querySelector('.badge');
-                if (badge) badge.remove();
-                helpers.fire('notification:read', { id: el.dataset.id });
-            }
-        });
-
-        // ── Consumers: react to events ──────────────────────────────────────
-
-        // New notification arrived via WebSocket — prepend to page list
-        document.addEventListener('notification:received', function(e) {
-            const n = e.detail;
-            pageEmpty.classList.add('d-none');
-            pageList.classList.remove('d-none');
-
-            const icon = helpers.getIcon(n.type);
-            const actionLink = n.link
-                ? `<a href="${n.link}" class="text-muted ms-2 align-self-center flex-shrink-0"><i class="bi bi-box-arrow-up-right"></i></a>`
-                : '';
-
-            const row = document.createElement('div');
-            row.className = 'list-group-item list-group-item-action list-group-item-light fw-semibold';
-            row.style.cursor = 'pointer';
-            row.dataset.id = n.id;
-            row.setAttribute('hx-patch', `${APP_CONFIG.routes.apiNotifications}/${n.id}/read`);
-            row.setAttribute('hx-swap', 'none');
-            htmx.process(row);
-
-            row.innerHTML = `<div class="d-flex align-items-start py-1">
-                <i class="bi ${icon} me-3 mt-1"></i>
-                <div class="flex-grow-1">
-                    <div>${helpers.escapeHtml(n.message)}</div>
-                    <small class="text-muted">${helpers.formatTime(n.createdAt)}</small>
-                </div>
-                ${actionLink}
-                <span class="badge bg-primary ms-2 align-self-center">${APP_CONFIG.messages['notification.new']}</span>
-            </div>`;
-
-            pageList.prepend(row);
-
-            // Show clear all button if it was hidden
-            const clearBtn = document.getElementById('clear-all-btn');
-            if (clearBtn) clearBtn.classList.remove('d-none');
-        });
-
-        // All cleared — show empty state
-        document.addEventListener('notification:cleared', function() {
-            pageList.innerHTML = '';
-            pageList.classList.add('d-none');
-            pageEmpty.classList.remove('d-none');
-            const clearBtn = document.getElementById('clear-all-btn');
-            if (clearBtn) clearBtn.classList.add('d-none');
-        });
-
-        // Single notification marked read (from dropdown) — update page row
-        document.addEventListener('notification:read', function(e) {
-            const row = pageList.querySelector(`[data-id="${e.detail.id}"]`);
-            if (row) {
-                row.classList.remove('list-group-item-light', 'fw-semibold');
-                const badge = row.querySelector('.badge');
-                if (badge) badge.remove();
-            }
-        });
-
-        // All marked as read (from dropdown) — update page rows
-        document.addEventListener('notification:allRead', function() {
-            pageList.querySelectorAll('.list-group-item').forEach(function(el) {
-                el.classList.remove('list-group-item-light', 'fw-semibold');
-                const badge = el.querySelector('.badge');
-                if (badge) badge.remove();
-            });
-        });
-    </script>
 </body>
 </html>

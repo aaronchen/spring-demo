@@ -332,7 +332,10 @@ public class TaskController {
             model.addAttribute("task", task);
             model.addAttribute("mode", "create");
             model.addAttribute("tags", tagService.getAllTags());
+            model.addAttribute("timeline", Collections.emptyList());
+            model.addAttribute("activityCount", 0);
             addEditableProjects(model, currentDetails);
+            addSprintAttributes(project, model);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
@@ -393,12 +396,15 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task existing = taskQueryService.getTaskById(id);
+        Task existing = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         if (result.hasErrors()) {
             model.addAttribute("task", existing);
             model.addAttribute("mode", "edit");
             model.addAttribute("tags", tagService.getAllTags());
+            addSprintAttributes(existing.getProject(), model);
+            addDependencyAttributes(existing, true, model);
+            addTimelineAttributes(model, id, currentDetails);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
@@ -549,6 +555,10 @@ public class TaskController {
                 return HtmxUtils.triggerEvent("taskSaved");
             }
             model.addAttribute("task", task);
+            // Set canEditProject so the card/row link opens in edit mode (not view)
+            model.addAttribute(
+                    "canEditProject",
+                    projectAccessGuard.canEdit(task.getProject().getId(), currentDetails));
             return UserPreferences.VIEW_TABLE.equals(view)
                     ? "tasks/task-table-row :: row"
                     : "tasks/task-card :: card";

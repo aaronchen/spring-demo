@@ -160,23 +160,6 @@
         </div>
     </div>
 
-    <!-- Toast Triggers -->
-    <th:block th:if="${templateCreated}">
-        <script>showToast(APP_CONFIG.messages['recurring.action.createdOk'], 'success');</script>
-    </th:block>
-    <th:block th:if="${templateSaved}">
-        <script>showToast(APP_CONFIG.messages['recurring.action.saved'], 'success');</script>
-    </th:block>
-    <th:block th:if="${templateDeleted}">
-        <script>showToast(APP_CONFIG.messages['recurring.action.deletedOk'], 'success');</script>
-    </th:block>
-    <th:block th:if="${templateToggled}">
-        <script>showToast(APP_CONFIG.messages['recurring.action.toggled'], 'success');</script>
-    </th:block>
-    <th:block th:if="${templateGenerated}">
-        <script>showToast(APP_CONFIG.messages['recurring.action.generated'], 'success');</script>
-    </th:block>
-
     <!-- Template List -->
     <div class="card shadow-sm">
         <div class="card-header">

@@ -33,7 +33,7 @@
                 </h6>
                 <button th:if="${mode != 'view'}" type="button"
                         class="btn btn-sm btn-outline-secondary ms-auto"
-                        onclick="addChecklistItem()">
+                        data-action="click->tasks--form#addChecklistItem">
                     <i class="bi bi-plus-circle"></i> <span th:text="#{task.checklist.add}">Add Item</span>
                 </button>
             </div>
@@ -59,15 +59,16 @@
                 <div class="p-3 border-top">
                     <div class="input-group input-group-sm" id="comment-input-group">
                         <input type="text" id="comment-text" name="text" class="form-control" autocomplete="off"
-                               data-mention th:attr="data-project-id=${task.project.id}"
+                               data-controller="mention" data-mention
+                               th:data-mention-project-id-value="${task.project.id}"
                                th:placeholder="#{comment.field.text.placeholder}" maxlength="500"
-                               onkeydown="if(event.key==='Enter'&amp;&amp;!isMentionMenuActive()){event.preventDefault();document.getElementById('comment-post-btn').click();}">
+                               data-action="keydown->mention#submitUnlessMentionOpen mention:clear->mention#clear">
                         <button type="button" id="comment-post-btn" class="btn btn-outline-primary"
                                 th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
                                 hx-include="#comment-text"
                                 hx-target="#task-activity"
                                 hx-swap="outerHTML"
-                                hx-on::after-request="if(event.detail.successful){const i=document.getElementById('comment-text');i.value='';clearMentions(i);}"
+                                hx-on::after-request="if(event.detail.successful){const i=document.getElementById('comment-text');i.value='';i.dispatchEvent(new CustomEvent('mention:clear'));}"
                                 onclick="if(!document.getElementById('comment-text').value.trim()){return false;}">
                             <i class="bi bi-send"></i> <span th:text="#{comment.action.post}">Post</span>
                         </button>

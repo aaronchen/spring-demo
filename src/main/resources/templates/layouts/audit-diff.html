@@ -95,12 +95,12 @@
                     </th:block>
                 </th:block>
 
-                <!--/* TEXT, DATE, NUMBER — default strikethrough → arrow */-->
+                <!--/* TEXT, DATE, NUMBER — default strikethrough → arrow (decode mentions for display) */-->
                 <th:block th:case="*">
                     <span class="text-decoration-line-through"
-                          th:text="${fieldValue['old']['value'] != null ? fieldValue['old']['value'] : ''}">old</span>
+                          th:text="${fieldValue['old']['value'] != null ? @auditTemplateHelper.decodeMentions(fieldValue['old']['value']) : ''}">old</span>
                     &rarr;
-                    <span th:text="${fieldValue['new']['value'] != null ? fieldValue['new']['value'] : ''}">new</span>
+                    <span th:text="${fieldValue['new']['value'] != null ? @auditTemplateHelper.decodeMentions(fieldValue['new']['value']) : ''}">new</span>
                 </th:block>
 
             </th:block>
@@ -132,7 +132,7 @@
                     </span>
                 </th:block>
                 <span th:case="*"
-                      th:text="${fieldValue['value']}">value</span>
+                      th:text="${@auditTemplateHelper.decodeMentions(fieldValue['value'])}">value</span>
             </th:block>
         </th:block>
     </div>

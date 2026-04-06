@@ -7,7 +7,9 @@
     <div th:replace="~{layouts/base :: navbar}"></div>
 
     <!-- Dashboard -->
-    <main class="container flex-grow-1">
+    <main class="container flex-grow-1"
+          data-controller="dashboard"
+          th:data-dashboard-ws-project-ids-value="${#strings.listJoin(wsProjectIds, ',')}">
         <!-- Welcome Banner -->
         <div class="row align-items-center mb-4 mt-3">
             <div class="col">
@@ -36,33 +38,5 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <meta name="_wsProjectIds" th:content="${#strings.listJoin(wsProjectIds, ',')}">
-    <script>
-        (function() {
-            const statsContainer = document.getElementById('dashboard-stats');
-
-            if (!window.stompClient || !statsContainer) return;
-
-            function refreshStats() {
-                htmx.ajax('GET', `${APP_CONFIG.routes.dashboard}/stats`,
-                    {target: '#dashboard-stats', swap: 'outerHTML'});
-            }
-
-            const wsProjectIds = document.querySelector('meta[name="_wsProjectIds"]')?.content;
-            window.stompClient.onConnect(function(client) {
-                if (wsProjectIds) {
-                    wsProjectIds.split(',').forEach(function(id) {
-                        client.subscribe(
-                            APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() }),
-                            function() { refreshStats(); });
-                    });
-                }
-
-                client.subscribe(APP_CONFIG.routes.topicPresence.toString(), function() {
-                    refreshStats();
-                });
-            });
-        })();
-    </script>
 </body>
 </html>

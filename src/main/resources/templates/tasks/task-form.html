@@ -238,8 +238,8 @@
 <th:block th:fragment="checklist" xmlns:th="http://www.thymeleaf.org">
     <div id="checklist-container">
         <div th:each="item, stat : ${task.checklistItems}" class="checklist-item d-flex align-items-center gap-1 mb-1"
-             draggable="true" ondragstart="checklistDragStart(event)" ondragover="checklistDragOver(event)"
-             ondragend="checklistDragEnd(event)" ondrop="checklistDrop(event)">
+             draggable="true"
+             data-action="dragstart->tasks--form#checklistDragStart dragover->tasks--form#checklistDragOver dragend->tasks--form#checklistDragEnd drop->tasks--form#checklistDrop">
             <div class="input-group input-group-sm">
                 <span th:if="${mode != 'view'}" class="input-group-text checklist-drag-handle">
                     <i class="bi bi-grip-vertical"></i>
@@ -250,7 +250,7 @@
                     <input type="checkbox" class="form-check-input mt-0"
                            th:checked="${item.checked}"
                            th:disabled="${mode == 'view'}"
-                           onchange="this.previousElementSibling.value = this.checked">
+                           data-action="change->tasks--form#syncChecklistCheckbox">
                 </div>
                 <input type="text" class="form-control"
                        name="checklistTexts"
@@ -260,7 +260,7 @@
                        th:disabled="${mode == 'view'}">
             </div>
             <button th:if="${mode != 'view'}" type="button" class="btn btn-sm btn-outline-danger border-0"
-                    onclick="removeChecklistItem(this)">
+                    data-action="click->tasks--form#removeChecklistItem">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>

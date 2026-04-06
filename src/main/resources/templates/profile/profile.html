@@ -19,8 +19,9 @@
                             <span th:text="#{profile.account.heading}">Account</span>
                         </h5>
 
-                        <!--/* Success toast triggered by flash attribute */-->
-                        <div th:if="${profileSaved}" class="d-none" data-toast="profile-saved"></div>
+                        <!--/* Flash toast — picked up by application.js showToast listener */-->
+                        <div th:if="${profileSaved}" class="d-none"
+                             data-flash-toast th:data-message="#{toast.profile.saved}"></div>
 
                         <form th:action="@{/profile}" method="post" th:object="${profileRequest}">
                             <input type="hidden" th:field="*{id}">
@@ -61,8 +62,8 @@
                             <span th:text="#{profile.password.heading}">Change Password</span>
                         </h5>
 
-                        <!--/* Success toast triggered by flash attribute */-->
-                        <div th:if="${passwordChanged}" class="d-none" data-toast="password-changed"></div>
+                        <div th:if="${passwordChanged}" class="d-none"
+                             data-flash-toast th:data-message="#{toast.profile.passwordChanged}"></div>
 
                         <form th:action="@{/profile/password}" method="post" th:object="${changePasswordRequest}">
                             <div class="mb-3">
@@ -117,8 +118,8 @@
                             <span th:text="#{profile.preferences.heading}">Preferences</span>
                         </h5>
 
-                        <!--/* Success toast triggered by flash attribute */-->
-                        <div th:if="${preferencesSaved}" class="d-none" data-toast="preferences-saved"></div>
+                        <div th:if="${preferencesSaved}" class="d-none"
+                             data-flash-toast th:data-message="#{toast.profile.preferencesSaved}"></div>
 
                         <form th:action="@{/profile/preferences}" method="post">
                             <!-- Task View Mode -->
@@ -216,20 +217,5 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script>
-        (function() {
-            // Show toast notifications for flash attributes
-            const toasts = {
-                'profile-saved': 'toast.profile.saved',
-                'password-changed': 'toast.profile.passwordChanged',
-                'preferences-saved': 'toast.profile.preferencesSaved'
-            };
-            Object.entries(toasts).forEach(function([attr, key]) {
-                if (document.querySelector(`[data-toast="${attr}"]`)) {
-                    showToast(APP_CONFIG.messages[key], 'success');
-                }
-            });
-        })();
-    </script>
 </body>
 </html>

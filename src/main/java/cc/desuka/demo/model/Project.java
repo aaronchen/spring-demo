@@ -64,6 +64,7 @@ public class Project implements Auditable {
             cascade = CascadeType.ALL,
             orphanRemoval = true,
             fetch = FetchType.LAZY)
+    @OrderBy("id ASC")
     private Set<ProjectMember> members = new LinkedHashSet<>();
 
     @OneToMany(

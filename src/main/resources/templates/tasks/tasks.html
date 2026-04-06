@@ -4,7 +4,10 @@
 <body class="d-flex flex-column min-vh-100">
     <div th:replace="~{layouts/base :: navbar}"></div>
 
-    <main class="container flex-grow-1 pb-4">
+    <main class="container flex-grow-1 pb-4"
+          data-controller="tasks--list tasks--form tasks--kanban tasks--inline-edit tasks--bulk-actions tasks--keyboard-shortcuts tasks--dependencies"
+          th:data-tasks--list-base-value="${appRoutes.tasks}"
+          th:data-tasks--list-ws-project-ids-value="${#strings.listJoin(wsProjectIds, ',')}">
         <div class="row">
             <div class="col-12">
                 <!-- Header -->
@@ -12,12 +15,12 @@
                     <h1 class="display-4" th:text="#{task.list.heading}">Tasks</h1>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-secondary btn-lg"
-                                onclick="toggleKeyboardHelp()"
+                                data-action="click->tasks--keyboard-shortcuts#toggleHelp"
                                 th:title="#{keyboard.help.title}">
                             <i class="bi bi-keyboard"></i>
                         </button>
                         <button id="export-btn" class="btn btn-outline-secondary btn-lg"
-                                onclick="exportTasks()"
+                                data-action="click->tasks--list#exportTasks"
                                 th:title="#{task.export.tooltip}">
                             <i class="bi bi-filetype-csv"></i> <span th:text="#{task.export}">Export</span>
                         </button>
@@ -40,14 +43,6 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <meta name="_wsProjectIds" th:content="${#strings.listJoin(wsProjectIds, ',')}">
     <div th:replace="~{tasks/keyboard-help-modal}"></div>
-    <script th:src="@{/js/tasks/task-form.js}"></script>
-    <script th:src="@{/js/tasks/task-dependencies.js}"></script>
-    <script th:src="@{/js/tasks/tasks.js}"></script>
-    <script th:src="@{/js/tasks/kanban.js}"></script>
-    <script th:src="@{/js/tasks/inline-edit.js}"></script>
-    <script th:src="@{/js/tasks/bulk-actions.js}"></script>
-    <script th:src="@{/js/tasks/keyboard-shortcuts.js}"></script>
 </body>
 </html>

@@ -28,6 +28,12 @@ public class MentionUtils {
         this.appRoutes = appRoutes;
     }
 
+    /** Decode encoded mention tokens to plain text: {@code @[Name](userId:N)} → {@code @Name}. */
+    public static String decodePlainText(String text) {
+        if (text == null) return "";
+        return MENTION_PATTERN.matcher(text).replaceAll("@$1");
+    }
+
     /** Extract all mentioned user IDs from text containing encoded mention tokens. */
     public static List<UUID> extractMentionedUserIds(String text) {
         List<UUID> ids = new ArrayList<>();

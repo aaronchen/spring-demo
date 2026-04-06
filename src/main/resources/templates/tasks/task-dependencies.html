@@ -33,7 +33,7 @@
                    th:text="${blocker.title}">Blocker title</a>
                 <button th:if="${canEditDependencies}" type="button"
                         class="btn btn-sm btn-outline-danger ms-2 border-0"
-                        onclick="removeDependencyItem(this)"
+                        data-action="click->tasks--dependencies#removeItem"
                         th:title="#{task.dependency.remove.title}">
                     <i class="bi bi-x-lg"></i>
                 </button>
@@ -70,7 +70,7 @@
                    th:text="${blocked.title}">Blocked title</a>
                 <button th:if="${canEditDependencies}" type="button"
                         class="btn btn-sm btn-outline-danger ms-2 border-0"
-                        onclick="removeDependencyItem(this)"
+                        data-action="click->tasks--dependencies#removeItem"
                         th:title="#{task.dependency.remove.title}">
                     <i class="bi bi-x-lg"></i>
                 </button>

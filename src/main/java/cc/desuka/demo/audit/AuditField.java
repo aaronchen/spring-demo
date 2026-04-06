@@ -9,6 +9,7 @@ import cc.desuka.demo.model.TaskStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -294,7 +295,13 @@ public record AuditField(
                 }
                 yield Objects.equals(a.refName, b.refName);
             }
-            case COLLECTION, CHECKLIST -> Objects.equals(a.items, b.items);
+            case COLLECTION -> Objects.equals(a.items, b.items);
+            // Checklist: order-insensitive — reordering is not a meaningful change
+            case CHECKLIST ->
+                    a.items != null && b.items != null
+                            ? a.items.size() == b.items.size()
+                                    && new HashSet<>(a.items).equals(new HashSet<>(b.items))
+                            : Objects.equals(a.items, b.items);
             default -> Objects.equals(a.value, b.value);
         };
     }

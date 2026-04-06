@@ -7,10 +7,7 @@
         <th:block th:each="status : ${statuses}">
             <div class="kanban-column"
                  th:data-status="${status.name()}"
-                 ondragover="kanbanDragOver(event)"
-                 ondragenter="kanbanDragEnter(event)"
-                 ondragleave="kanbanDragLeave(event)"
-                 ondrop="kanbanDrop(event)">
+                 data-action="dragover->tasks--kanban#dragOver dragenter->tasks--kanban#dragEnter dragleave->tasks--kanban#dragLeave drop->tasks--kanban#drop">
                 <!-- Column Header -->
                 <div class="kanban-column-header">
                     <span class="kanban-column-header-label">
@@ -38,14 +35,13 @@
                     <th:block th:each="task : ${tasksByStatus.get(status)}">
                         <div class="kanban-card"
                              th:classappend="${task.blocked ? 'kanban-card-blocked' : ''}"
-                             draggable="true"
                              th:data-task-id="${task.id}"
                              th:data-status="${task.status.name()}"
                              th:data-blocked="${task.blocked ? 'true' : null}"
-                             ondragstart="kanbanDragStart(event)"
-                             ondragend="kanbanDragEnd(event)"
                              th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
-                                      isOverdue=${!task.status.isTerminal() && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+                                      isOverdue=${!task.status.isTerminal() && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}"
+                             th:draggable="${canEdit}"
+                             th:data-action="${canEdit ? 'dragstart->tasks--kanban#dragStart dragend->tasks--kanban#dragEnd' : null}">
 
                             <!-- Card Title -->
                             <a href="#"

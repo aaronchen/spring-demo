@@ -24,31 +24,31 @@
                    th:text="${task.title}">Task Title</a>
             </h5>
             <a href="#" th:if="${isCompleted}" class="badge bg-light text-success text-decoration-none"
-               onclick="setStatusFilter('COMPLETED'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="COMPLETED">
                 <i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span>
             </a>
             <a href="#" th:if="${isCancelled}" class="badge bg-light text-dark text-decoration-none"
-               onclick="setStatusFilter('CANCELLED'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="CANCELLED">
                 <i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span>
             </a>
             <a href="#" th:if="${overdue}" class="badge bg-danger text-decoration-none text-white"
-               onclick="setStatusFilter('OVERDUE'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="OVERDUE">
                 <i class="bi bi-exclamation-circle-fill"></i> <span th:text="#{task.dueDate.overdue}">Overdue</span>
             </a>
             <a href="#" th:if="${isInReview && !overdue}" class="badge bg-light text-info text-decoration-none"
-               onclick="setStatusFilter('IN_REVIEW'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="IN_REVIEW">
                 <i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span>
             </a>
             <a href="#" th:if="${isInProgress && !overdue}" class="badge bg-light text-warning text-decoration-none"
-               onclick="setStatusFilter('IN_PROGRESS'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="IN_PROGRESS">
                 <i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span>
             </a>
             <a href="#" th:if="${isBacklog && !overdue}" class="badge bg-light text-muted text-decoration-none"
-               onclick="setStatusFilter('BACKLOG'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="BACKLOG">
                 <i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span>
             </a>
             <a href="#" th:if="${isOpen && !overdue}" class="badge bg-light text-secondary text-decoration-none"
-               onclick="setStatusFilter('OPEN'); return false;">
+               data-action="click->tasks--list#setStatusFilter:prevent" data-status="OPEN">
                 <i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span>
             </a>
         </div>
@@ -63,15 +63,15 @@
                     <i class="bi bi-lock-fill"></i> <span th:text="#{task.dependency.blocked}">Blocked</span>
                 </span>
                 <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
-                   onclick="setPriorityFilter('HIGH'); return false;">
+                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="HIGH">
                     <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>
                 </a>
                 <a href="#" th:if="${task.priority.name() == 'MEDIUM'}" class="badge bg-warning text-dark text-decoration-none"
-                   onclick="setPriorityFilter('MEDIUM'); return false;">
+                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="MEDIUM">
                     <i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span>
                 </a>
                 <a href="#" th:if="${task.priority.name() == 'LOW'}" class="badge bg-success text-decoration-none text-white"
-                   onclick="setPriorityFilter('LOW'); return false;">
+                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="LOW">
                     <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
                 </a>
                 <span th:if="${task.dueDate != null}" class="badge"
@@ -99,7 +99,7 @@
                         <a href="#" class="text-muted text-decoration-none user-link"
                            th:data-user-id="${task.user.id}"
                            th:data-user-name="${task.user.name}"
-                           onclick="setUserFilter(this.dataset.userId, this.dataset.userName); return false;"
+                           data-action="click->tasks--list#setUserFilter:prevent"
                            th:text="${task.user.name}">User</a>
                     </span>
                     <span class="d-block">
@@ -112,7 +112,7 @@
                 <a th:each="tag : ${task.tags}" href="#"
                    class="badge bg-secondary me-1 text-decoration-none text-white"
                    th:data-tag-id="${tag.id}"
-                   onclick="toggleTagFilter(this.dataset.tagId); return false;">
+                   data-action="click->tasks--list#toggleTagFilter:prevent">
                     <i class="bi bi-tag"></i> <span th:text="${tag.name}">Tag</span>
                 </a>
             </div>
@@ -122,7 +122,7 @@
         <div class="card-footer bg-transparent">
             <div class="d-flex gap-2">
                 <!-- Toggle Button -->
-                <button class="btn btn-sm flex-fill"
+                <button th:if="${canEdit}" class="btn btn-sm flex-fill"
                         th:classappend="${isInReview ? 'btn-outline-success' : (isInProgress ? 'btn-outline-info' : (isOpen ? 'btn-outline-warning' : 'btn-outline-secondary'))}"
                         th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=cards'},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">
