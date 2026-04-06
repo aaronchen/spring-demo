@@ -1,4 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
+import { requireOk } from "lib/api";
+import { enumToCamelCase } from "lib/i18n";
 
 const STATUS_COLORS = {
     BACKLOG: "#adb5bd",
@@ -14,10 +16,6 @@ const PRIORITY_COLORS = {
     MEDIUM: "#ffc107",
     HIGH: "#dc3545",
 };
-
-function enumToCamelCase(value) {
-    return value.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-}
 
 export default class extends Controller {
     static values = {
@@ -110,7 +108,7 @@ export default class extends Controller {
 
     destroyCharts() {
         Object.values(this.charts).forEach((chart) => chart.destroy());
-        Object.keys(this.charts).forEach((key) => delete this.charts[key]);
+        this.charts = {};
     }
 
     fetchAndRender() {
@@ -121,6 +119,7 @@ export default class extends Controller {
         if (url === null) return;
 
         fetch(url, { headers: { Accept: "application/json" } })
+            .then(requireOk)
             .then((response) => response.json())
             .then((data) => {
                 this.renderStatusChart(data.statusBreakdown);

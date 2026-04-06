@@ -1,13 +1,11 @@
 import { Controller } from "@hotwired/stimulus";
+import { csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 
 // Kanban board — drag-and-drop status changes using native HTML5 DnD API.
 // NOTE: Drag handler functions exposed on window temporarily for ondrag* attributes.
 
 export default class extends Controller {
-    connect() {
-    }
-
     dragStart(e) {
         const card = e.target.closest(".kanban-card");
         e.dataTransfer.setData("text/plain", card.dataset.taskId);
@@ -71,14 +69,10 @@ export default class extends Controller {
         this.updateColumnCounts();
 
         // POST status change
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || "X-CSRF-TOKEN";
-
         const params = new URLSearchParams();
         params.set("status", newStatus);
 
-        const headers = { "Content-Type": "application/x-www-form-urlencoded", "HX-Request": "true" };
-        if (csrfToken) headers[csrfHeader] = csrfToken;
+        const headers = { "Content-Type": "application/x-www-form-urlencoded", "HX-Request": "true", ...csrfHeaders() };
 
         fetch(`${APP_CONFIG.routes.tasks}/${taskId}/status`, {
             method: "POST",

@@ -22,7 +22,8 @@ export default class extends Controller {
 
     bindProjectChange() {
         const projectSelect = document.getElementById("projectId");
-        if (!projectSelect) return;
+        if (!projectSelect || projectSelect.dataset.formBound) return;
+        projectSelect.dataset.formBound = "true";
         projectSelect.addEventListener("change", () => {
             const assigneeSelect = document.getElementById("assigneeId");
             if (!assigneeSelect) return;
@@ -106,7 +107,8 @@ export default class extends Controller {
         this.updateChecklistHeading();
     }
 
-    removeChecklistItem(btn) {
+    removeChecklistItem(event) {
+        const btn = event.currentTarget || event;
         const item = btn.closest(".checklist-item");
         if (item) item.remove();
         const container = document.getElementById("checklist-container");

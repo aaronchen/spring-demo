@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
-import { requireOk } from "lib/api";
+import { requireOk, csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 import { showConfirm } from "lib/confirm";
 
@@ -154,11 +154,7 @@ export default class extends Controller {
         }
         if (this.selectedIds.size === 0) return;
 
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || "X-CSRF-TOKEN";
-
-        const headers = { "Content-Type": "application/json" };
-        if (csrfToken) headers[csrfHeader] = csrfToken;
+        const headers = { "Content-Type": "application/json", ...csrfHeaders() };
 
         fetch(`${APP_CONFIG.routes.tasks}/bulk`, {
             method: "POST",

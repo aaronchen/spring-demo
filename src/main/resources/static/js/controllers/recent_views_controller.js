@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
 import { onConnect } from "lib/websocket";
+import { escapeHtml } from "lib/html";
 
 export default class extends Controller {
     static targets = ["toggle", "panel", "list", "empty"];
@@ -82,7 +83,7 @@ export default class extends Controller {
         item.innerHTML = `<div class="d-flex align-items-center gap-2">
             <i class="${iconClass}" style="font-size: 0.8rem;"></i>
             <div class="text-truncate" style="min-width: 0;">
-                <div class="text-truncate small rv-title">${this.escapeHtml(title)}</div>
+                <div class="text-truncate small rv-title">${escapeHtml(title)}</div>
                 <small class="text-muted" style="font-size: 0.7rem;">${timeStr}</small>
             </div>
         </div>`;
@@ -112,9 +113,4 @@ export default class extends Controller {
         }
     }
 
-    escapeHtml(text) {
-        const div = document.createElement("div");
-        div.textContent = text;
-        return div.innerHTML;
-    }
 }

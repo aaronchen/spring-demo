@@ -87,7 +87,10 @@ export default class extends Controller {
     }
 
     disconnect() {
-        if (this.popstateHandler) window.removeEventListener("popstate", this.popstateHandler);
+        window.removeEventListener("popstate", this.popstateHandler);
+        document.removeEventListener("htmx:afterSwap", this.afterSwapHandler);
+        document.body.removeEventListener("taskSaved", this.taskSavedHandler);
+        document.body.removeEventListener("taskDeleted", this.taskDeletedHandler);
         this.element.removeEventListener("tasks:refresh", this.refreshHandler);
         this.element.removeEventListener("tasks:switch-view", this.switchViewHandler);
     }
@@ -97,11 +100,11 @@ export default class extends Controller {
     bindEvents() {
         const tasksView = document.getElementById("tasks-view");
 
-        // Pagination custom events
+        // Pagination custom events (safe: tasksView is inside this.element, destroyed with it)
         tasksView.addEventListener("pagination:navigate", (e) => this.navigateToPage(e.detail.page));
         tasksView.addEventListener("pagination:resize", (e) => this.onPageSizeChange(e.detail.size));
 
-        // Debounced live search
+        // Debounced live search (safe: searchInput is inside this.element)
         const searchInput = document.getElementById("search-input");
         const searchClearBtn = document.getElementById("search-clear-btn");
 
@@ -118,24 +121,32 @@ export default class extends Controller {
             this.doSearch(true);
         });
 
-        // HTMX afterSwap: highlight tags, show modal
-        document.addEventListener("htmx:afterSwap", (evt) => {
+        // Document-level listeners — stored for cleanup in disconnect()
+        this.afterSwapHandler = (evt) => {
             if (evt.detail.target?.id === "tasks-view") {
                 this.highlightActiveTags();
             }
             if (evt.detail.target?.id === "task-modal-content") {
                 bootstrap.Modal.getOrCreateInstance(document.getElementById("task-modal")).show();
             }
-        });
+        };
+        document.addEventListener("htmx:afterSwap", this.afterSwapHandler);
 
-        // Task CRUD events
-        document.body.addEventListener("taskSaved", () => {
+        this.taskSavedHandler = () => {
             const modal = document.getElementById("task-modal");
             if (modal) bootstrap.Modal.getInstance(modal)?.hide();
             showToast(APP_CONFIG.messages["toast.task.saved"], "success");
             this.doSearch(false);
-        });
+        };
+        document.body.addEventListener("taskSaved", this.taskSavedHandler);
 
+        this.taskDeletedHandler = () => {
+            showToast(APP_CONFIG.messages["toast.task.deleted"], "success");
+            this.doSearch(false);
+        };
+        document.body.addEventListener("taskDeleted", this.taskDeletedHandler);
+
+        // Delete modal (safe: inside this.element)
         const deleteModal = document.getElementById("task-delete-modal");
         if (deleteModal) deleteModal.addEventListener("show.bs.modal", (e) => {
             const btn = e.relatedTarget;
@@ -144,11 +155,6 @@ export default class extends Controller {
             const confirmBtn = document.getElementById("delete-confirm-btn");
             confirmBtn.setAttribute("hx-delete", `${this.baseValue}/${btn.dataset.taskId}`);
             htmx.process(confirmBtn);
-        });
-
-        document.body.addEventListener("taskDeleted", () => {
-            showToast(APP_CONFIG.messages["toast.task.deleted"], "success");
-            this.doSearch(false);
         });
 
         // Browser back/forward

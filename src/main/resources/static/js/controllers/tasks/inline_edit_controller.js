@@ -1,14 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
+import { csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
-
-function enumToCamelCase(value) {
-    return value.toLowerCase().replace(/_([a-z])/g, (_, c) => c.toUpperCase());
-}
-
-function resolveLabel(prefix, value) {
-    const key = `${prefix}.${enumToCamelCase(value)}`;
-    return APP_CONFIG.messages[key] || value;
-}
+import { resolveLabel } from "lib/i18n";
 
 const INLINE_PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH"]
     .map((v) => ({ value: v, label: resolveLabel("task.priority", v) }));
@@ -231,15 +224,11 @@ export default class extends Controller {
 
     saveInlineEdit(cell, taskId, field, value, originalContent) {
         const row = cell.closest("tr");
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
-        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || "X-CSRF-TOKEN";
-
         const params = new URLSearchParams();
         params.set("field", field);
         params.set("value", value);
 
-        const headers = { "Content-Type": "application/x-www-form-urlencoded", "HX-Request": "true" };
-        if (csrfToken) headers[csrfHeader] = csrfToken;
+        const headers = { "Content-Type": "application/x-www-form-urlencoded", "HX-Request": "true", ...csrfHeaders() };
 
         fetch(`${APP_CONFIG.routes.tasks}/${taskId}/field`, {
             method: "PATCH",

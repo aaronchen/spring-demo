@@ -54,7 +54,12 @@ public class HtmxUtils {
      */
     public static String toastTrigger(String message, ToastType type) {
         // JSON: {"showToast":{"message":"...","type":"..."}}
-        String escapedMessage = message.replace("\\", "\\\\").replace("\"", "\\\"");
+        String escapedMessage =
+                message.replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
         return "{\"showToast\":{\"message\":\"" + escapedMessage + "\",\"type\":\"" + type + "\"}}";
     }
 

@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
 import { onConnect } from "lib/websocket";
+import { escapeHtml } from "lib/html";
 
 export default class extends Controller {
     static targets = ["count", "list"];
@@ -27,15 +28,9 @@ export default class extends Controller {
             const li = document.createElement("li");
             const span = document.createElement("span");
             span.className = "dropdown-item-text";
-            span.innerHTML = `<i class="bi bi-circle-fill text-success me-2" style="font-size: 0.5rem;"></i>${this.escapeHtml(name)}`;
+            span.innerHTML = `<i class="bi bi-circle-fill text-success me-2" style="font-size: 0.5rem;"></i>${escapeHtml(name)}`;
             li.appendChild(span);
             this.listTarget.appendChild(li);
         });
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement("div");
-        div.textContent = text;
-        return div.innerHTML;
     }
 }
