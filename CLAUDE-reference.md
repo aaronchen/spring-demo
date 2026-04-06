@@ -539,9 +539,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Lombok `@Data`
 
 - `dto/RecentViewResponse.java` - Recent view output DTO (record)
-  - Fields: `entityType`, `entityId`, `entityTitle`, `href`, `viewedAt` (LocalDateTime), `titleOnly` (boolean)
+  - Fields: `entityType`, `entityId`, `entityTitle`, `href`, `viewedAt` (LocalDateTime), `titleOnly` (boolean), `deleted` (boolean)
+  - Compact constructor defaults `deleted` to `false` for backward-compatible 6-arg construction
   - Used for both REST API responses and WebSocket push payloads
   - `titleOnly` flag distinguishes title-sync messages (update in place) from new view entries (prepend)
+  - `deleted` flag signals JS to remove the item from the drawer (entity was deleted)
 
 - `dto/AnalyticsResponse.java` - Analytics API response record with 6 inner records
   - Top-level record: `statusBreakdown`, `priorityBreakdown`, `workloadDistribution`, `burndown` (list), `velocity` (list), `overdueAnalysis`
@@ -1169,13 +1171,16 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Used by `ProjectService`, `TaskService`, `TaskController`, and `TaskReport` (replaces direct `MessageSource` + `Locale` boilerplate)
 
 - `util/HtmxUtils.java` - HTMX helper methods
+  - `ToastType` enum — `SUCCESS`, `DANGER`, `WARNING`, `INFO`; `toString()` returns lowercase Bootstrap alert type
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
+  - `toastTrigger(String message, ToastType type)` — returns JSON `HX-Trigger` header value that fires a `showToast` event, picked up by the global listener in `application.js`; used for HTMX responses that need toast feedback (project settings, tag management)
 
 - `util/CalendarHelper.java` - Utility for building calendar grid data (weeks of `CalendarDay` records) from a `YearMonth` and task list; used by `TaskController` for calendar view
 
 - `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
   - Encoded format: `@[Display Name](userId:<uuid>)` — stored in DB as-is; injects `AppRoutesProperties` for link generation
+  - `decodePlainText(String)` — static; converts encoded mention tokens to plain `@Name` format (strips userId); used by `AuditTemplateHelper` for readable audit diffs
   - `extractMentionedUserIds(String)` — static; parses encoded mention tokens, returns list of user IDs; used by `CommentService` for mention notifications
   - `renderHtml(String)` — instance method; converts encoded tokens to `<a href="/tasks?selectedUserId=N" class="mention">@Name</a>` with HTML escaping; exposed to Thymeleaf as `${@mentionUtils.renderHtml(text)}`; clicking a mention navigates to the task list filtered by that user
   - Regex pattern: `@\[([^\]]+)\]\(userId:(\d+)\)`
@@ -1202,7 +1207,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ### Layouts
 - `templates/layouts/base.html` - Base layout with reusable fragments
   - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering); loads `mentions.css` globally
-  - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (`stomp.umd.min.js`, `websocket.js`, `presence.js`, `notifications.js`) — prevents connection attempts for anonymous users
+  - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (STOMP UMD) — prevents connection attempts for anonymous users
+  - `<script type="importmap">` maps `@hotwired/stimulus` to Stimulus WebJar for ES module imports
   - `navbar` - navigation bar with auth-aware elements:
     - Left nav links: Dashboard, Projects, Tasks, Analytics, Tags, Users — each with `currentPath`-based active highlighting via `th:classappend`
     - Anonymous: shows Register link
@@ -1213,7 +1219,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Notification bell dropdown in navbar (unread count badge, recent notifications list, mark-all-read and view-all links)
   - Online users indicator in navbar (count badge + dropdown list)
   - Recently viewed drawer markup (vertical tab on left edge, slide-out panel with item list; `d-none d-lg-block` — lg+ only); authenticated users only
-  - `scripts` - Bootstrap + HTMX + `/config.js` + `utils.js` + Tribute.js (WebJar) + `mentions.js` + STOMP.js (WebJar) + `websocket.js` + `presence.js` + `notifications.js` + `recent-views.js` (in that order — `APP_CONFIG` must be set before page scripts; Tribute before mentions; STOMP client before feature scripts)
+  - `scripts` - Bootstrap + HTMX + `/config.js` + Tribute.js (WebJar) + STOMP.js (WebJar, auth-only) + `application.js` (ES module entry point — registers all Stimulus controllers, initializes shared modules)
 
 - `templates/layouts/pagination.html` - Reusable pagination control bar
   - `controlBar(page, position, label)` — `page` is `Page<?>`, `position` is `'top'`/`'bottom'`, `label` is item noun (e.g. "tasks", "entries")
@@ -1225,8 +1231,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `templates/tasks/tasks.html` - Main cross-project task list page
   - "New Task" button (`btn-lg`) in page header; links to `/tasks/new` (opens modal via HTMX)
   - Includes `task-workspace.html` via `th:replace` for all filter/sort/view controls
-  - All state managed in JS (`tasks/tasks.js`) — synced to URL params and cookies
-  - Loads `tasks/task-form.js`, `tasks/inline-edit.js`, `tasks/kanban.js`, `tasks/keyboard-shortcuts.js` page-specifically
+  - All state managed in JS (`tasks--list` Stimulus controller) — synced to URL params and cookies
+  - Stimulus controllers activated via `data-controller` attribute: `tasks--list`, `tasks--form`, `tasks--kanban`, `tasks--inline-edit`, `tasks--bulk-actions`, `tasks--keyboard-shortcuts`, `tasks--dependencies`
 
 - `templates/tasks/task-cards.html` - Card grid fragment (`grid` fragment)
 - `templates/tasks/task-card.html` - Individual task card fragment (`card` fragment, reads `${task}` from context); 6-state status badge and toggle button (Backlog/Open/In Progress/In Review/Completed/Cancelled with distinct icons and colors); project name link in card body; checklist progress bar (checked/total) when task has checklist items; `canEdit` resolved from `canEditProject` (project-scoped) or `projectEditMap` (cross-project) or ownership fallback
@@ -1263,7 +1269,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Reads `${tasksByStatus}` — `Map<TaskStatus, List<Task>>` built by `TaskService.groupByStatus()`
   - One column per `TaskStatus` (6 columns: Backlog/Open/In Progress/In Review/Completed/Cancelled)
   - Draggable cards with title, priority badge, assignee initials circle, due date chip; drag handle via `draggable="true"`
-  - Powered by `kanban.js` — native HTML5 Drag and Drop (`dragstart`/`dragover`/`drop`/`dragend` handlers); on drop POSTs to `POST /tasks/{id}/status`
+  - Powered by `tasks--kanban` Stimulus controller — native HTML5 Drag and Drop (`dragstart`/`dragover`/`drop`/`dragend` handlers); on drop POSTs to `POST /tasks/{id}/status`
   - Column headers show status label and task count badge
 
 - `templates/tasks/keyboard-help-modal.html` - Modal fragment showing keyboard shortcut reference table
@@ -1272,7 +1278,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `templates/tasks/task-form.html` - **Shared form fields fragment only**
   - `fields` fragment — hidden `version` input; project selector dropdown (shown in create mode when `editableProjects` available, hidden field fallback when project is pre-set); title, description, status radio buttons (6-state: Backlog/Open/In Progress/In Review/Completed/Cancelled with icons and colors, shown on edit/view only), priority radio buttons (with reception bar icons), start date picker, due date picker, read-only completedAt/updatedAt (on edit/view), user `<searchable-select>` (remote, one value, @ManyToOne), tag checkboxes (multiple, @ManyToMany)
-  - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove/reorder via `task-form.js`; each item has a drag handle for reordering
+  - `checklist` fragment — separate fragment for checklist items section; rendered with existing items on edit, empty container on create; add/remove/reorder via `tasks--form` Stimulus controller; each item has a drag handle for reordering
   - `mode` attribute controls field state: `'create'` hides status; `'view'` disables all inputs; `'edit'` shows everything editable
   - No `<form>` tag; `th:object` is set by the including template (binds to `TaskFormRequest`)
   - Used by both `task.html` and `task-modal.html`
@@ -1295,7 +1301,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Members bar: inline member names with role badges
   - Includes `task-workspace.html` for full task filtering/sorting/view controls
   - Sets `TASKS_BASE_OVERRIDE` JS variable for project-scoped task API calls
-  - Loads `tasks/task-form.js`, `tasks/tasks.js`, `tasks/inline-edit.js`, `tasks/kanban.js`, `tasks/keyboard-shortcuts.js` page scripts
+  - Stimulus controllers activated via `data-controller`: same set as `tasks.html`
 - `templates/projects/project-form.html` - Create project form (full page, centered card)
   - Name (required) and description fields with validation
   - Posts to `/projects`
@@ -1378,84 +1384,39 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/css/audit.css` - Audit page styles (category buttons, search clear button)
 - `static/css/theme.css` - Theme overrides per `[data-theme]` value; palette tokens (`--theme-*`) mapped to Bootstrap `--bs-*` variables; design tokens (motion, shadows, radius); themes: `workshop`, `sapphire`
 - `static/css/components/searchable-select-bootstrap5.css` - Bootstrap 5 theme for `<searchable-select>`
-- `static/js/websocket.js` - Shared STOMP WebSocket client
-  - Creates a single `StompJs.Client` connection to `/ws`
-  - Exposes `window.stompClient.onConnect(callback)` — feature scripts register subscriptions via this; handles late registration (calls callback immediately if already connected)
-  - Single connection shared by all features (presence, notifications)
-- `static/js/presence.js` - Online presence indicator
-  - Uses `window.stompClient.onConnect()` to subscribe to `/topic/presence`
-  - Fetches `GET /api/presence` after subscribing for initial state (connect event fires before subscription)
-  - Updates online count badge and user list dropdown in navbar
-- `static/js/notifications.js` - Notification bell and event bus
-  - Subscribes to `/user/queue/notifications` via shared STOMP client for real-time push
-  - Custom DOM events decouple producers from consumers: `notification:received`, `notification:read`, `notification:allRead`, `notification:cleared`
-  - Manages navbar badge count and dropdown notification list
-  - Exposes `window.notificationHelpers` for the full notifications page to reuse rendering logic
-- `static/js/mentions.js` - @mention autocomplete via Tribute.js
-  - `initMentionInputs(root)` — attaches Tribute to any `[data-mention]` element; project-scoped via `data-project-id` attr (fetches `GET /api/projects/{id}/members` once, cached per input), falls back to `GET /api/users?q=` when no project context; uses `positionMenu: false` + CSS for dropdown positioning (Tribute's built-in caret calculation unreliable in flex/modal layouts)
-  - `mentionMap` WeakMap — tracks `element → Map<name, id>` for encoding; populated by Tribute's `selectTemplate` callback
-  - `isMentionMenuActive()` — returns true if any Tribute dropdown is visible; used to suppress Enter-to-post while selecting a mention
-  - `encodeMentions(text, el)` — converts clean `@Name` display to encoded `@[Name](userId:N)` format before submission
-  - `clearMentions(el)` — resets mention tracking for an element (used after comment post)
-  - Atomic backspace: `keydown` handler removes entire `@Name` token when cursor is inside a mention
-  - Auto-encodes on both HTMX requests (`htmx:configRequest`) and regular form submissions (`submit` event)
-  - Auto-initializes on `DOMContentLoaded` and `htmx:afterSwap`
-- `static/js/tasks/tasks.js` - Main task list page logic (search, filters, pagination, view switching, saved views); moved from `static/js/tasks.js` in Phase 8
-  - `STATUS_CONFIG` maps each status to label/icon/color; `renderStatusButton()` builds status filter dropdown items; `setStatusFilter` uses enum names (BACKLOG, OPEN, IN_PROGRESS, IN_REVIEW, COMPLETED, CANCELLED)
-  - Task delete uses `hx-delete`; subscribes to `/topic/tasks` via shared STOMP client for stale-data banner
-  - User filter variable: `selectedUserId`; supports `TASKS_BASE_OVERRIDE` for project-scoped views
-  - Saved views: `applySavedView(view)` restores filter state from stored JSON and sets `activeViewName`; `saveCurrentView()` POSTs current state to `POST /api/views`; `deleteSavedView(id)` calls `DELETE /api/views/{id}` and refreshes dropdown. `renderActiveViewLabel()` updates button text/style/icon; `clearActiveView()` resets to default. `_keepActiveView` flag prevents `doSearch` from clearing the label when called from `applySavedView`
-  - Sort entries use `{field, direction}` objects in `activeSorts` array; `SORT_LABELS` maps `"field,direction"` keys to display labels
-- `static/js/tasks/task-form.js` - Task form logic (checklist management, project-aware assignee list); moved from `static/js/task-form.js` in Phase 8
-  - `bindProjectChange()` — updates assignee searchable-select via `setSrc()` + `reset()` when project dropdown changes; binds on DOMContentLoaded and htmx:afterSwap (for modal)
-  - `addChecklistItem()`, `removeChecklistItem(btn)`, `updateChecklistHeading()`, drag-and-drop reorder handlers (`checklistDragStart`, `checklistDragOver`, `checklistDrop`, `checklistDragEnd`)
-  - Loaded page-specifically on task pages (via `tasks.html` script block)
-- `static/js/tasks/bulk-actions.js` - Cross-page bulk selection and actions for table view
-  - `bulkSelectedIds` Set + `bulkSelectedProjectIds` Map (taskId→projectId) — persists selection across HTMX page swaps
-  - `onBulkSelectChange(checkbox)`, `toggleSelectAll(checked)`, `clearBulkSelection()` — selection management
-  - `recheckVisibleBoxes()` — restores checkbox state after HTMX page navigation; `updateSelectAllState()` — handles indeterminate state
-  - `getCommonProjectId()` — returns single project ID if all selected tasks share one project, else null
-  - `renderBulkBar()` — shows/hides floating action bar; toggles assign button based on common project
-  - `executeBulkAction(action, value)` — sends JSON POST to `/tasks/bulk` with CSRF token from meta tags
-  - `executeBulkDelete()` — shows `showConfirm()` dialog before executing
-  - `loadBulkAssignUsers()` / `filterBulkAssignUsers(query)` / `renderBulkAssignList(users)` — assign dropdown with project-scoped user list from `/api/projects/{id}/members/assignable`; cached per project
-  - Loaded page-specifically on task pages (via `tasks.html` and `project.html` script blocks)
-- `static/js/tasks/inline-edit.js` - Toggle-based inline editing for table view
-  - `toggleEditMode()` — activates/deactivates inline edit mode via pill button in table header (primary outline → green fill when active, icon swaps pencil-square/pencil-fill); in edit mode, renders editable inputs (text, select, date) in place of static cell content
-  - Supports fields: title (text input), description (text input), priority (select), status (select), dueDate (date input)
-  - On save: sends `PATCH /tasks/{id}/field` with field name and new value; reverts on error
-  - Edit mode toggle controlled by the `e` keyboard shortcut (via `keyboard-shortcuts.js`)
-- `static/js/tasks/kanban.js` - Kanban board drag-and-drop via native HTML5 Drag and Drop API
-  - `dragstart` — sets transfer data (task ID); adds dragging styles
-  - `dragover` — highlights drop target column; prevents default to allow drop
-  - `drop` — reads task ID from transfer data; POSTs to `POST /tasks/{id}/status` with target column's status
-  - `dragend` — clears dragging styles regardless of outcome
-  - Updates card position in DOM optimistically; reverts on server error
-- `static/js/tasks/task-dependencies.js` - Dependency picker and management
-  - Binds `.dep-picker` elements via `dataset.depBound` guard, creates dependency items with hidden inputs
-  - `updateDepExcludeLists()` — rebuilds search URL and calls `setSrc()` on each picker
-  - Re-binds on `htmx:afterSettle` for modal support
-- `static/js/tasks/keyboard-shortcuts.js` - Keyboard shortcut handler for task pages
-  - `h` — open keyboard help modal; `n` — open new task modal; `s` / `/` — focus search input
-  - `1` / `2` / `3` / `4` — switch to cards / table / calendar / board view
-  - `e` — toggle inline edit mode (table view only; no-op in other views)
-  - `Escape` — close open modal or cancel inline edit mode
-  - All shortcuts suppressed when focus is in an input, textarea, or select element
-- `static/js/recent-views.js` - Recently viewed drawer panel
-  - Toggle panel via vertical tab click; outside click closes
-  - Fetches initial list from `GET /api/recent-views` on WebSocket connect
-  - Subscribes to `/user/queue/recent-views` for live updates
-  - `titleOnly` messages update existing item text in place; other messages prepend new item to top
-- `static/js/analytics.js` - Analytics page chart rendering
-  - IIFE pattern; reads API URL from `<meta name="_analyticsApi">`
-  - `STATUS_COLORS` / `PRIORITY_COLORS` — color maps matching app-wide status/priority colors
-  - `charts` object tracks Chart.js instances for destroy/re-create on filter change
-  - `getSelectedProjectIds()` — reads project filter checkboxes; returns null if no filter UI (project-scoped page)
-  - `initFilterListeners()` — binds change events on project checkboxes and Select All; triggers re-fetch
-  - `fetchAndRender()` — fetches JSON from API, renders 6 charts: status (doughnut), priority (doughnut), workload (stacked bar), burndown (line), velocity (line), overdue (bar)
-  - Status/priority labels resolved via `APP_CONFIG.messages`
-- `static/js/utils.js` - Shared utilities: `requireOk(response)` validates fetch response status (throws on non-ok); `getCookie(name)`, `setCookie(name, value)`; `showToast(message, type, options)` for toast notifications (optional `options.href` for clickable toasts); `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; CSRF injection for HTMX; `htmx:confirm` integration with `data-confirm-*` attributes; 409 conflict handler
-- `static/js/audit.js` - Audit page logic (category filter, search, date range, pagination)
+- `static/js/application.js` - ES module entry point; imports and registers all Stimulus controllers; imports shared side-effect modules (`htmx-csrf`, `htmx-errors`, `flash-toast`); listens for `showToast` HX-Trigger events
+- `static/js/controllers/` - Stimulus controllers (one class per file, auto-registered by `application.js`)
+  - `tasks/list_controller.js` — main task list (search, filters, pagination, view switching, saved views); uses `STATUS_CONFIG` for status dropdown; subscribes to WebSocket for stale-data banner via `lib/websocket`
+  - `tasks/form_controller.js` — task form (checklist management, project-aware assignee/sprint lists via `setSrc()`/`reset()`)
+  - `tasks/bulk_actions_controller.js` — cross-page bulk selection and actions for table view; `bulkSelectedIds` Set persists across HTMX swaps
+  - `tasks/inline_edit_controller.js` — toggle-based inline editing for table view; supports title, description, priority, status, dueDate fields
+  - `tasks/kanban_controller.js` — kanban board drag-and-drop via native HTML5 DnD API
+  - `tasks/keyboard_shortcuts_controller.js` — keyboard shortcuts (`h`, `n`, `s`/`/`, `1-4`, `e`, `Escape`); suppressed in input/textarea/select
+  - `tasks/dependencies_controller.js` — dependency picker, exclude-list management
+  - `tasks/live_update_controller.js` — WebSocket live update subscription for task detail/modal views
+  - `notifications/badge_controller.js` — navbar notification bell (badge count, dropdown list, WebSocket push)
+  - `notifications/page_controller.js` — full notifications page (reuses rendering helpers from `lib/notifications`)
+  - `presence_controller.js` — online presence indicator (WebSocket subscription + initial fetch)
+  - `recent_views_controller.js` — recently viewed drawer panel (toggle, outside-click close, WebSocket live updates)
+  - `analytics_controller.js` — Chart.js rendering (status/priority doughnuts, workload, burndown, velocity, overdue, effort charts); project filter checkboxes
+  - `audit_controller.js` — audit page (category filter, search, date range, pagination)
+  - `mention_controller.js` — Tribute.js @mention autocomplete; attaches to `[data-mention]` elements
+  - `dashboard_controller.js` — dashboard page logic
+- `static/js/lib/` - Shared ES modules (imported by controllers, no global state)
+  - `api.js` — `requireOk(response)` validates fetch response status (throws on non-ok)
+  - `toast.js` — `showToast(message, type, options)` for Bootstrap toast notifications (optional `options.href` for clickable toasts)
+  - `confirm.js` — `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; HTMX `htmx:confirm` integration with `data-confirm-*` attributes
+  - `cookies.js` — `getCookie(name)`, `setCookie(name, value, days)`
+  - `html.js` — HTML utility functions (escaping, element creation)
+  - `i18n.js` — message resolution helpers using `APP_CONFIG.messages`
+  - `websocket.js` — shared STOMP WebSocket client; `onConnect(callback)` API for subscription registration; single connection shared by all controllers
+  - `notifications.js` — notification event bus; custom DOM events (`notification:received/read/allRead/cleared`); shared rendering helpers
+  - `mentions.js` — Tribute.js setup: `initMentionInputs(root)`, `isMentionMenuActive()`, project-scoped member fetching
+  - `mention-encoding.js` — `encodeMentions(text, el)`, `clearMentions(el)`, atomic backspace handler
+  - `htmx-csrf.js` — CSRF token injection for HTMX requests (reads `<meta>` tags, adds header via `htmx:configRequest`)
+  - `htmx-errors.js` — global HTMX error/409 conflict handler
+  - `flash-toast.js` — shows toast from URL flash parameters on page load
+  - `date-range.js` — date range picker utilities for audit page
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component with public API
   - Three modes: local (static options), remote prefetch (`prefetch` attr), remote server search
   - Public methods: `reset()`, `clear()`, `setValue()`, `getValue()`, `setSrc()`, `setOptions()`, `enable()`, `disable()`
@@ -1463,6 +1424,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Attributes: `disabled`, `readonly`, `src`, `prefetch`, `value-field`, `text-field`, `query-param`, `debounce`
 - Bootstrap Icons served via WebJar (`bootstrap-icons:1.13.1`); loaded globally in `base.html`
 - Tribute.js served via WebJar (`github-com-zurb-tribute:5.1.3`); loaded globally in `base.html`
+- Stimulus served via WebJar (`hotwired__stimulus:3.2.2`); mapped via `<script type="importmap">` in `base.html`
 
 ## Resource Files
 
@@ -1900,7 +1862,7 @@ Key dependencies (see `pom.xml` for versions):
 - `spring-boot-starter-flyway` + `flyway-database-postgresql` — DB migrations (prod)
 - `postgresql` (runtime), `h2` (dev/test)
 - `spring-boot-devtools` — hot reload
-- `bootstrap` (WebJar 5.3.3), `htmx.org` (WebJar 2.0.4), `stomp-websocket` (WebJar 2.3.4)
+- `bootstrap` (WebJar 5.3.3), `htmx.org` (WebJar 2.0.4), `stomp-websocket` (WebJar 2.3.4), `hotwired__stimulus` (WebJar 3.2.2)
 - `lombok` — boilerplate reduction (not used on entities)
 - `mapstruct` (1.6.3) + `mapstruct-processor` (after Lombok in annotation processor paths)
 - `springdoc-openapi-starter-webmvc-ui` (3.0.2) — OpenAPI 3.1 + Swagger UI

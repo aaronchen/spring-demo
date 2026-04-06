@@ -117,6 +117,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - DTO layer (`TaskRequest` / `TaskResponse`) with MapStruct for compile-time mapping
 - Thymeleaf with shared fragment architecture
 - HTMX 2.0 for dynamic interactions, HX-Trigger events, and out-of-band swaps
+- Stimulus 3.2 for JavaScript behavior via controllers and ES module imports (no global functions or script tag ordering)
 - Tribute.js for @mention autocomplete in comment input
 - Bootstrap 5.3 for styling
 - Reusable pagination fragment with custom DOM events
@@ -125,16 +126,16 @@ A growing full-stack application built as a hands-on learning project for Spring
 - CSS theme system with `[data-theme]` selectors and FOUC prevention
 - Split CSS: `base.css` (global) + `theme.css` (theme overrides) + page-specific (`tasks.css`, `audit.css`)
 - WebSocket + STOMP via `spring-boot-starter-websocket` and STOMP.js 7.3
-- Shared STOMP client (`websocket.js`) with `onConnect(callback)` pattern for feature scripts
-- Client-side event bus via `CustomEvent` — decouples notification producers (WebSocket, dropdown, page) from consumers (badge, dropdown list, page list)
+- Shared STOMP client (`lib/websocket.js`) ES module with `onConnect(callback)` pattern, imported by Stimulus controllers
+- Client-side event bus via `CustomEvent` (`lib/notifications.js`) — decouples notification producers (WebSocket, dropdown, page) from consumers (badge, dropdown list, page list)
 - Online presence tracking with `ConcurrentHashMap` keyed by user ID (multi-tab safe, name-change safe); broadcast via `/topic/presence`
 - Notification persistence with DB-first pattern (save then push) — offline users see notifications on login
 - Auto-purge of old notifications via `@Scheduled` cron (admin-configurable retention period, default 30 days)
 - Central user-resolution helpers in `SecurityUtils` (replaces duplicated patterns across services, dialects, and listeners)
 - `Translatable` enum interface — enums store their own `messages.properties` key; `Messages.get(Translatable)` resolves display names; templates use `#{${enum.messageKey}}`
-- Split JS: `utils.js` (global) + page-specific (`js/tasks/*.js`, `audit.js`) + WebSocket (`websocket.js`, `presence.js`, `notifications.js`)
-- Toast notification system via `showToast()` in `utils.js` (Bootstrap 5 toasts, lazy-created container)
-- Styled confirm dialog via `showConfirm()` in `utils.js` (Bootstrap 5 modal, replaces native `confirm()`)
+- Stimulus 3.2.2 + ES modules via import maps: `application.js` bootstraps controllers, `js/controllers/` for page behavior, `js/lib/` for shared modules, `js/components/` for Web Components
+- Toast notification system via `showToast()` in `lib/toast.js` (Bootstrap 5 toasts, lazy-created container)
+- Styled confirm dialog via `showConfirm()` in `lib/confirm.js` (Bootstrap 5 modal, replaces native `confirm()`)
 - All `messages.properties` keys served to JavaScript via `APP_CONFIG.messages` in `/config.js`
 - Externalized UI strings via `messages.properties` (Spring MessageSource)
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
@@ -555,15 +556,43 @@ spring-demo/
 │       │   │   ├── tasks.css           # Task page styles
 │       │   │   └── theme.css           # Theme overrides (Workshop, Sapphire)
 │       │   ├── js/
-│       │   │   ├── audit.js            # Audit page logic
-│       │   │   ├── utils.js            # Shared utilities (cookies, CSRF, toasts, confirm)
-│       │   │   └── tasks/              # Task page scripts
-│       │   │       ├── tasks.js        # Task list logic (search, filters, saved views)
-│       │   │       ├── task-form.js    # Task form logic (checklist, project-aware assignee)
-│       │   │       ├── bulk-actions.js # Cross-page bulk selection and actions
-│       │   │       ├── inline-edit.js  # Toggle-based inline editing (table view)
-│       │   │       ├── kanban.js       # Drag-and-drop for Kanban board
-│       │   │       └── keyboard-shortcuts.js # Keyboard shortcut handler
+│       │   │   ├── application.js      # Stimulus app bootstrap (registers all controllers)
+│       │   │   ├── controllers/        # Stimulus controllers
+│       │   │   │   ├── analytics_controller.js
+│       │   │   │   ├── audit_controller.js
+│       │   │   │   ├── dashboard_controller.js
+│       │   │   │   ├── mention_controller.js
+│       │   │   │   ├── presence_controller.js
+│       │   │   │   ├── recent_views_controller.js
+│       │   │   │   ├── notifications/  # Notification controllers
+│       │   │   │   │   ├── badge_controller.js
+│       │   │   │   │   └── page_controller.js
+│       │   │   │   └── tasks/          # Task controllers
+│       │   │   │       ├── bulk_actions_controller.js
+│       │   │   │       ├── dependencies_controller.js
+│       │   │   │       ├── form_controller.js
+│       │   │   │       ├── inline_edit_controller.js
+│       │   │   │       ├── kanban_controller.js
+│       │   │   │       ├── keyboard_shortcuts_controller.js
+│       │   │   │       ├── list_controller.js
+│       │   │   │       └── live_update_controller.js
+│       │   │   ├── lib/                # Shared ES modules
+│       │   │   │   ├── api.js          # Fetch wrapper (requireOk, CSRF)
+│       │   │   │   ├── confirm.js      # Styled confirm dialog (showConfirm)
+│       │   │   │   ├── cookies.js      # Cookie utilities
+│       │   │   │   ├── date-range.js   # Date range picker helpers
+│       │   │   │   ├── flash-toast.js  # Flash message toasts
+│       │   │   │   ├── html.js         # HTML escaping utilities
+│       │   │   │   ├── htmx-csrf.js    # HTMX CSRF token injection
+│       │   │   │   ├── htmx-errors.js  # HTMX error handling
+│       │   │   │   ├── i18n.js         # Message lookup (APP_CONFIG.messages)
+│       │   │   │   ├── mention-encoding.js # @mention encode/decode
+│       │   │   │   ├── mentions.js     # Tribute.js integration
+│       │   │   │   ├── notifications.js # Notification event bus
+│       │   │   │   ├── toast.js        # Toast notification system (showToast)
+│       │   │   │   └── websocket.js    # Shared STOMP client
+│       │   │   └── components/         # Web Components
+│       │   │       └── searchable-select.js # <searchable-select> custom element
 │       │   ├── favicon.svg             # SVG favicon
 │       ├── templates/
 │       │   ├── dashboard/
@@ -694,6 +723,7 @@ spring-demo/
 | CSS | Bootstrap 5.3.8 |
 | Icons | Bootstrap Icons 1.13.1 |
 | Dynamic UI | HTMX 2.0.4 |
+| JS Framework | Stimulus 3.2.2 (ES modules via import maps) |
 | @Mentions | Tribute.js 5.1.3 |
 | Build | Maven |
 | Formatting | Spotless + google-java-format 1.30 (AOSP) |
