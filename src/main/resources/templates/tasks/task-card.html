@@ -122,7 +122,7 @@
         <div class="card-footer bg-transparent">
             <div class="d-flex gap-2">
                 <!-- Toggle Button -->
-                <button class="btn btn-sm flex-fill"
+                <button th:if="${canEdit}" class="btn btn-sm flex-fill"
                         th:classappend="${isInReview ? 'btn-outline-success' : (isInProgress ? 'btn-outline-info' : (isOpen ? 'btn-outline-warning' : 'btn-outline-secondary'))}"
                         th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=cards'},hx-target='#task-card-' + ${task.id}"
                         hx-swap="outerHTML">

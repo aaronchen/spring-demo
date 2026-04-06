@@ -133,7 +133,7 @@
     <td>
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
-            <button th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
+            <button th:if="${canEdit}" th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
                     th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
                     hx-swap="outerHTML"
                     th:title="${isBacklog} ? #{action.toggle.backlog.next} : (${isOpen} ? #{action.toggle.open.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : (${isInReview} ? #{action.toggle.inReview.next} : (${isCancelled} ? #{action.toggle.cancelled.next} : #{action.toggle.completed.next}))))">
