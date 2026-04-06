@@ -79,13 +79,17 @@ export default class extends Controller {
         this.loadSavedViews();
         this.initWebSocket();
 
-        // Expose methods on window for onclick handlers (temporary backward compat)
-        this.exposeGlobals();
+        // Listen for events from sibling controllers
+        this.refreshHandler = () => this.doSearch(false);
+        this.switchViewHandler = (e) => this.switchView(e.detail.view);
+        this.element.addEventListener("tasks:refresh", this.refreshHandler);
+        this.element.addEventListener("tasks:switch-view", this.switchViewHandler);
     }
 
     disconnect() {
         if (this.popstateHandler) window.removeEventListener("popstate", this.popstateHandler);
-        this.removeGlobals();
+        this.element.removeEventListener("tasks:refresh", this.refreshHandler);
+        this.element.removeEventListener("tasks:switch-view", this.switchViewHandler);
     }
 
     // ── Event binding ────────────────────────────────────────────────────
@@ -212,7 +216,7 @@ export default class extends Controller {
     doSearch(resetPage) {
         if (resetPage) {
             this.currentPage = 0;
-            if (typeof clearBulkSelection === "function") clearBulkSelection();
+            this.element.dispatchEvent(new CustomEvent("tasks:bulk-clear", { bubbles: true }));
         }
         if (this._keepActiveView) {
             this._keepActiveView = false;
@@ -269,10 +273,10 @@ export default class extends Controller {
 
     switchView(eventOrView) {
         const view = eventOrView?.currentTarget ? eventOrView.currentTarget.dataset.view : eventOrView;
-        if (this.currentView === "table" && view !== "table" && typeof editModeActive !== "undefined" && editModeActive) {
-            toggleEditMode();
+        if (this.currentView === "table" && view !== "table") {
+            this.element.dispatchEvent(new CustomEvent("tasks:edit-mode-off", { bubbles: true }));
         }
-        if (typeof clearBulkSelection === "function") clearBulkSelection();
+        this.element.dispatchEvent(new CustomEvent("tasks:bulk-clear", { bubbles: true }));
         this.currentView = view;
         this.clearActiveView();
         this.renderViewToggle();
@@ -827,23 +831,4 @@ export default class extends Controller {
         this.renderSorts();
     }
 
-    // ── Cross-controller globals ────────────────────────────────────────
-    // These are needed by other Stimulus controllers (keyboard-shortcuts, bulk-actions)
-    // until we convert to Stimulus outlets or DOM events.
-
-    exposeGlobals() {
-        const self = this;
-        window.switchView = (v) => self.switchView(v);
-        window.doSearch = (r) => self.doSearch(r);
-        Object.defineProperty(window, "currentView", {
-            get: () => self.currentView,
-            configurable: true,
-        });
-    }
-
-    removeGlobals() {
-        delete window.switchView;
-        delete window.doSearch;
-        delete window.currentView;
-    }
 }

@@ -37,14 +37,16 @@ export default class extends Controller {
             });
         }
 
-        this.exposeGlobals();
+        // Listen for clear events from list controller
+        this.bulkClearHandler = () => this.clearSelection();
+        this.element.addEventListener("tasks:bulk-clear", this.bulkClearHandler);
     }
 
     disconnect() {
         if (this.afterSwapHandler) {
             document.removeEventListener("htmx:afterSwap", this.afterSwapHandler);
         }
-        this.removeGlobals();
+        this.element.removeEventListener("tasks:bulk-clear", this.bulkClearHandler);
     }
 
     // ── Selection ────────────────────────────────────────────────────────
@@ -171,7 +173,7 @@ export default class extends Controller {
                 showToast(msg, "success");
                 if (data.skipped > 0) showToast(data.skippedMessage, "warning");
                 this.clearSelection();
-                doSearch(false);
+                this.element.dispatchEvent(new CustomEvent("tasks:refresh", { bubbles: true }));
             })
             .catch(() => {
                 showToast(APP_CONFIG.messages["toast.error.generic"] || "An error occurred", "danger");
@@ -251,14 +253,4 @@ export default class extends Controller {
         if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
     }
 
-    // ── Cross-controller globals ────────────────────────────────────────
-    // clearBulkSelection is called by list_controller when filters/views change.
-
-    exposeGlobals() {
-        window.clearBulkSelection = () => this.clearSelection();
-    }
-
-    removeGlobals() {
-        delete window.clearBulkSelection;
-    }
 }

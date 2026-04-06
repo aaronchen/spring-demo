@@ -43,7 +43,13 @@ export default class extends Controller {
         };
         document.addEventListener("htmx:afterSwap", this.afterSwapHandler);
 
-        this.exposeGlobals();
+        // Listen for events from sibling controllers
+        this.editModeOffHandler = () => {
+            if (this.editModeActive) this.toggleEditMode();
+        };
+        this.toggleEditModeHandler = () => this.toggleEditMode();
+        this.element.addEventListener("tasks:edit-mode-off", this.editModeOffHandler);
+        this.element.addEventListener("tasks:toggle-edit-mode", this.toggleEditModeHandler);
     }
 
     disconnect() {
@@ -54,7 +60,8 @@ export default class extends Controller {
         if (this.afterSwapHandler) {
             document.removeEventListener("htmx:afterSwap", this.afterSwapHandler);
         }
-        this.removeGlobals();
+        this.element.removeEventListener("tasks:edit-mode-off", this.editModeOffHandler);
+        this.element.removeEventListener("tasks:toggle-edit-mode", this.toggleEditModeHandler);
     }
 
     toggleEditMode() {
@@ -268,19 +275,4 @@ export default class extends Controller {
         });
     }
 
-    // ── Cross-controller globals ────────────────────────────────────────
-    // toggleEditMode/editModeActive used by keyboard-shortcuts and list controllers.
-
-    exposeGlobals() {
-        window.toggleEditMode = () => this.toggleEditMode();
-        Object.defineProperty(window, "editModeActive", {
-            get: () => this.editModeActive,
-            configurable: true,
-        });
-    }
-
-    removeGlobals() {
-        delete window.toggleEditMode;
-        delete window.editModeActive;
-    }
 }

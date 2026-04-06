@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 
 // Task list keyboard shortcuts.
-// NOTE: toggleKeyboardHelp exposed on window temporarily for onclick handler.
+// Communicates with sibling controllers via custom DOM events.
 
 export default class extends Controller {
     connect() {
@@ -25,16 +25,13 @@ export default class extends Controller {
             case "h": e.preventDefault(); this.toggleHelp(); break;
             case "n": e.preventDefault(); this.triggerNewTask(); break;
             case "s": e.preventDefault(); this.focusSearch(); break;
-            case "1": e.preventDefault(); this.switchViewIfAvailable("cards"); break;
-            case "2": e.preventDefault(); this.switchViewIfAvailable("table"); break;
-            case "3": e.preventDefault(); this.switchViewIfAvailable("calendar"); break;
-            case "4": e.preventDefault(); this.switchViewIfAvailable("board"); break;
+            case "1": e.preventDefault(); this.dispatchSwitchView("cards"); break;
+            case "2": e.preventDefault(); this.dispatchSwitchView("table"); break;
+            case "3": e.preventDefault(); this.dispatchSwitchView("calendar"); break;
+            case "4": e.preventDefault(); this.dispatchSwitchView("board"); break;
             case "e":
-                if (typeof window.currentView !== "undefined" && window.currentView === "table"
-                        && typeof window.toggleEditMode === "function") {
-                    e.preventDefault();
-                    window.toggleEditMode();
-                }
+                e.preventDefault();
+                this.element.dispatchEvent(new CustomEvent("tasks:toggle-edit-mode", { bubbles: true }));
                 break;
             case "Escape": this.closeOpenModal(); break;
         }
@@ -57,11 +54,8 @@ export default class extends Controller {
         if (input) { input.focus(); input.select(); }
     }
 
-    switchViewIfAvailable(view) {
-        const btn = document.getElementById(`view-${view}`);
-        if (btn && typeof window.switchView === "function") {
-            window.switchView(view);
-        }
+    dispatchSwitchView(view) {
+        this.element.dispatchEvent(new CustomEvent("tasks:switch-view", { bubbles: true, detail: { view } }));
     }
 
     closeOpenModal() {
