@@ -399,6 +399,7 @@ public class TaskController {
             model.addAttribute("task", existing);
             model.addAttribute("mode", "edit");
             model.addAttribute("tags", tagService.getAllTags());
+            model.addAttribute("canEditDependencies", true);
             if (HtmxUtils.isHtmxRequest(request)) {
                 return "tasks/task-modal";
             }
