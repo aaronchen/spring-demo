@@ -4,8 +4,6 @@ import { requireOk } from "lib/api";
 // Task form — project-aware assignee list + sprint dropdown + checklist management.
 // Shared by task list modal and full-page task view.
 //
-// NOTE: addChecklistItem/removeChecklistItem/checklist drag handlers exposed on window
-// temporarily for onclick handlers in task-form.html and dynamically created elements.
 
 export default class extends Controller {
     connect() {
@@ -94,7 +92,7 @@ export default class extends Controller {
                 <div class="input-group-text">
                     <input type="hidden" name="checklistChecked" value="false">
                     <input type="checkbox" class="form-check-input mt-0"
-                           onchange="this.previousElementSibling.value = this.checked">
+                           data-action="change->tasks--form#syncChecklistCheckbox">
                 </div>
                 <input type="text" class="form-control" name="checklistTexts" autocomplete="off" placeholder="${placeholder}">
             </div>
@@ -116,6 +114,12 @@ export default class extends Controller {
             empty.classList.remove("d-none");
         }
         this.updateChecklistHeading();
+    }
+
+    syncChecklistCheckbox(event) {
+        const checkbox = event.currentTarget;
+        const hidden = checkbox.previousElementSibling;
+        if (hidden) hidden.value = checkbox.checked;
     }
 
     updateChecklistHeading() {

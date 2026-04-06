@@ -59,7 +59,7 @@ export default class extends Controller {
                 return `@${item.original.name}`;
             },
             menuItemTemplate: (item) => `<i class="bi bi-person me-1"></i>${item.string}`,
-            noMatchTemplate: () => '<li class="tribute-no-match">No users found</li>',
+            noMatchTemplate: () => `<li class="tribute-no-match">${APP_CONFIG.messages["user.empty"]}</li>`,
             requireLeadingSpace: true,
         });
 

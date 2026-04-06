@@ -3,7 +3,6 @@ import { Controller } from "@hotwired/stimulus";
 // Dependency picker — handles add/remove via DOM manipulation (hidden inputs).
 // Dependencies are saved with the form, not via separate API calls.
 // Stimulus lifecycle handles re-binding after HTMX swaps automatically.
-// NOTE: removeDependencyItem and updateDepExcludeLists exposed on window temporarily.
 
 export default class extends Controller {
     connect() {

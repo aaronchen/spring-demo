@@ -9,26 +9,25 @@ import { onConnect } from "lib/websocket";
 // WebSocket stale-data banners, and modal state management.
 //
 // Mounted on the workspace wrapper in tasks.html and project.html.
-// TASKS_BASE is configured via data-tasks--list-base-value (eliminates window.TASKS_BASE_OVERRIDE).
-//
-// NOTE: Methods are exposed on window.* temporarily for backward compat with
-// onclick handlers in templates. These will be removed when templates are
-// converted to data-action attributes (Phase 6 follow-up).
+// TASKS_BASE is configured via data-tasks--list-base-value.
 
-const SORT_LABELS = {
-    "title,asc":          "Title ↑",
-    "title,desc":         "Title ↓",
-    "createdAt,asc":      "Oldest First",
-    "createdAt,desc":     "Newest First",
-    "priorityOrder,asc":  "Priority ↑",
-    "priorityOrder,desc": "Priority ↓",
-    "dueDate,asc":        "Due Date ↑",
-    "dueDate,desc":       "Due Date ↓",
-    "updatedAt,asc":      "Updated ↑",
-    "updatedAt,desc":     "Updated ↓",
-    "description,asc":    "Desc ↑",
-    "description,desc":   "Desc ↓",
-};
+function buildSortLabels() {
+    const m = APP_CONFIG.messages;
+    return {
+        "title,asc":          m["task.sort.title.asc"],
+        "title,desc":         m["task.sort.title.desc"],
+        "createdAt,asc":      m["task.sort.createdAt.asc"],
+        "createdAt,desc":     m["task.sort.createdAt.desc"],
+        "priorityOrder,asc":  m["task.sort.priorityOrder.asc"],
+        "priorityOrder,desc": m["task.sort.priorityOrder.desc"],
+        "dueDate,asc":        m["task.sort.dueDate.asc"],
+        "dueDate,desc":       m["task.sort.dueDate.desc"],
+        "updatedAt,asc":      m["task.sort.updatedAt.asc"],
+        "updatedAt,desc":     m["task.sort.updatedAt.desc"],
+        "description,asc":    m["task.sort.description.asc"],
+        "description,desc":   m["task.sort.description.desc"],
+    };
+}
 
 const STATUS_CONFIG = {
     BACKLOG:     { msgKey: "task.filter.backlog",    btnCss: "btn-backlog",    icon: "bi-inbox" },
@@ -327,7 +326,7 @@ export default class extends Controller {
 
     renderSorts() {
         const label = this.activeSorts
-            .map((s) => SORT_LABELS[`${s.field},${s.direction}`] || `${s.field} ${s.direction}`)
+            .map((s) => buildSortLabels()[`${s.field},${s.direction}`] || `${s.field} ${s.direction}`)
             .join(", ");
         document.getElementById("sort-label").textContent = label;
 

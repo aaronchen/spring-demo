@@ -3,7 +3,6 @@ import { csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 
 // Kanban board — drag-and-drop status changes using native HTML5 DnD API.
-// NOTE: Drag handler functions exposed on window temporarily for ondrag* attributes.
 
 export default class extends Controller {
     dragStart(e) {

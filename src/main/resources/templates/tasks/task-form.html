@@ -250,7 +250,7 @@
                     <input type="checkbox" class="form-check-input mt-0"
                            th:checked="${item.checked}"
                            th:disabled="${mode == 'view'}"
-                           onchange="this.previousElementSibling.value = this.checked">
+                           data-action="change->tasks--form#syncChecklistCheckbox">
                 </div>
                 <input type="text" class="form-control"
                        name="checklistTexts"

@@ -4,7 +4,6 @@ import { showToast } from "lib/toast";
 import { showConfirm } from "lib/confirm";
 
 // Bulk actions for table view — cross-page selection with floating action bar.
-// NOTE: Functions exposed on window temporarily for onclick/onchange handlers.
 
 export default class extends Controller {
     connect() {
@@ -161,7 +160,8 @@ export default class extends Controller {
             headers,
             body: JSON.stringify({ taskIds: Array.from(this.selectedIds), action, value: value || "" }),
         })
-            .then((response) => { if (!response.ok) throw new Error("Bulk action failed"); return response.json(); })
+            .then(requireOk)
+            .then((response) => response.json())
             .then((data) => {
                 const count = data.count || 0;
                 const msgKey = action === "DELETE" ? "toast.task.bulk.deleted" : "toast.task.bulk.success";

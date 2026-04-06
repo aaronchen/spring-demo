@@ -10,7 +10,6 @@ const INLINE_STATUS_OPTIONS = ["BACKLOG", "OPEN", "IN_PROGRESS", "IN_REVIEW", "C
     .map((v) => ({ value: v, label: resolveLabel("task.status", v) }));
 
 // Inline editing for table view — toggle edit mode to make cells editable.
-// NOTE: toggleEditMode and editModeActive exposed on window temporarily.
 
 export default class extends Controller {
     connect() {
