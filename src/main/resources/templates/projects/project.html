@@ -4,7 +4,10 @@
 <body class="d-flex flex-column min-vh-100">
     <div th:replace="~{layouts/base :: navbar}"></div>
 
-    <main class="container flex-grow-1 pb-4">
+    <main class="container flex-grow-1 pb-4"
+          data-controller="tasks--list"
+          th:data-tasks--list-base-value="${appRoutes.projects + '/' + project.id}"
+          th:data-tasks--list-ws-project-ids-value="${project.id}">
         <div class="row">
             <div class="col-12">
                 <!-- Back link -->
@@ -100,15 +103,9 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <meta name="_wsProjectIds" th:content="${project.id}">
-    <!--/* Set project-scoped base URL for tasks.js */-->
-    <script th:inline="javascript">
-        window.TASKS_BASE_OVERRIDE = /*[[${appRoutes.projects + '/' + project.id}]]*/ '/projects/1';
-    </script>
     <div th:replace="~{tasks/keyboard-help-modal}"></div>
     <script th:src="@{/js/tasks/task-form.js}"></script>
     <script th:src="@{/js/tasks/task-dependencies.js}"></script>
-    <script th:src="@{/js/tasks/tasks.js}"></script>
     <script th:src="@{/js/tasks/kanban.js}"></script>
     <script th:src="@{/js/tasks/inline-edit.js}"></script>
     <script th:src="@{/js/tasks/bulk-actions.js}"></script>

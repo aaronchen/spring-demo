@@ -21,6 +21,7 @@ import AuditController from "./controllers/audit_controller.js";
 import NotificationsBadgeController from "./controllers/notifications/badge_controller.js";
 import NotificationsPageController from "./controllers/notifications/page_controller.js";
 import MentionController from "./controllers/mention_controller.js";
+import TasksListController from "./controllers/tasks/list_controller.js";
 
 const app = Application.start();
 
@@ -31,6 +32,7 @@ app.register("audit", AuditController);
 app.register("notifications--badge", NotificationsBadgeController);
 app.register("notifications--page", NotificationsPageController);
 app.register("mention", MentionController);
+app.register("tasks--list", TasksListController);
 
 // Expose for debugging: window.Stimulus.controllers shows all active instances
 window.Stimulus = app;
