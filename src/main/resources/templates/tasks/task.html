@@ -8,16 +8,23 @@
 
     <!-- Main Content -->
     <main class="container-fluid flex-grow-1 d-flex flex-column px-5 pb-3"
-          data-controller="tasks--form tasks--dependencies">
+          th:data-controller="${mode != 'create'
+              ? 'tasks--form tasks--dependencies tasks--live-update'
+              : 'tasks--form tasks--dependencies'}"
+          th:data-tasks--live-update-task-id-value="${mode != 'create' ? task.id : ''}"
+          th:data-tasks--live-update-project-id-value="${mode != 'create' ? task.project.id : ''}">
         <div th:with="canEdit=${#auth.canEdit(task) || task.user == null}">
             <!-- Stale data banner -->
             <div th:if="${mode != 'create'}" id="stale-banner"
+                 data-tasks--live-update-target="banner"
                  class="alert alert-info d-none mb-2 d-flex align-items-center" role="alert">
                 <div>
                     <i class="bi bi-arrow-repeat me-1"></i>
                     <span th:text="#{task.stale.detail}">This task was modified by another user.</span>
                 </div>
-                <a href="#" id="stale-banner-refresh" class="alert-link ms-auto"
+                <a href="#" data-tasks--live-update-target="refresh"
+                   data-action="click->tasks--live-update#refresh"
+                   class="alert-link ms-auto"
                    th:text="#{task.stale.refresh}">Refresh</a>
             </div>
 
@@ -71,38 +78,5 @@
     <!-- Scripts -->
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script th:if="${mode != 'create'}" th:inline="javascript">
-        (function() {
-            const taskId = /*[[${task.id}]]*/ '';
-            const projectId = /*[[${task.project.id}]]*/ '';
-            const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
-            const staleBanner = document.getElementById('stale-banner');
-            const staleRefresh = document.getElementById('stale-banner-refresh');
-
-            if (!window.stompClient || !staleBanner) return;
-
-            window.stompClient.onConnect(function(client) {
-                client.subscribe(APP_CONFIG.routes.topicProjectTasks.resolve({ projectId }), function(message) {
-                    const data = JSON.parse(message.body);
-                    if (currentUserId && String(data.userId) === currentUserId) return;
-                    if (data.taskId !== taskId) return;
-                    staleBanner.classList.remove('d-none');
-                });
-
-                // Live comment updates — refresh activity timeline
-                client.subscribe(APP_CONFIG.routes.topicTaskComments.resolve({ taskId }), function(message) {
-                    const data = JSON.parse(message.body);
-                    if (currentUserId && String(data.userId) === currentUserId) return;
-                    htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/activity`,
-                        {target: '#task-activity', swap: 'outerHTML'});
-                });
-            });
-
-            staleRefresh.addEventListener('click', function(e) {
-                e.preventDefault();
-                location.reload();
-            });
-        })();
-    </script>
 </body>
 </html>

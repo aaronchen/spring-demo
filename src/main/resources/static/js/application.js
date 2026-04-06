@@ -28,6 +28,8 @@ import TasksInlineEditController from "./controllers/tasks/inline_edit_controlle
 import TasksBulkActionsController from "./controllers/tasks/bulk_actions_controller.js";
 import TasksKeyboardShortcutsController from "./controllers/tasks/keyboard_shortcuts_controller.js";
 import TasksDependenciesController from "./controllers/tasks/dependencies_controller.js";
+import TasksLiveUpdateController from "./controllers/tasks/live_update_controller.js";
+import DashboardController from "./controllers/dashboard_controller.js";
 
 const app = Application.start();
 
@@ -45,6 +47,8 @@ app.register("tasks--inline-edit", TasksInlineEditController);
 app.register("tasks--bulk-actions", TasksBulkActionsController);
 app.register("tasks--keyboard-shortcuts", TasksKeyboardShortcutsController);
 app.register("tasks--dependencies", TasksDependenciesController);
+app.register("tasks--live-update", TasksLiveUpdateController);
+app.register("dashboard", DashboardController);
 
 // Expose for debugging: window.Stimulus.controllers shows all active instances
 window.Stimulus = app;

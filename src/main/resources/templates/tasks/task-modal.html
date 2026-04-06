@@ -16,15 +16,24 @@
     </div>
     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 </div>
-<!--/* Stale data banner — shown when another user modifies this task while modal is open */-->
-<div th:if="${mode != 'create'}" id="modal-stale-banner"
+<!--/* Stale data banner + WebSocket live update controller */-->
+<div th:if="${mode != 'create'}"
+     data-controller="tasks--live-update"
+     th:data-tasks--live-update-task-id-value="${task.id}"
+     th:data-tasks--live-update-project-id-value="${task.project.id}"
+     th:data-tasks--live-update-refresh-url-value="${mode == 'edit' ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+     data-tasks--live-update-modal-value="true">
+<div id="modal-stale-banner"
+     data-tasks--live-update-target="banner"
      class="alert alert-info d-none m-2 mb-0 d-flex align-items-center" role="alert">
     <div>
         <i class="bi bi-arrow-repeat me-1"></i>
         <small th:text="#{task.stale.detail}">This task was modified by another user.</small>
     </div>
-    <a href="#" id="modal-stale-refresh" class="alert-link ms-auto"
+    <a href="#" data-action="click->tasks--live-update#refresh"
+       class="alert-link ms-auto"
        th:text="#{task.stale.refresh}">Refresh</a>
+</div>
 </div>
 <div class="modal-body p-0">
     <form id="task-form"
@@ -47,43 +56,3 @@
         <span th:text="${mode == 'edit'} ? #{action.updateTask} : #{action.createTask}">Submit</span>
     </button>
 </div>
-<script th:if="${mode != 'create'}" th:inline="javascript">
-    (function() {
-        const taskId = /*[[${task.id}]]*/ '';
-        const projectId = /*[[${task.project.id}]]*/ '';
-        const refreshUrl = /*[[${mode == 'edit' ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}]]*/ '';
-        const currentUserId = document.querySelector('meta[name="_userId"]')?.content;
-        const banner = document.getElementById('modal-stale-banner');
-        const refreshLink = document.getElementById('modal-stale-refresh');
-        if (!window.stompClient || !banner) return;
-
-        const subs = [];
-        window.stompClient.onConnect(function(client) {
-            subs.push(client.subscribe(APP_CONFIG.routes.topicProjectTasks.resolve({ projectId }), function(message) {
-                const data = JSON.parse(message.body);
-                if (currentUserId && String(data.userId) === currentUserId) return;
-                if (data.taskId !== taskId) return;
-                banner.classList.remove('d-none');
-            }));
-
-            // Live comment updates — refresh activity timeline
-            subs.push(client.subscribe(APP_CONFIG.routes.topicTaskComments.resolve({ taskId }), function(message) {
-                const data = JSON.parse(message.body);
-                if (currentUserId && String(data.userId) === currentUserId) return;
-                htmx.ajax('GET', `${APP_CONFIG.routes.tasks}/${taskId}/activity`,
-                    {target: '#task-activity', swap: 'outerHTML'});
-            }));
-        });
-
-        refreshLink.addEventListener('click', function(e) {
-            e.preventDefault();
-            htmx.ajax('GET', refreshUrl,
-                {target: '#task-modal-content', swap: 'innerHTML'});
-        });
-
-        // Unsubscribe when modal closes to avoid duplicate subscriptions
-        document.getElementById('task-modal')?.addEventListener('hidden.bs.modal', function() {
-            subs.forEach(function(s) { s.unsubscribe(); });
-        }, { once: true });
-    })();
-</script>

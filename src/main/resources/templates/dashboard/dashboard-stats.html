@@ -1,6 +1,6 @@
 <!--/* Bare fragment — returned whole-file for HTMX refresh, or via th:replace for full page.
      Reads ${stats} from model context (DashboardStats record). */-->
-<div id="dashboard-stats" xmlns:th="http://www.thymeleaf.org">
+<div id="dashboard-stats" data-dashboard-target="stats" xmlns:th="http://www.thymeleaf.org">
     <!-- My Tasks Stats -->
     <h5 class="mb-3"><i class="bi bi-person"></i> <span th:text="#{dashboard.my.heading}">My Tasks</span></h5>
     <div class="row g-3 mb-4">
