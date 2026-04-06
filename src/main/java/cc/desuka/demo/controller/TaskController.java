@@ -555,6 +555,10 @@ public class TaskController {
                 return HtmxUtils.triggerEvent("taskSaved");
             }
             model.addAttribute("task", task);
+            // Set canEditProject so the card/row link opens in edit mode (not view)
+            model.addAttribute(
+                    "canEditProject",
+                    projectAccessGuard.canEdit(task.getProject().getId(), currentDetails));
             return UserPreferences.VIEW_TABLE.equals(view)
                     ? "tasks/task-table-row :: row"
                     : "tasks/task-card :: card";
