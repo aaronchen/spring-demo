@@ -1,24 +1,11 @@
 import { Application } from "@hotwired/stimulus";
 
-// Global HX-Trigger listener for toast notifications.
-// Spring controllers set HX-Trigger: {"showToast": {"message": "...", "type": "success"}}
-// to show toasts without inline <script> blocks in HTMX responses.
-import { showToast } from "lib/toast";
-document.addEventListener("showToast", (e) => {
-    showToast(e.detail.message, e.detail.type || "success");
-});
-
-
-// Flash toasts — server renders hidden [data-flash-toast] elements with data-message.
-// Show them as toasts on page load (used for post-redirect flash attributes).
-document.querySelectorAll("[data-flash-toast]").forEach((el) => {
-    showToast(el.dataset.message, el.dataset.type || "success");
-});
-
-// Side-effect imports: global listeners and infrastructure
+// Side-effect imports — each module registers document-level event listeners
+// or initializes shared services just by being imported (no exported values used).
 import "lib/websocket";         // activates STOMP client
 import "lib/htmx-csrf";        // CSRF token injection for HTMX requests
 import "lib/htmx-errors";      // toast on HTMX error responses
+import "lib/flash-toast";      // HX-Trigger showToast listener + flash attribute scan
 import "lib/date-range";       // date-range-start min constraint
 import "lib/mention-encoding"; // @mention encoding on submit/configRequest
 
