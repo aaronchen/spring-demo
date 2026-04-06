@@ -1,5 +1,12 @@
 import { Application } from "@hotwired/stimulus";
 
+// Expose showToast/showConfirm on window for inline <script> blocks
+// in admin pages and OOB HTMX panel responses.
+import { showToast } from "lib/toast";
+import { showConfirm } from "lib/confirm";
+window.showToast = showToast;
+window.showConfirm = showConfirm;
+
 // Side-effect imports: global listeners and infrastructure
 import "lib/websocket";         // activates STOMP client
 import "lib/htmx-csrf";        // CSRF token injection for HTMX requests
