@@ -396,7 +396,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Task existing = taskQueryService.getTaskById(id);
+        Task existing = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         if (result.hasErrors()) {
             model.addAttribute("task", existing);
