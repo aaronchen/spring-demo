@@ -5,7 +5,7 @@
 
     <div th:replace="~{layouts/base :: navbar}"></div>
 
-    <main class="container flex-grow-1 mb-4">
+    <main class="container flex-grow-1 mb-4" data-controller="audit">
         <h1 class="display-4 mb-4" th:text="#{admin.audit.heading}">Audit Log</h1>
 
         <!-- Filters row -->
@@ -16,15 +16,17 @@
                 <button class="btn btn-outline-secondary dropdown-toggle audit-category-btn"
                         type="button" data-bs-toggle="dropdown" aria-expanded="false">
                     <i class="bi bi-funnel"></i>
-                    <span id="audit-category-label" th:text="#{admin.audit.filter.all}">All</span>
+                    <span data-audit-target="categoryLabel" th:text="#{admin.audit.filter.all}">All</span>
                 </button>
                 <ul class="dropdown-menu">
                     <li><a class="dropdown-item audit-category-item active" href="#"
                            data-category=""
+                           data-action="click->audit#filterCategory"
                            th:text="#{admin.audit.filter.all}">All</a></li>
                     <li th:each="cat : ${categories}">
                         <a class="dropdown-item audit-category-item" href="#"
                            th:data-category="${cat.toLowerCase()}"
+                           data-action="click->audit#filterCategory"
                            th:text="#{${'admin.audit.filter.' + cat.toLowerCase()}}">Category</a>
                     </li>
                 </ul>
@@ -33,12 +35,14 @@
             <!-- Search -->
             <div class="col-md-4">
                 <div class="position-relative">
-                    <input type="text" id="audit-search-input"
+                    <input type="text" data-audit-target="searchInput"
                            class="form-control form-control-sm"
+                           data-action="input->audit#search"
                            th:placeholder="#{admin.audit.search.placeholder}"
                            placeholder="Search by user or details...">
-                    <button type="button" id="audit-search-clear-btn"
+                    <button type="button" data-audit-target="searchClear"
                             class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted d-none audit-search-clear-btn"
+                            data-action="click->audit#clearSearch"
                             th:title="#{admin.audit.search.clear}"
                             title="Clear search">
                         <i class="bi bi-x-lg"></i>
@@ -50,23 +54,26 @@
             <div class="col-md-auto d-flex align-items-center gap-2">
                 <label for="audit-date-from" class="form-label mb-0 text-nowrap"
                        th:text="#{admin.audit.date.from}">From</label>
-                <input type="date" id="audit-date-from"
+                <input type="date" id="audit-date-from" data-audit-target="dateFrom"
                        class="form-control form-control-sm date-range-start"
-                       data-date-min-for="audit-date-to" style="width: auto;">
+                       data-date-min-for="audit-date-to" style="width: auto;"
+                       data-action="change->audit#filterDateFrom">
                 <label for="audit-date-to" class="form-label mb-0 text-nowrap"
                        th:text="#{admin.audit.date.to}">To</label>
-                <input type="date" id="audit-date-to" class="form-control form-control-sm" style="width: auto;">
+                <input type="date" id="audit-date-to" data-audit-target="dateTo"
+                       class="form-control form-control-sm" style="width: auto;"
+                       data-action="change->audit#filterDateTo">
             </div>
         </div>
 
         <!-- Audit table (HTMX target) -->
-        <div id="audit-view">
+        <div id="audit-view" data-audit-target="view"
+             data-action="pagination:navigate->audit#navigate pagination:resize->audit#resize">
             <div th:replace="~{admin/audit-table}"></div>
         </div>
     </main>
 
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
-    <script th:src="@{/js/audit.js}"></script>
 </body>
 </html>

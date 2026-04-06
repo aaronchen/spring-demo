@@ -59,7 +59,8 @@
                 <div class="p-3 border-top">
                     <div class="input-group input-group-sm" id="comment-input-group">
                         <input type="text" id="comment-text" name="text" class="form-control" autocomplete="off"
-                               data-mention th:attr="data-project-id=${task.project.id}"
+                               data-controller="mention" data-mention
+                               th:data-mention-project-id-value="${task.project.id}"
                                th:placeholder="#{comment.field.text.placeholder}" maxlength="500"
                                onkeydown="if(event.key==='Enter'&amp;&amp;!isMentionMenuActive()){event.preventDefault();document.getElementById('comment-post-btn').click();}">
                         <button type="button" id="comment-post-btn" class="btn btn-outline-primary"

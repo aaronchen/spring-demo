@@ -4,7 +4,9 @@
 <body class="d-flex flex-column min-vh-100">
     <div th:replace="~{layouts/base :: navbar}"></div>
 
-    <main class="container flex-grow-1 pb-4">
+    <main class="container flex-grow-1 pb-4"
+          data-controller="analytics"
+          th:data-analytics-api-url-value="${apiUrl}">
         <!-- Back link (project-scoped) -->
         <a th:if="${project != null}" th:href="@{/projects/{id}(id=${project.id})}"
            class="text-decoration-none mb-3 d-inline-block">
@@ -15,9 +17,6 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="display-4" th:text="${project != null} ? #{analytics.project.heading} : #{analytics.heading}">Analytics</h1>
         </div>
-
-        <!--/* API URL for JS to fetch chart data */-->
-        <meta name="_analyticsApi" th:content="${apiUrl}">
 
         <!--/* Project filter (cross-project page only) */-->
         <div th:if="${project == null and projects != null}" class="card mb-4" id="project-filter">
@@ -52,7 +51,7 @@
                     <span th:text="#{task.field.sprint}">Sprint</span>
                 </h6>
                 <select class="form-select form-select-sm" style="width: auto; min-width: 10rem;"
-                        onchange="setAnalyticsSprintFilter(this.value)">
+                        data-action="change->analytics#setSprintFilter">
                     <option value="" th:text="#{sprint.filter.all}">All</option>
                     <option th:each="s : ${sprints}"
                             th:value="${s.id}"
@@ -154,6 +153,5 @@
 
     <!-- Chart.js via WebJars -->
     <script th:src="@{/webjars/chart.js/4.5.1/dist/chart.umd.min.js}"></script>
-    <script th:src="@{/js/analytics.js}"></script>
 </body>
 </html>
