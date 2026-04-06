@@ -214,7 +214,7 @@ export default class extends Controller {
         params.set("selectedUserId", this.selectedUserId || "");
         if (this.selectedTagIds.length > 0) params.set("tags", this.selectedTagIds.join(","));
         const sprintEl = document.getElementById("current-sprint-filter");
-        if (sprintEl && sprintEl.value) params.set("sprintId", sprintEl.value);
+        if (sprintEl) params.set("sprintId", sprintEl.value);
         params.set("view", this.currentView);
         return `${this.baseValue}?${params.toString()}`;
     }
@@ -268,7 +268,7 @@ export default class extends Controller {
         if (this.selectedUserId) params.set("selectedUserId", this.selectedUserId);
         if (this.selectedTagIds.length > 0) params.set("tags", this.selectedTagIds.join(","));
         const sprintEl = document.getElementById("current-sprint-filter");
-        if (sprintEl && sprintEl.value) params.set("sprintId", sprintEl.value);
+        if (sprintEl) params.set("sprintId", sprintEl.value);
         if (this.activeSorts.length > 0) {
             params.set("sort", `${this.activeSorts[0].field},${this.activeSorts[0].direction}`);
         }

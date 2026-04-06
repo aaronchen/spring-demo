@@ -233,9 +233,12 @@ public class ProjectController {
             Optional<Sprint> activeSprint = sprintQueryService.getActiveSprint(id);
             activeSprint.ifPresent(s -> model.addAttribute("activeSprint", s));
 
-            // Default to active sprint only on initial page load (direct navigation).
-            // HTMX requests always carry an explicit value from the dropdown.
+            // Default to active sprint only on initial page load when sprintId is
+            // not in the URL at all. If sprintId is present (even as empty string),
+            // the user explicitly chose "All Tasks" — don't override.
+            boolean sprintIdInUrl = request.getParameterMap().containsKey("sprintId");
             if (query.getSprintId() == null
+                    && !sprintIdInUrl
                     && activeSprint.isPresent()
                     && !HtmxUtils.isHtmxRequest(request)) {
                 query.setSprintId(activeSprint.get().getId());
