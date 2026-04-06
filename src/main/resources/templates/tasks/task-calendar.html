@@ -8,18 +8,18 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <button class="btn btn-outline-secondary btn-sm"
                 th:data-month="${calendarMonth.minusMonths(1)}"
-                onclick="navigateMonth(this.dataset.month)">
+                data-action="click->tasks--list#navigateMonth">
             <i class="bi bi-chevron-left"></i>
         </button>
         <h4 class="mb-0" th:text="${#temporals.format(calendarMonth.atDay(1), 'MMMM yyyy')}">March 2026</h4>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-secondary btn-sm"
                     th:data-month="${calendarMonth.plusMonths(1)}"
-                    onclick="navigateMonth(this.dataset.month)">
+                    data-action="click->tasks--list#navigateMonth">
                 <i class="bi bi-chevron-right"></i>
             </button>
             <button class="btn btn-outline-primary btn-sm"
-                    onclick="navigateMonth(null)"
+                    data-action="click->tasks--list#navigateMonth" data-month=""
                     th:text="#{task.calendar.today}">Today</button>
         </div>
     </div>
@@ -89,7 +89,7 @@
                                               th:title="${task.user.name}"
                                               th:data-user-id="${task.user.id}"
                                               th:data-user-name="${task.user.name}"
-                                              onclick="event.preventDefault(); event.stopPropagation(); setUserFilter(this.dataset.userId, this.dataset.userName);">A</span>
+                                              data-action="click->tasks--list#setUserFilter:stop:prevent">A</span>
                                         <span class="calendar-chip-title" th:text="${task.title}">Task Title</span>
                                     </a>
                                 </div>

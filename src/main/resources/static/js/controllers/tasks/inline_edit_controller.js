@@ -268,6 +268,9 @@ export default class extends Controller {
         });
     }
 
+    // ── Cross-controller globals ────────────────────────────────────────
+    // toggleEditMode/editModeActive used by keyboard-shortcuts and list controllers.
+
     exposeGlobals() {
         window.toggleEditMode = () => this.toggleEditMode();
         Object.defineProperty(window, "editModeActive", {

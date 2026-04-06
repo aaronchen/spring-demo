@@ -11,11 +11,6 @@ export default class extends Controller {
     connect() {
         this.checklistDragItem = null;
         this.bindProjectChange();
-        this.exposeGlobals();
-    }
-
-    disconnect() {
-        this.removeGlobals();
     }
 
     // Re-bind after HTMX swaps modal content
@@ -103,7 +98,7 @@ export default class extends Controller {
                 </div>
                 <input type="text" class="form-control" name="checklistTexts" autocomplete="off" placeholder="${placeholder}">
             </div>
-            <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="removeChecklistItem(this)">
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" data-action="click->tasks--form#removeChecklistItem">
                 <i class="bi bi-x-lg"></i>
             </button>`;
         container.appendChild(div);
@@ -164,19 +159,4 @@ export default class extends Controller {
         }
     }
 
-    // ── Backward compat globals (temporary) ──────────────────────────────
-
-    exposeGlobals() {
-        window.addChecklistItem = () => this.addChecklistItem();
-        window.removeChecklistItem = (btn) => this.removeChecklistItem(btn);
-        window.checklistDragStart = (e) => this.checklistDragStart(e);
-        window.checklistDragOver = (e) => this.checklistDragOver(e);
-        window.checklistDrop = (e) => this.checklistDrop(e);
-        window.checklistDragEnd = () => this.checklistDragEnd();
-    }
-
-    removeGlobals() {
-        ["addChecklistItem", "removeChecklistItem", "checklistDragStart",
-         "checklistDragOver", "checklistDrop", "checklistDragEnd"].forEach((n) => delete window[n]);
-    }
 }

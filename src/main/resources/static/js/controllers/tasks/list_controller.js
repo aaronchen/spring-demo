@@ -239,7 +239,8 @@ export default class extends Controller {
         this.doSearch(false);
     }
 
-    navigateMonth(month) {
+    navigateMonth(eventOrMonth) {
+        const month = eventOrMonth?.currentTarget ? eventOrMonth.currentTarget.dataset.month : eventOrMonth;
         this.currentMonth = month;
         this.doSearch(false);
     }
@@ -266,7 +267,8 @@ export default class extends Controller {
 
     // ── View switching ───────────────────────────────────────────────────
 
-    switchView(view) {
+    switchView(eventOrView) {
+        const view = eventOrView?.currentTarget ? eventOrView.currentTarget.dataset.view : eventOrView;
         if (this.currentView === "table" && view !== "table" && typeof editModeActive !== "undefined" && editModeActive) {
             toggleEditMode();
         }
@@ -292,7 +294,14 @@ export default class extends Controller {
         this.doSearch(true);
     }
 
-    toggleSort(field, direction) {
+    toggleSort(eventOrField, direction) {
+        let field;
+        if (eventOrField?.currentTarget) {
+            field = eventOrField.currentTarget.dataset.sortField;
+            direction = eventOrField.currentTarget.dataset.sortDir;
+        } else {
+            field = eventOrField;
+        }
         const idx = this.activeSorts.findIndex((s) => s.field === field && s.direction === direction);
         if (idx >= 0) {
             if (this.activeSorts.length === 1) return;
@@ -323,7 +332,14 @@ export default class extends Controller {
 
     // ── User filter ──────────────────────────────────────────────────────
 
-    setUserFilter(id, userName) {
+    setUserFilter(eventOrId, userName) {
+        let id;
+        if (eventOrId?.currentTarget) {
+            id = eventOrId.currentTarget.dataset.userId;
+            userName = eventOrId.currentTarget.dataset.userName;
+        } else {
+            id = eventOrId;
+        }
         this.selectedUserId = String(id);
         this.renderUserFilter(userName);
         this.doSearch(true);
@@ -342,7 +358,8 @@ export default class extends Controller {
         this.doSearch(true);
     }
 
-    resetUserFilter() {
+    resetUserFilter(event) {
+        if (event?.stopPropagation) event.stopPropagation();
         const mineBtn = document.getElementById("user-filter-mine");
         this.selectedUserId = mineBtn?.dataset.currentUserId;
         this.renderUserFilter(null);
@@ -374,7 +391,8 @@ export default class extends Controller {
 
     // ── Sprint filter ────────────────────────────────────────────────────
 
-    setSprintFilter(value) {
+    setSprintFilter(eventOrValue) {
+        const value = eventOrValue?.currentTarget ? eventOrValue.currentTarget.dataset.value : eventOrValue;
         const hidden = document.getElementById("current-sprint-filter");
         const label = document.getElementById("sprint-filter-label");
         if (hidden) hidden.value = value;
@@ -404,7 +422,8 @@ export default class extends Controller {
 
     // ── Status filter ────────────────────────────────────────────────────
 
-    setStatusFilter(status) {
+    setStatusFilter(eventOrStatus) {
+        const status = eventOrStatus?.currentTarget ? (eventOrStatus.currentTarget.dataset.status || '') : eventOrStatus;
         const current = document.getElementById("current-status-filter").value;
         const currentOverdue = document.getElementById("current-overdue-filter").value;
 
@@ -473,7 +492,8 @@ export default class extends Controller {
 
     // ── Priority filter ──────────────────────────────────────────────────
 
-    setPriorityFilter(priority) {
+    setPriorityFilter(eventOrPriority) {
+        const priority = eventOrPriority?.currentTarget ? (eventOrPriority.currentTarget.dataset.priority || '') : eventOrPriority;
         const current = document.getElementById("current-priority-filter").value;
         if (priority && current === priority) {
             document.getElementById("current-priority-filter").value = "";
@@ -514,8 +534,13 @@ export default class extends Controller {
 
     // ── Tag filter ───────────────────────────────────────────────────────
 
-    toggleTagFilter(elOrId) {
-        const tagId = String(typeof elOrId === "object" ? elOrId.dataset.tagId : elOrId);
+    toggleTagFilter(eventOrElOrId) {
+        let tagId;
+        if (eventOrElOrId?.currentTarget) {
+            tagId = String(eventOrElOrId.currentTarget.dataset.tagId);
+        } else {
+            tagId = String(typeof eventOrElOrId === "object" ? eventOrElOrId.dataset.tagId : eventOrElOrId);
+        }
         const idx = this.selectedTagIds.indexOf(tagId);
         if (idx >= 0) {
             this.selectedTagIds.splice(idx, 1);
@@ -802,27 +827,14 @@ export default class extends Controller {
         this.renderSorts();
     }
 
-    // ── Backward compat globals (temporary) ──────────────────────────────
+    // ── Cross-controller globals ────────────────────────────────────────
+    // These are needed by other Stimulus controllers (keyboard-shortcuts, bulk-actions)
+    // until we convert to Stimulus outlets or DOM events.
 
     exposeGlobals() {
         const self = this;
-        window.setStatusFilter = (s) => self.setStatusFilter(s);
-        window.setPriorityFilter = (p) => self.setPriorityFilter(p);
-        window.setUserFilter = (id, name) => self.setUserFilter(id, name);
-        window.setMyFilter = () => self.setMyFilter();
-        window.clearUserFilter = () => self.clearUserFilter();
-        window.resetUserFilter = () => self.resetUserFilter();
-        window.setSprintFilter = (v) => self.setSprintFilter(v);
-        window.toggleSort = (f, d) => self.toggleSort(f, d);
-        window.resetSort = () => self.resetSort();
         window.switchView = (v) => self.switchView(v);
-        window.navigateMonth = (m) => self.navigateMonth(m);
-        window.exportTasks = () => self.exportTasks();
-        window.saveCurrentView = () => self.saveCurrentView();
-        window.toggleTagFilter = (el) => self.toggleTagFilter(el);
-        window.clearAllTags = () => self.clearAllTags();
         window.doSearch = (r) => self.doSearch(r);
-        window.currentView = undefined;
         Object.defineProperty(window, "currentView", {
             get: () => self.currentView,
             configurable: true,
@@ -830,13 +842,8 @@ export default class extends Controller {
     }
 
     removeGlobals() {
-        const names = [
-            "setStatusFilter", "setPriorityFilter", "setUserFilter", "setMyFilter",
-            "clearUserFilter", "resetUserFilter", "setSprintFilter", "toggleSort",
-            "resetSort", "switchView", "navigateMonth", "exportTasks", "saveCurrentView",
-            "toggleTagFilter", "clearAllTags", "doSearch",
-        ];
-        names.forEach((n) => delete window[n]);
+        delete window.switchView;
+        delete window.doSearch;
         delete window.currentView;
     }
 }

@@ -6,11 +6,6 @@ import { showToast } from "lib/toast";
 
 export default class extends Controller {
     connect() {
-        this.exposeGlobals();
-    }
-
-    disconnect() {
-        this.removeGlobals();
     }
 
     dragStart(e) {
@@ -136,17 +131,4 @@ export default class extends Controller {
         });
     }
 
-    exposeGlobals() {
-        window.kanbanDragStart = (e) => this.dragStart(e);
-        window.kanbanDragEnd = (e) => this.dragEnd(e);
-        window.kanbanDragOver = (e) => this.dragOver(e);
-        window.kanbanDragEnter = (e) => this.dragEnter(e);
-        window.kanbanDragLeave = (e) => this.dragLeave(e);
-        window.kanbanDrop = (e) => this.drop(e);
-    }
-
-    removeGlobals() {
-        ["kanbanDragStart", "kanbanDragEnd", "kanbanDragOver",
-         "kanbanDragEnter", "kanbanDragLeave", "kanbanDrop"].forEach((n) => delete window[n]);
-    }
 }

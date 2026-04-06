@@ -49,7 +49,8 @@ export default class extends Controller {
 
     // ── Selection ────────────────────────────────────────────────────────
 
-    onSelectChange(checkbox) {
+    onSelectChange(eventOrCheckbox) {
+        const checkbox = eventOrCheckbox?.currentTarget || eventOrCheckbox;
         const taskId = checkbox.dataset.taskId;
         const projectId = checkbox.dataset.projectId;
         if (checkbox.checked) {
@@ -62,7 +63,8 @@ export default class extends Controller {
         this.renderBar();
     }
 
-    toggleSelectAll(checked) {
+    toggleSelectAll(eventOrChecked) {
+        const checked = eventOrChecked?.currentTarget ? eventOrChecked.currentTarget.checked : eventOrChecked;
         document.querySelectorAll(".bulk-select-checkbox").forEach((cb) => {
             cb.checked = checked;
             const taskId = cb.dataset.taskId;
@@ -140,7 +142,14 @@ export default class extends Controller {
 
     // ── Actions ──────────────────────────────────────────────────────────
 
-    executeAction(action, value) {
+    executeAction(eventOrAction, value) {
+        let action;
+        if (eventOrAction?.currentTarget) {
+            action = eventOrAction.currentTarget.dataset.bulkAction;
+            value = eventOrAction.currentTarget.dataset.value || "";
+        } else {
+            action = eventOrAction;
+        }
         if (this.selectedIds.size === 0) return;
 
         const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
@@ -167,6 +176,11 @@ export default class extends Controller {
             .catch(() => {
                 showToast(APP_CONFIG.messages["toast.error.generic"] || "An error occurred", "danger");
             });
+    }
+
+    executeEffort() {
+        const input = document.getElementById("bulk-effort-input");
+        if (input) this.executeAction("EFFORT", input.value);
     }
 
     executeDelete() {
@@ -203,7 +217,8 @@ export default class extends Controller {
             .catch((err) => console.error("Failed to load assignable users:", err));
     }
 
-    filterAssignUsers(query) {
+    filterAssignUsers(eventOrQuery) {
+        const query = eventOrQuery?.currentTarget ? eventOrQuery.currentTarget.value : eventOrQuery;
         const q = query.toLowerCase();
         const filtered = q ? this.assignUsers.filter((u) => u.name.toLowerCase().includes(q)) : this.assignUsers;
         this.renderAssignList(filtered);
@@ -236,22 +251,14 @@ export default class extends Controller {
         if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
     }
 
-    // ── Backward compat globals (temporary) ──────────────────────────────
+    // ── Cross-controller globals ────────────────────────────────────────
+    // clearBulkSelection is called by list_controller when filters/views change.
 
     exposeGlobals() {
-        window.onBulkSelectChange = (cb) => this.onSelectChange(cb);
-        window.toggleSelectAll = (checked) => this.toggleSelectAll(checked);
         window.clearBulkSelection = () => this.clearSelection();
-        window.executeBulkAction = (action, value) => this.executeAction(action, value);
-        window.executeBulkDelete = () => this.executeDelete();
-        window.loadBulkAssignUsers = () => this.loadAssignUsers();
-        window.filterBulkAssignUsers = (q) => this.filterAssignUsers(q);
-        window.closeBulkAssignDropdown = () => this.closeAssignDropdown();
     }
 
     removeGlobals() {
-        ["onBulkSelectChange", "toggleSelectAll", "clearBulkSelection",
-         "executeBulkAction", "executeBulkDelete", "loadBulkAssignUsers",
-         "filterBulkAssignUsers", "closeBulkAssignDropdown"].forEach((n) => delete window[n]);
+        delete window.clearBulkSelection;
     }
 }

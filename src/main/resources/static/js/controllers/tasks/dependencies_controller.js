@@ -13,12 +13,10 @@ export default class extends Controller {
         this.afterSettleHandler = () => { this.bindPickers(); this.updateExcludeLists(); };
         document.addEventListener("htmx:afterSettle", this.afterSettleHandler);
 
-        this.exposeGlobals();
     }
 
     disconnect() {
         document.removeEventListener("htmx:afterSettle", this.afterSettleHandler);
-        this.removeGlobals();
     }
 
     bindPickers() {
@@ -43,7 +41,7 @@ export default class extends Controller {
                     `<span class="badge me-2 bg-secondary">${APP_CONFIG.messages["task.status.open"] || "Open"}</span>` +
                     `<a class="flex-grow-1 small text-decoration-none" href="${APP_CONFIG.routes.tasks}/${taskId}" target="_blank">${taskTitle}</a>` +
                     `<button type="button" class="btn btn-sm btn-outline-danger ms-2 border-0" ` +
-                    `onclick="removeDependencyItem(this)" title="${APP_CONFIG.messages["task.dependency.remove.title"] || "Remove dependency"}">` +
+                    `data-action="click->tasks--dependencies#removeItem" title="${APP_CONFIG.messages["task.dependency.remove.title"] || "Remove dependency"}">` +
                     `<i class="bi bi-x-lg"></i></button>`;
                 list.appendChild(item);
 
@@ -77,20 +75,12 @@ export default class extends Controller {
         });
     }
 
-    removeItem(btn) {
+    removeItem(eventOrBtn) {
+        const btn = eventOrBtn?.currentTarget || eventOrBtn;
         const item = btn.closest(".dep-item");
         if (!item) return;
         item.remove();
         this.updateExcludeLists();
     }
 
-    exposeGlobals() {
-        window.removeDependencyItem = (btn) => this.removeItem(btn);
-        window.updateDepExcludeLists = () => this.updateExcludeLists();
-    }
-
-    removeGlobals() {
-        delete window.removeDependencyItem;
-        delete window.updateDepExcludeLists;
-    }
 }

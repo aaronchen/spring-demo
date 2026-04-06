@@ -260,7 +260,7 @@
                        th:disabled="${mode == 'view'}">
             </div>
             <button th:if="${mode != 'view'}" type="button" class="btn btn-sm btn-outline-danger border-0"
-                    onclick="removeChecklistItem(this)">
+                    data-action="click->tasks--form#removeChecklistItem">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>

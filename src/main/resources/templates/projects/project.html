@@ -54,12 +54,12 @@
                     <h2 th:text="#{project.tasks.heading}">Tasks</h2>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-secondary btn-lg"
-                                onclick="toggleKeyboardHelp()"
+                                data-action="click->tasks--keyboard-shortcuts#toggleHelp"
                                 th:title="#{keyboard.help.title}">
                             <i class="bi bi-keyboard"></i>
                         </button>
                         <button id="export-btn" class="btn btn-outline-secondary btn-lg"
-                                onclick="exportTasks()"
+                                data-action="click->tasks--list#exportTasks"
                                 th:title="#{task.export.tooltip}">
                             <i class="bi bi-filetype-csv"></i> <span th:text="#{task.export}">Export</span>
                         </button>

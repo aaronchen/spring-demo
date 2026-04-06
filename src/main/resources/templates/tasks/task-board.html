@@ -7,10 +7,7 @@
         <th:block th:each="status : ${statuses}">
             <div class="kanban-column"
                  th:data-status="${status.name()}"
-                 ondragover="kanbanDragOver(event)"
-                 ondragenter="kanbanDragEnter(event)"
-                 ondragleave="kanbanDragLeave(event)"
-                 ondrop="kanbanDrop(event)">
+                 data-action="dragover->tasks--kanban#dragOver dragenter->tasks--kanban#dragEnter dragleave->tasks--kanban#dragLeave drop->tasks--kanban#drop">
                 <!-- Column Header -->
                 <div class="kanban-column-header">
                     <span class="kanban-column-header-label">
@@ -42,8 +39,7 @@
                              th:data-task-id="${task.id}"
                              th:data-status="${task.status.name()}"
                              th:data-blocked="${task.blocked ? 'true' : null}"
-                             ondragstart="kanbanDragStart(event)"
-                             ondragend="kanbanDragEnd(event)"
+                             data-action="dragstart->tasks--kanban#dragStart dragend->tasks--kanban#dragEnd"
                              th:with="canEdit=${canEditProject != null ? canEditProject : (projectEditMap != null ? projectEditMap[task.project.id] : (#auth.canEdit(task) || task.user == null))},
                                       isOverdue=${!task.status.isTerminal() && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
 

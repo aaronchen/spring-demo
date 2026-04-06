@@ -33,7 +33,7 @@
                 </h6>
                 <button th:if="${mode != 'view'}" type="button"
                         class="btn btn-sm btn-outline-secondary ms-auto"
-                        onclick="addChecklistItem()">
+                        data-action="click->tasks--form#addChecklistItem">
                     <i class="bi bi-plus-circle"></i> <span th:text="#{task.checklist.add}">Add Item</span>
                 </button>
             </div>

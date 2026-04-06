@@ -23,7 +23,7 @@
                         <!-- Select all checkbox -->
                         <th style="width: 1px; white-space: nowrap;">
                             <input type="checkbox" class="form-check-input" id="bulk-select-all"
-                                   onchange="toggleSelectAll(this.checked)"
+                                   data-action="change->tasks--bulk-actions#toggleSelectAll"
                                    th:title="#{task.bulk.selected('0')}">
                         </th>
                         <!-- Title column -->
@@ -32,7 +32,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="title"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.table.column.title}">Title</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -44,7 +44,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="priorityOrder"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.field.priority}">Priority</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -58,7 +58,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="dueDate"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.field.dueDate}">Due Date</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -70,7 +70,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="effort"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.field.effort}">Effort</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -82,7 +82,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="description"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.table.column.description}">Description</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -94,7 +94,7 @@
                             style="cursor: pointer; user-select: none; white-space: nowrap;"
                             data-sort-field="createdAt"
                             th:attr="data-sort-dir=${nextDir}"
-                            onclick="toggleSort(this.dataset.sortField, this.dataset.sortDir)">
+                            data-action="click->tasks--list#toggleSort">
                             <span th:text="#{task.table.column.created}">Created</span>
                             <i th:if="${ord == null}" class="bi bi-arrow-down-up text-muted small ms-1"></i>
                             <i th:if="${ord != null && ord.direction.isAscending()}" class="bi bi-arrow-up small ms-1"></i>
@@ -104,7 +104,7 @@
                         <th style="white-space: nowrap; vertical-align: middle;">
                             <button id="edit-mode-btn" type="button"
                                     class="btn edit-mode-toggle"
-                                    onclick="toggleEditMode();"
+                                    data-action="click->tasks--inline-edit#toggleEditMode"
                                     th:title="#{task.editMode.tooltip}">
                                 <i class="bi bi-pencil-square"></i>
                                 <span id="edit-mode-label" th:text="#{task.editMode}">Edit Mode</span>
