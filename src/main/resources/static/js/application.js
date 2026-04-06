@@ -9,6 +9,12 @@ document.addEventListener("showToast", (e) => {
 });
 
 
+// Flash toasts — server renders hidden [data-flash-toast] elements with data-message.
+// Show them as toasts on page load (used for post-redirect flash attributes).
+document.querySelectorAll("[data-flash-toast]").forEach((el) => {
+    showToast(el.dataset.message, el.dataset.type || "success");
+});
+
 // Side-effect imports: global listeners and infrastructure
 import "lib/websocket";         // activates STOMP client
 import "lib/htmx-csrf";        // CSRF token injection for HTMX requests
