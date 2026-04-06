@@ -103,6 +103,7 @@
                         <!-- Actions column with edit mode toggle -->
                         <th style="white-space: nowrap; vertical-align: middle;">
                             <button id="edit-mode-btn" type="button"
+                                    th:if="${canEditProject == null || canEditProject}"
                                     class="btn edit-mode-toggle"
                                     data-action="click->tasks--inline-edit#toggleEditMode"
                                     th:title="#{task.editMode.tooltip}">
