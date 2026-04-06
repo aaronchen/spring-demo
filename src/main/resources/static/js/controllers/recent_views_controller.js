@@ -23,7 +23,9 @@ export default class extends Controller {
         onConnect((client) => {
             client.subscribe("/user/queue/recent-views", (message) => {
                 const data = JSON.parse(message.body);
-                if (data.titleOnly) {
+                if (data.deleted) {
+                    this.removeItem(data.entityType, data.entityId);
+                } else if (data.titleOnly) {
                     this.updateTitleInPlace(data.entityType, data.entityId, data.entityTitle);
                 } else {
                     this.updateList(data.entityType, data.entityId, data.entityTitle, data.href, data.viewedAt);
@@ -88,6 +90,15 @@ export default class extends Controller {
             </div>
         </div>`;
         return item;
+    }
+
+    removeItem(entityType, entityId) {
+        const existing = this.listTarget.querySelector(
+            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`);
+        if (existing) existing.remove();
+        if (this.listTarget.children.length === 0) {
+            this.emptyTarget.classList.remove("d-none");
+        }
     }
 
     updateTitleInPlace(entityType, entityId, title) {

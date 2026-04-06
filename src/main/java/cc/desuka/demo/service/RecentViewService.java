@@ -97,7 +97,14 @@ public class RecentViewService {
     }
 
     public void deleteByEntity(String entityType, Object entityId) {
-        recentViewRepository.deleteByEntityTypeAndEntityId(entityType, entityId.toString());
+        String idStr = entityId.toString();
+        // Notify all users who have this entity in their recent views
+        for (RecentView rv : recentViewRepository.findByEntityTypeAndEntityId(entityType, idStr)) {
+            RecentViewResponse payload =
+                    new RecentViewResponse(entityType, idStr, null, null, null, false, true);
+            eventPublisher.publishEvent(new RecentViewPushEvent(rv.getUser().getEmail(), payload));
+        }
+        recentViewRepository.deleteByEntityTypeAndEntityId(entityType, idStr);
     }
 
     public void deleteByUserId(UUID userId) {
