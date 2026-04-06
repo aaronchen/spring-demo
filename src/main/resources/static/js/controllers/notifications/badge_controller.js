@@ -12,7 +12,11 @@ export default class extends Controller {
     connect() {
         // Event listeners for cross-component communication
         this.onReceived = (e) => this.handleReceived(e.detail);
-        this.onRead = () => this.refreshBadge();
+        this.onRead = (e) => {
+            this.refreshBadge();
+            const item = this.listTarget.querySelector(`[data-notification-id="${e.detail.id}"]`);
+            if (item) item.classList.remove("fw-semibold");
+        };
         this.onAllRead = () => {
             this.updateBadge(0);
             this.listTarget.querySelectorAll(".fw-semibold").forEach((el) => {
