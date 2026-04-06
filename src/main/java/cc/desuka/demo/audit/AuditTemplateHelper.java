@@ -2,6 +2,7 @@ package cc.desuka.demo.audit;
 
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.model.Translatable;
+import cc.desuka.demo.util.MentionUtils;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -85,6 +86,13 @@ public class AuditTemplateHelper {
             }
         }
         return item;
+    }
+
+    // --- Mention decoding ---
+
+    /** Decode encoded mention tokens to plain text for audit display. */
+    public String decodeMentions(String text) {
+        return MentionUtils.decodePlainText(text);
     }
 
     // --- Blank-field detection ---
