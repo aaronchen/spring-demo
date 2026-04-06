@@ -10,7 +10,7 @@
 - **Security**: Spring Security 7.0 (form login, BCrypt, role-based access)
 - **Database**: H2 in-memory database
 - **Template Engine**: Thymeleaf 3.x
-- **Frontend**: Bootstrap 5.3.8 + HTMX 2.0.4
+- **Frontend**: Bootstrap 5.3.8 + HTMX 2.0.4 + Stimulus 3.2.2
 - **Real-Time**: WebSocket + STOMP (via STOMP.js 7.3)
 
 ## Architecture
@@ -315,6 +315,51 @@ Controllers call `RecentViewService.recordView()` directly — not event-driven 
 ### Analytics Pattern
 
 Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar, effort-by-assignee horizontal bar. Velocity chart includes optional effort line (dual Y-axis) when effort data exists. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security. Sprint-scoped analytics pass `sprintId` to repository queries; burndown uses sprint date range instead of rolling 30-day window.
+
+### Frontend JavaScript Architecture (Stimulus + ES Modules)
+
+The frontend uses **Stimulus controllers** with **browser-native import maps** (no build tools). HTMX handles server communication; Stimulus organizes client-side behavior.
+
+**File structure:**
+```
+static/js/
+├── controllers/          # Stimulus controllers (all interactive behavior)
+│   ├── tasks/            # Multi-context: tasks--list, tasks--form, etc.
+│   ├── notifications/    # Multi-context: notifications--badge, notifications--page
+│   └── *.js              # Single-context: analytics, audit, presence, etc.
+├── lib/                  # Shared ES modules (utilities, no business logic)
+├── components/           # Standalone Web Components (no framework deps)
+└── application.js        # Entry point: side-effect imports + controller registration
+```
+
+#### Backend → Frontend Communication Rules
+
+- **HTMX success toasts** — Use `HtmxUtils.toastTrigger(message, ToastType.SUCCESS)` as `HX-Trigger` response header. Never render `<script>showToast(...)</script>` in HTMX fragments.
+- **Post-redirect flash toasts** — Render `<div data-flash-toast th:data-message="#{key}">`. `application.js` scans on page load. No inline JS needed.
+- **Server data to JS** — Use Stimulus value attributes (`th:data-controller-name-value="${value}"`). Never use `window.GLOBAL = ...` or `<meta>` tags for controller-specific data. Exception: `APP_CONFIG` stays as a window global (dynamically generated, read everywhere).
+- **Destructive confirmations** — Use `hx-confirm` + `data-confirm-*` attributes. Never use `showConfirm` from inline scripts.
+- **CSRF** — Handled globally by `lib/htmx-csrf.js`. No per-page CSRF handling.
+
+#### Frontend JS Rules
+
+- **Stimulus controllers** — All interactive behavior. One controller per concern. Flat file for single-context (`analytics_controller.js`), folder for multi-context (`tasks/list_controller.js`).
+- **`lib/` modules** — Shared utilities. Single responsibility. Imported by controllers, never by templates.
+- **Side-effect imports** — Global listeners in dedicated `lib/` modules imported in `application.js` (e.g., `lib/htmx-csrf.js`, `lib/flash-toast.js`). Never inline global listeners in `application.js`.
+- **`components/`** — Standalone Web Components. Must work without `lib/` imports or `APP_CONFIG`.
+- **No `window.*` globals** — Controllers don't expose on window. Only exception: `window.Stimulus` for debugging.
+- **Cross-controller communication** — Custom DOM events (`tasks:refresh`, `tasks:switch-view`). Never import one controller from another. Convention: `feature:action` naming.
+
+#### Template JS Rules
+
+- **No `onclick`/`onchange`/`ondrag*`** — Use `data-action="event->controller#method"`. Use `:prevent`/`:stop` suffixes.
+- **No inline `<script>` that imports modules** — Inline scripts must be self-contained: no `import`, no `window.*` globals, no shared state. Reserved for page-specific pure client-side UI only (tab navigation, form field toggles). Keep under 30 lines. Exception: `admin/users.html` imports `showConfirm` (legacy — complex confirm dialog with form input).
+- **Import map in `<head>`** — All `lib/` modules registered in import map in `base.html`. Adding a new lib module requires adding it there.
+
+#### Naming Conventions
+
+- **Controller files** — `snake_case_controller.js` → `data-controller="kebab-case"`. Folders: `tasks/list_controller.js` → `tasks--list`.
+- **Lib files** — `kebab-case.js` (e.g., `htmx-csrf.js`, `flash-toast.js`).
+- **Custom events** — `feature:action` (e.g., `tasks:refresh`, `mention:clear`).
 
 ### CSS Organization
 
