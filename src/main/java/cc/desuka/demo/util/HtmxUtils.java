@@ -6,6 +6,25 @@ import org.springframework.http.ResponseEntity;
 /** Utility class for HTMX-related operations */
 public class HtmxUtils {
 
+    /** Toast notification severity — matches the Bootstrap alert types used by lib/toast.js. */
+    public enum ToastType {
+        SUCCESS("success"),
+        DANGER("danger"),
+        WARNING("warning"),
+        INFO("info");
+
+        private final String value;
+
+        ToastType(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+    }
+
     /**
      * Check if the request comes from HTMX
      *
@@ -27,13 +46,13 @@ public class HtmxUtils {
     }
 
     /**
-     * Set an HX-Trigger header on the response that fires a {@code showToast} event, picked up by
-     * the global listener in {@code application.js}.
+     * Build an HX-Trigger header value that fires a {@code showToast} event, picked up by the
+     * global listener in {@code application.js}.
      *
      * @param message the already-resolved message text
-     * @param type toast type: "success", "danger", "warning", "info"
+     * @param type toast severity
      */
-    public static String toastTrigger(String message, String type) {
+    public static String toastTrigger(String message, ToastType type) {
         // JSON: {"showToast":{"message":"...","type":"..."}}
         String escapedMessage = message.replace("\\", "\\\\").replace("\"", "\\\"");
         return "{\"showToast\":{\"message\":\"" + escapedMessage + "\",\"type\":\"" + type + "\"}}";

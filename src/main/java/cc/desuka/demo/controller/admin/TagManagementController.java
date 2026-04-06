@@ -4,7 +4,10 @@ import cc.desuka.demo.dto.TagRequest;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.util.HtmxUtils;
+import cc.desuka.demo.util.HtmxUtils.ToastType;
+import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,9 +23,11 @@ import org.springframework.web.bind.annotation.*;
 public class TagManagementController {
 
     private final TagService tagService;
+    private final Messages messages;
 
-    public TagManagementController(TagService tagService) {
+    public TagManagementController(TagService tagService, Messages messages) {
         this.tagService = tagService;
+        this.messages = messages;
     }
 
     @GetMapping
@@ -36,7 +41,8 @@ public class TagManagementController {
             @Valid @ModelAttribute TagRequest tagRequest,
             BindingResult result,
             Model model,
-            HttpServletRequest request) {
+            HttpServletRequest request,
+            HttpServletResponse response) {
         if (result.hasErrors()) {
             model.addAttribute("tagName", tagRequest.getName());
             populateModel(model);
@@ -44,7 +50,10 @@ public class TagManagementController {
         }
 
         tagService.createTag(new Tag(tagRequest.getName()));
-        model.addAttribute("tagCreated", true);
+        response.setHeader(
+                "HX-Trigger",
+                HtmxUtils.toastTrigger(
+                        messages.get("toast.admin.tags.created"), ToastType.SUCCESS));
         populateModel(model);
         return htmxOrFull(request);
     }

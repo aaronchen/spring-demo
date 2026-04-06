@@ -158,7 +158,8 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script th:inline="javascript">
+    <script type="module" th:inline="javascript">
+        import { showConfirm } from 'lib/confirm';
         // ── Tab navigation ──────────────────────────────────────────────────
         document.querySelectorAll('#settings-nav .settings-nav-link').forEach(link => {
             link.addEventListener('click', function(e) {

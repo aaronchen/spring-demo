@@ -8,11 +8,6 @@ document.addEventListener("showToast", (e) => {
     showToast(e.detail.message, e.detail.type || "success");
 });
 
-// Expose showToast/showConfirm on window for remaining inline <script> blocks
-// in admin pages (users, tags, settings, profile).
-import { showConfirm } from "lib/confirm";
-window.showToast = showToast;
-window.showConfirm = showConfirm;
 
 // Side-effect imports: global listeners and infrastructure
 import "lib/websocket";         // activates STOMP client

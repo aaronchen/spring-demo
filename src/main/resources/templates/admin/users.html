@@ -39,7 +39,9 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script th:inline="javascript">
+    <script type="module">
+        import { showToast } from 'lib/toast';
+        import { showConfirm } from 'lib/confirm';
         (function() {
             const userModal = document.getElementById('user-modal');
             let bsModal = null;

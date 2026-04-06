@@ -35,6 +35,7 @@ import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.CalendarHelper;
 import cc.desuka.demo.util.HtmxUtils;
+import cc.desuka.demo.util.HtmxUtils.ToastType;
 import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -415,7 +416,8 @@ public class ProjectController {
             projectService.addMember(id, userId, role);
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("toast.project.member.added"), "success"));
+                    HtmxUtils.toastTrigger(
+                            messages.get("toast.project.member.added"), ToastType.SUCCESS));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -438,7 +440,7 @@ public class ProjectController {
             response.setHeader(
                     "HX-Trigger",
                     HtmxUtils.toastTrigger(
-                            messages.get("toast.project.member.roleChanged"), "success"));
+                            messages.get("toast.project.member.roleChanged"), ToastType.SUCCESS));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -460,7 +462,7 @@ public class ProjectController {
             response.setHeader(
                     "HX-Trigger",
                     HtmxUtils.toastTrigger(
-                            messages.get("toast.project.member.removed"), "success"));
+                            messages.get("toast.project.member.removed"), ToastType.SUCCESS));
         } catch (IllegalStateException e) {
             model.addAttribute("memberError", e.getMessage());
         }
@@ -539,7 +541,8 @@ public class ProjectController {
             sprintService.createSprint(id, sprintMapper.toEntity(sprintRequest));
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("sprint.action.created"), "success"));
+                    HtmxUtils.toastTrigger(
+                            messages.get("sprint.action.created"), ToastType.SUCCESS));
             model.addAttribute("sprintRequest", new SprintRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("sprintError", e.getMessage());
@@ -572,7 +575,7 @@ public class ProjectController {
             sprintService.updateSprint(sid, sprintMapper.toEntity(sprintRequest));
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("sprint.action.saved"), "success"));
+                    HtmxUtils.toastTrigger(messages.get("sprint.action.saved"), ToastType.SUCCESS));
             model.addAttribute("sprintRequest", new SprintRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("sprintError", e.getMessage());
@@ -596,7 +599,7 @@ public class ProjectController {
         model.addAttribute("project", projectQueryService.getProjectById(id));
         response.setHeader(
                 "HX-Trigger",
-                HtmxUtils.toastTrigger(messages.get("sprint.action.deleted"), "success"));
+                HtmxUtils.toastTrigger(messages.get("sprint.action.deleted"), ToastType.SUCCESS));
         populateSprintPanelModel(id, model);
         return "projects/settings/sprint-panel";
     }
@@ -656,7 +659,8 @@ public class ProjectController {
             recurringTaskTemplateService.createTemplate(id, recurringRequest);
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("recurring.action.createdOk"), "success"));
+                    HtmxUtils.toastTrigger(
+                            messages.get("recurring.action.createdOk"), ToastType.SUCCESS));
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("recurringError", e.getMessage());
@@ -690,7 +694,8 @@ public class ProjectController {
             recurringTaskTemplateService.updateTemplate(tid, recurringRequest);
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("recurring.action.saved"), "success"));
+                    HtmxUtils.toastTrigger(
+                            messages.get("recurring.action.saved"), ToastType.SUCCESS));
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("recurringError", e.getMessage());
@@ -714,7 +719,8 @@ public class ProjectController {
         model.addAttribute("project", projectQueryService.getProjectById(id));
         response.setHeader(
                 "HX-Trigger",
-                HtmxUtils.toastTrigger(messages.get("recurring.action.toggled"), "success"));
+                HtmxUtils.toastTrigger(
+                        messages.get("recurring.action.toggled"), ToastType.SUCCESS));
         populateRecurringPanelModel(id, model);
         return "projects/settings/recurring-panel";
     }
@@ -738,7 +744,8 @@ public class ProjectController {
                     template, currentDetails.getUsername());
             response.setHeader(
                     "HX-Trigger",
-                    HtmxUtils.toastTrigger(messages.get("recurring.action.generated"), "success"));
+                    HtmxUtils.toastTrigger(
+                            messages.get("recurring.action.generated"), ToastType.SUCCESS));
         }
 
         populateRecurringPanelModel(id, model);
@@ -758,7 +765,8 @@ public class ProjectController {
         model.addAttribute("project", projectQueryService.getProjectById(id));
         response.setHeader(
                 "HX-Trigger",
-                HtmxUtils.toastTrigger(messages.get("recurring.action.deletedOk"), "success"));
+                HtmxUtils.toastTrigger(
+                        messages.get("recurring.action.deletedOk"), ToastType.SUCCESS));
         populateRecurringPanelModel(id, model);
         return "projects/settings/recurring-panel";
     }

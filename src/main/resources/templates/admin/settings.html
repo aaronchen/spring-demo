@@ -125,7 +125,9 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script>
+    <script type="module">
+        import { showToast } from 'lib/toast';
+
         // Theme saved — apply live and update active state
         document.body.addEventListener('themeSaved', function(e) {
             const theme = e.detail.theme;

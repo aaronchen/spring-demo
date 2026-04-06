@@ -14,7 +14,8 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script th:inline="javascript">
+    <script type="module">
+        import { showToast } from 'lib/toast';
         document.body.addEventListener('tagDeleted', function() {
             showToast(APP_CONFIG.messages['toast.admin.tags.deleted'], 'success');
             htmx.ajax('GET', '/admin/tags', {target: '#tag-management-content', swap: 'outerHTML'});
