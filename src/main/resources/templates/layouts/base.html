@@ -245,7 +245,7 @@
     <div th:if="${currentUser != null}" id="recent-views-wrapper" class="d-none d-lg-flex"
          data-controller="recent-views">
         <!-- Panel (drawer body — populated via API fetch) -->
-        <div data-recent-views-target="panel" class="card shadow d-none">
+        <div id="recent-views-panel" data-recent-views-target="panel" class="card shadow d-none">
             <div data-recent-views-target="empty" class="px-3 py-3 text-muted small text-center">
                 <i class="bi bi-clock me-1"></i>
                 <span th:text="#{recentlyViewed.empty}">No recently viewed items.</span>
