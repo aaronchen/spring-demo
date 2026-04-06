@@ -7,12 +7,10 @@ export default class extends Controller {
     connect() {
         this.keydownHandler = (e) => this.handleKeydown(e);
         document.addEventListener("keydown", this.keydownHandler);
-        window.toggleKeyboardHelp = () => this.toggleHelp();
     }
 
     disconnect() {
         document.removeEventListener("keydown", this.keydownHandler);
-        delete window.toggleKeyboardHelp;
     }
 
     handleKeydown(e) {

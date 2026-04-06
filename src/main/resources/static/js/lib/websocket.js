@@ -47,9 +47,5 @@ if (typeof StompJs !== 'undefined') {
         console.error('STOMP error:', frame.headers['message']);
     };
 
-    // Backward compat for inline template scripts (task.html, task-modal.html, dashboard.html).
-    // Will be removed once those are migrated to Stimulus controllers (Phase 7).
-    window.stompClient = { onConnect };
-
     client.activate();
 }
