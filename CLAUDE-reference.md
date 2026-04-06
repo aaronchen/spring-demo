@@ -608,7 +608,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/TaskQueryService.java` - Read-only task queries; `@Transactional(readOnly = true)` class-level
   - Constructor injection: `TaskRepository`
   - Breaks circular dependency: `TaskService` → `UserService`/`CommentService` → `TaskService`
-  - All task read methods: `getTaskById`, `getAllTasks`, `getIncompleteTasks`, `getIncompleteTasks(accessibleProjectIds)`, `searchTasks(keyword)`, `searchTasks(keyword, accessibleProjectIds)`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `searchByTitleForDependency`, `groupByStatus`
+  - All task read methods: `getTaskById`, `getTasksByIds`, `getAllTasks`, `getIncompleteTasks`, `getIncompleteTasks(accessibleProjectIds)`, `searchTasks(keyword)`, `searchTasks(keyword, accessibleProjectIds)`, `searchTasks(criteria, pageable)`, count methods, `getRecentTasksByUser`, `getDueSoon`, `getTasksDueOn`, `getTitlesByIds`, `searchByTitleForDependency`, `groupByStatus`
   - `filterByAccessibleProjects(tasks, accessibleProjectIds)` — private helper to filter task lists by project access (null = no filter)
 
 - `service/TaskCommandService.java` - Write-only task commands for cross-service use; `@Transactional` class-level
@@ -984,9 +984,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Calendar view: accepts `month` param (YearMonth), queries tasks with dates in visible grid range (unpaged), builds `CalendarDay` grid via `buildCalendarWeeks()`; no pagination
   - `GET /tasks/{id}` — show task in view (read-only) mode; supports HTMX modal
   - `GET /tasks/new` — optional `projectId` param; if provided, checks edit access and pre-selects project; if omitted, adds `editableProjects` list for project dropdown; accepts optional `dueDate` param (ISO date) to pre-fill
-  - `POST /tasks` — create task; requires `projectId`; accepts `TaskFormRequest` + separate `@RequestParam` for `tagIds`, `assigneeId`, checklist arrays; on validation error re-render, adds `editableProjects` to model
+  - `POST /tasks` — create task; requires `projectId`; accepts `TaskFormRequest` + separate `@RequestParam` for `tagIds`, `assigneeId`, checklist arrays; on validation error, calls `restoreFormSelections()` then `populateFormModel()` + `addEditableProjects()`
   - `GET /tasks/{id}/edit` — edit form; checks `projectAccessGuard.requireEditAccess()`
-  - `POST /tasks/{id}` — update task; checks edit access; accepts `TaskFormRequest`; dependency management via form params `blockedByIds` and `blocksIds`
+  - `POST /tasks/{id}` — update task; checks edit access; accepts `TaskFormRequest`; dependency management via form params `blockedByIds` and `blocksIds`; on validation error, calls `restoreFormSelections()` then `populateFormModel()`
   - `DELETE /tasks/{id}` — delete via `requireDeleteAccess()`: admin OR task creator OR project owner
   - `GET /tasks/{id}/activity` — activity timeline fragment (HTMX live refresh via WebSocket)
   - `POST /{id}/comments` — add comment to task; returns `task-activity` template (whole file for hx-swap-oob count updates)
@@ -1000,6 +1000,9 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Task list is scoped to accessible projects via `searchAndFilterTasksForProjects(accessibleProjectIds, ...)`; admin sees all (null bypass)
   - `addProjectEditPermissions()` — builds `projectEditMap` (Map<Long, Boolean>) for cross-project views; admin short-circuits to `canEditProject=true`
   - `addEditableProjects()` — private helper; adds `editableProjects` list to model (admin gets all active projects, regular users get EDITOR/OWNER projects); used by task list, create form, and validation error re-render
+  - `populateFormModel(task, FormMode, currentDetails, model)` — private helper; sets all form template attributes (task, taskFormRequest, mode, tags, sprints, canEditDependencies, timeline) in one call; skips `taskFormRequest` if already in model (preserves user input on validation error via Spring's `@ModelAttribute`)
+  - `taskFormView(request)` — private helper; returns `"tasks/task-modal"` for HTMX or `"tasks/task"` for full page
+  - `restoreFormSelections(task, formRequest, assigneeId, tagIds, checklistTexts, checklistChecked, blockedByIds, blocksIds)` — private helper; on validation error, restores all user-submitted form values (assignee, sprint, tags, dependencies, checklist) onto the task entity for re-rendering; delegates to individual restore methods
   - Resolves `filterUserName` when filtering by another user's ID (passed to template for user filter button label)
   - **Security**: uses `ProjectAccessGuard` for task create/edit/delete/toggle; `OwnershipGuard` for comment delete
 
@@ -1177,6 +1180,8 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `toastTrigger(String message, ToastType type)` — returns JSON `HX-Trigger` header value that fires a `showToast` event, picked up by the global listener in `application.js`; used for HTMX responses that need toast feedback (project settings, tag management)
 
 - `util/CalendarHelper.java` - Utility for building calendar grid data (weeks of `CalendarDay` records) from a `YearMonth` and task list; used by `TaskController` for calendar view
+
+- `util/FormMode.java` - Enum for form context modes: `VIEW`, `CREATE`, `EDIT`; each has a `getValue()` returning the lowercase string for Thymeleaf templates; used by `TaskController.populateFormModel()` to derive mode-dependent attributes (e.g., `canEditDependencies` = `EDIT` mode only)
 
 - `util/MentionUtils.java` - `@Component("mentionUtils")` for parsing and rendering @mention tokens in comment text
   - Encoded format: `@[Display Name](userId:<uuid>)` — stored in DB as-is; injects `AppRoutesProperties` for link generation

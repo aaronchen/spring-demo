@@ -7,9 +7,11 @@ import cc.desuka.demo.dto.TaskFormRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.dto.TaskUpdateCriteria;
+import cc.desuka.demo.dto.TimelineEntry;
 import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.TaskFormMapper;
+import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
@@ -31,6 +33,7 @@ import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.CalendarHelper;
+import cc.desuka.demo.util.FormMode;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.Messages;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,10 +43,10 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -257,16 +260,8 @@ public class TaskController {
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         recentViewService.recordView(
                 currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
-        model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
-        model.addAttribute("mode", "view");
-        model.addAttribute("tags", tagService.getAllTags());
-        addDependencyAttributes(task, false, model);
-        addTimelineAttributes(model, id, currentDetails);
-        if (HtmxUtils.isHtmxRequest(request)) {
-            return "tasks/task-modal";
-        }
-        return "tasks/task";
+        populateFormModel(task, FormMode.VIEW, currentDetails, model);
+        return taskFormView(request);
     }
 
     // GET /tasks/new - Show create form (full page or modal fragment)
@@ -294,17 +289,8 @@ public class TaskController {
         if (dueDate != null) {
             task.setDueDate(dueDate);
         }
-        model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
-        model.addAttribute("mode", "create");
-        model.addAttribute("tags", tagService.getAllTags());
-        model.addAttribute("timeline", Collections.emptyList());
-        model.addAttribute("activityCount", 0);
-        addSprintAttributes(task.getProject(), model);
-        if (HtmxUtils.isHtmxRequest(request)) {
-            return "tasks/task-modal";
-        }
-        return "tasks/task";
+        populateFormModel(task, FormMode.CREATE, currentDetails, model);
+        return taskFormView(request);
     }
 
     // POST /tasks - Create new task
@@ -328,24 +314,22 @@ public class TaskController {
         if (result.hasErrors()) {
             Task task = new Task();
             task.setProject(project);
-            task.setUser(currentDetails.getUser());
-            model.addAttribute("task", task);
-            model.addAttribute("mode", "create");
-            model.addAttribute("tags", tagService.getAllTags());
-            model.addAttribute("timeline", Collections.emptyList());
-            model.addAttribute("activityCount", 0);
+            restoreFormSelections(
+                    task,
+                    taskFormRequest,
+                    assigneeId,
+                    tagIds,
+                    checklistTexts,
+                    checklistChecked,
+                    null,
+                    null);
+            populateFormModel(task, FormMode.CREATE, currentDetails, model);
             addEditableProjects(model, currentDetails);
-            addSprintAttributes(project, model);
-            if (HtmxUtils.isHtmxRequest(request)) {
-                return "tasks/task-modal";
-            }
-            return "tasks/task";
+            return taskFormView(request);
         }
         Task task = taskFormMapper.toEntity(taskFormRequest);
         task.setProject(project);
-        if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
-            task.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
-        }
+        restoreSprint(task, taskFormRequest.getSprintId());
         Task created =
                 taskService.createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked);
         if (HtmxUtils.isHtmxRequest(request)) {
@@ -366,17 +350,8 @@ public class TaskController {
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         recentViewService.recordView(
                 currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
-        model.addAttribute("task", task);
-        model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
-        model.addAttribute("mode", "edit");
-        model.addAttribute("tags", tagService.getAllTags());
-        addSprintAttributes(task.getProject(), model);
-        addDependencyAttributes(task, true, model);
-        addTimelineAttributes(model, id, currentDetails);
-        if (HtmxUtils.isHtmxRequest(request)) {
-            return "tasks/task-modal";
-        }
-        return "tasks/task";
+        populateFormModel(task, FormMode.EDIT, currentDetails, model);
+        return taskFormView(request);
     }
 
     // POST /tasks/{id} - Update task
@@ -399,21 +374,20 @@ public class TaskController {
         Task existing = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(existing.getProject().getId(), currentDetails);
         if (result.hasErrors()) {
-            model.addAttribute("task", existing);
-            model.addAttribute("mode", "edit");
-            model.addAttribute("tags", tagService.getAllTags());
-            addSprintAttributes(existing.getProject(), model);
-            addDependencyAttributes(existing, true, model);
-            addTimelineAttributes(model, id, currentDetails);
-            if (HtmxUtils.isHtmxRequest(request)) {
-                return "tasks/task-modal";
-            }
-            return "tasks/task";
+            restoreFormSelections(
+                    existing,
+                    taskFormRequest,
+                    assigneeId,
+                    tagIds,
+                    checklistTexts,
+                    checklistChecked,
+                    blockedByIds,
+                    blocksIds);
+            populateFormModel(existing, FormMode.EDIT, currentDetails, model);
+            return taskFormView(request);
         }
         Task taskDetails = taskFormMapper.toEntity(taskFormRequest);
-        if (taskFormRequest.getSprintId() != null && taskFormRequest.getSprintId() > 0) {
-            taskDetails.setSprint(sprintQueryService.getSprintById(taskFormRequest.getSprintId()));
-        }
+        restoreSprint(taskDetails, taskFormRequest.getSprintId());
         taskService.updateTask(
                 id,
                 taskDetails,
@@ -566,8 +540,6 @@ public class TaskController {
         return "redirect:" + appRoutes.getTasks();
     }
 
-    // ── Dependency management ─────────────────────────────────────────────
-
     // POST /tasks/bulk - Bulk update or delete tasks (JSON request/response)
     @PostMapping("/bulk")
     @ResponseBody
@@ -678,13 +650,96 @@ public class TaskController {
         model.addAttribute("projectEditMap", editByProject);
     }
 
-    private void addDependencyAttributes(Task task, boolean canEdit, Model model) {
-        model.addAttribute("canEditDependencies", canEdit);
+    private void populateFormModel(
+            Task task, FormMode mode, CustomUserDetails currentDetails, Model model) {
+        model.addAttribute("task", task);
+        // On validation error, Spring's @ModelAttribute has already placed the user's
+        // submitted TaskFormRequest in the model — preserve it so form fields retain values.
+        if (!model.containsAttribute("taskFormRequest")) {
+            model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
+        }
+        model.addAttribute("mode", mode.getValue());
+        model.addAttribute("tags", tagService.getAllTags());
+        addSprintAttributes(task.getProject(), model);
+        model.addAttribute("canEditDependencies", mode == FormMode.EDIT);
+        addTimelineAttributes(model, task.getId(), currentDetails);
+    }
+
+    private String taskFormView(HttpServletRequest request) {
+        return HtmxUtils.isHtmxRequest(request) ? "tasks/task-modal" : "tasks/task";
+    }
+
+    private void restoreFormSelections(
+            Task task,
+            TaskFormRequest formRequest,
+            UUID assigneeId,
+            List<Long> tagIds,
+            List<String> checklistTexts,
+            List<Boolean> checklistChecked,
+            List<UUID> blockedByIds,
+            List<UUID> blocksIds) {
+        restoreAssignee(task, assigneeId);
+        restoreSprint(task, formRequest.getSprintId());
+        restoreTags(task, tagIds);
+        restoreDependencies(task, blockedByIds, blocksIds);
+        rebuildChecklistFromForm(task, checklistTexts, checklistChecked);
+    }
+
+    private void restoreAssignee(Task task, UUID assigneeId) {
+        task.setUser(userService.findUserById(assigneeId));
+    }
+
+    private void restoreSprint(Task task, Long sprintId) {
+        if (sprintId != null && sprintId > 0) {
+            task.setSprint(sprintQueryService.getSprintById(sprintId));
+        } else {
+            task.setSprint(null);
+        }
+    }
+
+    // Tags use checkboxes: null means none checked = clear all tags
+    private void restoreTags(Task task, List<Long> tagIds) {
+        if (tagIds != null) {
+            task.setTags(tagService.findAllByIds(tagIds));
+        } else {
+            task.setTags(new LinkedHashSet<>());
+        }
+    }
+
+    // Dependencies use hidden fields: null means not submitted (create mode) = keep DB values
+    private void restoreDependencies(Task task, List<UUID> blockedByIds, List<UUID> blocksIds) {
+        if (blockedByIds != null) {
+            task.setBlockedBy(new LinkedHashSet<>(taskQueryService.getTasksByIds(blockedByIds)));
+        }
+        if (blocksIds != null) {
+            task.setBlocks(new LinkedHashSet<>(taskQueryService.getTasksByIds(blocksIds)));
+        }
+    }
+
+    private void rebuildChecklistFromForm(
+            Task task, List<String> checklistTexts, List<Boolean> checklistChecked) {
+        if (checklistTexts == null) {
+            return;
+        }
+        task.getChecklistItems().clear();
+        for (int i = 0; i < checklistTexts.size(); i++) {
+            ChecklistItem item = new ChecklistItem(checklistTexts.get(i), i);
+            item.setChecked(
+                    checklistChecked != null
+                            && i < checklistChecked.size()
+                            && Boolean.TRUE.equals(checklistChecked.get(i)));
+            task.getChecklistItems().add(item);
+        }
     }
 
     private void addTimelineAttributes(Model model, UUID taskId, CustomUserDetails currentDetails) {
-        var currentUser = currentDetails.getUser();
-        var timeline = timelineService.getTimeline(taskId, currentUser);
+        if (taskId == null) {
+            model.addAttribute("timeline", List.of());
+            model.addAttribute("activityCount", 0);
+            return;
+        }
+        List<TimelineEntry> timeline =
+                timelineService.getTimeline(taskId, currentDetails.getUser());
         model.addAttribute("timeline", timeline);
         model.addAttribute("activityCount", timeline.size());
     }

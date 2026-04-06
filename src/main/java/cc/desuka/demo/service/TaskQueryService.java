@@ -44,6 +44,10 @@ public class TaskQueryService {
                 .orElseThrow(() -> new EntityNotFoundException(Task.class, id));
     }
 
+    public List<Task> getTasksByIds(List<UUID> ids) {
+        return taskRepository.findAllById(ids);
+    }
+
     public Task getTaskWithDependencies(UUID id) {
         Task task =
                 taskRepository

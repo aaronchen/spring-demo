@@ -76,6 +76,10 @@ Ternary `? :` must be **inside** `${}` for string literals: `th:classappend="${c
 
 `th:object` on a `<form>` propagates into included fragments — `*{field}` works in `task-form :: fields` even though the `<form>` tag is in the parent template.
 
+### Form Validation Error Preservation
+
+On validation error, controllers must restore all user-submitted values onto the task entity before re-rendering. `TaskController` uses `restoreFormSelections()` to rebuild assignee, sprint, tags, dependencies, and checklist from form params. `populateFormModel()` skips `taskFormRequest` if Spring's `@ModelAttribute` already placed it in the model (preserving text field values). `FormMode` enum (`util/`) provides type-safe mode constants (`VIEW`, `CREATE`, `EDIT`) with `getValue()` for template strings.
+
 ### HTMX Patterns
 
 **Fragment return** — controller detects HTMX via `HtmxUtils.isHtmxRequest(request)` and returns a fragment instead of redirect.
