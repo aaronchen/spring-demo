@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
-import { initMentionMap, getMentionMap, findMentionAtCursor } from "lib/mentions";
+import { initMentionMap, getMentionMap, findMentionAtCursor, isMentionMenuActive, clearMentions } from "lib/mentions";
 
 // Initializes Tribute.js @mention autocomplete on the controlled element.
 // Reads data-mention-project-id-value to scope to project members (fetch once, filter client-side)
@@ -89,5 +89,18 @@ export default class extends Controller {
             this.element.removeEventListener("keydown", this.keydownHandler);
         }
         this.element.removeAttribute("data-tribute");
+    }
+
+    // Enter key guard — submit comment only if mention dropdown is closed
+    submitUnlessMentionOpen(event) {
+        if (event.key === "Enter" && !isMentionMenuActive()) {
+            event.preventDefault();
+            document.getElementById("comment-post-btn")?.click();
+        }
+    }
+
+    // Clear mention state — triggered by the post button after successful submission
+    clear() {
+        clearMentions(this.element);
     }
 }

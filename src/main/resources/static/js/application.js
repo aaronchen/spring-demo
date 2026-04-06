@@ -14,12 +14,6 @@ import "lib/htmx-errors";      // toast on HTMX error responses
 import "lib/date-range";       // date-range-start min constraint
 import "lib/mention-encoding"; // @mention encoding on submit/configRequest
 
-// Backward compat for inline template handlers (task-layout.html).
-// Will be removed when task controllers migrate these to data-action (Phase 6/7).
-import { isMentionMenuActive, clearMentions } from "lib/mentions";
-window.isMentionMenuActive = isMentionMenuActive;
-window.clearMentions = clearMentions;
-
 // Controllers
 import PresenceController from "./controllers/presence_controller.js";
 import RecentViewsController from "./controllers/recent_views_controller.js";
