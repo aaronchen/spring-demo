@@ -84,10 +84,9 @@ export default class extends Controller {
         const div = document.createElement("div");
         div.className = "checklist-item d-flex align-items-center gap-1 mb-1";
         div.draggable = true;
-        div.ondragstart = (e) => this.checklistDragStart(e);
-        div.ondragover = (e) => this.checklistDragOver(e);
-        div.ondragend = () => this.checklistDragEnd();
-        div.ondrop = (e) => this.checklistDrop(e);
+        div.setAttribute("data-action",
+            "dragstart->tasks--form#checklistDragStart dragover->tasks--form#checklistDragOver " +
+            "dragend->tasks--form#checklistDragEnd drop->tasks--form#checklistDrop");
         div.innerHTML = `<div class="input-group input-group-sm">
                 <span class="input-group-text checklist-drag-handle">
                     <i class="bi bi-grip-vertical"></i>

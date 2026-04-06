@@ -238,8 +238,8 @@
 <th:block th:fragment="checklist" xmlns:th="http://www.thymeleaf.org">
     <div id="checklist-container">
         <div th:each="item, stat : ${task.checklistItems}" class="checklist-item d-flex align-items-center gap-1 mb-1"
-             draggable="true" ondragstart="checklistDragStart(event)" ondragover="checklistDragOver(event)"
-             ondragend="checklistDragEnd(event)" ondrop="checklistDrop(event)">
+             draggable="true"
+             data-action="dragstart->tasks--form#checklistDragStart dragover->tasks--form#checklistDragOver dragend->tasks--form#checklistDragEnd drop->tasks--form#checklistDrop">
             <div class="input-group input-group-sm">
                 <span th:if="${mode != 'view'}" class="input-group-text checklist-drag-handle">
                     <i class="bi bi-grip-vertical"></i>
