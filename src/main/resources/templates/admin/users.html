@@ -40,8 +40,10 @@
     <div th:replace="~{layouts/base :: scripts}"></div>
 
     <script type="module">
-        import { showToast } from 'lib/toast';
         import { showConfirm } from 'lib/confirm';
+        function toast(message, type) {
+            document.dispatchEvent(new CustomEvent('showToast', { detail: { message, type: type || 'success' } }));
+        }
         (function() {
             const userModal = document.getElementById('user-modal');
             let bsModal = null;
@@ -63,13 +65,13 @@
             // Refresh table and close modal on save
             document.body.addEventListener('userSaved', function() {
                 if (bsModal) bsModal.hide();
-                showToast(APP_CONFIG.messages['toast.admin.users.saved'], 'success');
+                toast(APP_CONFIG.messages['toast.admin.users.saved']);
                 refreshTable();
             });
 
             // Password reset event
             document.body.addEventListener('passwordReset', function() {
-                showToast(APP_CONFIG.messages['toast.admin.users.passwordReset'], 'success');
+                toast(APP_CONFIG.messages['toast.admin.users.passwordReset']);
             });
 
             // Reset password button handler
@@ -121,7 +123,7 @@
                     .then(function(info) {
                         const msg = APP_CONFIG.messages;
                         if (info.isSelf) {
-                            showToast(msg['admin.users.self.cannotRemove'], 'warning');
+                            toast(msg['admin.users.self.cannotRemove'], 'warning');
                             return;
                         }
                         if (info.canDelete) {

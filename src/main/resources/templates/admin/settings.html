@@ -126,7 +126,9 @@
     <div th:replace="~{layouts/base :: scripts}"></div>
 
     <script type="module">
-        import { showToast } from 'lib/toast';
+        function toast(message) {
+            document.dispatchEvent(new CustomEvent('showToast', { detail: { message, type: 'success' } }));
+        }
 
         // Theme saved — apply live and update active state
         document.body.addEventListener('themeSaved', function(e) {
@@ -136,7 +138,7 @@
             } else {
                 document.documentElement.setAttribute('data-theme', theme);
             }
-            showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
+            toast(APP_CONFIG.messages['toast.settings.saved']);
 
             document.querySelectorAll('.theme-card').forEach(function(card) {
                 const cardTheme = JSON.parse(card.getAttribute('hx-vals')).theme;
@@ -158,7 +160,7 @@
 
         // General settings saved
         document.body.addEventListener('settingsSaved', function() {
-            showToast(APP_CONFIG.messages['toast.settings.saved'], 'success');
+            toast(APP_CONFIG.messages['toast.settings.saved']);
         });
 
         // Save all general settings
