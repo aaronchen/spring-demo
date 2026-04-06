@@ -141,8 +141,15 @@
                                         Archiving hides the project from the list. This can be undone.
                                     </p>
                                 </div>
-                                <form id="archive-form" th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
-                                    <button type="button" class="btn btn-outline-danger" id="archive-btn">
+                                <form th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
+                                    <button type="submit" class="btn btn-outline-danger"
+                                            th:attr="hx-post=@{/projects/{id}/archive(id=${project.id})},
+                                                     hx-confirm=#{project.archive.confirm},
+                                                     data-confirm-title=#{project.action.archive},
+                                                     data-confirm-text=#{project.action.archive},
+                                                     data-confirm-header-class='bg-danger text-white',
+                                                     data-confirm-btn-class='btn btn-danger'"
+                                            hx-swap="none">
                                         <i class="bi bi-archive"></i> <span th:text="#{project.action.archive}">Archive</span>
                                     </button>
                                 </form>
@@ -158,8 +165,7 @@
     <div th:replace="~{layouts/base :: footer}"></div>
     <div th:replace="~{layouts/base :: scripts}"></div>
 
-    <script type="module" th:inline="javascript">
-        import { showConfirm } from 'lib/confirm';
+    <script>
         // ── Tab navigation ──────────────────────────────────────────────────
         document.querySelectorAll('#settings-nav .settings-nav-link').forEach(link => {
             link.addEventListener('click', function(e) {
@@ -187,19 +193,6 @@
                 if (link) link.click();
             }
         })();
-
-        // ── Archive confirm ─────────────────────────────────────────────────
-        document.getElementById('archive-btn')?.addEventListener('click', function() {
-            showConfirm({
-                message: /*[[#{project.archive.confirm}]]*/ 'Are you sure?',
-                title: /*[[#{project.action.archive}]]*/ 'Archive Project',
-                confirmText: /*[[#{project.action.archive}]]*/ 'Archive',
-                headerClass: 'bg-danger text-white',
-                confirmClass: 'btn btn-danger',
-            }, function() {
-                document.getElementById('archive-form').submit();
-            });
-        });
     </script>
 </body>
 </html>
