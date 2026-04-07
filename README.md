@@ -542,10 +542,13 @@ spring-demo/
 │   │   │   ├── Unique.java              # Generic @Unique annotation (class-level, @Repeatable)
 │   │   │   └── UniqueValidator.java     # EntityManager-based uniqueness check
 │   │   ├── util/
+│   │   │   ├── CalendarHelper.java        # Calendar view grid builder (weeks of CalendarDay)
 │   │   │   ├── CsvWriter.java             # Generic CSV export utility
+│   │   │   ├── FormMode.java              # Enum: VIEW, CREATE, EDIT (form context modes)
 │   │   │   ├── HtmxUtils.java
 │   │   │   ├── MentionUtils.java          # @mention parsing and display rendering
-│   │   │   └── Messages.java             # MessageSource helper (shorthand for getMessage)
+│   │   │   ├── Messages.java             # MessageSource helper (shorthand for getMessage)
+│   │   │   └── RouteTemplate.java        # URL template with Builder (params/query/build)
 │   │   ├── DataLoader.java              # Seeds 20 users, 8 tags, 56 tasks, comments, notifications (@Profile("dev"))
 │   │   └── DemoApplication.java
 │   └── resources/
@@ -696,12 +699,15 @@ spring-demo/
 │   │   └── DemoApplicationTests.java             # Context load test (1)
 │   └── resources/
 │       └── application-test.properties           # Test profile config
+├── .editorconfig                       # Cross-IDE editor settings (indent, line endings)
+├── .prettierrc                         # Prettier config for JS/CSS formatting (shared by Spotless)
 ├── rest.http                           # VS Code REST Client test file
 ├── dev-guide.md                        # Developer guide (Maven, Docker, profiles)
 ├── docker-compose.prod.yml             # Local prod testing (PostgreSQL + app)
 ├── Dockerfile                          # Multi-stage build (JDK → JRE)
 ├── pom.xml
 ├── CLAUDE.md                           # Developer reference
+├── CSS-GUIDE.md                        # UI design guide (palettes, tokens, patterns)
 └── README.md
 ```
 
