@@ -1168,10 +1168,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `toString()` returns raw template — transparent in Thymeleaf expressions and string concatenation
   - `JS_CLASS` constant — JavaScript `Route` + `RouteBuilder` classes with matching `params()`/`query()`/`build()` API; emitted by `FrontendConfigController` into `/config.js`
   - Nested `StringConverter` (`@ConfigurationPropertiesBinding`) — allows Spring to bind `String` properties to `RouteTemplate` in `AppRoutesProperties`
-- `util/RouteBuilder.java` - Immutable URL builder returned by `RouteTemplate.params()` / `.query()`
-  - `params(String key, Object value, Object... rest)` / `params(Map)` — path parameters
-  - `query(String key, Object value, Object... rest)` / `query(Map)` — query parameters
-  - `build()` / `toString()` — produces the final URL with URL encoding
+  - Nested `Builder` (static inner class, private constructor) — immutable URL builder returned by `params()` / `query()`; supports `params(String, Object, Object...)`, `params(Map)`, `query(String, Object, Object...)`, `query(Map)`, `build()` / `toString()`; odd-varargs validation throws `IllegalArgumentException`
 
 - `util/Messages.java` - `@Component` wrapper around `MessageSource` for convenient message resolution in service layer
   - Constructor injection: `MessageSource`
