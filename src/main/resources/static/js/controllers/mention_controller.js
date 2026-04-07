@@ -35,12 +35,18 @@ export default class extends Controller {
             values: (text, cb) => {
                 const projectId = this.projectIdValue;
                 if (projectId) {
-                    if (cachedMembers) { cb(cachedMembers); return; }
+                    if (cachedMembers) {
+                        cb(cachedMembers);
+                        return;
+                    }
                     const url = APP_CONFIG.routes.apiProjectMembers.resolve({ projectId });
                     fetch(url, { credentials: "same-origin" })
                         .then(requireOk)
                         .then((r) => r.json())
-                        .then((users) => { cachedMembers = users; cb(users); })
+                        .then((users) => {
+                            cachedMembers = users;
+                            cb(users);
+                        })
                         .catch(() => cb([]));
                 } else {
                     const url = `${APP_CONFIG.routes.apiUsers}?q=${encodeURIComponent(text)}`;

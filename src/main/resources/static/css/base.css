@@ -1,6 +1,5 @@
 /* Base CSS — global styles shared across all pages */
 
-
 /* Backlog status — light gray, distinct from Open (dark gray) */
 .btn-backlog {
     --bs-btn-color: #212529;
@@ -23,7 +22,9 @@ body {
 
 /* Smooth transitions for cards (theme.css tokens override when data-theme active) */
 .card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    transition:
+        transform 0.2s ease-in-out,
+        box-shadow 0.2s ease-in-out;
 }
 
 /* Clip header background to rounded corners — only on cards with colored headers
@@ -185,7 +186,6 @@ body {
     border-top: 1px solid var(--bs-border-color, #dee2e6);
 }
 
-
 /* Toast container — positioned below navbar, above modal backdrop (z-index 1050) */
 #toast-container {
     z-index: 1090;
@@ -206,8 +206,14 @@ body {
 }
 
 @keyframes toast-slide-in {
-    from { transform: translateX(100%) scale(0.95); opacity: 0; }
-    to   { transform: translateX(0) scale(1);       opacity: 1; }
+    from {
+        transform: translateX(100%) scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
 }
 
 /* Confirm modal — floats above other modals (z-index 1055) and their backdrops (1050).
@@ -327,8 +333,12 @@ body {
 }
 
 @keyframes shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 /* Hide content and show skeleton indicator during HTMX requests */
@@ -346,11 +356,11 @@ body {
 
 /* ── Reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
 }
-
-

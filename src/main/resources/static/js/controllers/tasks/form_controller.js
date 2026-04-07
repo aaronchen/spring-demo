@@ -26,9 +26,11 @@ export default class extends Controller {
             const assigneeSelect = document.getElementById("assigneeId");
             if (!assigneeSelect) return;
             const projectId = projectSelect.value;
-            assigneeSelect.setSrc(projectId
-                ? APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId })
-                : APP_CONFIG.routes.apiUsers);
+            assigneeSelect.setSrc(
+                projectId
+                    ? APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId })
+                    : APP_CONFIG.routes.apiUsers,
+            );
             assigneeSelect.reset();
             this.updateSprintDropdown(projectId);
         });
@@ -146,5 +148,4 @@ export default class extends Controller {
             this.checklistDragItem = null;
         }
     }
-
 }

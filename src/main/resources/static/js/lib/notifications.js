@@ -5,14 +5,22 @@ export { escapeHtml, fire } from "lib/html";
 
 export function getNotificationIcon(type) {
     switch (type) {
-        case "TASK_ASSIGNED": return "bi-person-plus text-primary";
-        case "TASK_UPDATED": return "bi-pencil-square text-primary";
-        case "COMMENT_ADDED": return "bi-chat-dots text-success";
-        case "COMMENT_MENTIONED": return "bi-at text-info";
-        case "TASK_DUE_REMINDER": return "bi-calendar-event text-warning";
-        case "TASK_OVERDUE": return "bi-clock text-danger";
-        case "SYSTEM": return "bi-megaphone text-warning";
-        default: return "bi-bell text-secondary";
+        case "TASK_ASSIGNED":
+            return "bi-person-plus text-primary";
+        case "TASK_UPDATED":
+            return "bi-pencil-square text-primary";
+        case "COMMENT_ADDED":
+            return "bi-chat-dots text-success";
+        case "COMMENT_MENTIONED":
+            return "bi-at text-info";
+        case "TASK_DUE_REMINDER":
+            return "bi-calendar-event text-warning";
+        case "TASK_OVERDUE":
+            return "bi-clock text-danger";
+        case "SYSTEM":
+            return "bi-megaphone text-warning";
+        default:
+            return "bi-bell text-secondary";
     }
 }
 

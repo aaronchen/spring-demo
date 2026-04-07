@@ -14,9 +14,8 @@ export default class extends Controller {
         onConnect((client) => {
             if (this.wsProjectIdsValue) {
                 this.wsProjectIdsValue.split(",").forEach((id) => {
-                    client.subscribe(
-                        APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() }),
-                        () => this.refreshStats()
+                    client.subscribe(APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() }), () =>
+                        this.refreshStats(),
                     );
                 });
             }
@@ -26,7 +25,9 @@ export default class extends Controller {
     }
 
     refreshStats() {
-        htmx.ajax("GET", `${APP_CONFIG.routes.dashboard}/stats`,
-            { target: `#${this.statsTarget.id}`, swap: "outerHTML" });
+        htmx.ajax("GET", `${APP_CONFIG.routes.dashboard}/stats`, {
+            target: `#${this.statsTarget.id}`,
+            swap: "outerHTML",
+        });
     }
 }
