@@ -5,7 +5,7 @@ COPY .mvn .mvn
 COPY mvnw pom.xml ./
 RUN ./mvnw dependency:go-offline -B
 COPY src src
-RUN ./mvnw package -DskipTests -B
+RUN ./mvnw package -DskipTests -Dspotless.apply.skip=true -B
 
 # Stage 2: Run
 FROM eclipse-temurin:25-jre
