@@ -4,6 +4,7 @@ import { showToast } from "lib/toast";
 import { showConfirm } from "lib/confirm";
 import { getCookie, setCookie } from "lib/cookies";
 import { onConnect } from "lib/websocket";
+import { resolveLabel } from "lib/i18n";
 
 // Task list page — sort, filter, search, pagination, view switching, saved views,
 // WebSocket stale-data banners, and modal state management.
@@ -14,41 +15,29 @@ import { onConnect } from "lib/websocket";
 function buildSortLabels() {
     const m = APP_CONFIG.messages;
     return {
-        "title,asc":          m["task.sort.title.asc"],
-        "title,desc":         m["task.sort.title.desc"],
-        "createdAt,asc":      m["task.sort.createdAt.asc"],
-        "createdAt,desc":     m["task.sort.createdAt.desc"],
-        "priorityOrder,asc":  m["task.sort.priorityOrder.asc"],
+        "title,asc": m["task.sort.title.asc"],
+        "title,desc": m["task.sort.title.desc"],
+        "createdAt,asc": m["task.sort.createdAt.asc"],
+        "createdAt,desc": m["task.sort.createdAt.desc"],
+        "priorityOrder,asc": m["task.sort.priorityOrder.asc"],
         "priorityOrder,desc": m["task.sort.priorityOrder.desc"],
-        "dueDate,asc":        m["task.sort.dueDate.asc"],
-        "dueDate,desc":       m["task.sort.dueDate.desc"],
-        "updatedAt,asc":      m["task.sort.updatedAt.asc"],
-        "updatedAt,desc":     m["task.sort.updatedAt.desc"],
-        "description,asc":    m["task.sort.description.asc"],
-        "description,desc":   m["task.sort.description.desc"],
+        "dueDate,asc": m["task.sort.dueDate.asc"],
+        "dueDate,desc": m["task.sort.dueDate.desc"],
+        "updatedAt,asc": m["task.sort.updatedAt.asc"],
+        "updatedAt,desc": m["task.sort.updatedAt.desc"],
+        "description,asc": m["task.sort.description.asc"],
+        "description,desc": m["task.sort.description.desc"],
     };
 }
 
-const STATUS_CONFIG = {
-    BACKLOG:     { msgKey: "task.filter.backlog",    btnCss: "btn-backlog",    icon: "bi-inbox" },
-    OPEN:        { msgKey: "task.filter.open",       btnCss: "btn-secondary",  icon: "bi-circle" },
-    IN_PROGRESS: { msgKey: "task.filter.inProgress", btnCss: "btn-warning",    icon: "bi-play-circle-fill" },
-    IN_REVIEW:   { msgKey: "task.filter.inReview",   btnCss: "btn-info",       icon: "bi-eye-fill" },
-    COMPLETED:   { msgKey: "task.filter.completed",  btnCss: "btn-success",    icon: "bi-check-circle-fill" },
-    CANCELLED:   { msgKey: "task.filter.cancelled",  btnCss: "btn-dark",       icon: "bi-x-circle-fill" },
-    OVERDUE:     { msgKey: "task.dueDate.overdue",   btnCss: "btn-danger",     icon: "bi-exclamation-circle-fill" },
-};
+const OVERDUE_CONFIG = { btnCss: "btn-danger", icon: "bi-exclamation-circle-fill" };
 
-const PRIORITY_CONFIG = {
-    HIGH:   { msgKey: "task.priority.high",   icon: "bi-reception-4" },
-    MEDIUM: { msgKey: "task.priority.medium", icon: "bi-reception-2" },
-    LOW:    { msgKey: "task.priority.low",    icon: "bi-reception-1" },
-};
+const priorityEnum = APP_CONFIG.enums.priority;
 
 export default class extends Controller {
     static values = {
-        base: String,              // task list base URL (replaces TASKS_BASE_OVERRIDE)
-        wsProjectIds: String,      // comma-separated project IDs for WebSocket subscriptions
+        base: String, // task list base URL (replaces TASKS_BASE_OVERRIDE)
+        wsProjectIds: String, // comma-separated project IDs for WebSocket subscriptions
     };
 
     connect() {
@@ -147,17 +136,21 @@ export default class extends Controller {
 
         // Delete modal (safe: inside this.element)
         const deleteModal = document.getElementById("task-delete-modal");
-        if (deleteModal) deleteModal.addEventListener("show.bs.modal", (e) => {
-            const btn = e.relatedTarget;
-            if (!btn) return;
-            document.getElementById("task-delete-modal-title").textContent = btn.dataset.taskTitle;
-            const confirmBtn = document.getElementById("delete-confirm-btn");
-            confirmBtn.setAttribute("hx-delete", `${APP_CONFIG.routes.tasks}/${btn.dataset.taskId}`);
-            htmx.process(confirmBtn);
-        });
+        if (deleteModal)
+            deleteModal.addEventListener("show.bs.modal", (e) => {
+                const btn = e.relatedTarget;
+                if (!btn) return;
+                document.getElementById("task-delete-modal-title").textContent = btn.dataset.taskTitle;
+                const confirmBtn = document.getElementById("delete-confirm-btn");
+                confirmBtn.setAttribute("hx-delete", `${APP_CONFIG.routes.tasks}/${btn.dataset.taskId}`);
+                htmx.process(confirmBtn);
+            });
 
         // Browser back/forward
-        this.popstateHandler = () => { this.initFromUrl(); this.doSearch(false); };
+        this.popstateHandler = () => {
+            this.initFromUrl();
+            this.doSearch(false);
+        };
         window.addEventListener("popstate", this.popstateHandler);
     }
 
@@ -333,7 +326,7 @@ export default class extends Controller {
         document.querySelectorAll("[data-sort-field]").forEach((item) => {
             const check = item.querySelector(".sort-check");
             const isActive = this.activeSorts.some(
-                (s) => s.field === item.dataset.sortField && s.direction === item.dataset.sortDir
+                (s) => s.field === item.dataset.sortField && s.direction === item.dataset.sortDir,
             );
             if (check) check.style.visibility = isActive ? "visible" : "hidden";
         });
@@ -425,14 +418,14 @@ export default class extends Controller {
         const value = hidden.value;
         document.querySelectorAll(".sprint-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
-            if (check) check.style.visibility = (item.dataset.value === value) ? "visible" : "hidden";
+            if (check) check.style.visibility = item.dataset.value === value ? "visible" : "hidden";
         });
     }
 
     // ── Status filter ────────────────────────────────────────────────────
 
     setStatusFilter(eventOrStatus) {
-        const status = eventOrStatus?.currentTarget ? (eventOrStatus.currentTarget.dataset.status || '') : eventOrStatus;
+        const status = eventOrStatus?.currentTarget ? eventOrStatus.currentTarget.dataset.status || "" : eventOrStatus;
         const current = document.getElementById("current-status-filter").value;
         const currentOverdue = document.getElementById("current-overdue-filter").value;
 
@@ -470,7 +463,7 @@ export default class extends Controller {
         const icon = btn.querySelector("i");
         const baseLabel = APP_CONFIG.messages["task.field.status"] || "Status";
 
-        const effectiveStatus = overdue ? "OVERDUE" : (statusFilter !== "ALL" ? statusFilter : "");
+        const effectiveStatus = overdue ? "OVERDUE" : statusFilter !== "ALL" ? statusFilter : "";
 
         document.querySelectorAll(".status-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
@@ -489,11 +482,14 @@ export default class extends Controller {
         btn.className = "btn btn-sm btn-outline-secondary dropdown-toggle";
         icon.className = "bi bi-list-ul";
 
-        if (effectiveStatus && STATUS_CONFIG[effectiveStatus]) {
-            const cfg = STATUS_CONFIG[effectiveStatus];
-            label.textContent = APP_CONFIG.messages[cfg.msgKey] || effectiveStatus;
-            icon.className = `bi ${cfg.icon}`;
-            btn.className = `btn btn-sm ${cfg.btnCss} dropdown-toggle`;
+        const statusCfg = effectiveStatus === "OVERDUE" ? OVERDUE_CONFIG : APP_CONFIG.enums.taskStatus[effectiveStatus];
+        if (statusCfg) {
+            label.textContent =
+                effectiveStatus === "OVERDUE"
+                    ? APP_CONFIG.messages["task.dueDate.overdue"] || "Overdue"
+                    : resolveLabel("task.status", effectiveStatus);
+            icon.className = `bi ${statusCfg.icon}`;
+            btn.className = `btn btn-sm ${statusCfg.btnCss} dropdown-toggle`;
         } else {
             label.textContent = baseLabel;
         }
@@ -502,7 +498,9 @@ export default class extends Controller {
     // ── Priority filter ──────────────────────────────────────────────────
 
     setPriorityFilter(eventOrPriority) {
-        const priority = eventOrPriority?.currentTarget ? (eventOrPriority.currentTarget.dataset.priority || '') : eventOrPriority;
+        const priority = eventOrPriority?.currentTarget
+            ? eventOrPriority.currentTarget.dataset.priority || ""
+            : eventOrPriority;
         const current = document.getElementById("current-priority-filter").value;
         if (priority && current === priority) {
             document.getElementById("current-priority-filter").value = "";
@@ -524,18 +522,17 @@ export default class extends Controller {
 
         document.querySelectorAll(".priority-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
-            if (check) check.style.visibility = (item.dataset.priority === priority) ? "visible" : "hidden";
+            if (check) check.style.visibility = item.dataset.priority === priority ? "visible" : "hidden";
         });
 
         btn.className = "btn btn-sm btn-outline-secondary dropdown-toggle";
         icon.className = "bi bi-reception-2";
 
-        if (priority && PRIORITY_CONFIG[priority]) {
-            const cfg = PRIORITY_CONFIG[priority];
-            label.textContent = APP_CONFIG.messages[cfg.msgKey] || priority;
+        const cfg = priority ? priorityEnum[priority] : null;
+        if (cfg) {
+            label.textContent = resolveLabel("task.priority", priority);
             icon.className = `bi ${cfg.icon}`;
-            const colorClass = priority === "HIGH" ? "btn-danger" : priority === "MEDIUM" ? "btn-warning" : "btn-success";
-            btn.className = `btn btn-sm ${colorClass} dropdown-toggle`;
+            btn.className = `btn btn-sm ${cfg.btnCss} dropdown-toggle`;
         } else {
             label.textContent = baseLabel;
         }
@@ -570,7 +567,9 @@ export default class extends Controller {
         document.querySelectorAll(".tag-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
             if (check) {
-                check.style.visibility = this.selectedTagIds.includes(String(item.dataset.tagId)) ? "visible" : "hidden";
+                check.style.visibility = this.selectedTagIds.includes(String(item.dataset.tagId))
+                    ? "visible"
+                    : "hidden";
             }
         });
 
@@ -578,9 +577,8 @@ export default class extends Controller {
         if (label) {
             const baseLabel = label.dataset.defaultLabel || label.textContent.replace(/ \(\d+\)$/, "");
             if (!label.dataset.defaultLabel) label.dataset.defaultLabel = baseLabel;
-            label.textContent = this.selectedTagIds.length > 0
-                ? `${baseLabel} (${this.selectedTagIds.length})`
-                : baseLabel;
+            label.textContent =
+                this.selectedTagIds.length > 0 ? `${baseLabel} (${this.selectedTagIds.length})` : baseLabel;
         }
 
         this.highlightActiveTags();
@@ -623,13 +621,19 @@ export default class extends Controller {
             link.className = "dropdown-item flex-grow-1 text-truncate";
             link.href = "#";
             link.textContent = view.name;
-            link.addEventListener("click", (e) => { e.preventDefault(); this.applySavedView(view); });
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.applySavedView(view);
+            });
 
             const deleteBtn = document.createElement("button");
             deleteBtn.className = "btn btn-sm text-danger border-0 px-2";
             deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
             deleteBtn.title = APP_CONFIG.messages["task.views.delete"] || "Delete";
-            deleteBtn.addEventListener("click", (e) => { e.stopPropagation(); this.deleteSavedView(view.id); });
+            deleteBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.deleteSavedView(view.id);
+            });
 
             item.appendChild(link);
             item.appendChild(deleteBtn);
@@ -683,7 +687,9 @@ export default class extends Controller {
                     label.textContent = APP_CONFIG.messages["sprint.filter.noSprint"] || "No Sprint";
                 } else {
                     const item = document.querySelector(`[data-value="${query.sprintId}"]`);
-                    label.textContent = item ? (item.dataset.name || item.textContent.trim()) : (APP_CONFIG.messages["task.field.sprint"] || "Sprint");
+                    label.textContent = item
+                        ? item.dataset.name || item.textContent.trim()
+                        : APP_CONFIG.messages["task.field.sprint"] || "Sprint";
                 }
             }
         }
@@ -715,56 +721,64 @@ export default class extends Controller {
         const promptLabel = APP_CONFIG.messages["task.views.name.prompt"] || "View name:";
         const inputId = "save-view-name-input";
 
-        showConfirm({
-            title: APP_CONFIG.messages["task.views.save"] || "Save Current View",
-            message: `<label for="${inputId}" class="form-label">${promptLabel}</label>
+        showConfirm(
+            {
+                title: APP_CONFIG.messages["task.views.save"] || "Save Current View",
+                message: `<label for="${inputId}" class="form-label">${promptLabel}</label>
                       <input type="text" id="${inputId}" class="form-control" maxlength="80" autocomplete="off" autofocus>`,
-            confirmText: APP_CONFIG.messages["admin.settings.save"] || "Save",
-            confirmClass: "btn btn-primary",
-            headerClass: "bg-primary text-white",
-        }, () => {
-            const input = document.getElementById(inputId);
-            const name = input ? input.value.trim() : "";
-            if (!name) {
-                if (input) input.classList.add("is-invalid");
-                return false;
-            }
+                confirmText: APP_CONFIG.messages["admin.settings.save"] || "Save",
+                confirmClass: "btn btn-primary",
+                headerClass: "bg-primary text-white",
+            },
+            () => {
+                const input = document.getElementById(inputId);
+                const name = input ? input.value.trim() : "";
+                if (!name) {
+                    if (input) input.classList.add("is-invalid");
+                    return false;
+                }
 
-            const statusValue = document.getElementById("current-status-filter").value || "ALL";
-            const priorityValue = document.getElementById("current-priority-filter").value || "";
-            const data = {
-                type: "task",
-                query: {
-                    search: document.getElementById("search-input").value || null,
-                    statusFilter: statusValue !== "ALL" ? statusValue : null,
-                    overdue: document.getElementById("current-overdue-filter").value === "true",
-                    priority: priorityValue || null,
-                    selectedUserId: this.selectedUserId || null,
-                    tags: this.selectedTagIds.length > 0 ? this.selectedTagIds.slice() : null,
-                    sprintId: (document.getElementById("current-sprint-filter") || {}).value || null,
-                },
-                view: this.currentView,
-                sort: this.activeSorts.slice(),
-            };
+                const statusValue = document.getElementById("current-status-filter").value || "ALL";
+                const priorityValue = document.getElementById("current-priority-filter").value || "";
+                const data = {
+                    type: "task",
+                    query: {
+                        search: document.getElementById("search-input").value || null,
+                        statusFilter: statusValue !== "ALL" ? statusValue : null,
+                        overdue: document.getElementById("current-overdue-filter").value === "true",
+                        priority: priorityValue || null,
+                        selectedUserId: this.selectedUserId || null,
+                        tags: this.selectedTagIds.length > 0 ? this.selectedTagIds.slice() : null,
+                        sprintId: (document.getElementById("current-sprint-filter") || {}).value || null,
+                    },
+                    view: this.currentView,
+                    sort: this.activeSorts.slice(),
+                };
 
-            fetch(APP_CONFIG.routes.apiViews, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, data }),
-            }).then(requireOk)
-            .then(() => {
-                this.activeViewName = name;
-                this.renderActiveViewLabel();
-                this.loadSavedViews();
-                showToast(APP_CONFIG.messages["toast.view.saved"] || "View saved", "success");
-            }).catch((err) => console.error("Failed to save view:", err));
-        });
+                fetch(APP_CONFIG.routes.apiViews, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, data }),
+                })
+                    .then(requireOk)
+                    .then(() => {
+                        this.activeViewName = name;
+                        this.renderActiveViewLabel();
+                        this.loadSavedViews();
+                        showToast(APP_CONFIG.messages["toast.view.saved"] || "View saved", "success");
+                    })
+                    .catch((err) => console.error("Failed to save view:", err));
+            },
+        );
     }
 
     deleteSavedView(id) {
         fetch(APP_CONFIG.routes.apiViewById.resolve({ id }), { method: "DELETE" })
             .then(requireOk)
-            .then(() => { this.clearActiveView(); this.loadSavedViews(); })
+            .then(() => {
+                this.clearActiveView();
+                this.loadSavedViews();
+            })
             .catch((err) => console.error("Failed to delete view:", err));
     }
 
@@ -835,5 +849,4 @@ export default class extends Controller {
 
         this.renderSorts();
     }
-
 }

@@ -1,6 +1,8 @@
 package cc.desuka.demo.controller;
 
 import cc.desuka.demo.config.AppRoutesProperties;
+import cc.desuka.demo.model.Priority;
+import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.util.RouteTemplate;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,6 +35,11 @@ public class FrontendConfigController {
         Map<String, Object> config = new LinkedHashMap<>();
         config.put("routes", buildRoutesMap());
         config.put("messages", buildMessagesMap());
+        config.put(
+                "enums",
+                Map.of(
+                        "taskStatus", buildTaskStatusMap(),
+                        "priority", buildPriorityMap()));
 
         return "(function() {\n"
                 + RouteTemplate.JS_CLASS
@@ -66,6 +73,35 @@ public class FrontendConfigController {
             messages.put(key, bundle.getString(key));
         }
         return messages;
+    }
+
+    private Map<String, Map<String, Object>> buildTaskStatusMap() {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        for (TaskStatus status : TaskStatus.values()) {
+            map.put(
+                    status.name(),
+                    Map.of(
+                            "css", status.getCssClass(),
+                            "btnCss", status.getBtnClass(),
+                            "icon", status.getIcon(),
+                            "chartColor", status.getChartColor(),
+                            "terminal", status.isTerminal()));
+        }
+        return map;
+    }
+
+    private Map<String, Map<String, Object>> buildPriorityMap() {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        for (Priority priority : Priority.values()) {
+            map.put(
+                    priority.name(),
+                    Map.of(
+                            "css", priority.getCssClass(),
+                            "btnCss", priority.getBtnClass(),
+                            "icon", priority.getIcon(),
+                            "chartColor", priority.getChartColor()));
+        }
+        return map;
     }
 
     private static ObjectMapper createMapper() {

@@ -37,13 +37,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Status advance cycle: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN
   - `isTerminal()` — returns true for COMPLETED and CANCELLED (done states)
   - `terminalStatuses()` — returns `List.of(COMPLETED, CANCELLED)`; used by overdue checks, incomplete counts, and due reminders
-  - `getCssClass()` — returns Bootstrap badge CSS class for the status (e.g., `"bg-success"` for COMPLETED); used in templates via `${status.cssClass}`
+  - Presentation methods: `getCssClass()` (badge bg + text color), `getBtnClass()` (button variant), `getTextClass()`, `getBorderClass()`, `getIcon()` (Bootstrap Icon), `getChartColor()` (hex); exposed to JS via `APP_CONFIG.enums.taskStatus`
   - CANCELLED is not part of the advance cycle — it's set explicitly via the status radio buttons
   - Implements `Translatable`; `getMessageKey()` returns corresponding `task.status.*` message key
 
 - `model/Priority.java` - Enum for task priority levels: `LOW`, `MEDIUM`, `HIGH`
   - Stored as string via `@Enumerated(EnumType.STRING)` on Task
   - Implements `Translatable`; `getMessageKey()` returns corresponding `task.priority.*` message key
+  - Presentation methods: `getCssClass()` (badge bg + text color), `getBtnClass()` (button variant), `getIcon()` (Bootstrap Icon), `getChartColor()` (hex); exposed to JS via `APP_CONFIG.enums.priority`
 
 - `model/Comment.java` - Comment entity; implements `OwnedEntity` and `Auditable`
   - Fields: id, text, createdAt, task, user
@@ -1009,9 +1010,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `controller/FrontendConfigController.java` - Serves `/config.js` (JS runtime config)
   - `@RestController` producing `application/javascript`
-  - Emits `RouteTemplate.JS_CLASS` + `window.APP_CONFIG = { routes: { ... }, messages: { ... } };`
+  - Emits `RouteTemplate.JS_CLASS` + `window.APP_CONFIG = { routes: { ... }, messages: { ... }, enums: { ... } };`
   - Routes auto-discovered via reflection over `AppRoutesProperties` fields; emitted as `new Route("template")` JS expressions
   - Messages serialized via Jackson `ObjectMapper` from `ResourceBundle`
+  - `enums.taskStatus` / `enums.priority` — generated from enum presentation methods (`getCssClass`, `getBtnClass`, `getIcon`, `getChartColor`, `isTerminal`); single source of truth for JS-side enum metadata
   - Loaded by the `scripts` fragment on every page; `APP_CONFIG` is available globally to all page scripts
   - NOTE: Uses JVM default locale; for i18n, would need `MessageSource` with request `Locale` (conflicts with content-hash caching)
 
@@ -1423,7 +1425,6 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `htmx-errors.js` — global HTMX error/409 conflict handler
   - `flash-toast.js` — shows toast from URL flash parameters on page load
   - `date-range.js` — date range picker utilities for audit page
-  - `task-status.js` — `STATUS_BADGE` map: task status → `{ css, terminal }` for badge styling in JS; mirrors `TaskStatus.getCssClass()` on the server
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component with public API
   - Three modes: local (static options), remote prefetch (`prefetch` attr), remote server search
   - Public methods: `reset()`, `clear()`, `setValue()`, `getValue()`, `setSrc()`, `setOptions()`, `enable()`, `disable()`

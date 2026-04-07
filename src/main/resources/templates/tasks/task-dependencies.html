@@ -23,12 +23,13 @@
             <div th:each="blocker : ${task.blockedBy}"
                  class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
                 <input type="hidden" name="blockedByIds" th:value="${blocker.id}">
-                <span class="badge me-2"
-                      th:classappend="${blocker.status.cssClass}"
-                      th:text="#{${blocker.status.messageKey}}">Status</span>
+                <span class="badge me-2" th:classappend="${blocker.status.cssClass}">
+                    <i class="bi" th:classappend="${blocker.status.icon}"></i>
+                    <span th:text="#{${blocker.status.messageKey}}">Status</span>
+                </span>
                 <a class="flex-grow-1 small"
                    th:classappend="${blocker.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
-                   th:href="@{${appRoutes.tasks + '/' + blocker.id}}"
+                   th:href="@{${appRoutes.taskDetail.resolve('taskId', blocker.id)}}"
                    target="_blank"
                    th:text="${blocker.title}">Blocker title</a>
                 <button th:if="${canEditDependencies}" type="button"
@@ -60,12 +61,13 @@
             <div th:each="blocked : ${task.blocks}"
                  class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
                 <input type="hidden" name="blocksIds" th:value="${blocked.id}">
-                <span class="badge me-2"
-                      th:classappend="${blocked.status.cssClass}"
-                      th:text="#{${blocked.status.messageKey}}">Status</span>
+                <span class="badge me-2" th:classappend="${blocked.status.cssClass}">
+                    <i class="bi" th:classappend="${blocked.status.icon}"></i>
+                    <span th:text="#{${blocked.status.messageKey}}">Status</span>
+                </span>
                 <a class="flex-grow-1 small"
                    th:classappend="${blocked.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
-                   th:href="@{${appRoutes.tasks + '/' + blocked.id}}"
+                   th:href="@{${appRoutes.taskDetail.resolve('taskId', blocked.id)}}"
                    target="_blank"
                    th:text="${blocked.title}">Blocked title</a>
                 <button th:if="${canEditDependencies}" type="button"
@@ -83,7 +85,10 @@
     <template id="dep-item-template" th:if="${canEditDependencies}">
         <div class="list-group-item d-flex align-items-center px-0 py-1 dep-item">
             <input type="hidden" name="" value="">
-            <span class="badge me-2 bg-secondary" th:text="#{task.status.open}">Open</span>
+            <span class="badge me-2 bg-secondary">
+                <i class="bi bi-circle"></i>
+                <span th:text="#{task.status.open}">Open</span>
+            </span>
             <a class="flex-grow-1 small text-decoration-none" href="" target="_blank"></a>
             <button type="button" class="btn btn-sm btn-outline-danger ms-2 border-0"
                     data-action="click->tasks--dependencies#removeItem"

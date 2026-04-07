@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import { resolveLabel } from "lib/i18n";
-import { STATUS_BADGE } from "lib/task-status";
+
+const DEFAULT_BADGE = { css: "bg-secondary", icon: "bi-circle", terminal: false };
 
 // Dependency picker — handles add/remove via DOM manipulation (hidden inputs).
 // Dependencies are saved with the form, not via separate API calls.
@@ -11,7 +12,10 @@ export default class extends Controller {
         this.bindPickers();
         this.updateExcludeLists();
 
-        this.afterSettleHandler = () => { this.bindPickers(); this.updateExcludeLists(); };
+        this.afterSettleHandler = () => {
+            this.bindPickers();
+            this.updateExcludeLists();
+        };
         document.addEventListener("htmx:afterSettle", this.afterSettleHandler);
     }
 
@@ -42,10 +46,11 @@ export default class extends Controller {
                 item.querySelector('input[type="hidden"]').value = taskId;
 
                 const status = taskData?.status || "OPEN";
-                const info = STATUS_BADGE[status] || STATUS_BADGE.OPEN;
+                const info = APP_CONFIG.enums.taskStatus[status] || DEFAULT_BADGE;
                 const badge = item.querySelector(".badge");
-                badge.textContent = resolveLabel("task.status", status);
                 badge.className = `badge me-2 ${info.css}`;
+                badge.querySelector("i").className = `bi ${info.icon}`;
+                badge.querySelector("span").textContent = resolveLabel("task.status", status);
 
                 const link = item.querySelector("a");
                 link.href = APP_CONFIG.routes.taskDetail.resolve({ taskId });
@@ -92,5 +97,4 @@ export default class extends Controller {
         item.remove();
         this.updateExcludeLists();
     }
-
 }

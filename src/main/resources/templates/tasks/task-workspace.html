@@ -127,52 +127,13 @@
                 </a>
             </li>
             <li><hr class="dropdown-divider"></li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="BACKLOG"
+            <li th:each="s : ${T(cc.desuka.demo.model.TaskStatus).values()}">
+                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#"
+                   th:data-status="${s.name()}"
                    data-action="click->tasks--list#setStatusFilter:prevent">
                     <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-backlog"><i class="bi bi-inbox"></i></span>
-                    <span th:text="#{task.filter.backlog}">Backlog</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="OPEN"
-                   data-action="click->tasks--list#setStatusFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-secondary"><i class="bi bi-circle"></i></span>
-                    <span th:text="#{task.filter.open}">Open</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_PROGRESS"
-                   data-action="click->tasks--list#setStatusFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i></span>
-                    <span th:text="#{task.filter.inProgress}">In Progress</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="IN_REVIEW"
-                   data-action="click->tasks--list#setStatusFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-info text-white"><i class="bi bi-eye-fill"></i></span>
-                    <span th:text="#{task.filter.inReview}">In Review</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="COMPLETED"
-                   data-action="click->tasks--list#setStatusFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i></span>
-                    <span th:text="#{task.filter.completed}">Completed</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item status-filter-item d-flex align-items-center gap-2" href="#" data-status="CANCELLED"
-                   data-action="click->tasks--list#setStatusFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-dark"><i class="bi bi-x-circle-fill"></i></span>
-                    <span th:text="#{task.filter.cancelled}">Cancelled</span>
+                    <span class="badge" th:classappend="${s.cssClass}"><i class="bi" th:classappend="${s.icon}"></i></span>
+                    <span th:text="#{${s.messageKey}}">Status</span>
                 </a>
             </li>
         </ul>
@@ -200,28 +161,13 @@
                 </a>
             </li>
             <li><hr class="dropdown-divider"></li>
-            <li>
-                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="LOW"
+            <li th:each="p : ${T(cc.desuka.demo.model.Priority).values()}">
+                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#"
+                   th:data-priority="${p.name()}"
                    data-action="click->tasks--list#setPriorityFilter:prevent">
                     <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-success"><i class="bi bi-reception-1"></i></span>
-                    <span th:text="#{task.priority.low}">Low</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="MEDIUM"
-                   data-action="click->tasks--list#setPriorityFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i></span>
-                    <span th:text="#{task.priority.medium}">Medium</span>
-                </a>
-            </li>
-            <li>
-                <a class="dropdown-item priority-filter-item d-flex align-items-center gap-2" href="#" data-priority="HIGH"
-                   data-action="click->tasks--list#setPriorityFilter:prevent">
-                    <i class="bi bi-check-lg filter-check"></i>
-                    <span class="badge bg-danger"><i class="bi bi-reception-4"></i></span>
-                    <span th:text="#{task.priority.high}">High</span>
+                    <span class="badge" th:classappend="${p.cssClass}"><i class="bi" th:classappend="${p.icon}"></i></span>
+                    <span th:text="#{${p.messageKey}}">Priority</span>
                 </a>
             </li>
         </ul>

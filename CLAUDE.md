@@ -194,7 +194,9 @@ Entities with an owner implement `OwnedEntity` (`getUser()`, null = unassigned).
 
 ### Translatable Enum Pattern
 
-Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`, `Recurrence`. `TaskStatusFilter` is excluded (internal query param enum). `TaskStatus.getCssClass()` returns the Bootstrap badge CSS class (e.g., `bg-success`) — use in templates via `${status.cssClass}`. JS-side equivalent: `STATUS_BADGE` map in `lib/task-status.js`.
+Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`, `Recurrence`. `TaskStatusFilter` is excluded (internal query param enum).
+
+**Enum presentation methods** — `TaskStatus` and `Priority` expose styling metadata as methods: `getCssClass()` (badge bg + text color), `getBtnClass()` (button variant), `getIcon()` (Bootstrap Icon class), `getChartColor()` (hex for Chart.js), `getBorderClass()` / `getTextClass()` (TaskStatus only). Templates use `${status.cssClass}`, `${status.icon}`, etc. JS-side equivalent: `APP_CONFIG.enums.taskStatus` and `APP_CONFIG.enums.priority` (auto-generated from enum methods in `FrontendConfigController`). `cssClass` always includes explicit text color (e.g., `bg-warning text-dark`) for consistency.
 
 ### Confirm Dialog Pattern
 

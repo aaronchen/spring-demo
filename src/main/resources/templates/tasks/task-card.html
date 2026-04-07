@@ -10,17 +10,17 @@
               isTerminal=${isCompleted || isCancelled},
               overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
     <div class="card card-clip card-lift h-100 shadow-sm"
-         th:classappend="${isCompleted ? 'border-success' : (isCancelled ? 'border-dark' : (isInReview ? 'border-info' : (isInProgress ? 'border-warning' : (isBacklog ? 'border-secondary' : 'border-secondary'))))}">
+         th:classappend="${task.status.borderClass}">
         <!-- Card Header -->
         <div class="card-header d-flex justify-content-between align-items-center"
-             th:classappend="${isCompleted ? 'bg-success text-white' : (isCancelled ? 'bg-dark text-white' : (isInReview ? 'bg-info text-white' : (isInProgress ? 'bg-warning text-dark' : (isBacklog ? 'bg-backlog text-dark' : 'bg-secondary text-white'))))}">
+             th:classappend="${task.status.cssClass}">
             <h5 class="mb-0">
                 <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
                    th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
                    hx-target="#task-modal-content"
                    hx-swap="innerHTML"
                    class="text-decoration-none"
-                   th:classappend="${isInProgress || isBacklog ? 'text-dark' : 'text-white'}"
+                   th:classappend="${task.status.textClass}"
                    th:text="${task.title}">Task Title</a>
             </h5>
             <a href="#" th:if="${isCompleted}" class="badge bg-light text-success text-decoration-none"
@@ -62,17 +62,12 @@
                       th:title="#{task.dependency.blocked.tooltip}">
                     <i class="bi bi-lock-fill"></i> <span th:text="#{task.dependency.blocked}">Blocked</span>
                 </span>
-                <a href="#" th:if="${task.priority.name() == 'HIGH'}" class="badge bg-danger text-decoration-none text-white"
-                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="HIGH">
-                    <i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span>
-                </a>
-                <a href="#" th:if="${task.priority.name() == 'MEDIUM'}" class="badge bg-warning text-dark text-decoration-none"
-                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="MEDIUM">
-                    <i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span>
-                </a>
-                <a href="#" th:if="${task.priority.name() == 'LOW'}" class="badge bg-success text-decoration-none text-white"
-                   data-action="click->tasks--list#setPriorityFilter:prevent" data-priority="LOW">
-                    <i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span>
+                <a href="#" class="badge text-decoration-none"
+                   th:classappend="${task.priority.cssClass}"
+                   data-action="click->tasks--list#setPriorityFilter:prevent"
+                   th:data-priority="${task.priority.name()}">
+                    <i class="bi" th:classappend="${task.priority.icon}"></i>
+                    <span th:text="#{${task.priority.messageKey}}">Priority</span>
                 </a>
                 <span th:if="${task.dueDate != null}" class="badge"
                       th:classappend="${overdue} ? 'bg-danger' : 'bg-light text-dark'">
