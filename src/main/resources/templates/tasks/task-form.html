@@ -96,46 +96,15 @@
     <div class="mb-3" th:if="${mode != 'create'}">
         <label class="form-label fw-bold" th:text="#{task.field.status}">Status</label>
         <div class="form-check-row gap-3 flex-wrap">
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="BACKLOG" id="status-backlog"
+            <div class="form-check" th:each="s : ${T(cc.desuka.demo.model.TaskStatus).values()}">
+                <input class="form-check-input" type="radio" th:field="*{status}"
+                       th:value="${s.name()}" th:id="'status-' + ${s.name()}"
                        th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-backlog">
-                    <span class="badge bg-backlog"><i class="bi bi-inbox"></i> <span th:text="#{task.status.backlog}">Backlog</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="OPEN" id="status-open"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-open">
-                    <span class="badge bg-secondary"><i class="bi bi-circle"></i> <span th:text="#{task.status.open}">Open</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="IN_PROGRESS" id="status-in-progress"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-in-progress">
-                    <span class="badge bg-warning text-dark"><i class="bi bi-play-circle-fill"></i> <span th:text="#{task.status.inProgress}">In Progress</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="IN_REVIEW" id="status-in-review"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-in-review">
-                    <span class="badge bg-info text-white"><i class="bi bi-eye-fill"></i> <span th:text="#{task.status.inReview}">In Review</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="COMPLETED" id="status-completed"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-completed">
-                    <span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> <span th:text="#{task.status.completed}">Completed</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{status}" value="CANCELLED" id="status-cancelled"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="status-cancelled">
-                    <span class="badge bg-dark"><i class="bi bi-x-circle-fill"></i> <span th:text="#{task.status.cancelled}">Cancelled</span></span>
+                <label class="form-check-label" th:for="'status-' + ${s.name()}">
+                    <span class="badge" th:classappend="${s.cssClass}">
+                        <i class="bi" th:classappend="${s.icon}"></i>
+                        <span th:text="#{${s.messageKey}}">Status</span>
+                    </span>
                 </label>
             </div>
         </div>
@@ -145,25 +114,15 @@
     <div class="mb-3">
         <label class="form-label fw-bold" th:text="#{task.field.priority}">Priority</label>
         <div class="form-check-row gap-3">
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{priority}" value="LOW" id="priority-low"
+            <div class="form-check" th:each="p : ${T(cc.desuka.demo.model.Priority).values()}">
+                <input class="form-check-input" type="radio" th:field="*{priority}"
+                       th:value="${p.name()}" th:id="'priority-' + ${p.name()}"
                        th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="priority-low">
-                    <span class="badge bg-success"><i class="bi bi-reception-1"></i> <span th:text="#{task.priority.low}">Low</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{priority}" value="MEDIUM" id="priority-medium"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="priority-medium">
-                    <span class="badge bg-warning text-dark"><i class="bi bi-reception-2"></i> <span th:text="#{task.priority.medium}">Medium</span></span>
-                </label>
-            </div>
-            <div class="form-check">
-                <input class="form-check-input" type="radio" th:field="*{priority}" value="HIGH" id="priority-high"
-                       th:disabled="${mode == 'view'}">
-                <label class="form-check-label" for="priority-high">
-                    <span class="badge bg-danger"><i class="bi bi-reception-4"></i> <span th:text="#{task.priority.high}">High</span></span>
+                <label class="form-check-label" th:for="'priority-' + ${p.name()}">
+                    <span class="badge" th:classappend="${p.cssClass}">
+                        <i class="bi" th:classappend="${p.icon}"></i>
+                        <span th:text="#{${p.messageKey}}">Priority</span>
+                    </span>
                 </label>
             </div>
         </div>

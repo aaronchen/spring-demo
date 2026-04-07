@@ -27,26 +27,32 @@ export default class extends Controller {
 
         onConnect((client) => {
             // Task change subscription
-            this.subs.push(client.subscribe(
-                APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: this.projectIdValue }),
-                (message) => {
-                    const data = JSON.parse(message.body);
-                    if (currentUserId && String(data.userId) === currentUserId) return;
-                    if (data.taskId !== this.taskIdValue) return;
-                    this.bannerTarget.classList.remove("d-none");
-                }
-            ));
+            this.subs.push(
+                client.subscribe(
+                    APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: this.projectIdValue }),
+                    (message) => {
+                        const data = JSON.parse(message.body);
+                        if (currentUserId && String(data.userId) === currentUserId) return;
+                        if (data.taskId !== this.taskIdValue) return;
+                        this.bannerTarget.classList.remove("d-none");
+                    },
+                ),
+            );
 
             // Comment subscription — refresh activity timeline
-            this.subs.push(client.subscribe(
-                APP_CONFIG.routes.topicTaskComments.resolve({ taskId: this.taskIdValue }),
-                (message) => {
-                    const data = JSON.parse(message.body);
-                    if (currentUserId && String(data.userId) === currentUserId) return;
-                    htmx.ajax("GET", `${APP_CONFIG.routes.tasks}/${this.taskIdValue}/activity`,
-                        { target: "#task-activity", swap: "outerHTML" });
-                }
-            ));
+            this.subs.push(
+                client.subscribe(
+                    APP_CONFIG.routes.topicTaskComments.resolve({ taskId: this.taskIdValue }),
+                    (message) => {
+                        const data = JSON.parse(message.body);
+                        if (currentUserId && String(data.userId) === currentUserId) return;
+                        htmx.ajax("GET", `${APP_CONFIG.routes.tasks}/${this.taskIdValue}/activity`, {
+                            target: "#task-activity",
+                            swap: "outerHTML",
+                        });
+                    },
+                ),
+            );
         });
 
         // Modal: unsubscribe on close
@@ -65,8 +71,7 @@ export default class extends Controller {
     refresh(event) {
         event.preventDefault();
         if (this.modalValue) {
-            htmx.ajax("GET", this.refreshUrlValue,
-                { target: "#task-modal-content", swap: "innerHTML" });
+            htmx.ajax("GET", this.refreshUrlValue, { target: "#task-modal-content", swap: "innerHTML" });
         } else {
             location.reload();
         }

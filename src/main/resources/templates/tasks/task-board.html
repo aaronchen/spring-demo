@@ -12,17 +12,8 @@
                 <div class="kanban-column-header">
                     <span class="kanban-column-header-label">
                         <span class="badge me-1"
-                              th:classappend="${status.name() == 'BACKLOG' ? 'bg-backlog' :
-                                               (status.name() == 'OPEN' ? 'bg-secondary' :
-                                               (status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' :
-                                               (status.name() == 'IN_REVIEW' ? 'bg-info text-white' :
-                                               (status.name() == 'COMPLETED' ? 'bg-success' : 'bg-dark'))))}">
-                            <i class="bi"
-                               th:classappend="${status.name() == 'BACKLOG' ? 'bi-inbox' :
-                                                (status.name() == 'OPEN' ? 'bi-circle' :
-                                                (status.name() == 'IN_PROGRESS' ? 'bi-play-circle-fill' :
-                                                (status.name() == 'IN_REVIEW' ? 'bi-eye-fill' :
-                                                (status.name() == 'COMPLETED' ? 'bi-check-circle-fill' : 'bi-x-circle-fill'))))}"></i>
+                              th:classappend="${status.cssClass}">
+                            <i class="bi" th:classappend="${status.icon}"></i>
                         </span>
                         <span th:text="#{${status.messageKey}}">Status</span>
                     </span>
@@ -55,8 +46,7 @@
                             <div class="kanban-card-meta">
                                 <!-- Priority -->
                                 <span class="badge"
-                                      th:classappend="${task.priority.name() == 'HIGH' ? 'bg-danger' :
-                                                       (task.priority.name() == 'MEDIUM' ? 'bg-warning text-dark' : 'bg-success')}"
+                                      th:classappend="${task.priority.cssClass}"
                                       th:text="#{${task.priority.messageKey}}">Medium</span>
 
                                 <!-- Due Date -->

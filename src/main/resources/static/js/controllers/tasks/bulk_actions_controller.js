@@ -32,7 +32,10 @@ export default class extends Controller {
                     this.renderAssignList(this.assignUsers);
                 }
                 const searchInput = document.getElementById("bulk-assign-search");
-                if (searchInput) { searchInput.value = ""; searchInput.focus(); }
+                if (searchInput) {
+                    searchInput.value = "";
+                    searchInput.focus();
+                }
             });
         }
 
@@ -86,7 +89,9 @@ export default class extends Controller {
         this.selectedProjectIds.clear();
         this.assignUsers = [];
         this.assignProjectId = null;
-        document.querySelectorAll(".bulk-select-checkbox").forEach((cb) => { cb.checked = false; });
+        document.querySelectorAll(".bulk-select-checkbox").forEach((cb) => {
+            cb.checked = false;
+        });
         const selectAll = document.getElementById("bulk-select-all");
         if (selectAll) selectAll.checked = false;
         this.renderBar();
@@ -105,7 +110,11 @@ export default class extends Controller {
         const selectAll = document.getElementById("bulk-select-all");
         if (!selectAll) return;
         const boxes = document.querySelectorAll(".bulk-select-checkbox");
-        if (boxes.length === 0) { selectAll.checked = false; selectAll.indeterminate = false; return; }
+        if (boxes.length === 0) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            return;
+        }
         const checkedCount = Array.from(boxes).filter((cb) => cb.checked).length;
         selectAll.checked = checkedCount === boxes.length;
         selectAll.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
@@ -184,17 +193,22 @@ export default class extends Controller {
     executeDelete() {
         if (this.selectedIds.size === 0) return;
         const count = this.selectedIds.size;
-        const msg = (APP_CONFIG.messages["task.bulk.confirm.delete"] || `Are you sure you want to delete ${count} tasks?`).replace("{0}", count);
+        const msg = (
+            APP_CONFIG.messages["task.bulk.confirm.delete"] || `Are you sure you want to delete ${count} tasks?`
+        ).replace("{0}", count);
 
-        showConfirm({
-            title: APP_CONFIG.messages["task.bulk.confirm.delete.title"] || "Delete Tasks",
-            message: msg,
-            confirmText: APP_CONFIG.messages["action.delete"] || "Delete",
-            confirmClass: "btn btn-danger",
-            headerClass: "bg-danger text-white",
-        }, () => {
-            this.executeAction("DELETE", "");
-        });
+        showConfirm(
+            {
+                title: APP_CONFIG.messages["task.bulk.confirm.delete.title"] || "Delete Tasks",
+                message: msg,
+                confirmText: APP_CONFIG.messages["action.delete"] || "Delete",
+                confirmClass: "btn btn-danger",
+                headerClass: "bg-danger text-white",
+            },
+            () => {
+                this.executeAction("DELETE", "");
+            },
+        );
     }
 
     // ── Assign user list ─────────────────────────────────────────────────
@@ -231,7 +245,11 @@ export default class extends Controller {
         unassignLink.className = "dropdown-item text-muted";
         unassignLink.href = "#";
         unassignLink.innerHTML = `<i class="bi bi-person-slash"></i> ${APP_CONFIG.messages["task.field.user.unassigned"] || "Unassigned"}`;
-        unassignLink.addEventListener("click", (e) => { e.preventDefault(); this.executeAction("ASSIGN", ""); this.closeAssignDropdown(); });
+        unassignLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.executeAction("ASSIGN", "");
+            this.closeAssignDropdown();
+        });
         container.appendChild(unassignLink);
 
         users.forEach((user) => {
@@ -239,7 +257,11 @@ export default class extends Controller {
             link.className = "dropdown-item";
             link.href = "#";
             link.textContent = user.name;
-            link.addEventListener("click", (e) => { e.preventDefault(); this.executeAction("ASSIGN", String(user.id)); this.closeAssignDropdown(); });
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                this.executeAction("ASSIGN", String(user.id));
+                this.closeAssignDropdown();
+            });
             container.appendChild(link);
         });
     }
@@ -248,5 +270,4 @@ export default class extends Controller {
         const dd = document.getElementById("bulkAssignDropdown");
         if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
     }
-
 }

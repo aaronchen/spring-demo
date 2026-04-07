@@ -8,7 +8,9 @@ export function requireOk(response) {
 }
 
 /** Returns CSRF headers for raw fetch() calls (not needed for HTMX — lib/htmx-csrf handles that). */
-let _csrfToken, _csrfHeader, _csrfResolved = false;
+let _csrfToken,
+    _csrfHeader,
+    _csrfResolved = false;
 
 export function csrfHeaders() {
     if (!_csrfResolved) {

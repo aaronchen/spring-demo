@@ -180,13 +180,7 @@
                         <a th:each="task : ${stats.myRecentTasks}"
                            th:href="@{/tasks/{id}/edit(id=${task.id})}"
                            class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-                           th:with="isCompleted=${task.status.name() == 'COMPLETED'},
-                                    isCancelled=${task.status.name() == 'CANCELLED'},
-                                    isTerminal=${isCompleted || isCancelled},
-                                    isInProgress=${task.status.name() == 'IN_PROGRESS'},
-                                    isInReview=${task.status.name() == 'IN_REVIEW'},
-                                    isBacklog=${task.status.name() == 'BACKLOG'},
-                                    overdue=${!isTerminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
+                           th:with="overdue=${!task.status.terminal && task.dueDate != null && task.dueDate.isBefore(T(java.time.LocalDate).now())}">
                             <div class="me-3" style="min-width: 0;">
                                 <div class="text-truncate" th:text="${task.title}">Task title</div>
                                 <small class="text-muted">
@@ -199,26 +193,11 @@
                                           th:text="#{dashboard.recent.noDueDate}">No due date</span>
                                 </small>
                             </div>
-                            <span th:if="${isCompleted}" class="badge bg-success">
-                                <i class="bi bi-check-circle-fill"></i>
-                            </span>
-                            <span th:if="${isCancelled}" class="badge bg-dark">
-                                <i class="bi bi-x-circle-fill"></i>
-                            </span>
                             <span th:if="${overdue}" class="badge bg-danger">
                                 <i class="bi bi-exclamation-triangle-fill"></i>
                             </span>
-                            <span th:if="${isInReview && !overdue}" class="badge bg-info">
-                                <i class="bi bi-eye-fill"></i>
-                            </span>
-                            <span th:if="${isInProgress && !overdue}" class="badge bg-warning text-dark">
-                                <i class="bi bi-play-circle-fill"></i>
-                            </span>
-                            <span th:if="${isBacklog && !overdue}" class="badge bg-backlog">
-                                <i class="bi bi-inbox"></i>
-                            </span>
-                            <span th:if="${!isTerminal && !isInProgress && !isInReview && !isBacklog && !overdue}" class="badge bg-secondary">
-                                <i class="bi bi-circle"></i>
+                            <span th:if="${!overdue}" class="badge" th:classappend="${task.status.cssClass}">
+                                <i class="bi" th:classappend="${task.status.icon}"></i>
                             </span>
                         </a>
                     </div>
@@ -259,9 +238,8 @@
                                           th:text="${#temporals.format(task.dueDate, 'EEE, MMM d')}">Mon, Jan 1</span>
                                 </small>
                             </div>
-                            <span class="badge"
-                                  th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bg-info' : (task.status.name() == 'IN_PROGRESS' ? 'bg-warning text-dark' : (task.status.name() == 'BACKLOG' ? 'bg-backlog' : 'bg-secondary'))}">
-                                <i th:classappend="${task.status.name() == 'IN_REVIEW' ? 'bi-eye-fill' : (task.status.name() == 'IN_PROGRESS' ? 'bi-play-circle-fill' : (task.status.name() == 'BACKLOG' ? 'bi-inbox' : 'bi-circle'))}"></i>
+                            <span class="badge" th:classappend="${task.status.cssClass}">
+                                <i class="bi" th:classappend="${task.status.icon}"></i>
                             </span>
                         </a>
                     </div>

@@ -59,7 +59,7 @@ export default class extends Controller {
                 this.emptyTarget.classList.add("d-none");
                 items.forEach((item) => {
                     this.listTarget.appendChild(
-                        this.createItem(item.entityType, item.entityId, item.entityTitle, item.href, item.viewedAt)
+                        this.createItem(item.entityType, item.entityId, item.entityTitle, item.href, item.viewedAt),
                     );
                 });
             });
@@ -67,14 +67,15 @@ export default class extends Controller {
 
     formatTime(dateStr) {
         const date = new Date(dateStr);
-        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
-            + " " + date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+        return (
+            date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
+            " " +
+            date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+        );
     }
 
     createItem(entityType, entityId, title, href, viewedAt) {
-        const iconClass = entityType === "TASK"
-            ? "bi bi-check2-square text-primary"
-            : "bi bi-folder text-info";
+        const iconClass = entityType === "TASK" ? "bi bi-check2-square text-primary" : "bi bi-folder text-info";
         const timeStr = viewedAt ? this.formatTime(viewedAt) : "";
 
         const item = document.createElement("a");
@@ -94,7 +95,8 @@ export default class extends Controller {
 
     removeItem(entityType, entityId) {
         const existing = this.listTarget.querySelector(
-            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`);
+            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`,
+        );
         if (existing) existing.remove();
         if (this.listTarget.children.length === 0) {
             this.emptyTarget.classList.remove("d-none");
@@ -103,7 +105,8 @@ export default class extends Controller {
 
     updateTitleInPlace(entityType, entityId, title) {
         const existing = this.listTarget.querySelector(
-            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`);
+            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`,
+        );
         if (existing) {
             const titleEl = existing.querySelector(".rv-title");
             if (titleEl) titleEl.textContent = title;
@@ -114,7 +117,8 @@ export default class extends Controller {
         this.emptyTarget.classList.add("d-none");
 
         const existing = this.listTarget.querySelector(
-            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`);
+            `[data-entity-type="${entityType}"][data-entity-id="${entityId}"]`,
+        );
         if (existing) existing.remove();
 
         this.listTarget.prepend(this.createItem(entityType, entityId, title, href, viewedAt));
@@ -123,5 +127,4 @@ export default class extends Controller {
             this.listTarget.lastElementChild.remove();
         }
     }
-
 }

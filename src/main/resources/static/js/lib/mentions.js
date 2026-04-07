@@ -47,9 +47,7 @@ export function findMentionAtCursor(el, key) {
         let idx = val.indexOf(token);
         while (idx !== -1) {
             const end = idx + token.length;
-            const inside = (key === "Backspace")
-                ? (pos > idx && pos <= end)
-                : (pos >= idx && pos < end);
+            const inside = key === "Backspace" ? pos > idx && pos <= end : pos >= idx && pos < end;
             if (inside) return { start: idx, end: end };
             idx = val.indexOf(token, idx + 1);
         }

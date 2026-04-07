@@ -5,35 +5,32 @@
    Without data-theme, the site renders with stock Bootstrap colors.
    ========================================================================== */
 
-
 /* ==========================================================================
    0. Self-hosted Font — DM Sans (OFL licensed)
    Variable font, Latin + Latin-ext subsets, weights 400–600.
    ========================================================================== */
 
 @font-face {
-    font-family: 'DM Sans';
+    font-family: "DM Sans";
     font-style: normal;
     font-weight: 400 600;
     font-display: swap;
-    src: url('/fonts/dm-sans-latin.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
-                   U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
-                   U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    src: url("/fonts/dm-sans-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+        U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-    font-family: 'DM Sans';
+    font-family: "DM Sans";
     font-style: normal;
     font-weight: 400 600;
     font-display: swap;
-    src: url('/fonts/dm-sans-latin-ext.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
-                   U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
-                   U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
-                   U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    src: url("/fonts/dm-sans-latin-ext.woff2") format("woff2");
+    unicode-range:
+        U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+        U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
-
 
 /* ==========================================================================
    1. Theme Palette — "Workshop"
@@ -43,71 +40,70 @@
 
 [data-theme="workshop"] {
     /* Primary: Cerulean — vivid blue, authoritative anchor */
-    --theme-primary:        #2b7de9;
-    --theme-primary-rgb:    43, 125, 233;
-    --theme-primary-hover:  #1f6ad4;
+    --theme-primary: #2b7de9;
+    --theme-primary-rgb: 43, 125, 233;
+    --theme-primary-hover: #1f6ad4;
     --theme-primary-active: #1758b8;
 
     /* Secondary: Slate — neutral for Open status */
-    --theme-secondary:        #64748b;
-    --theme-secondary-rgb:    100, 116, 139;
-    --theme-secondary-hover:  #475569;
+    --theme-secondary: #64748b;
+    --theme-secondary-rgb: 100, 116, 139;
+    --theme-secondary-hover: #475569;
 
     /* Info: Royal Violet — In Review, well separated from primary (265° vs 220°) */
-    --theme-info:        #7c3aed;
-    --theme-info-rgb:    124, 58, 237;
-    --theme-info-hover:  #6d28d9;
+    --theme-info: #7c3aed;
+    --theme-info-rgb: 124, 58, 237;
+    --theme-info-hover: #6d28d9;
 
     /* Success: Jade — Completed, darker for white-text contrast */
-    --theme-success:        #16a34a;
-    --theme-success-rgb:    22, 163, 74;
-    --theme-success-hover:  #15803d;
+    --theme-success: #16a34a;
+    --theme-success-rgb: 22, 163, 74;
+    --theme-success-hover: #15803d;
 
     /* Warning: Marigold — In Progress, warm but not alarming */
-    --theme-warning:        #e6a740;
-    --theme-warning-rgb:    230, 167, 64;
-    --theme-warning-hover:  #cc9332;
+    --theme-warning: #e6a740;
+    --theme-warning-rgb: 230, 167, 64;
+    --theme-warning-hover: #cc9332;
 
     /* Danger: Vermilion — Overdue/delete, deep red */
-    --theme-danger:         #dc2626;
-    --theme-danger-rgb:     220, 38, 38;
-    --theme-danger-hover:   #b91c1c;
+    --theme-danger: #dc2626;
+    --theme-danger-rgb: 220, 38, 38;
+    --theme-danger-hover: #b91c1c;
 
     /* Surfaces — blue-tinted neutrals for brand cohesion */
-    --theme-body-bg:      #f7f9fc;
-    --theme-body-bg-rgb:  247, 249, 252;
-    --theme-body-color:     #1a2332;
+    --theme-body-bg: #f7f9fc;
+    --theme-body-bg-rgb: 247, 249, 252;
+    --theme-body-color: #1a2332;
     --theme-body-color-rgb: 26, 35, 50;
-    --theme-border-color:   #dce3ed;
-    --theme-light:          #edf1f7;
-    --theme-light-rgb:      237, 241, 247;
+    --theme-border-color: #dce3ed;
+    --theme-light: #edf1f7;
+    --theme-light-rgb: 237, 241, 247;
 
     /* Surface layers — distinct elevation backgrounds */
-    --theme-surface-raised:   #ffffff;
-    --theme-surface-sunken:   #eef2f7;
+    --theme-surface-raised: #ffffff;
+    --theme-surface-sunken: #eef2f7;
 
     /* Focus */
-    --theme-focus-ring:   rgba(43, 125, 233, 0.3);
+    --theme-focus-ring: rgba(43, 125, 233, 0.3);
     --theme-focus-border: #7cb3f0;
 
     /* Button text — WCAG AA contrast-safe against each fill color */
-    --theme-primary-text: #fff;      /* white on cerulean — 4.56:1 */
-    --theme-info-text:    #fff;      /* white on violet — 7.27:1 */
-    --theme-success-text: #fff;      /* white on jade — 4.52:1 */
-    --theme-warning-text: #1e293b;   /* dark on marigold — 9.2:1 */
-    --theme-danger-text:  #fff;      /* white on vermilion — 5.63:1 */
+    --theme-primary-text: #fff; /* white on cerulean — 4.56:1 */
+    --theme-info-text: #fff; /* white on violet — 7.27:1 */
+    --theme-success-text: #fff; /* white on jade — 4.52:1 */
+    --theme-warning-text: #1e293b; /* dark on marigold — 9.2:1 */
+    --theme-danger-text: #fff; /* white on vermilion — 5.63:1 */
 
     /* Links: use primary shade for readability on white backgrounds */
-    --theme-link:           #1f6ad4;
-    --theme-link-rgb:       31, 106, 212;
-    --theme-link-hover:     #1758b8;
+    --theme-link: #1f6ad4;
+    --theme-link-rgb: 31, 106, 212;
+    --theme-link-hover: #1758b8;
     --theme-link-hover-rgb: 23, 88, 184;
 
     /* Navbar: frosted dark blue */
-    --theme-navbar-bg:     rgba(25, 40, 70, 0.92);
+    --theme-navbar-bg: rgba(25, 40, 70, 0.92);
     --theme-navbar-border: rgba(43, 125, 233, 0.12);
 }
-
 
 /* ==========================================================================
    1b. Theme Palette — "Sapphire"
@@ -117,71 +113,70 @@
 
 [data-theme="sapphire"] {
     /* Primary: Sapphire — deep blue, conveys trust */
-    --theme-primary:        #3b52d4;
-    --theme-primary-rgb:    59, 82, 212;
-    --theme-primary-hover:  #3045b8;
+    --theme-primary: #3b52d4;
+    --theme-primary-rgb: 59, 82, 212;
+    --theme-primary-hover: #3045b8;
     --theme-primary-active: #28399e;
 
     /* Secondary: Storm — neutral for Open status */
-    --theme-secondary:        #586774;
-    --theme-secondary-rgb:    88, 103, 116;
-    --theme-secondary-hover:  #475563;
+    --theme-secondary: #586774;
+    --theme-secondary-rgb: 88, 103, 116;
+    --theme-secondary-hover: #475563;
 
     /* Info: Teal — In Review, clearly distinct from deep blue (190° vs 232°) */
-    --theme-info:        #0891b2;
-    --theme-info-rgb:    8, 145, 178;
-    --theme-info-hover:  #0e7490;
+    --theme-info: #0891b2;
+    --theme-info-rgb: 8, 145, 178;
+    --theme-info-hover: #0e7490;
 
     /* Success: Emerald — Completed */
-    --theme-success:        #059669;
-    --theme-success-rgb:    5, 150, 105;
-    --theme-success-hover:  #047857;
+    --theme-success: #059669;
+    --theme-success-rgb: 5, 150, 105;
+    --theme-success-hover: #047857;
 
     /* Warning: Honey — In Progress, warm gold */
-    --theme-warning:        #ca8a04;
-    --theme-warning-rgb:    202, 138, 4;
-    --theme-warning-hover:  #a16207;
+    --theme-warning: #ca8a04;
+    --theme-warning-rgb: 202, 138, 4;
+    --theme-warning-hover: #a16207;
 
     /* Danger: Scarlet — Overdue/delete */
-    --theme-danger:         #dc2626;
-    --theme-danger-rgb:     220, 38, 38;
-    --theme-danger-hover:   #b91c1c;
+    --theme-danger: #dc2626;
+    --theme-danger-rgb: 220, 38, 38;
+    --theme-danger-hover: #b91c1c;
 
     /* Surfaces — blue-tinted neutrals */
-    --theme-body-bg:      #f7f8fc;
-    --theme-body-bg-rgb:  247, 248, 252;
-    --theme-body-color:     #1a1e2e;
+    --theme-body-bg: #f7f8fc;
+    --theme-body-bg-rgb: 247, 248, 252;
+    --theme-body-color: #1a1e2e;
     --theme-body-color-rgb: 26, 30, 46;
-    --theme-border-color:   #dde0ed;
-    --theme-light:          #eef0f7;
-    --theme-light-rgb:      238, 240, 247;
+    --theme-border-color: #dde0ed;
+    --theme-light: #eef0f7;
+    --theme-light-rgb: 238, 240, 247;
 
     /* Surface layers */
-    --theme-surface-raised:   #ffffff;
-    --theme-surface-sunken:   #eef0f7;
+    --theme-surface-raised: #ffffff;
+    --theme-surface-sunken: #eef0f7;
 
     /* Focus */
-    --theme-focus-ring:   rgba(59, 82, 212, 0.3);
+    --theme-focus-ring: rgba(59, 82, 212, 0.3);
     --theme-focus-border: #8b9ef0;
 
     /* Button text — WCAG AA contrast-safe */
-    --theme-primary-text: #fff;        /* white on sapphire — 6.42:1 */
-    --theme-info-text:    #fff;        /* white on teal — 4.51:1 */
-    --theme-success-text: #fff;        /* white on emerald — 4.56:1 */
-    --theme-warning-text: #1e293b;     /* dark on honey — 8.3:1 */
-    --theme-danger-text:  #fff;        /* white on scarlet — 5.63:1 */
+    --theme-primary-text: #fff; /* white on sapphire — 6.42:1 */
+    --theme-info-text: #fff; /* white on teal — 4.51:1 */
+    --theme-success-text: #fff; /* white on emerald — 4.56:1 */
+    --theme-warning-text: #1e293b; /* dark on honey — 8.3:1 */
+    --theme-danger-text: #fff; /* white on scarlet — 5.63:1 */
 
     /* Links */
-    --theme-link:           #3045b8;
-    --theme-link-rgb:       48, 69, 184;
-    --theme-link-hover:     #28399e;
+    --theme-link: #3045b8;
+    --theme-link-rgb: 48, 69, 184;
+    --theme-link-hover: #28399e;
     --theme-link-hover-rgb: 40, 57, 158;
 
     /* Navbar: frosted deep blue */
-    --theme-navbar-bg:     rgba(30, 30, 80, 0.92);
+    --theme-navbar-bg: rgba(30, 30, 80, 0.92);
     --theme-navbar-border: rgba(59, 82, 212, 0.12);
 }
-
 
 /* ==========================================================================
    2. Shared Mappings — map --theme-* to Bootstrap --bs-* variables
@@ -190,36 +185,36 @@
 
 /* --- Root / utility-class variables ------------------------------------- */
 [data-theme] {
-    --bs-primary:     var(--theme-primary);
+    --bs-primary: var(--theme-primary);
     --bs-primary-rgb: var(--theme-primary-rgb);
 
-    --bs-secondary:     var(--theme-secondary);
+    --bs-secondary: var(--theme-secondary);
     --bs-secondary-rgb: var(--theme-secondary-rgb);
 
-    --bs-info:        var(--theme-info);
-    --bs-info-rgb:    var(--theme-info-rgb);
+    --bs-info: var(--theme-info);
+    --bs-info-rgb: var(--theme-info-rgb);
 
-    --bs-success:     var(--theme-success);
+    --bs-success: var(--theme-success);
     --bs-success-rgb: var(--theme-success-rgb);
-    --bs-warning:     var(--theme-warning);
+    --bs-warning: var(--theme-warning);
     --bs-warning-rgb: var(--theme-warning-rgb);
-    --bs-danger:      var(--theme-danger);
-    --bs-danger-rgb:  var(--theme-danger-rgb);
+    --bs-danger: var(--theme-danger);
+    --bs-danger-rgb: var(--theme-danger-rgb);
 
-    --bs-body-bg:      var(--theme-body-bg);
-    --bs-body-bg-rgb:  var(--theme-body-bg-rgb);
-    --bs-body-color:     var(--theme-body-color);
+    --bs-body-bg: var(--theme-body-bg);
+    --bs-body-bg-rgb: var(--theme-body-bg-rgb);
+    --bs-body-color: var(--theme-body-color);
     --bs-body-color-rgb: var(--theme-body-color-rgb);
 
-    --bs-border-color:             var(--theme-border-color);
+    --bs-border-color: var(--theme-border-color);
     --bs-border-color-translucent: rgba(0, 0, 0, 0.1);
 
-    --bs-light:     var(--theme-light);
+    --bs-light: var(--theme-light);
     --bs-light-rgb: var(--theme-light-rgb);
 
-    --bs-link-color:       var(--theme-link, var(--theme-primary));
-    --bs-link-color-rgb:   var(--theme-link-rgb, var(--theme-primary-rgb));
-    --bs-link-hover-color:     var(--theme-link-hover, var(--theme-primary-hover));
+    --bs-link-color: var(--theme-link, var(--theme-primary));
+    --bs-link-color-rgb: var(--theme-link-rgb, var(--theme-primary-rgb));
+    --bs-link-hover-color: var(--theme-link-hover, var(--theme-primary-hover));
     --bs-link-hover-color-rgb: var(--theme-link-hover-rgb, var(--theme-primary-rgb));
 
     --bs-focus-ring-color: var(--theme-focus-ring);
@@ -227,28 +222,28 @@
 
 /* --- Buttons: primary --------------------------------------------------- */
 [data-theme] .btn-primary {
-    --bs-btn-bg:           var(--theme-primary);
+    --bs-btn-bg: var(--theme-primary);
     --bs-btn-border-color: var(--theme-primary);
-    --bs-btn-color:        var(--theme-primary-text, #fff);
-    --bs-btn-hover-bg:           var(--theme-primary-hover);
+    --bs-btn-color: var(--theme-primary-text, #fff);
+    --bs-btn-hover-bg: var(--theme-primary-hover);
     --bs-btn-hover-border-color: var(--theme-primary-hover);
-    --bs-btn-hover-color:  var(--theme-primary-text, #fff);
-    --bs-btn-active-bg:           var(--theme-primary-active);
+    --bs-btn-hover-color: var(--theme-primary-text, #fff);
+    --bs-btn-active-bg: var(--theme-primary-active);
     --bs-btn-active-border-color: var(--theme-primary-active);
     --bs-btn-active-color: var(--theme-primary-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-primary-rgb);
-    --bs-btn-disabled-bg:           var(--theme-primary);
+    --bs-btn-disabled-bg: var(--theme-primary);
     --bs-btn-disabled-border-color: var(--theme-primary);
     --bs-btn-disabled-color: var(--theme-primary-text, #fff);
 }
 
 [data-theme] .btn-outline-primary {
-    --bs-btn-color:        var(--theme-primary);
+    --bs-btn-color: var(--theme-primary);
     --bs-btn-border-color: var(--theme-primary);
-    --bs-btn-hover-bg:           var(--theme-primary);
+    --bs-btn-hover-bg: var(--theme-primary);
     --bs-btn-hover-border-color: var(--theme-primary);
-    --bs-btn-hover-color:  var(--theme-primary-text, #fff);
-    --bs-btn-active-bg:           var(--theme-primary);
+    --bs-btn-hover-color: var(--theme-primary-text, #fff);
+    --bs-btn-active-bg: var(--theme-primary);
     --bs-btn-active-border-color: var(--theme-primary);
     --bs-btn-active-color: var(--theme-primary-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-primary-rgb);
@@ -256,24 +251,24 @@
 
 /* --- Buttons: secondary ------------------------------------------------- */
 [data-theme] .btn-secondary {
-    --bs-btn-bg:           var(--theme-secondary);
+    --bs-btn-bg: var(--theme-secondary);
     --bs-btn-border-color: var(--theme-secondary);
-    --bs-btn-hover-bg:           var(--theme-secondary-hover);
+    --bs-btn-hover-bg: var(--theme-secondary-hover);
     --bs-btn-hover-border-color: var(--theme-secondary-hover);
-    --bs-btn-active-bg:           var(--theme-secondary-hover);
+    --bs-btn-active-bg: var(--theme-secondary-hover);
     --bs-btn-active-border-color: var(--theme-secondary-hover);
     --bs-btn-focus-shadow-rgb: var(--theme-secondary-rgb);
-    --bs-btn-disabled-bg:           var(--theme-secondary);
+    --bs-btn-disabled-bg: var(--theme-secondary);
     --bs-btn-disabled-border-color: var(--theme-secondary);
 }
 
 [data-theme] .btn-outline-secondary {
-    --bs-btn-color:        var(--theme-secondary);
+    --bs-btn-color: var(--theme-secondary);
     --bs-btn-border-color: var(--theme-secondary);
-    --bs-btn-hover-bg:           var(--theme-secondary);
+    --bs-btn-hover-bg: var(--theme-secondary);
     --bs-btn-hover-border-color: var(--theme-secondary);
     --bs-btn-hover-color: #fff;
-    --bs-btn-active-bg:           var(--theme-secondary);
+    --bs-btn-active-bg: var(--theme-secondary);
     --bs-btn-active-border-color: var(--theme-secondary);
     --bs-btn-active-color: #fff;
     --bs-btn-focus-shadow-rgb: var(--theme-secondary-rgb);
@@ -281,28 +276,28 @@
 
 /* --- Buttons: success --------------------------------------------------- */
 [data-theme] .btn-success {
-    --bs-btn-bg:           var(--theme-success);
+    --bs-btn-bg: var(--theme-success);
     --bs-btn-border-color: var(--theme-success);
-    --bs-btn-color:        var(--theme-success-text, #fff);
-    --bs-btn-hover-bg:           var(--theme-success-hover);
+    --bs-btn-color: var(--theme-success-text, #fff);
+    --bs-btn-hover-bg: var(--theme-success-hover);
     --bs-btn-hover-border-color: var(--theme-success-hover);
-    --bs-btn-hover-color:  var(--theme-success-text, #fff);
-    --bs-btn-active-bg:           var(--theme-success-hover);
+    --bs-btn-hover-color: var(--theme-success-text, #fff);
+    --bs-btn-active-bg: var(--theme-success-hover);
     --bs-btn-active-border-color: var(--theme-success-hover);
     --bs-btn-active-color: var(--theme-success-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-success-rgb);
-    --bs-btn-disabled-bg:           var(--theme-success);
+    --bs-btn-disabled-bg: var(--theme-success);
     --bs-btn-disabled-border-color: var(--theme-success);
     --bs-btn-disabled-color: var(--theme-success-text, #fff);
 }
 
 [data-theme] .btn-outline-success {
-    --bs-btn-color:        var(--theme-success);
+    --bs-btn-color: var(--theme-success);
     --bs-btn-border-color: var(--theme-success);
-    --bs-btn-hover-bg:           var(--theme-success);
+    --bs-btn-hover-bg: var(--theme-success);
     --bs-btn-hover-border-color: var(--theme-success);
-    --bs-btn-hover-color:  var(--theme-success-text, #fff);
-    --bs-btn-active-bg:           var(--theme-success);
+    --bs-btn-hover-color: var(--theme-success-text, #fff);
+    --bs-btn-active-bg: var(--theme-success);
     --bs-btn-active-border-color: var(--theme-success);
     --bs-btn-active-color: var(--theme-success-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-success-rgb);
@@ -310,28 +305,28 @@
 
 /* --- Buttons: warning --------------------------------------------------- */
 [data-theme] .btn-warning {
-    --bs-btn-bg:           var(--theme-warning);
+    --bs-btn-bg: var(--theme-warning);
     --bs-btn-border-color: var(--theme-warning);
-    --bs-btn-color:        var(--theme-warning-text, #fff);
-    --bs-btn-hover-bg:           var(--theme-warning-hover);
+    --bs-btn-color: var(--theme-warning-text, #fff);
+    --bs-btn-hover-bg: var(--theme-warning-hover);
     --bs-btn-hover-border-color: var(--theme-warning-hover);
-    --bs-btn-hover-color:  var(--theme-warning-text, #fff);
-    --bs-btn-active-bg:           var(--theme-warning-hover);
+    --bs-btn-hover-color: var(--theme-warning-text, #fff);
+    --bs-btn-active-bg: var(--theme-warning-hover);
     --bs-btn-active-border-color: var(--theme-warning-hover);
     --bs-btn-active-color: var(--theme-warning-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-warning-rgb);
-    --bs-btn-disabled-bg:           var(--theme-warning);
+    --bs-btn-disabled-bg: var(--theme-warning);
     --bs-btn-disabled-border-color: var(--theme-warning);
     --bs-btn-disabled-color: var(--theme-warning-text, #fff);
 }
 
 [data-theme] .btn-outline-warning {
-    --bs-btn-color:        var(--theme-warning);
+    --bs-btn-color: var(--theme-warning);
     --bs-btn-border-color: var(--theme-warning);
-    --bs-btn-hover-bg:           var(--theme-warning);
+    --bs-btn-hover-bg: var(--theme-warning);
     --bs-btn-hover-border-color: var(--theme-warning);
-    --bs-btn-hover-color:  var(--theme-warning-text, #fff);
-    --bs-btn-active-bg:           var(--theme-warning);
+    --bs-btn-hover-color: var(--theme-warning-text, #fff);
+    --bs-btn-active-bg: var(--theme-warning);
     --bs-btn-active-border-color: var(--theme-warning);
     --bs-btn-active-color: var(--theme-warning-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-warning-rgb);
@@ -339,28 +334,28 @@
 
 /* --- Buttons: danger ---------------------------------------------------- */
 [data-theme] .btn-danger {
-    --bs-btn-bg:           var(--theme-danger);
+    --bs-btn-bg: var(--theme-danger);
     --bs-btn-border-color: var(--theme-danger);
-    --bs-btn-color:        var(--theme-danger-text, #fff);
-    --bs-btn-hover-bg:           var(--theme-danger-hover);
+    --bs-btn-color: var(--theme-danger-text, #fff);
+    --bs-btn-hover-bg: var(--theme-danger-hover);
     --bs-btn-hover-border-color: var(--theme-danger-hover);
-    --bs-btn-hover-color:  var(--theme-danger-text, #fff);
-    --bs-btn-active-bg:           var(--theme-danger-hover);
+    --bs-btn-hover-color: var(--theme-danger-text, #fff);
+    --bs-btn-active-bg: var(--theme-danger-hover);
     --bs-btn-active-border-color: var(--theme-danger-hover);
     --bs-btn-active-color: var(--theme-danger-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-danger-rgb);
-    --bs-btn-disabled-bg:           var(--theme-danger);
+    --bs-btn-disabled-bg: var(--theme-danger);
     --bs-btn-disabled-border-color: var(--theme-danger);
     --bs-btn-disabled-color: var(--theme-danger-text, #fff);
 }
 
 [data-theme] .btn-outline-danger {
-    --bs-btn-color:        var(--theme-danger);
+    --bs-btn-color: var(--theme-danger);
     --bs-btn-border-color: var(--theme-danger);
-    --bs-btn-hover-bg:           var(--theme-danger);
+    --bs-btn-hover-bg: var(--theme-danger);
     --bs-btn-hover-border-color: var(--theme-danger);
-    --bs-btn-hover-color:  var(--theme-danger-text, #fff);
-    --bs-btn-active-bg:           var(--theme-danger);
+    --bs-btn-hover-color: var(--theme-danger-text, #fff);
+    --bs-btn-active-bg: var(--theme-danger);
     --bs-btn-active-border-color: var(--theme-danger);
     --bs-btn-active-color: var(--theme-danger-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-danger-rgb);
@@ -368,28 +363,28 @@
 
 /* --- Buttons: info ------------------------------------------------------ */
 [data-theme] .btn-info {
-    --bs-btn-bg:           var(--theme-info);
+    --bs-btn-bg: var(--theme-info);
     --bs-btn-border-color: var(--theme-info);
-    --bs-btn-color:        var(--theme-info-text, #fff);
-    --bs-btn-hover-bg:           var(--theme-info-hover);
+    --bs-btn-color: var(--theme-info-text, #fff);
+    --bs-btn-hover-bg: var(--theme-info-hover);
     --bs-btn-hover-border-color: var(--theme-info-hover);
-    --bs-btn-hover-color:  var(--theme-info-text, #fff);
-    --bs-btn-active-bg:           var(--theme-info-hover);
+    --bs-btn-hover-color: var(--theme-info-text, #fff);
+    --bs-btn-active-bg: var(--theme-info-hover);
     --bs-btn-active-border-color: var(--theme-info-hover);
     --bs-btn-active-color: var(--theme-info-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-info-rgb);
-    --bs-btn-disabled-bg:           var(--theme-info);
+    --bs-btn-disabled-bg: var(--theme-info);
     --bs-btn-disabled-border-color: var(--theme-info);
     --bs-btn-disabled-color: var(--theme-info-text, #fff);
 }
 
 [data-theme] .btn-outline-info {
-    --bs-btn-color:        var(--theme-info);
+    --bs-btn-color: var(--theme-info);
     --bs-btn-border-color: var(--theme-info);
-    --bs-btn-hover-bg:           var(--theme-info);
+    --bs-btn-hover-bg: var(--theme-info);
     --bs-btn-hover-border-color: var(--theme-info);
-    --bs-btn-hover-color:  var(--theme-info-text, #fff);
-    --bs-btn-active-bg:           var(--theme-info);
+    --bs-btn-hover-color: var(--theme-info-text, #fff);
+    --bs-btn-active-bg: var(--theme-info);
     --bs-btn-active-border-color: var(--theme-info);
     --bs-btn-active-color: var(--theme-info-text, #fff);
     --bs-btn-focus-shadow-rgb: var(--theme-info-rgb);
@@ -486,42 +481,36 @@
     --bs-alert-border-color: rgba(var(--theme-primary-rgb), 0.2);
 }
 
-
 /* ==========================================================================
    3. Design Tokens — motion, shadow, radius, and typography scales
    ========================================================================== */
 
 [data-theme] {
     /* Easing — purpose-driven curves instead of generic "ease" */
-    --ease-out:       cubic-bezier(0.25, 1, 0.5, 1);      /* Elements entering */
-    --ease-in:        cubic-bezier(0.5, 0, 0.75, 0);       /* Elements exiting */
-    --ease-in-out:    cubic-bezier(0.45, 0, 0.55, 1);      /* State toggles */
-    --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);   /* Playful overshoot */
+    --ease-out: cubic-bezier(0.25, 1, 0.5, 1); /* Elements entering */
+    --ease-in: cubic-bezier(0.5, 0, 0.75, 0); /* Elements exiting */
+    --ease-in-out: cubic-bezier(0.45, 0, 0.55, 1); /* State toggles */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* Playful overshoot */
 
     /* Durations — 100/300/500 rule */
-    --duration-fast:    120ms;   /* Instant feedback: hover, toggle, checkbox */
-    --duration-normal:  250ms;   /* State transitions: modal, dropdown, card lift */
-    --duration-slow:    400ms;   /* Entrance animations: toast, page reveal */
+    --duration-fast: 120ms; /* Instant feedback: hover, toggle, checkbox */
+    --duration-normal: 250ms; /* State transitions: modal, dropdown, card lift */
+    --duration-slow: 400ms; /* Entrance animations: toast, page reveal */
 
     /* Shadows — two-shadow technique (contact + ambient) */
-    --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.08),
-                  0 4px 12px rgba(0, 0, 0, 0.04);
-    --shadow-md:  0 2px 4px rgba(0, 0, 0, 0.08),
-                  0 8px 24px rgba(0, 0, 0, 0.08);
-    --shadow-lg:  0 4px 8px rgba(0, 0, 0, 0.08),
-                  0 16px 40px rgba(0, 0, 0, 0.1);
-    --shadow-xl:  0 8px 16px rgba(0, 0, 0, 0.1),
-                  0 32px 64px rgba(0, 0, 0, 0.14);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.08), 0 16px 40px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.1), 0 32px 64px rgba(0, 0, 0, 0.14);
 
     /* Border radius */
-    --radius-sm:   0.375rem;  /* Badges, small chips, inputs */
-    --radius-md:   0.625rem;  /* Buttons, dropdowns, small cards */
-    --radius-lg:   0.875rem;  /* Cards, modals, large containers */
-    --radius-xl:   1.25rem;   /* Hero sections, prominent panels */
-    --radius-full: 9999px;    /* Pills, avatars */
+    --radius-sm: 0.375rem; /* Badges, small chips, inputs */
+    --radius-md: 0.625rem; /* Buttons, dropdowns, small cards */
+    --radius-lg: 0.875rem; /* Cards, modals, large containers */
+    --radius-xl: 1.25rem; /* Hero sections, prominent panels */
+    --radius-full: 9999px; /* Pills, avatars */
 }
-
 
 /* ==========================================================================
    4. Shared Refinements — visual polish active on any theme
@@ -531,7 +520,7 @@
 
 /* Custom font: DM Sans — clean, geometric, modern */
 [data-theme] {
-    --bs-body-font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+    --bs-body-font-family: "DM Sans", system-ui, -apple-system, sans-serif;
     --bs-body-font-weight: 400;
 }
 
@@ -551,7 +540,10 @@
     letter-spacing: -0.025em;
 }
 
-[data-theme] h1, [data-theme] .h1 { letter-spacing: -0.03em; }
+[data-theme] h1,
+[data-theme] .h1 {
+    letter-spacing: -0.03em;
+}
 
 [data-theme] .display-4 {
     font-weight: 600;
@@ -564,8 +556,9 @@
     background: var(--theme-surface-raised, #fff);
     box-shadow: var(--shadow-sm);
     border: none;
-    transition: box-shadow var(--duration-normal) var(--ease-out),
-                transform var(--duration-normal) var(--ease-out);
+    transition:
+        box-shadow var(--duration-normal) var(--ease-out),
+        transform var(--duration-normal) var(--ease-out);
 }
 
 [data-theme] .card.card-lift:hover {
@@ -601,8 +594,9 @@
     background-color: #fff;
     border-color: var(--theme-border-color);
     border-radius: var(--radius-sm);
-    transition: border-color var(--duration-fast) var(--ease-in-out),
-                box-shadow var(--duration-fast) var(--ease-in-out);
+    transition:
+        border-color var(--duration-fast) var(--ease-in-out),
+        box-shadow var(--duration-fast) var(--ease-in-out);
 }
 
 /* Readonly: white bg, dashed border — editable-looking but signals "not yours to change" */
@@ -682,8 +676,9 @@
 
 [data-theme] .modal.fade .modal-dialog {
     transform: translateY(20px) scale(0.96);
-    transition: transform var(--duration-normal) var(--ease-out),
-                opacity var(--duration-normal) var(--ease-out);
+    transition:
+        transform var(--duration-normal) var(--ease-out),
+        opacity var(--duration-normal) var(--ease-out);
 }
 [data-theme] .modal.show .modal-dialog {
     transform: translateY(0) scale(1);
@@ -746,7 +741,7 @@
 [data-theme] .btn:focus-visible,
 [data-theme] .form-control:focus-visible,
 [data-theme] .form-select:focus-visible {
-    outline: none;  /* These use box-shadow focus rings instead */
+    outline: none; /* These use box-shadow focus rings instead */
 }
 
 /* ── Alerts ────────────────────────────────────────────────────────── */

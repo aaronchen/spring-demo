@@ -77,23 +77,36 @@ export default class extends Controller {
             method: "POST",
             headers,
             body: params.toString(),
-        }).then((response) => {
-            if (!response.ok) {
-                this.revertCard(card, oldStatus);
-                if (response.status === 409) {
-                    response.json().then((data) => {
-                        showToast(data.detail || APP_CONFIG.messages["task.dependency.blocked.drag"] || "This task is blocked", "warning");
-                    }).catch(() => {
-                        showToast(APP_CONFIG.messages["task.dependency.blocked.drag"] || "This task is blocked", "warning");
-                    });
-                } else {
-                    showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    this.revertCard(card, oldStatus);
+                    if (response.status === 409) {
+                        response
+                            .json()
+                            .then((data) => {
+                                showToast(
+                                    data.detail ||
+                                        APP_CONFIG.messages["task.dependency.blocked.drag"] ||
+                                        "This task is blocked",
+                                    "warning",
+                                );
+                            })
+                            .catch(() => {
+                                showToast(
+                                    APP_CONFIG.messages["task.dependency.blocked.drag"] || "This task is blocked",
+                                    "warning",
+                                );
+                            });
+                    } else {
+                        showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
+                    }
                 }
-            }
-        }).catch(() => {
-            this.revertCard(card, oldStatus);
-            showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
-        });
+            })
+            .catch(() => {
+                this.revertCard(card, oldStatus);
+                showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
+            });
     }
 
     revertCard(card, oldStatus) {
@@ -123,5 +136,4 @@ export default class extends Controller {
             }
         });
     }
-
 }

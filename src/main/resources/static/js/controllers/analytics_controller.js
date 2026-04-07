@@ -2,20 +2,8 @@ import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
 import { enumToCamelCase } from "lib/i18n";
 
-const STATUS_COLORS = {
-    BACKLOG: "#adb5bd",
-    OPEN: "#0d6efd",
-    IN_PROGRESS: "#ffc107",
-    IN_REVIEW: "#0dcaf0",
-    COMPLETED: "#198754",
-    CANCELLED: "#dc3545",
-};
-
-const PRIORITY_COLORS = {
-    LOW: "#198754",
-    MEDIUM: "#ffc107",
-    HIGH: "#dc3545",
-};
+const statusEnum = APP_CONFIG.enums.taskStatus;
+const priorityEnum = APP_CONFIG.enums.priority;
 
 export default class extends Controller {
     static values = {
@@ -98,7 +86,9 @@ export default class extends Controller {
 
         if (selectAll) {
             selectAll.addEventListener("change", () => {
-                checkboxes.forEach((cb) => { cb.checked = selectAll.checked; });
+                checkboxes.forEach((cb) => {
+                    cb.checked = selectAll.checked;
+                });
                 this.fetchAndRender();
             });
         }
@@ -138,7 +128,7 @@ export default class extends Controller {
         const ctx = this.element.querySelector("#statusChart");
         const labels = Object.keys(breakdown.counts).map((k) => this.statusLabel(k));
         const values = Object.values(breakdown.counts);
-        const colors = Object.keys(breakdown.counts).map((k) => STATUS_COLORS[k] || "#999");
+        const colors = Object.keys(breakdown.counts).map((k) => statusEnum[k]?.chartColor || "#999");
 
         this.charts.status = new Chart(ctx, {
             type: "doughnut",
@@ -158,7 +148,7 @@ export default class extends Controller {
         const ctx = this.element.querySelector("#priorityChart");
         const labels = Object.keys(breakdown.counts).map((k) => this.priorityLabel(k));
         const values = Object.values(breakdown.counts);
-        const colors = Object.keys(breakdown.counts).map((k) => PRIORITY_COLORS[k] || "#999");
+        const colors = Object.keys(breakdown.counts).map((k) => priorityEnum[k]?.chartColor || "#999");
 
         this.charts.priority = new Chart(ctx, {
             type: "doughnut",
@@ -179,7 +169,7 @@ export default class extends Controller {
         const datasets = Object.entries(distribution.statusCounts).map(([status, counts]) => ({
             label: this.statusLabel(status),
             data: counts,
-            backgroundColor: STATUS_COLORS[status] || "#999",
+            backgroundColor: statusEnum[status]?.chartColor || "#999",
         }));
 
         this.charts.workload = new Chart(ctx, {
@@ -205,14 +195,16 @@ export default class extends Controller {
             type: "line",
             data: {
                 labels: burndown.map((p) => p.date),
-                datasets: [{
-                    label: remaining,
-                    data: burndown.map((p) => p.remaining),
-                    borderColor: "#0d6efd",
-                    backgroundColor: "rgba(13, 110, 253, 0.1)",
-                    fill: true,
-                    tension: 0.3,
-                }],
+                datasets: [
+                    {
+                        label: remaining,
+                        data: burndown.map((p) => p.remaining),
+                        borderColor: "#0d6efd",
+                        backgroundColor: "rgba(13, 110, 253, 0.1)",
+                        fill: true,
+                        tension: 0.3,
+                    },
+                ],
             },
             options: {
                 responsive: true,
@@ -230,15 +222,17 @@ export default class extends Controller {
         const effortValues = velocity.map((p) => p.effortCompleted);
         const hasEffort = effortValues.some((v) => v !== null && v > 0);
 
-        const datasets = [{
-            label: completedLabel,
-            data: velocity.map((p) => p.completed),
-            borderColor: "#198754",
-            backgroundColor: "rgba(25, 135, 84, 0.1)",
-            fill: true,
-            tension: 0.3,
-            yAxisID: "y",
-        }];
+        const datasets = [
+            {
+                label: completedLabel,
+                data: velocity.map((p) => p.completed),
+                borderColor: "#198754",
+                backgroundColor: "rgba(25, 135, 84, 0.1)",
+                fill: true,
+                tension: 0.3,
+                yAxisID: "y",
+            },
+        ];
 
         if (hasEffort) {
             datasets.push({

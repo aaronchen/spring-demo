@@ -13,8 +13,12 @@ document.addEventListener("htmx:configRequest", function (evt) {
     });
 });
 
-document.addEventListener("submit", function (evt) {
-    evt.target.querySelectorAll("[data-mention][data-tribute]").forEach(function (el) {
-        el.value = encodeMentions(el.value, el);
-    });
-}, true);
+document.addEventListener(
+    "submit",
+    function (evt) {
+        evt.target.querySelectorAll("[data-mention][data-tribute]").forEach(function (el) {
+            el.value = encodeMentions(el.value, el);
+        });
+    },
+    true,
+);

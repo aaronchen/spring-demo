@@ -7,25 +7,25 @@
 // onConfirm callback: return false to keep modal open (e.g. for input validation).
 
 const CONFIRM_DEFAULTS = {
-    headerClass:  'bg-danger text-white',
-    confirmClass: 'btn btn-danger',
+    headerClass: "bg-danger text-white",
+    confirmClass: "btn btn-danger",
 };
 
 export function showConfirm(options, onConfirm) {
     const defaults = window.APP_CONFIG ? APP_CONFIG.messages : {};
-    const title       = options.title || defaults['action.confirm'] || 'Confirm';
-    const cancelText  = options.cancelText || defaults['action.cancel'] || 'Cancel';
-    const confirmText = options.confirmText || defaults['action.confirm'] || 'Confirm';
-    const headerClass  = options.headerClass || CONFIRM_DEFAULTS.headerClass;
+    const title = options.title || defaults["action.confirm"] || "Confirm";
+    const cancelText = options.cancelText || defaults["action.cancel"] || "Cancel";
+    const confirmText = options.confirmText || defaults["action.confirm"] || "Confirm";
+    const headerClass = options.headerClass || CONFIRM_DEFAULTS.headerClass;
     const confirmClass = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
-    const width = options.width || '420px';
+    const width = options.width || "420px";
 
-    const modal = document.createElement('div');
-    modal.id = 'confirm-modal';
-    modal.className = 'modal fade';
+    const modal = document.createElement("div");
+    modal.id = "confirm-modal";
+    modal.className = "modal fade";
     modal.tabIndex = -1;
-    modal.setAttribute('aria-hidden', 'true');
-    modal.style.setProperty('--confirm-width', width);
+    modal.setAttribute("aria-hidden", "true");
+    modal.style.setProperty("--confirm-width", width);
     modal.innerHTML = `
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
@@ -50,17 +50,17 @@ export function showConfirm(options, onConfirm) {
             </div>
         </div>`;
 
-    modal.querySelector('.confirm-modal-btn').addEventListener('click', function () {
+    modal.querySelector(".confirm-modal-btn").addEventListener("click", function () {
         if (onConfirm() === false) return;
         bsModal.hide();
     });
 
-    modal.addEventListener('hidden.bs.modal', function () {
+    modal.addEventListener("hidden.bs.modal", function () {
         bsModal.dispose();
         modal.remove();
-        if (document.querySelector('.modal.show')) {
-            document.body.classList.add('modal-open');
-            document.body.style.overflow = '';
+        if (document.querySelector(".modal.show")) {
+            document.body.classList.add("modal-open");
+            document.body.style.overflow = "";
         }
     });
 
@@ -71,19 +71,22 @@ export function showConfirm(options, onConfirm) {
 
 // HTMX integration: intercept hx-confirm and show styled modal.
 // Reads data-confirm-* attributes from the triggering element.
-document.addEventListener('htmx:confirm', function (evt) {
+document.addEventListener("htmx:confirm", function (evt) {
     if (!evt.detail.question) return;
     evt.preventDefault();
     const el = evt.detail.elt;
-    showConfirm({
-        message:      evt.detail.question,
-        title:        el.dataset.confirmTitle,
-        confirmText:  el.dataset.confirmText,
-        cancelText:   el.dataset.confirmCancelText,
-        headerClass:  el.dataset.confirmHeaderClass,
-        confirmClass: el.dataset.confirmClass,
-        width:        el.dataset.confirmWidth,
-    }, function () {
-        evt.detail.issueRequest(true);
-    });
+    showConfirm(
+        {
+            message: evt.detail.question,
+            title: el.dataset.confirmTitle,
+            confirmText: el.dataset.confirmText,
+            cancelText: el.dataset.confirmCancelText,
+            headerClass: el.dataset.confirmHeaderClass,
+            confirmClass: el.dataset.confirmClass,
+            width: el.dataset.confirmWidth,
+        },
+        function () {
+            evt.detail.issueRequest(true);
+        },
+    );
 });

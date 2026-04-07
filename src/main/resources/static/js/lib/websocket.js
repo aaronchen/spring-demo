@@ -38,7 +38,9 @@ if (typeof StompJs !== "undefined") {
     client.onConnect = function () {
         connected = true;
         activeClient = client;
-        connectCallbacks.forEach(function (fn) { fn(client); });
+        connectCallbacks.forEach(function (fn) {
+            fn(client);
+        });
     };
 
     client.onDisconnect = function () {

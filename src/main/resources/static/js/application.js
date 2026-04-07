@@ -2,11 +2,11 @@ import { Application } from "@hotwired/stimulus";
 
 // Side-effect imports — each module registers document-level event listeners
 // or initializes shared services just by being imported (no exported values used).
-import "lib/websocket";         // activates STOMP client
-import "lib/htmx-csrf";        // CSRF token injection for HTMX requests
-import "lib/htmx-errors";      // toast on HTMX error responses
-import "lib/flash-toast";      // HX-Trigger showToast listener + flash attribute scan
-import "lib/date-range";       // date-range-start min constraint
+import "lib/websocket"; // activates STOMP client
+import "lib/htmx-csrf"; // CSRF token injection for HTMX requests
+import "lib/htmx-errors"; // toast on HTMX error responses
+import "lib/flash-toast"; // HX-Trigger showToast listener + flash attribute scan
+import "lib/date-range"; // date-range-start min constraint
 import "lib/mention-encoding"; // @mention encoding on submit/configRequest
 
 // Controllers

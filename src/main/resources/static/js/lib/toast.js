@@ -3,35 +3,35 @@
 // Success/info auto-dismiss after 4 seconds; danger/warning stay until manually closed.
 
 const TOAST_ICONS = {
-    success: 'bi-check-circle-fill',
-    danger:  'bi-exclamation-triangle-fill',
-    warning: 'bi-exclamation-triangle-fill',
-    info:    'bi-info-circle-fill',
+    success: "bi-check-circle-fill",
+    danger: "bi-exclamation-triangle-fill",
+    warning: "bi-exclamation-triangle-fill",
+    info: "bi-info-circle-fill",
 };
 
 export function showToast(message, type, options) {
-    type = type || 'info';
+    type = type || "info";
     options = options || {};
-    const autohide = type === 'success' || type === 'info';
+    const autohide = type === "success" || type === "info";
     const icon = TOAST_ICONS[type] || TOAST_ICONS.info;
 
     // Lazy-create the container on first use
-    let container = document.getElementById('toast-container');
+    let container = document.getElementById("toast-container");
     if (!container) {
-        container = document.createElement('div');
-        container.id = 'toast-container';
-        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container = document.createElement("div");
+        container.id = "toast-container";
+        container.className = "toast-container position-fixed top-0 end-0 p-3";
         document.body.appendChild(container);
     }
 
-    const toastEl = document.createElement('div');
+    const toastEl = document.createElement("div");
     toastEl.className = `toast align-items-center text-bg-${type} border-0`;
     if (options.href) {
-        toastEl.style.cursor = 'pointer';
+        toastEl.style.cursor = "pointer";
     }
-    toastEl.setAttribute('role', 'alert');
-    toastEl.setAttribute('aria-live', 'assertive');
-    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.setAttribute("role", "alert");
+    toastEl.setAttribute("aria-live", "assertive");
+    toastEl.setAttribute("aria-atomic", "true");
     toastEl.innerHTML = `
         <div class="d-flex align-items-center">
             <div class="toast-icon fs-4 px-3">
@@ -43,8 +43,8 @@ export function showToast(message, type, options) {
         </div>`;
 
     if (options.href) {
-        toastEl.addEventListener('click', function (e) {
-            if (e.target.closest('.btn-close')) return;
+        toastEl.addEventListener("click", function (e) {
+            if (e.target.closest(".btn-close")) return;
             window.location.href = options.href;
         });
     }
@@ -56,7 +56,7 @@ export function showToast(message, type, options) {
         delay: 4000,
     });
 
-    toastEl.addEventListener('hidden.bs.toast', function () {
+    toastEl.addEventListener("hidden.bs.toast", function () {
         toastEl.remove();
     });
 

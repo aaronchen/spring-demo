@@ -215,7 +215,7 @@
 					</excludes>
 				</configuration>
 			</plugin>
-			<!-- Spotless: auto-format Java code (palantir = 4-space Oracle style) -->
+			<!-- Spotless: auto-format Java, JS, CSS -->
 			<!-- mvn spotless:check — verify formatting -->
 			<!-- mvn spotless:apply — auto-fix formatting -->
 			<plugin>
@@ -229,6 +229,24 @@
 							<style>AOSP</style>
 						</googleJavaFormat>
 					</java>
+					<javascript>
+						<includes>
+							<include>src/main/resources/static/js/**/*.js</include>
+						</includes>
+						<prettier>
+							<prettierVersion>3.5.3</prettierVersion>
+							<configFile>${project.basedir}/.prettierrc</configFile>
+						</prettier>
+					</javascript>
+					<css>
+						<includes>
+							<include>src/main/resources/static/css/**/*.css</include>
+						</includes>
+						<prettier>
+							<prettierVersion>3.5.3</prettierVersion>
+							<configFile>${project.basedir}/.prettierrc</configFile>
+						</prettier>
+					</css>
 				</configuration>
 				<executions>
 					<execution>

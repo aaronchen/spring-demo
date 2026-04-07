@@ -15,8 +15,12 @@
     color: #6c757d;
     line-height: 1;
 }
-#search-clear-btn:hover { color: #343a40; }
-#search-input { padding-right: 2.25rem; }
+#search-clear-btn:hover {
+    color: #343a40;
+}
+#search-input {
+    padding-right: 2.25rem;
+}
 
 /* User filter: grey for "All Users", blue for "Mine" / specific user */
 #user-filter-all {
@@ -29,17 +33,30 @@
     --bs-btn-active-border-color: var(--bs-primary, #0d6efd);
     --bs-btn-active-color: var(--theme-primary-text, #fff);
 }
-#user-filter-mine.active { color: var(--theme-primary-text, #fff) !important; }
+#user-filter-mine.active {
+    color: var(--theme-primary-text, #fff) !important;
+}
 
 /* Clickable user/project names on cards/rows */
-a.user-link:hover, a.project-link:hover { text-decoration: underline !important; color: var(--bs-primary, #0d6efd) !important; }
+a.user-link:hover,
+a.project-link:hover {
+    text-decoration: underline !important;
+    color: var(--bs-primary, #0d6efd) !important;
+}
 
 /* Clickable tag badges on cards/rows */
-a.badge:hover { opacity: 0.85; cursor: pointer; }
-a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
+a.badge:hover {
+    opacity: 0.85;
+    cursor: pointer;
+}
+a.badge.tag-active {
+    background-color: var(--bs-primary, #0d6efd) !important;
+}
 
 /* Tag pills */
-#tag-pills .badge { font-size: 0.85rem; }
+#tag-pills .badge {
+    font-size: 0.85rem;
+}
 
 /* Priority badges in form: equal width so Low/Medium/High align neatly */
 
@@ -123,7 +140,7 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     padding-left: 2rem;
 }
 .timeline-entry::before {
-    content: '';
+    content: "";
     position: absolute;
     left: 0.6rem;
     top: 1.5rem;
@@ -157,22 +174,51 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 
 /* ── Calendar View ── */
 
-.calendar-grid { table-layout: fixed; }
-.calendar-grid th { font-size: 0.85rem; font-weight: 600; }
-.calendar-grid tbody tr { height: 130px; }
-.calendar-cell { vertical-align: top; padding: 0.35rem !important; position: relative; }
-.calendar-cell.calendar-other-month { background-color: var(--bs-light, #f8f9fa); }
-.calendar-cell.calendar-other-month .calendar-day-number { opacity: 0.4; }
-.calendar-cell.calendar-today { background-color: rgba(var(--bs-primary-rgb, 13,110,253), 0.06); }
+.calendar-grid {
+    table-layout: fixed;
+}
+.calendar-grid th {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.calendar-grid tbody tr {
+    height: 130px;
+}
+.calendar-cell {
+    vertical-align: top;
+    padding: 0.35rem !important;
+    position: relative;
+}
+.calendar-cell.calendar-other-month {
+    background-color: var(--bs-light, #f8f9fa);
+}
+.calendar-cell.calendar-other-month .calendar-day-number {
+    opacity: 0.4;
+}
+.calendar-cell.calendar-today {
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.06);
+}
 
 /* Scrollable chip container within each cell */
-.calendar-chips { max-height: 96px; overflow-y: auto; }
+.calendar-chips {
+    max-height: 96px;
+    overflow-y: auto;
+}
 
-.calendar-day-number { font-size: 0.85rem; }
+.calendar-day-number {
+    font-size: 0.85rem;
+}
 
 /* Add button — visible on hover */
-.calendar-add-btn { opacity: 0; transition: opacity var(--duration-fast, 0.15s) var(--ease-in-out, ease); font-size: 1rem; line-height: 1; }
-.calendar-cell:hover .calendar-add-btn { opacity: 1; }
+.calendar-add-btn {
+    opacity: 0;
+    transition: opacity var(--duration-fast, 0.15s) var(--ease-in-out, ease);
+    font-size: 1rem;
+    line-height: 1;
+}
+.calendar-cell:hover .calendar-add-btn {
+    opacity: 1;
+}
 
 /* Task chips — border side indicates start date (left) vs due date (right) */
 .calendar-chip {
@@ -185,32 +231,72 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.calendar-chip-start { border-left: 3px solid; }
-.calendar-chip-end { border-right: 3px solid; }
+.calendar-chip-start {
+    border-left: 3px solid;
+}
+.calendar-chip-end {
+    border-right: 3px solid;
+}
 
-.calendar-chip-open.calendar-chip-start { border-left-color: var(--bs-secondary, #6c757d); }
-.calendar-chip-open.calendar-chip-end { border-right-color: var(--bs-secondary, #6c757d); }
-.calendar-chip-open { background: rgba(108,117,125,0.08); }
+.calendar-chip-open.calendar-chip-start {
+    border-left-color: var(--bs-secondary, #6c757d);
+}
+.calendar-chip-open.calendar-chip-end {
+    border-right-color: var(--bs-secondary, #6c757d);
+}
+.calendar-chip-open {
+    background: rgba(108, 117, 125, 0.08);
+}
 
-.calendar-chip-in-progress.calendar-chip-start { border-left-color: var(--bs-warning, #ffc107); }
-.calendar-chip-in-progress.calendar-chip-end { border-right-color: var(--bs-warning, #ffc107); }
-.calendar-chip-in-progress { background: rgba(255,193,7,0.1); }
+.calendar-chip-in-progress.calendar-chip-start {
+    border-left-color: var(--bs-warning, #ffc107);
+}
+.calendar-chip-in-progress.calendar-chip-end {
+    border-right-color: var(--bs-warning, #ffc107);
+}
+.calendar-chip-in-progress {
+    background: rgba(255, 193, 7, 0.1);
+}
 
-.calendar-chip-in-review.calendar-chip-start { border-left-color: var(--bs-info, #0dcaf0); }
-.calendar-chip-in-review.calendar-chip-end { border-right-color: var(--bs-info, #0dcaf0); }
-.calendar-chip-in-review { background: rgba(13,202,240,0.1); }
+.calendar-chip-in-review.calendar-chip-start {
+    border-left-color: var(--bs-info, #0dcaf0);
+}
+.calendar-chip-in-review.calendar-chip-end {
+    border-right-color: var(--bs-info, #0dcaf0);
+}
+.calendar-chip-in-review {
+    background: rgba(13, 202, 240, 0.1);
+}
 
-.calendar-chip-completed.calendar-chip-start { border-left-color: var(--bs-success, #198754); }
-.calendar-chip-completed.calendar-chip-end { border-right-color: var(--bs-success, #198754); }
-.calendar-chip-completed { background: rgba(25,135,84,0.08); }
+.calendar-chip-completed.calendar-chip-start {
+    border-left-color: var(--bs-success, #198754);
+}
+.calendar-chip-completed.calendar-chip-end {
+    border-right-color: var(--bs-success, #198754);
+}
+.calendar-chip-completed {
+    background: rgba(25, 135, 84, 0.08);
+}
 
-.calendar-chip-cancelled.calendar-chip-start { border-left-color: var(--bs-dark, #212529); }
-.calendar-chip-cancelled.calendar-chip-end { border-right-color: var(--bs-dark, #212529); }
-.calendar-chip-cancelled { background: rgba(33,37,41,0.08); }
+.calendar-chip-cancelled.calendar-chip-start {
+    border-left-color: var(--bs-dark, #212529);
+}
+.calendar-chip-cancelled.calendar-chip-end {
+    border-right-color: var(--bs-dark, #212529);
+}
+.calendar-chip-cancelled {
+    background: rgba(33, 37, 41, 0.08);
+}
 
-.calendar-chip-overdue.calendar-chip-start { border-left-color: var(--bs-danger, #dc3545); }
-.calendar-chip-overdue.calendar-chip-end { border-right-color: var(--bs-danger, #dc3545); }
-.calendar-chip-overdue { background: rgba(220,53,69,0.1); }
+.calendar-chip-overdue.calendar-chip-start {
+    border-left-color: var(--bs-danger, #dc3545);
+}
+.calendar-chip-overdue.calendar-chip-end {
+    border-right-color: var(--bs-danger, #dc3545);
+}
+.calendar-chip-overdue {
+    background: rgba(220, 53, 69, 0.1);
+}
 
 .calendar-chip-link {
     display: flex;
@@ -219,7 +305,9 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     color: inherit;
     min-width: 0;
 }
-.calendar-chip-link:hover { color: var(--bs-primary, #0d6efd); }
+.calendar-chip-link:hover {
+    color: var(--bs-primary, #0d6efd);
+}
 
 .calendar-chip-title {
     overflow: hidden;
@@ -241,8 +329,9 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     flex-shrink: 0;
     cursor: pointer;
 }
-.calendar-chip-user:hover { background: var(--bs-primary, #0d6efd); }
-
+.calendar-chip-user:hover {
+    background: var(--bs-primary, #0d6efd);
+}
 
 /* ── Kanban Board ── */
 
@@ -266,7 +355,7 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
 }
 
 .kanban-column.kanban-drop-target {
-    background: rgba(var(--bs-primary-rgb, 13,110,253), 0.08);
+    background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.08);
     outline: 2px dashed var(--bs-primary, #0d6efd);
     outline-offset: -2px;
 }
@@ -301,13 +390,14 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     padding: 0.5rem 0.625rem;
     margin-bottom: 0.375rem;
     cursor: grab;
-    transition: box-shadow var(--duration-fast, 0.15s) var(--ease-out, ease),
-                transform var(--duration-fast, 0.15s) var(--ease-out, ease),
-                opacity var(--duration-fast, 0.15s);
+    transition:
+        box-shadow var(--duration-fast, 0.15s) var(--ease-out, ease),
+        transform var(--duration-fast, 0.15s) var(--ease-out, ease),
+        opacity var(--duration-fast, 0.15s);
 }
 
 .kanban-card:hover {
-    box-shadow: var(--shadow-md, 0 2px 6px rgba(0,0,0,0.1));
+    box-shadow: var(--shadow-md, 0 2px 6px rgba(0, 0, 0, 0.1));
     transform: translateY(-1px);
 }
 
@@ -325,7 +415,9 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.kanban-card-title:hover { color: var(--bs-primary, #0d6efd); }
+.kanban-card-title:hover {
+    color: var(--bs-primary, #0d6efd);
+}
 
 .kanban-card-meta {
     display: flex;
@@ -334,9 +426,13 @@ a.badge.tag-active { background-color: var(--bs-primary, #0d6efd) !important; }
     flex-wrap: wrap;
 }
 
-.kanban-card-meta .badge { font-size: 0.65rem; }
+.kanban-card-meta .badge {
+    font-size: 0.65rem;
+}
 
-.kanban-card-due { font-size: 0.75rem; }
+.kanban-card-due {
+    font-size: 0.75rem;
+}
 
 .kanban-card-user {
     display: inline-flex;
@@ -405,7 +501,7 @@ td.inline-edit-active {
     outline-offset: -1px;
 }
 td.inline-edit-active:hover {
-    background-color: rgba(var(--bs-primary-rgb, 13,110,253), 0.1);
+    background-color: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
 }
 
 .inline-edit-input {
@@ -446,17 +542,34 @@ td.inline-edit-active:hover {
 }
 
 @keyframes bulk-bar-in {
-    from { transform: translateX(-50%) translateY(16px); opacity: 0; }
-    to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+    from {
+        transform: translateX(-50%) translateY(16px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
 }
 
-.bulk-action-bar .dropdown-toggle { border-color: rgba(255, 255, 255, 0.3); }
-.bulk-action-bar .dropdown-toggle:hover { border-color: rgba(255, 255, 255, 0.6); }
+.bulk-action-bar .dropdown-toggle {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+.bulk-action-bar .dropdown-toggle:hover {
+    border-color: rgba(255, 255, 255, 0.6);
+}
 
 /* Checkbox column: minimal width */
-.bulk-select-cell { width: 1px; white-space: nowrap; }
-.bulk-select-cell .form-check-input { cursor: pointer; }
-#bulk-select-all { cursor: pointer; }
+.bulk-select-cell {
+    width: 1px;
+    white-space: nowrap;
+}
+.bulk-select-cell .form-check-input {
+    cursor: pointer;
+}
+#bulk-select-all {
+    cursor: pointer;
+}
 
 /* ── Dependency picker ── */
 .dep-picker {

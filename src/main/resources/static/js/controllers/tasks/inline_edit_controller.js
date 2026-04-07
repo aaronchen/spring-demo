@@ -3,11 +3,15 @@ import { csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 import { resolveLabel } from "lib/i18n";
 
-const INLINE_PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH"]
-    .map((v) => ({ value: v, label: resolveLabel("task.priority", v) }));
+const INLINE_PRIORITY_OPTIONS = Object.keys(APP_CONFIG.enums.priority).map((v) => ({
+    value: v,
+    label: resolveLabel("task.priority", v),
+}));
 
-const INLINE_STATUS_OPTIONS = ["BACKLOG", "OPEN", "IN_PROGRESS", "IN_REVIEW", "COMPLETED", "CANCELLED"]
-    .map((v) => ({ value: v, label: resolveLabel("task.status", v) }));
+const INLINE_STATUS_OPTIONS = Object.keys(APP_CONFIG.enums.taskStatus).map((v) => ({
+    value: v,
+    label: resolveLabel("task.status", v),
+}));
 
 // Inline editing for table view — toggle edit mode to make cells editable.
 
@@ -131,14 +135,23 @@ export default class extends Controller {
         cell.innerHTML = "";
         cell.appendChild(input);
         input.focus();
-        setTimeout(() => { input.setSelectionRange(0, 0); input.scrollLeft = 0; }, 0);
+        setTimeout(() => {
+            input.setSelectionRange(0, 0);
+            input.scrollLeft = 0;
+        }, 0);
 
         input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") { e.preventDefault(); this.saveInlineEdit(cell, taskId, field, input.value, originalContent); }
-            else if (e.key === "Escape") { this.cancelInlineEdit(cell, originalContent); }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                this.saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            } else if (e.key === "Escape") {
+                this.cancelInlineEdit(cell, originalContent);
+            }
         });
         input.addEventListener("blur", () => {
-            setTimeout(() => { if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent); }, 150);
+            setTimeout(() => {
+                if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            }, 150);
         });
     }
 
@@ -162,10 +175,16 @@ export default class extends Controller {
         cell.appendChild(select);
         select.focus();
 
-        select.addEventListener("change", () => this.saveInlineEdit(cell, taskId, field, select.value, originalContent));
-        select.addEventListener("keydown", (e) => { if (e.key === "Escape") this.cancelInlineEdit(cell, originalContent); });
+        select.addEventListener("change", () =>
+            this.saveInlineEdit(cell, taskId, field, select.value, originalContent),
+        );
+        select.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") this.cancelInlineEdit(cell, originalContent);
+        });
         select.addEventListener("blur", () => {
-            setTimeout(() => { if (cell.contains(select)) this.cancelInlineEdit(cell, originalContent); }, 150);
+            setTimeout(() => {
+                if (cell.contains(select)) this.cancelInlineEdit(cell, originalContent);
+            }, 150);
         });
     }
 
@@ -180,9 +199,13 @@ export default class extends Controller {
         input.focus();
 
         input.addEventListener("change", () => this.saveInlineEdit(cell, taskId, field, input.value, originalContent));
-        input.addEventListener("keydown", (e) => { if (e.key === "Escape") this.cancelInlineEdit(cell, originalContent); });
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") this.cancelInlineEdit(cell, originalContent);
+        });
         input.addEventListener("blur", () => {
-            setTimeout(() => { if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent); }, 150);
+            setTimeout(() => {
+                if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            }, 150);
         });
     }
 
@@ -201,11 +224,17 @@ export default class extends Controller {
         input.select();
 
         input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") { e.preventDefault(); this.saveInlineEdit(cell, taskId, field, input.value, originalContent); }
-            else if (e.key === "Escape") { this.cancelInlineEdit(cell, originalContent); }
+            if (e.key === "Enter") {
+                e.preventDefault();
+                this.saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            } else if (e.key === "Escape") {
+                this.cancelInlineEdit(cell, originalContent);
+            }
         });
         input.addEventListener("blur", () => {
-            setTimeout(() => { if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent); }, 150);
+            setTimeout(() => {
+                if (cell.contains(input)) this.saveInlineEdit(cell, taskId, field, input.value, originalContent);
+            }, 150);
         });
     }
 
@@ -233,34 +262,38 @@ export default class extends Controller {
             method: "PATCH",
             headers,
             body: params.toString(),
-        }).then((response) => {
-            if (response.ok) return response.text();
-            if (response.headers.get("Content-Type")?.includes("json")) {
-                return response.json().then((data) => { throw new Error(data.detail || "Failed to save"); });
-            }
-            throw new Error("Failed to save");
-        }).then((html) => {
-            const template = document.createElement("template");
-            template.innerHTML = html.trim();
-            const newRow = template.content.querySelector("tr");
-            if (newRow && row) {
-                row.replaceWith(newRow);
-                htmx.process(newRow);
-                if (this.editModeActive) {
-                    newRow.querySelectorAll('td[data-editable="true"]').forEach((c) => {
-                        c.classList.add("inline-edit-active");
-                        c.querySelectorAll("a").forEach((link) => {
-                            link.dataset.originalHref = link.getAttribute("href");
-                            link.removeAttribute("href");
-                            link.style.pointerEvents = "none";
-                        });
+        })
+            .then((response) => {
+                if (response.ok) return response.text();
+                if (response.headers.get("Content-Type")?.includes("json")) {
+                    return response.json().then((data) => {
+                        throw new Error(data.detail || "Failed to save");
                     });
                 }
-            }
-        }).catch((err) => {
-            this.cancelInlineEdit(cell, originalContent);
-            showToast(err.message || APP_CONFIG.messages["toast.error.generic"] || "Failed to save", "danger");
-        });
+                throw new Error("Failed to save");
+            })
+            .then((html) => {
+                const template = document.createElement("template");
+                template.innerHTML = html.trim();
+                const newRow = template.content.querySelector("tr");
+                if (newRow && row) {
+                    row.replaceWith(newRow);
+                    htmx.process(newRow);
+                    if (this.editModeActive) {
+                        newRow.querySelectorAll('td[data-editable="true"]').forEach((c) => {
+                            c.classList.add("inline-edit-active");
+                            c.querySelectorAll("a").forEach((link) => {
+                                link.dataset.originalHref = link.getAttribute("href");
+                                link.removeAttribute("href");
+                                link.style.pointerEvents = "none";
+                            });
+                        });
+                    }
+                }
+            })
+            .catch((err) => {
+                this.cancelInlineEdit(cell, originalContent);
+                showToast(err.message || APP_CONFIG.messages["toast.error.generic"] || "Failed to save", "danger");
+            });
     }
-
 }
