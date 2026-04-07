@@ -143,12 +143,12 @@
                                 </div>
                                 <form th:action="@{/projects/{id}/archive(id=${project.id})}" method="post">
                                     <button type="submit" class="btn btn-outline-danger"
-                                            th:attr="hx-post=@{/projects/{id}/archive(id=${project.id})},
-                                                     hx-confirm=#{project.archive.confirm},
-                                                     data-confirm-title=#{project.action.archive},
-                                                     data-confirm-text=#{project.action.archive},
-                                                     data-confirm-header-class='bg-danger text-white',
-                                                     data-confirm-btn-class='btn btn-danger'"
+                                            th:hx-post="${appRoutes.projectArchive.params('projectId', project.id).build()}"
+                                            th:hx-confirm="#{project.archive.confirm}"
+                                            th:data-confirm-title="#{project.action.archive}"
+                                            th:data-confirm-text="#{project.action.archive}"
+                                            data-confirm-header-class="bg-danger text-white"
+                                            data-confirm-btn-class="btn btn-danger"
                                             hx-swap="none">
                                         <i class="bi bi-archive"></i> <span th:text="#{project.action.archive}">Archive</span>
                                     </button>

@@ -12,9 +12,9 @@
                     class="btn btn-outline-danger btn-sm"
                     data-notifications--page-target="clearBtn"
                     th:hx-delete="${appRoutes.apiNotifications}"
-                    th:attr="hx-confirm=#{notification.clearAll.confirm},
-                             data-confirm-title=#{notification.clearAll.title},
-                             data-confirm-text=#{notification.clearAll.action}"
+                    th:hx-confirm="#{notification.clearAll.confirm}"
+                    th:data-confirm-title="#{notification.clearAll.title}"
+                    th:data-confirm-text="#{notification.clearAll.action}"
                     data-confirm-class="btn btn-danger"
                     data-confirm-header="bg-danger text-white"
                     th:text="#{notification.clearAll}">Clear All</button>
@@ -35,7 +35,8 @@
                  th:classappend="${!n.read} ? 'list-group-item-light fw-semibold' : ''"
                  style="cursor: pointer;"
                  th:data-id="${n.id}"
-                 th:attr="hx-patch=${appRoutes.apiNotificationRead.resolve('id', n.id)}, hx-swap='none'">
+                 th:hx-patch="${appRoutes.apiNotificationRead.params('id', n.id).build()}"
+                 hx-swap="none">
                 <div class="d-flex align-items-start py-1">
                     <i class="bi me-3 mt-1"
                        th:classappend="${n.type == 'TASK_ASSIGNED'} ? 'bi-person-plus text-primary' :

@@ -29,7 +29,7 @@
                 </span>
                 <a class="flex-grow-1 small"
                    th:classappend="${blocker.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
-                   th:href="@{${appRoutes.taskDetail.resolve('taskId', blocker.id)}}"
+                   th:href="@{${appRoutes.taskDetail.params('taskId', blocker.id).build()}}"
                    target="_blank"
                    th:text="${blocker.title}">Blocker title</a>
                 <button th:if="${canEditDependencies}" type="button"
@@ -67,7 +67,7 @@
                 </span>
                 <a class="flex-grow-1 small"
                    th:classappend="${blocked.status.terminal ? 'text-decoration-line-through' : 'text-decoration-none'}"
-                   th:href="@{${appRoutes.taskDetail.resolve('taskId', blocked.id)}}"
+                   th:href="@{${appRoutes.taskDetail.params('taskId', blocked.id).build()}}"
                    target="_blank"
                    th:text="${blocked.title}">Blocked title</a>
                 <button th:if="${canEditDependencies}" type="button"

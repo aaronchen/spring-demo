@@ -36,7 +36,7 @@
                 <span th:text="#{task.checklist.progress(${task.checklistChecked}, ${task.checklistTotal})}">0/0</span>
             </span>
             <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+               th:hx-get="${canEdit ? appRoutes.taskEdit.params('taskId', task.id).build() : appRoutes.taskDetail.params('taskId', task.id).build()}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="fw-semibold text-decoration-none"
@@ -112,14 +112,15 @@
         <div class="btn-group btn-group-sm">
             <!-- Toggle Button -->
             <button th:if="${canEdit}" th:class="${isInReview ? 'btn btn-outline-success' : (isInProgress ? 'btn btn-outline-info' : (isOpen ? 'btn btn-outline-warning' : 'btn btn-outline-secondary'))}"
-                    th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/toggle?view=table'},hx-target='#task-row-' + ${task.id}"
+                    th:hx-post="${appRoutes.taskToggle.params('taskId', task.id).query('view', 'table').build()}"
+                    th:hx-target="${'#task-row-' + task.id}"
                     hx-swap="outerHTML"
                     th:title="${isBacklog} ? #{action.toggle.backlog.next} : (${isOpen} ? #{action.toggle.open.next} : (${isInProgress} ? #{action.toggle.inProgress.next} : (${isInReview} ? #{action.toggle.inReview.next} : (${isCancelled} ? #{action.toggle.cancelled.next} : #{action.toggle.completed.next}))))">
                 <i th:classappend="${isCompleted || isCancelled ? 'bi-arrow-counterclockwise' : (isInReview ? 'bi-check2' : (isInProgress ? 'bi-eye' : (isBacklog ? 'bi-arrow-right' : 'bi-play-fill')))}"></i>
             </button>
             <!-- View/Edit Button -->
             <a th:href="${canEdit} ? @{/tasks/{id}/edit(id=${task.id})} : @{/tasks/{id}(id=${task.id})}"
-               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+               th:hx-get="${canEdit ? appRoutes.taskEdit.params('taskId', task.id).build() : appRoutes.taskDetail.params('taskId', task.id).build()}"
                hx-target="#task-modal-content"
                hx-swap="innerHTML"
                class="btn btn-outline-primary"

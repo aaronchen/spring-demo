@@ -56,7 +56,9 @@
                                   th:classappend="${day.today() ? 'fw-bold text-primary' : ''}"
                                   th:text="${day.date().dayOfMonth}">1</span>
                             <a href="#" class="calendar-add-btn text-muted"
-                               th:attr="hx-get=${appRoutes.tasks + '/new?dueDate=' + #temporals.format(day.date(), 'yyyy-MM-dd') + (project != null ? '&projectId=' + project.id : '')}"
+                               th:hx-get="${project != null
+                                   ? appRoutes.taskNew.query('dueDate', #temporals.format(day.date(), 'yyyy-MM-dd'), 'projectId', project.id).build()
+                                   : appRoutes.taskNew.query('dueDate', #temporals.format(day.date(), 'yyyy-MM-dd')).build()}"
                                hx-target="#task-modal-content"
                                hx-swap="innerHTML"
                                th:title="#{task.calendar.addTask}">
@@ -78,7 +80,7 @@
                                      class="calendar-chip"
                                      th:classappend="${isOverdue ? 'calendar-chip-overdue' : (isCompleted ? 'calendar-chip-completed' : (isCancelled ? 'calendar-chip-cancelled' : (isInReview ? 'calendar-chip-in-review' : (isInProgress ? 'calendar-chip-in-progress' : 'calendar-chip-open'))))} + ${onDueDate ? ' calendar-chip-end' : ' calendar-chip-start'}">
                                     <a href="#"
-                                       th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                                       th:hx-get="${canEdit ? appRoutes.taskEdit.params('taskId', task.id).build() : appRoutes.taskDetail.params('taskId', task.id).build()}"
                                        hx-target="#task-modal-content"
                                        hx-swap="innerHTML"
                                        class="calendar-chip-link text-decoration-none"

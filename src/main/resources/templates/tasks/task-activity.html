@@ -23,7 +23,10 @@
                                        th:text="${#temporals.format(entry.timestamp(), 'MMM dd, yyyy HH:mm')}">Date</small>
                                 <button th:if="${entry.canDelete()}"
                                         class="btn btn-sm btn-outline-danger border-0 py-0 px-1 ms-1"
-                                        th:attr="hx-delete=${appRoutes.tasks + '/' + task.id + '/comments/' + entry.commentId()},hx-confirm=#{comment.delete.confirm},data-confirm-title=#{comment.delete.title},data-confirm-text=#{comment.delete.action}"
+                                        th:hx-delete="${appRoutes.taskCommentDelete.params('taskId', task.id, 'commentId', entry.commentId()).build()}"
+                                        th:hx-confirm="#{comment.delete.confirm}"
+                                        th:data-confirm-title="#{comment.delete.title}"
+                                        th:data-confirm-text="#{comment.delete.action}"
                                         hx-target="#task-activity"
                                         hx-swap="outerHTML"
                                         th:title="#{action.delete}">

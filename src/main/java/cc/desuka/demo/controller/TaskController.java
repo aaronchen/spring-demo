@@ -335,7 +335,8 @@ public class TaskController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
-        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", created.getId()));
+        return new RedirectView(
+                appRoutes.getTaskDetail().params("taskId", created.getId()).build());
     }
 
     // GET /tasks/{id}/edit - Show edit form (full page or modal fragment)
@@ -402,7 +403,7 @@ public class TaskController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("taskSaved");
         }
-        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
+        return new RedirectView(appRoutes.getTaskDetail().params("taskId", id).build());
     }
 
     // DELETE /tasks/{id} - Delete task
@@ -452,7 +453,7 @@ public class TaskController {
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
-        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
+        return new RedirectView(appRoutes.getTaskDetail().params("taskId", id).build());
     }
 
     // DELETE /tasks/{id}/comments/{commentId} - Delete a comment
@@ -474,7 +475,7 @@ public class TaskController {
             addTimelineAttributes(model, id, currentDetails);
             return "tasks/task-activity";
         }
-        return new RedirectView(appRoutes.getTaskDetail().resolve("taskId", id));
+        return new RedirectView(appRoutes.getTaskDetail().params("taskId", id).build());
     }
 
     // PATCH /tasks/{id}/field - Inline edit a single field (used by table view inline editing)

@@ -82,6 +82,8 @@ On validation error, controllers must restore all user-submitted values onto the
 
 ### HTMX Patterns
 
+**HTMX attribute binding** — use `th:hx-get`, `th:hx-post`, `th:hx-delete`, `th:hx-patch`, `th:hx-confirm`, etc. instead of `th:attr`. Thymeleaf resolves `th:*` for any attribute name, not just known HTML attributes. URLs use `appRoutes.*` with the builder API (`.params().build()`) — never hardcode paths in `@{}` or string concatenation. For single-quoted attribute values containing JSON, use `th:hx-vals='|{"key":"${value}"}|'`.
+
 **Fragment return** — controller detects HTMX via `HtmxUtils.isHtmxRequest(request)` and returns a fragment instead of redirect.
 
 **Event triggers** — `HtmxUtils.triggerEvent("taskSaved")` returns a ResponseEntity with `HX-Trigger` header. JS listens on `document.body`. Active events: `taskSaved`, `taskDeleted`.
@@ -92,27 +94,30 @@ On validation error, controllers must restore all user-submitted values onto the
 
 ### Frontend Route Configuration Pattern
 
-All URLs centralized in `AppRoutesProperties` as `RouteTemplate` fields (defaults in Java, overridable via `application.properties`). `RouteTemplate` wraps URL templates with `{placeholder}` tokens and provides a symmetric `resolve()` API in both Java and JavaScript. Exposed two ways:
-- **Templates**: `GlobalModelAttributes` → `${appRoutes}`. Use `@{}` for `th:href`/`th:action` (context-path-aware). Use `${appRoutes.tasks + ...}` only for HTMX `th:attr` values where `@{}` doesn't work.
+All URLs centralized in `AppRoutesProperties` as `RouteTemplate` fields (defaults in Java, overridable via `application.properties`). `RouteTemplate` wraps URL templates with `{placeholder}` tokens and provides a symmetric builder API in Java, Thymeleaf, and JavaScript. Exposed two ways:
+- **Templates**: `GlobalModelAttributes` → `${appRoutes}`. Use `th:hx-*` with builder API for HTMX attributes. Use `@{}` for `th:href`/`th:action` (context-path-aware).
 - **JavaScript**: `FrontendConfigController` → `/config.js` → `window.APP_CONFIG.routes` (auto-discovered via reflection) and `APP_CONFIG.messages`
 
 Two categories of routes:
 - **Web routes**: `projects`, `tasks`, `audit`, `dashboard`, `analytics`, `login`, `profile` — used for page navigation
-- **Parameterized web routes**: `projectDetail`, `projectSettings`, `taskDetail` — URL templates for redirects
+- **Parameterized web routes**: `projectDetail`, `projectSettings`, `taskDetail`, `taskEdit`, `taskToggle`, `taskNew`, `taskComments`, `taskCommentDelete` — URL templates for redirects and HTMX attributes
+- **Parameterized project settings routes**: `projectArchive`, `projectMembers`, `projectMemberRole`, `projectMemberDelete`, `projectSprints`, `projectSprintsPanel`, `projectSprintDetail`, `projectSprintEdit`, `projectRecurringTemplates`, `projectRecurringDetail`, `projectRecurringEdit`, `projectRecurringGenerate`, `projectRecurringToggle` — HTMX endpoints in project settings panels
+- **Parameterized admin routes**: `adminUserEdit`, `adminUserEnable`, `adminTagDelete` — admin HTMX endpoints
 - **API resource routes**: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit` — used for fetch calls and HTMX attributes
-- **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens, resolved via `RouteTemplate.resolve()`
+- **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens
 - **STOMP topic routes**: `topicProjectTasks`, `topicTaskComments`, `topicPresence` — WebSocket broadcast channels, also `RouteTemplate` fields (auto-exposed in `/config.js`)
 
-**RouteTemplate resolve API** (symmetric Java/JS):
-- Java: `route.resolve("projectId", id)`, `route.resolve(Map.of("projectId", id))`, `route.resolve(Map.of("projectId", id), Map.of("q", "test"))`
-- JS: `route.resolve({ projectId: id })`, `route.resolve({ projectId: id }, { q: "test" })`
-- Thymeleaf: `appRoutes.apiProjectMembers.resolve('projectId', project.id)`
+**RouteTemplate builder API** (symmetric Java/Thymeleaf/JS):
+- Java: `route.params("projectId", id).build()`, `route.params("k1", v1, "k2", v2).query("q", "test").build()`
+- Thymeleaf: `${appRoutes.taskEdit.params('taskId', task.id).build()}`, `${appRoutes.taskNew.query('projectId', project.id).build()}`
+- JS: `APP_CONFIG.routes.taskEdit.params({ taskId: id }).build()`, `route.params({ k1: v1 }).query({ q: "test" }).build()`
 - `toString()` returns the raw template — works transparently in string contexts
+- `RouteBuilder` is immutable — each `.params()` / `.query()` call returns a new builder instance
 
 **Key rules:**
 - Never use `${appRoutes.tasks}` inside `th:href` — it bypasses context-path handling
 - Never hardcode API URLs in controllers, templates, or JS — always use `appRoutes` (Java/Thymeleaf) or `APP_CONFIG.routes` (JS)
-- Always use `resolve()` for parameterized routes — never concatenate path segments manually
+- Always use the builder API for parameterized routes — never concatenate path segments manually
 - Adding a new `RouteTemplate` field to `AppRoutesProperties` auto-exposes it in `/config.js` (reflection-based)
 
 ### Entity ID Strategy

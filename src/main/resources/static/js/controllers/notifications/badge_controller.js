@@ -139,7 +139,7 @@ export default class extends Controller {
 
         item.addEventListener("click", () => {
             if (!n.read) {
-                fetch(APP_CONFIG.routes.apiNotificationRead.resolve({ id: n.id }), { method: "PATCH" })
+                fetch(APP_CONFIG.routes.apiNotificationRead.params({ id: n.id }).build(), { method: "PATCH" })
                     .then(requireOk)
                     .then(() => fire("notification:read", { id: n.id }))
                     .catch((err) => console.error("Failed to mark notification as read:", err));

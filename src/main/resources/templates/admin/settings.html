@@ -93,7 +93,7 @@
                              style="cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;"
                              hx-post="/admin/settings/theme"
                              hx-swap="none"
-                             th:attr="hx-vals='{ &quot;theme&quot;: &quot;' + ${theme.id} + '&quot; }'">
+                             th:hx-vals='|{"theme":"${theme.id}"}|'>
 
                             <!-- Color strip preview -->
                             <div class="d-flex rounded-top overflow-hidden" style="height: 2.5rem;">

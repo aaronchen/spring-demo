@@ -61,7 +61,7 @@ export default class extends Controller {
         row.className = "list-group-item list-group-item-action list-group-item-light fw-semibold";
         row.style.cursor = "pointer";
         row.dataset.id = n.id;
-        row.setAttribute("hx-patch", APP_CONFIG.routes.apiNotificationRead.resolve({ id: n.id }));
+        row.setAttribute("hx-patch", APP_CONFIG.routes.apiNotificationRead.params({ id: n.id }).build());
         row.setAttribute("hx-swap", "none");
         htmx.process(row);
 

@@ -31,19 +31,19 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <button class="btn btn-sm btn-outline-primary"
-                                        th:attr="hx-get=@{/admin/users/{id}/edit(id=${user.id})}"
+                                        th:hx-get="${appRoutes.adminUserEdit.params('userId', user.id).build()}"
                                         hx-target="#user-modal-content" hx-swap="innerHTML"
                                         th:title="#{action.edit}">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger user-reset-pw-btn"
-                                        th:attr="data-user-id=${user.id}, data-user-name=${user.name}"
+                                        th:data-user-id="${user.id}" th:data-user-name="${user.name}"
                                         th:title="#{admin.users.action.resetPassword}">
                                     <i class="bi bi-key"></i>
                                 </button>
                                 <!--/* Enable button for disabled users */-->
                                 <button th:if="${!user.enabled}" class="btn btn-sm btn-outline-success"
-                                        th:attr="hx-post=@{/admin/users/{id}/enable(id=${user.id})}"
+                                        th:hx-post="${appRoutes.adminUserEnable.params('userId', user.id).build()}"
                                         hx-swap="none"
                                         th:title="#{admin.users.action.enable}">
                                     <i class="bi bi-check-circle"></i>
@@ -51,7 +51,7 @@
                                 <!--/* Disable/Delete buttons for enabled users */-->
                                 <th:block th:if="${user.enabled}">
                                     <button class="btn btn-sm btn-outline-warning user-remove-btn"
-                                            th:attr="data-user-id=${user.id}, data-user-name=${user.name}"
+                                            th:data-user-id="${user.id}" th:data-user-name="${user.name}"
                                             th:title="#{admin.users.action.remove}">
                                         <i class="bi bi-person-slash"></i>
                                     </button>

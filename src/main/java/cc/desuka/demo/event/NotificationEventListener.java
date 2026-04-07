@@ -64,7 +64,7 @@ public class NotificationEventListener {
                 actor,
                 NotificationType.TASK_ASSIGNED,
                 message,
-                appRoutes.getTaskEdit().resolve("taskId", task.getId()));
+                appRoutes.getTaskEdit().params("taskId", task.getId()).build());
     }
 
     @TransactionalEventListener
@@ -75,7 +75,7 @@ public class NotificationEventListener {
 
         String message =
                 messages.get("notification.task.updated", actor.getName(), task.getTitle());
-        String link = appRoutes.getTaskDetail().resolve("taskId", task.getId());
+        String link = appRoutes.getTaskDetail().params("taskId", task.getId()).build();
 
         Set<UUID> notifiedIds = new HashSet<>();
         notifiedIds.add(actor.getId()); // Don't notify self
@@ -106,7 +106,7 @@ public class NotificationEventListener {
 
         String message =
                 messages.get("notification.comment.added", actor.getName(), task.getTitle());
-        String link = appRoutes.getTaskDetail().resolve("taskId", task.getId());
+        String link = appRoutes.getTaskDetail().params("taskId", task.getId()).build();
 
         Set<UUID> notifiedIds = new HashSet<>();
         notifiedIds.add(actor.getId()); // Don't notify self

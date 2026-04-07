@@ -44,12 +44,12 @@
                         </td>
                         <td>
                             <button class="btn btn-sm btn-outline-danger"
-                                    th:attr="hx-delete=@{/admin/tags/{id}(id=${tag.id})},
-                                             hx-confirm=#{admin.tags.delete.confirm(${tag.name}, ${taskCounts[tag.id]})},
-                                             data-confirm-title=#{admin.tags.delete.title},
-                                             data-confirm-text=#{action.delete},
-                                             data-confirm-header-class='bg-danger text-white',
-                                             data-confirm-btn-class='btn btn-danger'"
+                                    th:hx-delete="${appRoutes.adminTagDelete.params('tagId', tag.id).build()}"
+                                    th:hx-confirm="#{admin.tags.delete.confirm(${tag.name}, ${taskCounts[tag.id]})}"
+                                    th:data-confirm-title="#{admin.tags.delete.title}"
+                                    th:data-confirm-text="#{action.delete}"
+                                    data-confirm-header-class="bg-danger text-white"
+                                    data-confirm-btn-class="btn btn-danger"
                                     hx-swap="none">
                                 <i class="bi bi-trash"></i>
                             </button>

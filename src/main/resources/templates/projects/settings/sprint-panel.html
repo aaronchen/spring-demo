@@ -17,9 +17,9 @@
         <div class="card-body">
             <form th:object="${sprintRequest}"
                   th:with="formUrl=${editSprint != null}
-                      ? @{/projects/{pId}/sprints/{sId}(pId=${project.id}, sId=${editSprint.id})}
-                      : @{/projects/{pId}/sprints(pId=${project.id})}"
-                  th:attr="hx-post=${formUrl}"
+                      ? ${appRoutes.projectSprintDetail.params('projectId', project.id, 'sprintId', editSprint.id).build()}
+                      : ${appRoutes.projectSprints.params('projectId', project.id).build()}"
+                  th:hx-post="${formUrl}"
                   hx-target="#sprint-panel-content"
                   hx-swap="outerHTML">
                 <div class="row g-2">
@@ -63,7 +63,7 @@
                             </button>
                             <button th:if="${editSprint != null}" type="button"
                                     class="btn btn-sm btn-outline-secondary w-100"
-                                    th:attr="hx-get=@{/projects/{pId}/sprints/panel(pId=${project.id})}"
+                                    th:hx-get="${appRoutes.projectSprintsPanel.params('projectId', project.id).build()}"
                                     hx-target="#sprint-panel-content"
                                     hx-swap="outerHTML">
                                 <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
@@ -118,19 +118,19 @@
                             </td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-outline-primary me-1"
-                                        th:attr="hx-get=@{/projects/{pId}/sprints/{sId}/edit(pId=${project.id}, sId=${sprint.id})}"
+                                        th:hx-get="${appRoutes.projectSprintEdit.params('projectId', project.id, 'sprintId', sprint.id).build()}"
                                         hx-target="#sprint-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="#{sprint.action.edit}">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger"
-                                        th:attr="hx-delete=@{/projects/{pId}/sprints/{sId}(pId=${project.id}, sId=${sprint.id})},
-                                                 hx-confirm=#{sprint.confirm.delete},
-                                                 data-confirm-title=#{sprint.action.delete},
-                                                 data-confirm-text=#{sprint.action.delete},
-                                                 data-confirm-header-class='bg-danger text-white',
-                                                 data-confirm-btn-class='btn btn-danger'"
+                                        th:hx-delete="${appRoutes.projectSprintDetail.params('projectId', project.id, 'sprintId', sprint.id).build()}"
+                                        th:hx-confirm="#{sprint.confirm.delete}"
+                                        th:data-confirm-title="#{sprint.action.delete}"
+                                        th:data-confirm-text="#{sprint.action.delete}"
+                                        data-confirm-header-class="bg-danger text-white"
+                                        data-confirm-btn-class="btn btn-danger"
                                         hx-target="#sprint-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="#{sprint.action.delete}">

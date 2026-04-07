@@ -86,7 +86,7 @@ public class ScheduledTaskService {
                         null,
                         NotificationType.TASK_DUE_REMINDER,
                         message,
-                        appRoutes.getTaskDetail().resolve("taskId", task.getId()));
+                        appRoutes.getTaskDetail().params("taskId", task.getId()).build());
                 sent++;
             } catch (Exception e) {
                 failed++;

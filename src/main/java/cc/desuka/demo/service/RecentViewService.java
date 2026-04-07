@@ -113,8 +113,8 @@ public class RecentViewService {
 
     private String resolveHref(String entityType, String entityId) {
         if (RecentView.TYPE_TASK.equals(entityType)) {
-            return appRoutes.getTaskDetail().resolve("taskId", entityId);
+            return appRoutes.getTaskDetail().params("taskId", entityId).build();
         }
-        return appRoutes.getProjectDetail().resolve("projectId", entityId);
+        return appRoutes.getProjectDetail().params("projectId", entityId).build();
     }
 }

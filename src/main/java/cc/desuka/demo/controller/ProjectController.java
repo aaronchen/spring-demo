@@ -171,7 +171,8 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
-        return new RedirectView(appRoutes.getProjectDetail().resolve("projectId", saved.getId()));
+        return new RedirectView(
+                appRoutes.getProjectDetail().params("projectId", saved.getId()).build());
     }
 
     // GET /projects/{id} - Project home with task list
@@ -369,7 +370,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectSaved");
         }
-        return new RedirectView(appRoutes.getProjectSettings().resolve("projectId", id));
+        return new RedirectView(appRoutes.getProjectSettings().params("projectId", id).build());
     }
 
     // POST /projects/{id}/archive - Archive project
@@ -397,7 +398,7 @@ public class ProjectController {
         if (HtmxUtils.isHtmxRequest(request)) {
             return HtmxUtils.triggerEvent("projectUnarchived");
         }
-        return new RedirectView(appRoutes.getProjectDetail().resolve("projectId", id));
+        return new RedirectView(appRoutes.getProjectDetail().params("projectId", id).build());
     }
 
     // POST /projects/{id}/members - Add member
@@ -482,7 +483,8 @@ public class ProjectController {
         projectAccessGuard.requireViewAccess(id, currentDetails);
         Project project = projectQueryService.getProjectById(id);
         model.addAttribute("project", project);
-        model.addAttribute("apiUrl", appRoutes.getApiProjectAnalytics().resolve("projectId", id));
+        model.addAttribute(
+                "apiUrl", appRoutes.getApiProjectAnalytics().params("projectId", id).build());
         if (project.isSprintEnabled()) {
             List<Sprint> sprints = sprintQueryService.getSprintsByProject(id);
             model.addAttribute("sprints", sprints);

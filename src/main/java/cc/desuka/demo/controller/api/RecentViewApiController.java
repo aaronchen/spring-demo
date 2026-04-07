@@ -35,8 +35,11 @@ public class RecentViewApiController {
     private RecentViewResponse toResponse(RecentView rv) {
         String href =
                 RecentView.TYPE_TASK.equals(rv.getEntityType())
-                        ? appRoutes.getTaskDetail().resolve("taskId", rv.getEntityId())
-                        : appRoutes.getProjectDetail().resolve("projectId", rv.getEntityId());
+                        ? appRoutes.getTaskDetail().params("taskId", rv.getEntityId()).build()
+                        : appRoutes
+                                .getProjectDetail()
+                                .params("projectId", rv.getEntityId())
+                                .build();
         return new RecentViewResponse(
                 rv.getEntityType(),
                 rv.getEntityId(),

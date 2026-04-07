@@ -6,7 +6,6 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.service.SettingService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
-import java.util.Map;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -66,6 +65,6 @@ public class RegistrationController {
                         passwordEncoder.encode(registrationRequest.getPassword()));
         userService.registerUser(user);
 
-        return "redirect:" + appRoutes.getLogin().resolve(Map.of(), Map.of("registered", ""));
+        return "redirect:" + appRoutes.getLogin().query("registered", "").build();
     }
 }

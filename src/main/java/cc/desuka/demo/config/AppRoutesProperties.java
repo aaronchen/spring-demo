@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 /**
  * Externalized route configuration for Thymeleaf templates and the /config.js endpoint.
  *
- * <p>Every route is a {@link RouteTemplate}. Routes with {@code {placeholder}} tokens are resolved
- * via {@link RouteTemplate#resolve(java.util.Map)}. Routes without placeholders work transparently
- * as strings via {@link RouteTemplate#toString()}.
+ * <p>Every route is a {@link RouteTemplate}. Routes with {@code {placeholder}} tokens use the
+ * builder API: {@code route.params("key", value).build()}. Routes without placeholders work
+ * transparently as strings via {@link RouteTemplate#toString()}.
  *
  * <p>Defaults are defined here. Override in any Spring properties source:
  *
@@ -39,6 +39,43 @@ public class AppRoutesProperties {
     private RouteTemplate projectSettings = new RouteTemplate("/projects/{projectId}/settings");
     private RouteTemplate taskDetail = new RouteTemplate("/tasks/{taskId}");
     private RouteTemplate taskEdit = new RouteTemplate("/tasks/{taskId}/edit");
+    private RouteTemplate taskToggle = new RouteTemplate("/tasks/{taskId}/toggle");
+    private RouteTemplate taskNew = new RouteTemplate("/tasks/new");
+    private RouteTemplate taskComments = new RouteTemplate("/tasks/{taskId}/comments");
+    private RouteTemplate taskCommentDelete =
+            new RouteTemplate("/tasks/{taskId}/comments/{commentId}");
+
+    // ── Parameterized project settings routes ──────────────────────────
+    private RouteTemplate projectArchive = new RouteTemplate("/projects/{projectId}/archive");
+    private RouteTemplate projectMembers = new RouteTemplate("/projects/{projectId}/members");
+    private RouteTemplate projectMemberRole =
+            new RouteTemplate("/projects/{projectId}/members/{userId}/role");
+    private RouteTemplate projectMemberDelete =
+            new RouteTemplate("/projects/{projectId}/members/{userId}");
+    private RouteTemplate projectSprints = new RouteTemplate("/projects/{projectId}/sprints");
+    private RouteTemplate projectSprintsPanel =
+            new RouteTemplate("/projects/{projectId}/sprints/panel");
+    private RouteTemplate projectSprintDetail =
+            new RouteTemplate("/projects/{projectId}/sprints/{sprintId}");
+    private RouteTemplate projectRecurringTemplates =
+            new RouteTemplate("/projects/{projectId}/recurring-templates");
+    private RouteTemplate projectRecurringDetail =
+            new RouteTemplate("/projects/{projectId}/recurring-templates/{templateId}");
+    private RouteTemplate projectSprintEdit =
+            new RouteTemplate("/projects/{projectId}/sprints/{sprintId}/edit");
+    private RouteTemplate projectRecurringPanel =
+            new RouteTemplate("/projects/{projectId}/recurring-templates/panel");
+    private RouteTemplate projectRecurringEdit =
+            new RouteTemplate("/projects/{projectId}/recurring-templates/{templateId}/edit");
+    private RouteTemplate projectRecurringGenerate =
+            new RouteTemplate("/projects/{projectId}/recurring-templates/{templateId}/generate");
+    private RouteTemplate projectRecurringToggle =
+            new RouteTemplate("/projects/{projectId}/recurring-templates/{templateId}/toggle");
+
+    // ── Parameterized admin routes ──────────────────────────────────────
+    private RouteTemplate adminUserEdit = new RouteTemplate("/admin/users/{userId}/edit");
+    private RouteTemplate adminUserEnable = new RouteTemplate("/admin/users/{userId}/enable");
+    private RouteTemplate adminTagDelete = new RouteTemplate("/admin/tags/{tagId}");
 
     // ── API resource routes ───────────────────────────────────────────
     private RouteTemplate apiTasks = new RouteTemplate("/api/tasks");

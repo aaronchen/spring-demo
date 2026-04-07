@@ -29,7 +29,7 @@ export default class extends Controller {
             // Task change subscription
             this.subs.push(
                 client.subscribe(
-                    APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: this.projectIdValue }),
+                    APP_CONFIG.routes.topicProjectTasks.params({ projectId: this.projectIdValue }).build(),
                     (message) => {
                         const data = JSON.parse(message.body);
                         if (currentUserId && String(data.userId) === currentUserId) return;
@@ -42,7 +42,7 @@ export default class extends Controller {
             // Comment subscription — refresh activity timeline
             this.subs.push(
                 client.subscribe(
-                    APP_CONFIG.routes.topicTaskComments.resolve({ taskId: this.taskIdValue }),
+                    APP_CONFIG.routes.topicTaskComments.params({ taskId: this.taskIdValue }).build(),
                     (message) => {
                         const data = JSON.parse(message.body);
                         if (currentUserId && String(data.userId) === currentUserId) return;

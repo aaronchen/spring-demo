@@ -166,7 +166,7 @@ export default class extends Controller {
 
         onConnect((client) => {
             wsProjectIds.split(",").forEach((id) => {
-                const topic = APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() });
+                const topic = APP_CONFIG.routes.topicProjectTasks.params({ projectId: id.trim() }).build();
                 client.subscribe(topic, (message) => {
                     const data = JSON.parse(message.body);
                     if (currentUserId && String(data.userId) === currentUserId) return;
@@ -773,7 +773,7 @@ export default class extends Controller {
     }
 
     deleteSavedView(id) {
-        fetch(APP_CONFIG.routes.apiViewById.resolve({ id }), { method: "DELETE" })
+        fetch(APP_CONFIG.routes.apiViewById.params({ id }).build(), { method: "DELETE" })
             .then(requireOk)
             .then(() => {
                 this.clearActiveView();

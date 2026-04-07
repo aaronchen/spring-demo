@@ -17,9 +17,9 @@
         <div class="card-body">
             <form th:object="${recurringRequest}"
                   th:with="formUrl=${editTemplate != null}
-                      ? @{/projects/{pId}/recurring-templates/{tId}(pId=${project.id}, tId=${editTemplate.id})}
-                      : @{/projects/{pId}/recurring-templates(pId=${project.id})}"
-                  th:attr="hx-post=${formUrl}"
+                      ? ${appRoutes.projectRecurringDetail.params('projectId', project.id, 'templateId', editTemplate.id).build()}
+                      : ${appRoutes.projectRecurringTemplates.params('projectId', project.id).build()}"
+                  th:hx-post="${formUrl}"
                   hx-target="#recurring-panel-content"
                   hx-swap="outerHTML">
                 <div class="row g-2">
@@ -149,7 +149,7 @@
                         </button>
                         <button th:if="${editTemplate != null}" type="button"
                                 class="btn btn-sm btn-outline-secondary"
-                                th:attr="hx-get=@{/projects/{pId}/recurring-templates/panel(pId=${project.id})}"
+                                th:hx-get="${appRoutes.projectRecurringPanel.params('projectId', project.id).build()}"
                                 hx-target="#recurring-panel-content"
                                 hx-swap="outerHTML">
                             <i class="bi bi-x-circle"></i> <span th:text="#{action.cancel}">Cancel</span>
@@ -206,7 +206,7 @@
                             </td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-outline-primary me-1"
-                                        th:attr="hx-get=@{/projects/{pId}/recurring-templates/{tId}/edit(pId=${project.id}, tId=${tmpl.id})}"
+                                        th:hx-get="${appRoutes.projectRecurringEdit.params('projectId', project.id, 'templateId', tmpl.id).build()}"
                                         hx-target="#recurring-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="#{recurring.action.edit}">
@@ -214,26 +214,26 @@
                                 </button>
                                 <button class="btn btn-sm btn-outline-success me-1"
                                         th:if="${tmpl.enabled}"
-                                        th:attr="hx-post=@{/projects/{pId}/recurring-templates/{tId}/generate(pId=${project.id}, tId=${tmpl.id})}"
+                                        th:hx-post="${appRoutes.projectRecurringGenerate.params('projectId', project.id, 'templateId', tmpl.id).build()}"
                                         hx-target="#recurring-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="#{recurring.action.generate}">
                                     <i class="bi bi-play-fill"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary me-1"
-                                        th:attr="hx-post=@{/projects/{pId}/recurring-templates/{tId}/toggle(pId=${project.id}, tId=${tmpl.id})}"
+                                        th:hx-post="${appRoutes.projectRecurringToggle.params('projectId', project.id, 'templateId', tmpl.id).build()}"
                                         hx-target="#recurring-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="${tmpl.enabled} ? #{recurring.action.disable} : #{recurring.action.enable}">
                                     <i class="bi" th:classappend="${tmpl.enabled ? 'bi-pause-circle' : 'bi-play-circle'}"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-danger"
-                                        th:attr="hx-delete=@{/projects/{pId}/recurring-templates/{tId}(pId=${project.id}, tId=${tmpl.id})},
-                                                 hx-confirm=#{recurring.confirm.delete},
-                                                 data-confirm-title=#{recurring.action.delete},
-                                                 data-confirm-text=#{recurring.action.delete},
-                                                 data-confirm-header-class='bg-danger text-white',
-                                                 data-confirm-btn-class='btn btn-danger'"
+                                        th:hx-delete="${appRoutes.projectRecurringDetail.params('projectId', project.id, 'templateId', tmpl.id).build()}"
+                                        th:hx-confirm="#{recurring.confirm.delete}"
+                                        th:data-confirm-title="#{recurring.action.delete}"
+                                        th:data-confirm-text="#{recurring.action.delete}"
+                                        data-confirm-header-class="bg-danger text-white"
+                                        data-confirm-btn-class="btn btn-danger"
                                         hx-target="#recurring-panel-content"
                                         hx-swap="outerHTML"
                                         th:title="#{recurring.action.delete}">

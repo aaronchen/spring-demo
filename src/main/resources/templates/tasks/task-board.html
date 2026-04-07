@@ -36,7 +36,7 @@
 
                             <!-- Card Title -->
                             <a href="#"
-                               th:attr="hx-get=${canEdit ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+                               th:hx-get="${canEdit ? appRoutes.taskEdit.params('taskId', task.id).build() : appRoutes.taskDetail.params('taskId', task.id).build()}"
                                hx-target="#task-modal-content"
                                hx-swap="innerHTML"
                                class="kanban-card-title text-decoration-none"

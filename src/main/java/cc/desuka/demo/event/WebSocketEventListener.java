@@ -25,12 +25,13 @@ public class WebSocketEventListener {
     @TransactionalEventListener
     public void onTaskChange(TaskChangeEvent event) {
         messagingTemplate.convertAndSend(
-                appRoutes.getTopicProjectTasks().resolve("projectId", event.projectId()), event);
+                appRoutes.getTopicProjectTasks().params("projectId", event.projectId()).build(),
+                event);
     }
 
     @TransactionalEventListener
     public void onCommentChange(CommentChangeEvent event) {
         messagingTemplate.convertAndSend(
-                appRoutes.getTopicTaskComments().resolve("taskId", event.taskId()), event);
+                appRoutes.getTopicTaskComments().params("taskId", event.taskId()).build(), event);
     }
 }

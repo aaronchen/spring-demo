@@ -217,7 +217,7 @@ export default class extends Controller {
         const projectId = this.getCommonProjectId();
         if (!projectId) return;
 
-        const url = APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId });
+        const url = APP_CONFIG.routes.apiProjectMembersAssignable.params({ projectId }).build();
         fetch(url)
             .then(requireOk)
             .then((r) => r.json())

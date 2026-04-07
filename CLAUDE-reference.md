@@ -1164,10 +1164,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 ### Utilities
 - `util/RouteTemplate.java` - URL template value type with `{placeholder}` tokens
-  - `resolve()` overloads: no-arg (returns template), single key-value, Map params, Map params + Map query (with URL encoding)
+  - Builder API: `route.params("key", value).build()`, `route.params("k1", v1, "k2", v2).query("q", val).build()`, `route.query("key", value).build()`
   - `toString()` returns raw template — transparent in Thymeleaf expressions and string concatenation
-  - `JS_CLASS` constant — JavaScript `Route` class with matching `resolve(params, query)`, `toString()`, `valueOf()` methods; emitted by `FrontendConfigController` into `/config.js`
+  - `JS_CLASS` constant — JavaScript `Route` + `RouteBuilder` classes with matching `params()`/`query()`/`build()` API; emitted by `FrontendConfigController` into `/config.js`
   - Nested `StringConverter` (`@ConfigurationPropertiesBinding`) — allows Spring to bind `String` properties to `RouteTemplate` in `AppRoutesProperties`
+- `util/RouteBuilder.java` - Immutable URL builder returned by `RouteTemplate.params()` / `.query()`
+  - `params(String key, Object value, Object... rest)` / `params(Map)` — path parameters
+  - `query(String key, Object value, Object... rest)` / `query(Map)` — query parameters
+  - `build()` / `toString()` — produces the final URL with URL encoding
 
 - `util/Messages.java` - `@Component` wrapper around `MessageSource` for convenient message resolution in service layer
   - Constructor injection: `MessageSource`

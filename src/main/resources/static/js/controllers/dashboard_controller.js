@@ -14,7 +14,7 @@ export default class extends Controller {
         onConnect((client) => {
             if (this.wsProjectIdsValue) {
                 this.wsProjectIdsValue.split(",").forEach((id) => {
-                    client.subscribe(APP_CONFIG.routes.topicProjectTasks.resolve({ projectId: id.trim() }), () =>
+                    client.subscribe(APP_CONFIG.routes.topicProjectTasks.params({ projectId: id.trim() }).build(), () =>
                         this.refreshStats(),
                     );
                 });

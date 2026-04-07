@@ -64,7 +64,7 @@
                                th:placeholder="#{comment.field.text.placeholder}" maxlength="500"
                                data-action="keydown->mention#submitUnlessMentionOpen mention:clear->mention#clear">
                         <button type="button" id="comment-post-btn" class="btn btn-outline-primary"
-                                th:attr="hx-post=${appRoutes.tasks + '/' + task.id + '/comments'}"
+                                th:hx-post="${appRoutes.taskComments.params('taskId', task.id).build()}"
                                 hx-include="#comment-text"
                                 hx-target="#task-activity"
                                 hx-swap="outerHTML"

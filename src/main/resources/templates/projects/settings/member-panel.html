@@ -11,7 +11,7 @@
     <!-- Add Member Form -->
     <div class="card-body border-bottom">
         <form class="row g-2 align-items-end"
-              th:attr="hx-post=@{/projects/{id}/members(id=${project.id})}"
+              th:hx-post="${appRoutes.projectMembers.params('projectId', project.id).build()}"
               hx-target="#member-management-content"
               hx-swap="outerHTML">
             <div class="col">
@@ -71,7 +71,7 @@
                                     <button type="button"
                                             th:class="${r == member.role ? 'dropdown-item active' : 'dropdown-item'}"
                                             th:text="#{${r.messageKey}}"
-                                            th:attr="hx-patch=@{/projects/{pId}/members/{uId}/role(pId=${project.id}, uId=${member.user.id}, role=${r.name()})}"
+                                            th:hx-patch="${appRoutes.projectMemberRole.params('projectId', project.id, 'userId', member.user.id).query('role', r.name()).build()}"
                                             hx-target="#member-management-content"
                                             hx-swap="outerHTML">Role</button>
                                 </li>
@@ -80,12 +80,12 @@
                     </td>
                     <td>
                         <button class="btn btn-sm btn-outline-danger"
-                                th:attr="hx-delete=@{/projects/{pId}/members/{uId}(pId=${project.id}, uId=${member.user.id})},
-                                         hx-confirm=#{project.member.remove.confirm(${member.user.name})},
-                                         data-confirm-title=#{project.member.remove.title},
-                                         data-confirm-text=#{project.member.action.remove},
-                                         data-confirm-header-class='bg-danger text-white',
-                                         data-confirm-btn-class='btn btn-danger'"
+                                th:hx-delete="${appRoutes.projectMemberDelete.params('projectId', project.id, 'userId', member.user.id).build()}"
+                                th:hx-confirm="#{project.member.remove.confirm(${member.user.name})}"
+                                th:data-confirm-title="#{project.member.remove.title}"
+                                th:data-confirm-text="#{project.member.action.remove}"
+                                data-confirm-header-class="bg-danger text-white"
+                                data-confirm-btn-class="btn btn-danger"
                                 hx-target="#member-management-content"
                                 hx-swap="outerHTML">
                             <i class="bi bi-person-x"></i>

@@ -51,8 +51,9 @@ public class AuditTemplateHelper {
     public String resolveUrl(String refType, String refId) {
         if (refType == null || refId == null) return null;
         return switch (refType) {
-            case AuditField.REF_PROJECT -> appRoutes.getProjectDetail().resolve("projectId", refId);
-            case AuditField.REF_TASK -> appRoutes.getTaskDetail().resolve("taskId", refId);
+            case AuditField.REF_PROJECT ->
+                    appRoutes.getProjectDetail().params("projectId", refId).build();
+            case AuditField.REF_TASK -> appRoutes.getTaskDetail().params("taskId", refId).build();
             default -> null;
         };
     }

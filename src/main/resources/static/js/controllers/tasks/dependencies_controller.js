@@ -53,7 +53,7 @@ export default class extends Controller {
                 badge.querySelector("span").textContent = resolveLabel("task.status", status);
 
                 const link = item.querySelector("a");
-                link.href = APP_CONFIG.routes.taskDetail.resolve({ taskId });
+                link.href = APP_CONFIG.routes.taskDetail.params({ taskId }).build();
                 link.textContent = taskTitle;
                 if (info.terminal) {
                     link.classList.add("text-decoration-line-through");

@@ -21,7 +21,7 @@
      data-controller="tasks--live-update"
      th:data-tasks--live-update-task-id-value="${task.id}"
      th:data-tasks--live-update-project-id-value="${task.project.id}"
-     th:data-tasks--live-update-refresh-url-value="${mode == 'edit' ? appRoutes.tasks + '/' + task.id + '/edit' : appRoutes.tasks + '/' + task.id}"
+     th:data-tasks--live-update-refresh-url-value="${mode == 'edit' ? appRoutes.taskEdit.params('taskId', task.id).build() : appRoutes.taskDetail.params('taskId', task.id).build()}"
      data-tasks--live-update-modal-value="true">
 <div id="modal-stale-banner"
      data-tasks--live-update-target="banner"
@@ -38,7 +38,7 @@
 <div class="modal-body p-0">
     <form id="task-form"
           th:action="${mode == 'edit'} ? @{/tasks/{id}(id=${task.id})} : @{/tasks}"
-          th:attr="hx-post=${mode == 'edit' ? appRoutes.tasks + '/' + task.id : appRoutes.tasks}"
+          th:hx-post="${mode == 'edit' ? appRoutes.taskDetail.params('taskId', task.id).build() : appRoutes.tasks}"
           hx-target="#task-modal-content"
           hx-swap="innerHTML"
           th:object="${taskFormRequest}"

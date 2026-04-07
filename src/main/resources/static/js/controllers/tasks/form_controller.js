@@ -28,7 +28,7 @@ export default class extends Controller {
             const projectId = projectSelect.value;
             assigneeSelect.setSrc(
                 projectId
-                    ? APP_CONFIG.routes.apiProjectMembersAssignable.resolve({ projectId })
+                    ? APP_CONFIG.routes.apiProjectMembersAssignable.params({ projectId }).build()
                     : APP_CONFIG.routes.apiUsers,
             );
             assigneeSelect.reset();
@@ -47,7 +47,7 @@ export default class extends Controller {
             return;
         }
 
-        const url = APP_CONFIG.routes.apiProjectSprints.resolve({ projectId });
+        const url = APP_CONFIG.routes.apiProjectSprints.params({ projectId }).build();
         fetch(url)
             .then(requireOk)
             .then((r) => r.json())

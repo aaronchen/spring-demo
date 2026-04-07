@@ -39,7 +39,7 @@ export default class extends Controller {
                         cb(cachedMembers);
                         return;
                     }
-                    const url = APP_CONFIG.routes.apiProjectMembers.resolve({ projectId });
+                    const url = APP_CONFIG.routes.apiProjectMembers.params({ projectId }).build();
                     fetch(url, { credentials: "same-origin" })
                         .then(requireOk)
                         .then((r) => r.json())
@@ -49,7 +49,7 @@ export default class extends Controller {
                         })
                         .catch(() => cb([]));
                 } else {
-                    const url = `${APP_CONFIG.routes.apiUsers}?q=${encodeURIComponent(text)}`;
+                    const url = APP_CONFIG.routes.apiUsers.query("q", text).build();
                     fetch(url, { credentials: "same-origin" })
                         .then(requireOk)
                         .then((r) => r.json())

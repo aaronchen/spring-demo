@@ -3,7 +3,6 @@ package cc.desuka.demo.util;
 import cc.desuka.demo.config.AppRoutesProperties;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,7 +57,7 @@ public class MentionUtils {
             sb.append(escapeHtml(text.substring(lastEnd, matcher.start())));
             String displayName = escapeHtml(matcher.group(1));
             String userId = matcher.group(2);
-            String href = appRoutes.getTasks().resolve(Map.of(), Map.of("selectedUserId", userId));
+            String href = appRoutes.getTasks().query("selectedUserId", userId).build();
             sb.append("<a href=\"")
                     .append(escapeHtml(href))
                     .append("\" class=\"mention\">@")
