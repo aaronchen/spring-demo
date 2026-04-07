@@ -39,6 +39,7 @@ searchable-select .ss-menu {
     box-shadow: none;
     scrollbar-width: thin;
     scrollbar-color: var(--bs-tertiary-color, rgba(0, 0, 0, 0.2)) transparent;
+    scrollbar-gutter: stable;
 }
 [data-theme] searchable-select .ss-wrapper.open .ss-menu,
 searchable-select .ss-wrapper.open .ss-menu {

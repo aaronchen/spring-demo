@@ -65,7 +65,24 @@
             "lib/htmx-csrf": /*[[@{/js/lib/htmx-csrf.js}]]*/ "",
             "lib/htmx-errors": /*[[@{/js/lib/htmx-errors.js}]]*/ "",
             "lib/flash-toast": /*[[@{/js/lib/flash-toast.js}]]*/ "",
-            "lib/date-range": /*[[@{/js/lib/date-range.js}]]*/ ""
+            "lib/date-range": /*[[@{/js/lib/date-range.js}]]*/ "",
+            "lib/task-status": /*[[@{/js/lib/task-status.js}]]*/ "",
+            "controllers/presence": /*[[@{/js/controllers/presence_controller.js}]]*/ "",
+            "controllers/recent-views": /*[[@{/js/controllers/recent_views_controller.js}]]*/ "",
+            "controllers/analytics": /*[[@{/js/controllers/analytics_controller.js}]]*/ "",
+            "controllers/audit": /*[[@{/js/controllers/audit_controller.js}]]*/ "",
+            "controllers/dashboard": /*[[@{/js/controllers/dashboard_controller.js}]]*/ "",
+            "controllers/mention": /*[[@{/js/controllers/mention_controller.js}]]*/ "",
+            "controllers/notifications/badge": /*[[@{/js/controllers/notifications/badge_controller.js}]]*/ "",
+            "controllers/notifications/page": /*[[@{/js/controllers/notifications/page_controller.js}]]*/ "",
+            "controllers/tasks/list": /*[[@{/js/controllers/tasks/list_controller.js}]]*/ "",
+            "controllers/tasks/form": /*[[@{/js/controllers/tasks/form_controller.js}]]*/ "",
+            "controllers/tasks/kanban": /*[[@{/js/controllers/tasks/kanban_controller.js}]]*/ "",
+            "controllers/tasks/inline-edit": /*[[@{/js/controllers/tasks/inline_edit_controller.js}]]*/ "",
+            "controllers/tasks/bulk-actions": /*[[@{/js/controllers/tasks/bulk_actions_controller.js}]]*/ "",
+            "controllers/tasks/keyboard-shortcuts": /*[[@{/js/controllers/tasks/keyboard_shortcuts_controller.js}]]*/ "",
+            "controllers/tasks/dependencies": /*[[@{/js/controllers/tasks/dependencies_controller.js}]]*/ "",
+            "controllers/tasks/live-update": /*[[@{/js/controllers/tasks/live_update_controller.js}]]*/ ""
         }
     }
     </script>
@@ -129,7 +146,7 @@
                     </li>
                 </ul>
 
-                <!-- Notification Bell -->
+                <!-- Notification Badge -->
                 <ul class="navbar-nav me-3" sec:authorize="isAuthenticated()">
                     <li class="nav-item dropdown" data-controller="notifications--badge">
                         <a class="nav-link nav-link-bright position-relative" href="#" role="button"

@@ -65,7 +65,8 @@ export default class extends Controller {
                 select.innerHTML = options;
                 container.classList.remove("d-none");
             })
-            .catch(() => {
+            .catch((err) => {
+                console.error("Failed to load sprints:", err);
                 container.classList.add("d-none");
                 select.innerHTML = "";
             });
@@ -76,31 +77,13 @@ export default class extends Controller {
     addChecklistItem() {
         const container = document.getElementById("checklist-container");
         if (!container) return;
+        const template = document.getElementById("checklist-item-template");
+        if (!template) return;
         const empty = document.getElementById("checklist-empty");
         if (empty) empty.classList.add("d-none");
-        const placeholder = APP_CONFIG.messages["task.checklist.placeholder"] || "Enter checklist item";
-        const div = document.createElement("div");
-        div.className = "checklist-item d-flex align-items-center gap-1 mb-1";
-        div.draggable = true;
-        div.setAttribute("data-action",
-            "dragstart->tasks--form#checklistDragStart dragover->tasks--form#checklistDragOver " +
-            "dragend->tasks--form#checklistDragEnd drop->tasks--form#checklistDrop");
-        div.innerHTML = `<div class="input-group input-group-sm">
-                <span class="input-group-text checklist-drag-handle">
-                    <i class="bi bi-grip-vertical"></i>
-                </span>
-                <div class="input-group-text">
-                    <input type="hidden" name="checklistChecked" value="false">
-                    <input type="checkbox" class="form-check-input mt-0"
-                           data-action="change->tasks--form#syncChecklistCheckbox">
-                </div>
-                <input type="text" class="form-control" name="checklistTexts" autocomplete="off" placeholder="${placeholder}">
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-danger border-0" data-action="click->tasks--form#removeChecklistItem">
-                <i class="bi bi-x-lg"></i>
-            </button>`;
-        container.appendChild(div);
-        div.querySelector('input[type="text"]').focus();
+        const clone = template.content.firstElementChild.cloneNode(true);
+        container.appendChild(clone);
+        clone.querySelector('input[type="text"]').focus();
         this.updateChecklistHeading();
     }
 

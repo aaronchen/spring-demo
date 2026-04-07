@@ -268,4 +268,27 @@
     <p id="checklist-empty" class="text-muted small mb-0"
        th:classappend="${task.checklistItems != null && !task.checklistItems.isEmpty() ? 'd-none' : ''}"
        th:text="#{task.checklist.empty}">No checklist items</p>
+    <!--/* Template for JS-added checklist items — single source of truth for item markup */-->
+    <template id="checklist-item-template" th:if="${mode != 'view'}">
+        <div class="checklist-item d-flex align-items-center gap-1 mb-1"
+             draggable="true"
+             data-action="dragstart->tasks--form#checklistDragStart dragover->tasks--form#checklistDragOver dragend->tasks--form#checklistDragEnd drop->tasks--form#checklistDrop">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text checklist-drag-handle">
+                    <i class="bi bi-grip-vertical"></i>
+                </span>
+                <div class="input-group-text">
+                    <input type="hidden" name="checklistChecked" value="false">
+                    <input type="checkbox" class="form-check-input mt-0"
+                           data-action="change->tasks--form#syncChecklistCheckbox">
+                </div>
+                <input type="text" class="form-control" name="checklistTexts" autocomplete="off"
+                       th:placeholder="#{task.checklist.placeholder}">
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger border-0"
+                    data-action="click->tasks--form#removeChecklistItem">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </template>
 </th:block>

@@ -10,22 +10,22 @@ import "lib/date-range";       // date-range-start min constraint
 import "lib/mention-encoding"; // @mention encoding on submit/configRequest
 
 // Controllers
-import PresenceController from "./controllers/presence_controller.js";
-import RecentViewsController from "./controllers/recent_views_controller.js";
-import AnalyticsController from "./controllers/analytics_controller.js";
-import AuditController from "./controllers/audit_controller.js";
-import NotificationsBadgeController from "./controllers/notifications/badge_controller.js";
-import NotificationsPageController from "./controllers/notifications/page_controller.js";
-import MentionController from "./controllers/mention_controller.js";
-import TasksListController from "./controllers/tasks/list_controller.js";
-import TasksFormController from "./controllers/tasks/form_controller.js";
-import TasksKanbanController from "./controllers/tasks/kanban_controller.js";
-import TasksInlineEditController from "./controllers/tasks/inline_edit_controller.js";
-import TasksBulkActionsController from "./controllers/tasks/bulk_actions_controller.js";
-import TasksKeyboardShortcutsController from "./controllers/tasks/keyboard_shortcuts_controller.js";
-import TasksDependenciesController from "./controllers/tasks/dependencies_controller.js";
-import TasksLiveUpdateController from "./controllers/tasks/live_update_controller.js";
-import DashboardController from "./controllers/dashboard_controller.js";
+import PresenceController from "controllers/presence";
+import RecentViewsController from "controllers/recent-views";
+import AnalyticsController from "controllers/analytics";
+import AuditController from "controllers/audit";
+import NotificationsBadgeController from "controllers/notifications/badge";
+import NotificationsPageController from "controllers/notifications/page";
+import MentionController from "controllers/mention";
+import TasksListController from "controllers/tasks/list";
+import TasksFormController from "controllers/tasks/form";
+import TasksKanbanController from "controllers/tasks/kanban";
+import TasksInlineEditController from "controllers/tasks/inline-edit";
+import TasksBulkActionsController from "controllers/tasks/bulk-actions";
+import TasksKeyboardShortcutsController from "controllers/tasks/keyboard-shortcuts";
+import TasksDependenciesController from "controllers/tasks/dependencies";
+import TasksLiveUpdateController from "controllers/tasks/live-update";
+import DashboardController from "controllers/dashboard";
 
 const app = Application.start();
 

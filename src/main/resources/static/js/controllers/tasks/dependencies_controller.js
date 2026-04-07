@@ -1,4 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
+import { resolveLabel } from "lib/i18n";
+import { STATUS_BADGE } from "lib/task-status";
 
 // Dependency picker — handles add/remove via DOM manipulation (hidden inputs).
 // Dependencies are saved with the form, not via separate API calls.
@@ -11,7 +13,6 @@ export default class extends Controller {
 
         this.afterSettleHandler = () => { this.bindPickers(); this.updateExcludeLists(); };
         document.addEventListener("htmx:afterSettle", this.afterSettleHandler);
-
     }
 
     disconnect() {
@@ -25,6 +26,7 @@ export default class extends Controller {
             select.addEventListener("change", (e) => {
                 const taskId = e.detail?.value;
                 const taskTitle = e.detail?.text;
+                const taskData = e.detail?.data;
                 if (!taskId) return;
 
                 const direction = select.dataset.direction;
@@ -33,15 +35,24 @@ export default class extends Controller {
                 const list = document.getElementById(listId);
                 if (!list) return;
 
-                const item = document.createElement("div");
-                item.className = "list-group-item d-flex align-items-center px-0 py-1 dep-item";
-                item.innerHTML =
-                    `<input type="hidden" name="${inputName}" value="${taskId}">` +
-                    `<span class="badge me-2 bg-secondary">${APP_CONFIG.messages["task.status.open"] || "Open"}</span>` +
-                    `<a class="flex-grow-1 small text-decoration-none" href="${APP_CONFIG.routes.tasks}/${taskId}" target="_blank">${taskTitle}</a>` +
-                    `<button type="button" class="btn btn-sm btn-outline-danger ms-2 border-0" ` +
-                    `data-action="click->tasks--dependencies#removeItem" title="${APP_CONFIG.messages["task.dependency.remove.title"] || "Remove dependency"}">` +
-                    `<i class="bi bi-x-lg"></i></button>`;
+                const template = document.getElementById("dep-item-template");
+                if (!template) return;
+                const item = template.content.firstElementChild.cloneNode(true);
+                item.querySelector('input[type="hidden"]').name = inputName;
+                item.querySelector('input[type="hidden"]').value = taskId;
+
+                const status = taskData?.status || "OPEN";
+                const info = STATUS_BADGE[status] || STATUS_BADGE.OPEN;
+                const badge = item.querySelector(".badge");
+                badge.textContent = resolveLabel("task.status", status);
+                badge.className = `badge me-2 ${info.css}`;
+
+                const link = item.querySelector("a");
+                link.href = APP_CONFIG.routes.taskDetail.resolve({ taskId });
+                link.textContent = taskTitle;
+                if (info.terminal) {
+                    link.classList.add("text-decoration-line-through");
+                }
                 list.appendChild(item);
 
                 select.reset();

@@ -20,6 +20,17 @@ public enum TaskStatus implements Translatable {
         return messageKey;
     }
 
+    public String getCssClass() {
+        return switch (this) {
+            case BACKLOG -> "bg-backlog";
+            case OPEN -> "bg-secondary";
+            case IN_PROGRESS -> "bg-warning text-dark";
+            case IN_REVIEW -> "bg-info text-white";
+            case COMPLETED -> "bg-success";
+            case CANCELLED -> "bg-dark";
+        };
+    }
+
     // Terminal statuses — tasks that are "done" (successfully or not).
     // Used by overdue checks, incomplete counts, and due reminders.
     private static final List<TaskStatus> TERMINAL = List.of(COMPLETED, CANCELLED);

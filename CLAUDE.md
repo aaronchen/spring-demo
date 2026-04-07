@@ -194,7 +194,7 @@ Entities with an owner implement `OwnedEntity` (`getUser()`, null = unassigned).
 
 ### Translatable Enum Pattern
 
-Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`, `Recurrence`. `TaskStatusFilter` is excluded (internal query param enum).
+Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageKey}}`. `Messages.get(Translatable)` for Java-side resolution. Implemented by: `TaskStatus`, `Priority`, `ProjectRole`, `ProjectStatus`, `Role`, `Recurrence`. `TaskStatusFilter` is excluded (internal query param enum). `TaskStatus.getCssClass()` returns the Bootstrap badge CSS class (e.g., `bg-success`) — use in templates via `${status.cssClass}`. JS-side equivalent: `STATUS_BADGE` map in `lib/task-status.js`.
 
 ### Confirm Dialog Pattern
 
@@ -211,9 +211,9 @@ Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageK
 
 **Public API** — consumers must NOT access `_`-prefixed internals:
 - **Properties:** `value` (get/set), `fetchFn` (get/set — `async (query, signal) => Array`)
-- **Methods:** `reset()`, `clear()`, `setValue(v, text)`, `getValue()`, `setSrc(url)`, `setOptions([{value, text}])`, `enable()`, `disable()`
+- **Methods:** `reset()`, `clear()`, `setValue(v, text)`, `getValue()`, `setSrc(url)`, `setOptions([{value, text, ...extra}])`, `enable()`, `disable()`
 - **Attributes:** `name`, `placeholder`, `disabled`, `readonly`, `src`, `prefetch`, `value-field`, `text-field`, `query-param`, `debounce`
-- **Events:** `change` with `{ detail: { value, text } }`
+- **Events:** `change` with `{ detail: { value, text, data } }` — `data` is the original item object (API response for remote, input object for `setOptions`, `dataset` object for static `<option data-*>`, or `undefined`)
 
 **`fetchFn`** overrides `src`-based fetching. Component handles debouncing, abort signals, loading/error states, and mapping via `value-field`/`text-field`. Dev handles URL construction, request method, auth.
 
@@ -343,6 +343,7 @@ static/js/
 - **Server data to JS** — Use Stimulus value attributes (`th:data-controller-name-value="${value}"`). Never use `window.GLOBAL = ...` or `<meta>` tags for controller-specific data. Exception: `APP_CONFIG` stays as a window global (dynamically generated, read everywhere).
 - **Destructive confirmations** — Use `hx-confirm` + `data-confirm-*` attributes. Never use `showConfirm` from inline scripts.
 - **CSRF** — Handled globally by `lib/htmx-csrf.js`. No per-page CSRF handling.
+- **`<template>` for JS-cloned markup** — When JS needs to add DOM elements that duplicate server-rendered markup, put a `<template id="...">` in the Thymeleaf file and clone via `template.content.firstElementChild.cloneNode(true)`. Thymeleaf processes `#{...}` inside `<template>` for i18n. JS populates dynamic values after cloning. Used by checklist items and dependency items.
 
 #### Frontend JS Rules
 
@@ -357,7 +358,7 @@ static/js/
 
 - **No `onclick`/`onchange`/`ondrag*`** — Use `data-action="event->controller#method"`. Use `:prevent`/`:stop` suffixes.
 - **No inline `<script>` that imports modules** — Inline scripts must be self-contained: no `import`, no `window.*` globals, no shared state. Reserved for page-specific pure client-side UI only (tab navigation, form field toggles). Keep under 30 lines. Exception: `admin/users.html` imports `showConfirm` (legacy — complex confirm dialog with form input).
-- **Import map in `<head>`** — All `lib/` modules registered in import map in `base.html`. Adding a new lib module requires adding it there.
+- **Import map in `<head>`** — All `lib/` modules and `controllers/` registered in import map in `base.html` with Thymeleaf `@{}` URLs for content-based cache versioning. Adding a new lib module or controller requires adding it there.
 
 #### Naming Conventions
 

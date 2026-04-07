@@ -50,7 +50,9 @@
 //   disable()         — set disabled attribute
 //
 // Events:
-//   change — { detail: { value, text }, bubbles: true } on user selection
+//   change — { detail: { value, text, data }, bubbles: true } on user selection
+//            data: original item object — API response item (remote), input object (setOptions),
+//            dataset object (static <option data-*>), or undefined (static <option> without data-*)
 //
 // CSS: load searchable-select-bootstrap5.css (or your own theme).
 
@@ -70,9 +72,11 @@ class SearchableSelect extends HTMLElement {
         this._staticOptions = [];
         this._emptyOption = null;
         this.querySelectorAll('option').forEach(opt => {
+            const data = Object.keys(opt.dataset).length > 0 ? { ...opt.dataset } : undefined;
             const entry = {
                 value: opt.value,
                 text: opt.textContent.trim(),
+                data,
                 selected: opt.selected || opt.hasAttribute('selected')
             };
             this._staticOptions.push(entry);
@@ -213,7 +217,7 @@ class SearchableSelect extends HTMLElement {
         }
     }
 
-    /** Replace local dataset with an array of { value, text } objects. Switches to local mode. */
+    /** Replace local dataset with an array of { value, text, ...extra } objects. Switches to local mode. */
     setOptions(options) {
         this._isRemote = false;
         this._src = null;
@@ -221,7 +225,7 @@ class SearchableSelect extends HTMLElement {
         this._cache = null;
         this._emptyOption = null;
         this._staticOptions = options.map(o => {
-            const entry = { value: String(o.value ?? ''), text: String(o.text ?? ''), selected: false };
+            const entry = { value: String(o.value ?? ''), text: String(o.text ?? ''), data: o, selected: false };
             if (entry.value === '') this._emptyOption = entry;
             return entry;
         });
@@ -319,13 +323,14 @@ class SearchableSelect extends HTMLElement {
             a.className = 'dropdown-item';
             a.href = '#';
             a.dataset.value = opt.value;
+            a._optionData = opt.data; // expando — data may be a complex object, not just strings
             a.textContent = opt.text;
             if (String(opt.value) === String(this._selectedValue)) {
                 a.classList.add('active');
             }
             a.addEventListener('mousedown', (e) => {
                 e.preventDefault(); // prevent blur before click fires
-                this._select(opt.value, opt.text);
+                this._select(opt.value, opt.text, opt.data);
                 this._close();
             });
             li.appendChild(a);
@@ -448,12 +453,12 @@ class SearchableSelect extends HTMLElement {
         const items = this._getSelectableItems();
         const target = items[this._highlightIndex];
         if (target) {
-            this._select(target.dataset.value, target.textContent);
+            this._select(target.dataset.value, target.textContent, target._optionData);
             this._close();
         }
     }
 
-    _select(value, text) {
+    _select(value, text, data) {
         const previous = this._selectedValue;
         this._selectedValue = value;
         this._selectedText = text;
@@ -462,7 +467,7 @@ class SearchableSelect extends HTMLElement {
         this._updateClear();
         if (value !== previous) {
             this.dispatchEvent(new CustomEvent('change', {
-                detail: { value, text },
+                detail: { value, text, data },
                 bubbles: true
             }));
         }
@@ -593,7 +598,8 @@ class SearchableSelect extends HTMLElement {
 
             const options = data.map(item => ({
                 value: String(item[this._valueField] ?? ''),
-                text: String(item[this._textField] ?? '')
+                text: String(item[this._textField] ?? ''),
+                data: item
             }));
 
             // Cache only in prefetch mode on initial (empty query) fetch

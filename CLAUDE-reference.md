@@ -37,6 +37,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - Status advance cycle: BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN
   - `isTerminal()` — returns true for COMPLETED and CANCELLED (done states)
   - `terminalStatuses()` — returns `List.of(COMPLETED, CANCELLED)`; used by overdue checks, incomplete counts, and due reminders
+  - `getCssClass()` — returns Bootstrap badge CSS class for the status (e.g., `"bg-success"` for COMPLETED); used in templates via `${status.cssClass}`
   - CANCELLED is not part of the advance cycle — it's set explicitly via the status radio buttons
   - Implements `Translatable`; `getMessageKey()` returns corresponding `task.status.*` message key
 
@@ -1422,11 +1423,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `htmx-errors.js` — global HTMX error/409 conflict handler
   - `flash-toast.js` — shows toast from URL flash parameters on page load
   - `date-range.js` — date range picker utilities for audit page
+  - `task-status.js` — `STATUS_BADGE` map: task status → `{ css, terminal }` for badge styling in JS; mirrors `TaskStatus.getCssClass()` on the server
 - `static/js/components/searchable-select.js` - Reusable `<searchable-select>` Web Component with public API
   - Three modes: local (static options), remote prefetch (`prefetch` attr), remote server search
   - Public methods: `reset()`, `clear()`, `setValue()`, `getValue()`, `setSrc()`, `setOptions()`, `enable()`, `disable()`
   - Properties: `value` (get/set), `fetchFn` (get/set — `async (query, signal) => Array`)
   - Attributes: `disabled`, `readonly`, `src`, `prefetch`, `value-field`, `text-field`, `query-param`, `debounce`
+  - `change` event includes `data` field: original API response item (remote), input object (`setOptions`), `dataset` object (static `<option data-*>`), or `undefined`
 - Bootstrap Icons served via WebJar (`bootstrap-icons:1.13.1`); loaded globally in `base.html`
 - Tribute.js served via WebJar (`github-com-zurb-tribute:5.1.3`); loaded globally in `base.html`
 - Stimulus served via WebJar (`hotwired__stimulus:3.2.2`); mapped via `<script type="importmap">` in `base.html`
