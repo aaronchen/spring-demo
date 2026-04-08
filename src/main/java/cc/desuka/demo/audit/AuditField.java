@@ -1,11 +1,5 @@
 package cc.desuka.demo.audit;
 
-import cc.desuka.demo.model.Priority;
-import cc.desuka.demo.model.ProjectRole;
-import cc.desuka.demo.model.ProjectStatus;
-import cc.desuka.demo.model.Recurrence;
-import cc.desuka.demo.model.Role;
-import cc.desuka.demo.model.TaskStatus;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -63,44 +57,21 @@ public record AuditField(
     public static final String FIELD_REF_TYPE = "refType";
     public static final String FIELD_ITEMS = "items";
 
-    // --- Audit type registries (single source of truth for known entity and enum types) ---
-
-    public static final String REF_PROJECT = "Project";
-    public static final String REF_TASK = "Task";
-    public static final String REF_USER = "User";
-    public static final String REF_SPRINT = "Sprint";
-    public static final String REF_TEMPLATE = "RecurringTaskTemplate";
-
-    public static final Map<String, Class<? extends Enum<?>>> ENUM_REGISTRY =
-            Map.of(
-                    "TaskStatus", TaskStatus.class,
-                    "Priority", Priority.class,
-                    "ProjectStatus", ProjectStatus.class,
-                    "Role", Role.class,
-                    "ProjectRole", ProjectRole.class,
-                    "Recurrence", Recurrence.class);
-
     // --- Factory methods ---
 
     public static AuditField text(String value) {
         return new AuditField(FieldType.TEXT, value, null, null, null, null, null);
     }
 
-    public static AuditField enumValue(String constant, Class<? extends Enum<?>> enumClass) {
+    public static AuditField enumValue(Enum<?> value) {
         return new AuditField(
                 FieldType.ENUM,
-                constant,
-                enumClass != null ? enumClass.getSimpleName() : null,
+                value != null ? value.name() : null,
+                value != null ? value.getDeclaringClass().getName() : null,
                 null,
                 null,
                 null,
                 null);
-    }
-
-    public static AuditField enumValue(Enum<?> value) {
-        return enumValue(
-                value != null ? value.name() : null,
-                value != null ? value.getDeclaringClass() : null);
     }
 
     public static AuditField date(LocalDate value) {
@@ -136,23 +107,23 @@ public record AuditField(
                 null);
     }
 
-    public static AuditField ref(Object id, String name, String entityType) {
+    public static AuditField ref(Class<?> entityClass, Object id, String name) {
         return new AuditField(
                 FieldType.REFERENCE,
                 null,
                 null,
                 id != null ? id.toString() : null,
                 name,
-                entityType,
+                entityClass.getSimpleName(),
                 null);
     }
 
     public static <T> AuditField ref(
-            T entity, Function<T, ?> id, Function<T, String> name, String entityType) {
+            T entity, Class<T> entityClass, Function<T, ?> id, Function<T, String> name) {
         return ref(
+                entityClass,
                 entity != null ? id.apply(entity) : null,
-                entity != null ? name.apply(entity) : null,
-                entityType);
+                entity != null ? name.apply(entity) : null);
     }
 
     public static AuditField collection(List<String> items) {

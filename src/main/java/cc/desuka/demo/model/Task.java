@@ -400,7 +400,7 @@ public class Task implements OwnedEntity, Auditable {
         Map<String, AuditField> snapshot = new LinkedHashMap<>();
         snapshot.put(
                 FIELD_PROJECT,
-                AuditField.ref(project, Project::getId, Project::getName, AuditField.REF_PROJECT));
+                AuditField.ref(project, Project.class, Project::getId, Project::getName));
         snapshot.put(FIELD_TITLE, AuditField.text(title));
         snapshot.put(FIELD_DESCRIPTION, AuditField.text(description));
         snapshot.put(FIELD_STATUS, AuditField.enumValue(status));
@@ -409,17 +409,15 @@ public class Task implements OwnedEntity, Auditable {
         snapshot.put(FIELD_DUE_DATE, AuditField.date(dueDate));
         snapshot.put(FIELD_EFFORT, AuditField.number(effort));
         snapshot.put(
-                FIELD_SPRINT,
-                AuditField.ref(sprint, Sprint::getId, Sprint::getName, AuditField.REF_SPRINT));
-        snapshot.put(
-                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
+                FIELD_SPRINT, AuditField.ref(sprint, Sprint.class, Sprint::getId, Sprint::getName));
+        snapshot.put(FIELD_USER, AuditField.ref(user, User.class, User::getId, User::getName));
         snapshot.put(
                 FIELD_TEMPLATE,
                 AuditField.ref(
                         template,
+                        RecurringTaskTemplate.class,
                         RecurringTaskTemplate::getId,
-                        RecurringTaskTemplate::getTitle,
-                        AuditField.REF_TEMPLATE));
+                        RecurringTaskTemplate::getTitle));
         snapshot.put(FIELD_TAGS, AuditField.collection(tags, Tag::getName));
         snapshot.put(
                 FIELD_CHECKLIST_ITEMS,

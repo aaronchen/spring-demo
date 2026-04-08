@@ -309,8 +309,7 @@ public class RecurringTaskTemplate implements Auditable {
         snapshot.put(FIELD_END_DATE, AuditField.date(endDate));
         snapshot.put(FIELD_ENABLED, AuditField.bool(enabled));
         snapshot.put(
-                FIELD_ASSIGNEE,
-                AuditField.ref(assignee, User::getId, User::getName, AuditField.REF_USER));
+                FIELD_ASSIGNEE, AuditField.ref(assignee, User.class, User::getId, User::getName));
         snapshot.put(FIELD_TAGS, AuditField.collection(tags, Tag::getName));
         return snapshot;
     }

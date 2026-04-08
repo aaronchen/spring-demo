@@ -91,8 +91,7 @@ public class ProjectMember implements Auditable {
     @Override
     public Map<String, AuditField> toAuditSnapshot() {
         Map<String, AuditField> snapshot = new LinkedHashMap<>();
-        snapshot.put(
-                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
+        snapshot.put(FIELD_USER, AuditField.ref(user, User.class, User::getId, User::getName));
         snapshot.put(FIELD_ROLE, AuditField.enumValue(role));
         return snapshot;
     }

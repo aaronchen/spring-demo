@@ -29,21 +29,24 @@ class AuditTemplateHelperTest {
     void resolvesTaskStatusLabel() {
         when(messageSource.getMessage(eq("task.status.open"), any(), eq("OPEN"), any()))
                 .thenReturn("Open");
-        assertThat(helper.resolveEnumLabel("TaskStatus", "OPEN")).isEqualTo("Open");
+        assertThat(helper.resolveEnumLabel("cc.desuka.demo.model.TaskStatus", "OPEN"))
+                .isEqualTo("Open");
     }
 
     @Test
     void resolvesPriorityLabel() {
         when(messageSource.getMessage(eq("task.priority.high"), any(), eq("HIGH"), any()))
                 .thenReturn("High");
-        assertThat(helper.resolveEnumLabel("Priority", "HIGH")).isEqualTo("High");
+        assertThat(helper.resolveEnumLabel("cc.desuka.demo.model.Priority", "HIGH"))
+                .isEqualTo("High");
     }
 
     @Test
     void resolvesProjectRoleLabel() {
         when(messageSource.getMessage(eq("project.role.owner"), any(), eq("OWNER"), any()))
                 .thenReturn("Owner");
-        assertThat(helper.resolveEnumLabel("ProjectRole", "OWNER")).isEqualTo("Owner");
+        assertThat(helper.resolveEnumLabel("cc.desuka.demo.model.ProjectRole", "OWNER"))
+                .isEqualTo("Owner");
     }
 
     @Test
@@ -53,13 +56,14 @@ class AuditTemplateHelperTest {
 
     @Test
     void enumFallsBackToConstantForInvalidConstant() {
-        assertThat(helper.resolveEnumLabel("TaskStatus", "NONEXISTENT")).isEqualTo("NONEXISTENT");
+        assertThat(helper.resolveEnumLabel("cc.desuka.demo.model.TaskStatus", "NONEXISTENT"))
+                .isEqualTo("NONEXISTENT");
     }
 
     @Test
     void enumReturnsEmptyStringForNullInputs() {
         assertThat(helper.resolveEnumLabel(null, "OPEN")).isEmpty();
-        assertThat(helper.resolveEnumLabel("TaskStatus", null)).isEmpty();
+        assertThat(helper.resolveEnumLabel("cc.desuka.demo.model.TaskStatus", null)).isEmpty();
     }
 
     // --- Reference URL resolution ---

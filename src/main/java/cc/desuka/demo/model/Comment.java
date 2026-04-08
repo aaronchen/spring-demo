@@ -89,10 +89,8 @@ public class Comment implements OwnedEntity, Auditable {
     public Map<String, AuditField> toAuditSnapshot() {
         Map<String, AuditField> snapshot = new LinkedHashMap<>();
         snapshot.put(FIELD_TEXT, AuditField.text(text));
-        snapshot.put(
-                FIELD_TASK, AuditField.ref(task, Task::getId, Task::getTitle, AuditField.REF_TASK));
-        snapshot.put(
-                FIELD_USER, AuditField.ref(user, User::getId, User::getName, AuditField.REF_USER));
+        snapshot.put(FIELD_TASK, AuditField.ref(task, Task.class, Task::getId, Task::getTitle));
+        snapshot.put(FIELD_USER, AuditField.ref(user, User.class, User::getId, User::getName));
         return snapshot;
     }
 

@@ -2,6 +2,7 @@ package cc.desuka.demo.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.TaskStatus;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,12 +40,12 @@ class AuditDetailsTest {
         Map<String, AuditField> before = new LinkedHashMap<>();
         before.put(
                 "project",
-                AuditField.ref("00000000-0000-0000-0000-000000000001", "Old Name", "Project"));
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000001", "Old Name"));
 
         Map<String, AuditField> after = new LinkedHashMap<>();
         after.put(
                 "project",
-                AuditField.ref("00000000-0000-0000-0000-000000000001", "New Name", "Project"));
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000001", "New Name"));
 
         Map<String, Object> changes = AuditDetails.diff(before, after);
         assertThat(changes).isEmpty();
@@ -55,12 +56,12 @@ class AuditDetailsTest {
         Map<String, AuditField> before = new LinkedHashMap<>();
         before.put(
                 "project",
-                AuditField.ref("00000000-0000-0000-0000-000000000001", "Project A", "Project"));
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000001", "Project A"));
 
         Map<String, AuditField> after = new LinkedHashMap<>();
         after.put(
                 "project",
-                AuditField.ref("00000000-0000-0000-0000-000000000002", "Project B", "Project"));
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000002", "Project B"));
 
         Map<String, Object> changes = AuditDetails.diff(before, after);
         assertThat(changes).containsKey("project");
@@ -70,10 +71,10 @@ class AuditDetailsTest {
     @SuppressWarnings("unchecked")
     void diffTypedProducesOldNewAuditFields() {
         Map<String, AuditField> before = new LinkedHashMap<>();
-        before.put("status", AuditField.enumValue("OPEN", TaskStatus.class));
+        before.put("status", AuditField.enumValue(TaskStatus.OPEN));
 
         Map<String, AuditField> after = new LinkedHashMap<>();
-        after.put("status", AuditField.enumValue("IN_PROGRESS", TaskStatus.class));
+        after.put("status", AuditField.enumValue(TaskStatus.IN_PROGRESS));
 
         Map<String, Object> changes = AuditDetails.diff(before, after);
         Map<String, Object> statusChange = (Map<String, Object>) changes.get("status");
@@ -97,7 +98,7 @@ class AuditDetailsTest {
     void toJsonHandlesTypedSnapshot() {
         Map<String, AuditField> snapshot = new LinkedHashMap<>();
         snapshot.put("title", AuditField.text("Test"));
-        snapshot.put("status", AuditField.enumValue("OPEN", TaskStatus.class));
+        snapshot.put("status", AuditField.enumValue(TaskStatus.OPEN));
 
         String json = AuditDetails.toJson(snapshot);
         assertThat(json).contains("\"type\"");

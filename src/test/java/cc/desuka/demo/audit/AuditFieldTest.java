@@ -2,6 +2,7 @@ package cc.desuka.demo.audit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.TaskStatus;
 import java.time.LocalDate;
 import java.util.List;
@@ -30,10 +31,10 @@ class AuditFieldTest {
 
     @Test
     void enumFactoryStoresClassAndConstant() {
-        AuditField field = AuditField.enumValue("OPEN", TaskStatus.class);
+        AuditField field = AuditField.enumValue(TaskStatus.OPEN);
         assertThat(field.type()).isEqualTo(AuditField.FieldType.ENUM);
         assertThat(field.value()).isEqualTo("OPEN");
-        assertThat(field.enumClass()).isEqualTo("TaskStatus");
+        assertThat(field.enumClass()).isEqualTo("cc.desuka.demo.model.TaskStatus");
     }
 
     @Test
@@ -66,7 +67,7 @@ class AuditFieldTest {
     @Test
     void refFactoryStoresIdAndNameAndType() {
         AuditField field =
-                AuditField.ref("00000000-0000-0000-0000-000000000005", "My Project", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000005", "My Project");
         assertThat(field.type()).isEqualTo(AuditField.FieldType.REFERENCE);
         assertThat(field.refId()).isEqualTo("00000000-0000-0000-0000-000000000005");
         assertThat(field.refName()).isEqualTo("My Project");
@@ -114,25 +115,25 @@ class AuditFieldTest {
     @Test
     void valueEqualsReferenceComparesById() {
         AuditField ref1 =
-                AuditField.ref("00000000-0000-0000-0000-000000000005", "Old Name", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000005", "Old Name");
         AuditField ref2 =
-                AuditField.ref("00000000-0000-0000-0000-000000000005", "New Name", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000005", "New Name");
         assertThat(AuditField.valueEquals(ref1, ref2)).isTrue();
     }
 
     @Test
     void valueEqualsReferenceDifferentIds() {
         AuditField ref1 =
-                AuditField.ref("00000000-0000-0000-0000-000000000005", "Project A", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000005", "Project A");
         AuditField ref2 =
-                AuditField.ref("00000000-0000-0000-0000-000000000007", "Project B", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000007", "Project B");
         assertThat(AuditField.valueEquals(ref1, ref2)).isFalse();
     }
 
     @Test
     void valueEqualsReferenceFallsBackToNameWhenIdNull() {
-        AuditField ref1 = AuditField.ref(null, "Same Name", "Project");
-        AuditField ref2 = AuditField.ref(null, "Same Name", "Project");
+        AuditField ref1 = AuditField.ref(Project.class, null, "Same Name");
+        AuditField ref2 = AuditField.ref(Project.class, null, "Same Name");
         assertThat(AuditField.valueEquals(ref1, ref2)).isTrue();
     }
 
@@ -151,7 +152,7 @@ class AuditFieldTest {
     @SuppressWarnings("unchecked")
     void jsonRoundTripPreservesAuditField() {
         AuditField field =
-                AuditField.ref("00000000-0000-0000-0000-000000000005", "Test", "Project");
+                AuditField.ref(Project.class, "00000000-0000-0000-0000-000000000005", "Test");
         String json = MAPPER.writeValueAsString(field);
 
         Map<String, Object> parsed = MAPPER.readValue(json, Map.class);
@@ -164,13 +165,13 @@ class AuditFieldTest {
     @Test
     @SuppressWarnings("unchecked")
     void jsonRoundTripForEnum() {
-        AuditField field = AuditField.enumValue("OPEN", TaskStatus.class);
+        AuditField field = AuditField.enumValue(TaskStatus.OPEN);
         String json = MAPPER.writeValueAsString(field);
 
         Map<String, Object> parsed = MAPPER.readValue(json, Map.class);
         assertThat(parsed.get("type")).isEqualTo("ENUM");
         assertThat(parsed.get("value")).isEqualTo("OPEN");
-        assertThat(parsed.get("enumClass")).isEqualTo("TaskStatus");
+        assertThat(parsed.get("enumClass")).isEqualTo("cc.desuka.demo.model.TaskStatus");
     }
 
     // --- diffChecklist ---

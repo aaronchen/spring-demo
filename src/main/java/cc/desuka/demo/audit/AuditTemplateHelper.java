@@ -1,6 +1,8 @@
 package cc.desuka.demo.audit;
 
 import cc.desuka.demo.config.AppRoutesProperties;
+import cc.desuka.demo.model.Project;
+import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.Translatable;
 import cc.desuka.demo.util.MentionUtils;
 import java.util.Collection;
@@ -32,16 +34,20 @@ public class AuditTemplateHelper {
 
     public String resolveEnumLabel(String enumClass, String constant) {
         if (enumClass == null || constant == null) return "";
-        Class<? extends Enum<?>> clazz = AuditField.ENUM_REGISTRY.get(enumClass);
-        if (clazz == null) return constant;
-        for (Enum<?> value : clazz.getEnumConstants()) {
-            if (value.name().equals(constant) && value instanceof Translatable translatable) {
-                return messageSource.getMessage(
-                        translatable.getMessageKey(),
-                        null,
-                        constant,
-                        LocaleContextHolder.getLocale());
+        try {
+            Class<?> clazz = Class.forName(enumClass);
+            for (Object value : clazz.getEnumConstants()) {
+                if (((Enum<?>) value).name().equals(constant)
+                        && value instanceof Translatable translatable) {
+                    return messageSource.getMessage(
+                            translatable.getMessageKey(),
+                            null,
+                            constant,
+                            LocaleContextHolder.getLocale());
+                }
             }
+        } catch (ClassNotFoundException e) {
+            // Unknown enum class — fall back to raw constant
         }
         return constant;
     }
@@ -50,12 +56,13 @@ public class AuditTemplateHelper {
 
     public String resolveUrl(String refType, String refId) {
         if (refType == null || refId == null) return null;
-        return switch (refType) {
-            case AuditField.REF_PROJECT ->
-                    appRoutes.getProjectDetail().params("projectId", refId).build();
-            case AuditField.REF_TASK -> appRoutes.getTaskDetail().params("taskId", refId).build();
-            default -> null;
-        };
+        if (Project.class.getSimpleName().equals(refType)) {
+            return appRoutes.getProjectDetail().params("projectId", refId).build();
+        }
+        if (Task.class.getSimpleName().equals(refType)) {
+            return appRoutes.getTaskDetail().params("taskId", refId).build();
+        }
+        return null;
     }
 
     // --- Checklist helpers ---
