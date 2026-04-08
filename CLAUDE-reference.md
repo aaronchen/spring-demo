@@ -194,10 +194,10 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `audit/AuditField.java` - Typed audit snapshot value record
   - `FieldType` enum: `TEXT`, `ENUM`, `DATE`, `NUMBER`, `BOOLEAN`, `REFERENCE`, `COLLECTION`, `CHECKLIST`
   - Static factory methods: `text()`, `enumValue()`, `date()`, `number()`, `bool()`, `ref()`, `collection()`, `checklist()`
-  - Convenience overloads: `enumValue(Enum<?>)`, `ref(T, Function<T,Long>, Function<T,String>, String)`, `collection(Collection<T>, Function<T,String>)`, `checklist(Collection<T>, Predicate<T>, Function<T,String>)`
+  - Convenience overloads: `enumValue(Enum<?>)` stores full class name, `ref(T, Class<T>, Function, Function)` derives entity type from class, `collection(Collection<T>, Function)`, `checklist(Collection<T>, Predicate, Function)`
   - `valueEquals(AuditField, AuditField)` — semantic comparison (REFERENCE by refId, COLLECTION/CHECKLIST by items)
   - `diffChecklist(List, List)` — item-level diff between checklist snapshots
-  - Constants: `ENUM_REGISTRY`, `REF_*` entity types, `FIELD_*` JSON field names, checklist prefixes
+  - Constants: `FIELD_*` JSON field names, checklist prefixes
 
 - `audit/AuditDetails.java` - Audit detail utilities
   - `toJson(Map<String, ?>)` — serializes snapshot to JSON string
@@ -205,7 +205,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `resolveDisplayNames(Map, MessageSource, Locale)` — maps raw field keys to human-readable names via `audit.field.{key}` message keys; falls back to raw key if no message found
 
 - `audit/AuditTemplateHelper.java` - `@Component` for Thymeleaf audit rendering
-  - `resolveEnumLabel(enumClass, constant)` — translates enum constant to localized label via `ENUM_REGISTRY`
+  - `resolveEnumLabel(enumClass, constant)` — translates enum constant to localized label via `Class.forName()` (full class name stored in audit data)
   - `resolveUrl(refType, refId)` — resolves entity reference to URL (Project, Task)
   - `diffChecklist(oldItems, newItems)` — delegates to `AuditField.diffChecklist()`
   - `formatItem(item)` — decodes `[x]/[ ]` prefix to Unicode ☑/☐
@@ -1101,7 +1101,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `@Order(1)` filter chain for `/h2-console/**` — permits all, disables CSRF, allows frames (sameOrigin)
   - Ordered before the main filter chain so H2 paths are matched first
 
-- `config/H2DevConfig.java` - H2 database tooling (`@Profile("dev")`)
+- `config/DevH2Config.java` - H2 database tooling (`@Profile("dev")`)
   - `startH2WebServer()` — starts H2 web server on port 8082
   - `h2ConsoleServlet()` — registers H2 console servlet at `/h2-console/*`
 

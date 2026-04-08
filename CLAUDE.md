@@ -404,7 +404,7 @@ DevTools hot-reloads most changes. MapStruct mapper changes require `./mvnw comp
 - **`prod`** — PostgreSQL, Flyway migrations, no demo data, Swagger UI disabled
 - **`test`** — H2 (`testdb`), no SQL logging, Flyway disabled
 
-Profile-gated: `DataLoader` (dev), `H2DevConfig` (dev), `DevSecurityConfig` (dev), login page demo credentials (dev)
+Profile-gated: `DataLoader` (dev), `DevH2Config` (dev), `DevSecurityConfig` (dev), login page demo credentials (dev)
 
 ### Test Patterns
 

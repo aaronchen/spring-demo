@@ -397,7 +397,7 @@ spring-demo/
 │   │   │   ├── DevSecurityConfig.java      # H2 console security rules (@Profile("dev"))
 │   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
-│   │   │   ├── H2DevConfig.java            # H2 web server + console servlet (@Profile("dev"))
+│   │   │   ├── DevH2Config.java            # H2 web server + console servlet (@Profile("dev"))
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
 │   │   │   ├── Settings.java               # Typed settings POJO with defaults
 │   │   │   ├── UserPreferences.java        # Typed per-user preferences POJO with defaults

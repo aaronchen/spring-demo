@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 @Profile("dev")
-public class H2DevConfig {
+public class DevH2Config {
 
     @Bean
     public CommandLineRunner startH2WebServer() {
