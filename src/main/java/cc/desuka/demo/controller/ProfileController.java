@@ -125,6 +125,8 @@ public class ProfileController {
             @RequestParam String taskView,
             @RequestParam String defaultUserFilter,
             @RequestParam(defaultValue = "false") boolean dueReminder,
+            @RequestParam String pinnedSortOrder,
+            @RequestParam int pinnedLimit,
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             RedirectAttributes redirectAttributes) {
         UUID userId = currentDetails.getUser().getId();
@@ -133,6 +135,9 @@ public class ProfileController {
                 userId, UserPreferences.KEY_DEFAULT_USER_FILTER, defaultUserFilter);
         userPreferenceService.save(
                 userId, UserPreferences.KEY_DUE_REMINDER, String.valueOf(dueReminder));
+        userPreferenceService.save(userId, UserPreferences.KEY_PINNED_SORT_ORDER, pinnedSortOrder);
+        userPreferenceService.save(
+                userId, UserPreferences.KEY_PINNED_LIMIT, String.valueOf(pinnedLimit));
         redirectAttributes.addFlashAttribute("preferencesSaved", true);
         return "redirect:" + appRoutes.getProfile();
     }

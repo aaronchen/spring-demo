@@ -1,0 +1,14 @@
+<!--/* Pin toggle icon — reusable inline toggle for project/task names.
+     Dispatches pin:toggle custom event; pins_controller.js listens on document. */-->
+<span th:fragment="pin-icon(entityType, entityId, entityTitle)"
+      class="btn-pin d-none d-lg-inline" data-pin-target
+      th:data-entity-type="${entityType}"
+      th:data-entity-id="${entityId}"
+      th:data-entity-title="${entityTitle}"
+      role="button" tabindex="0"
+      th:title="#{pins.toggle}"
+      onclick="document.dispatchEvent(new CustomEvent('pin:toggle', {detail: this.dataset}))"
+      xmlns:th="http://www.thymeleaf.org">
+    <i class="bi bi-pin-angle"></i>
+    <i class="bi bi-pin-angle-fill d-none"></i>
+</span>

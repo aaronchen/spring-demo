@@ -169,11 +169,15 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `FIELD_*` constants, `Auditable` interface, `toAuditSnapshot()`
   - Only available on non-sprint-enabled projects
 
-- `model/RecentView.java` - JPA entity for recently viewed items
-  - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (Long), entityTitle (max 200), viewedAt (LocalDateTime)
+- `model/RecentView.java` - JPA entity for recently viewed items; implements `OwnedEntity`
+  - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (String), entityTitle (max 200), viewedAt (LocalDateTime)
   - `TYPE_TASK`, `TYPE_PROJECT` — entity type constants
-  - `@Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "entity_type", "entity_id"}))` — one row per user+type+entity
-  - `@ManyToOne(fetch = LAZY)` + `@JoinColumn(name = "user_id")` — owning side to User
+  - Unique constraint: (user_id, entity_type, entity_id)
+
+- `model/PinnedItem.java` - JPA entity for user-pinned items; implements `OwnedEntity`
+  - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (String), entityTitle (max 200), pinnedAt (LocalDateTime), sortOrder (int)
+  - `TYPE_TASK`, `TYPE_PROJECT` — entity type constants
+  - Unique constraint: (user_id, entity_type, entity_id)
   - Manual getters/setters (no Lombok on entities)
 
 - `model/AuditLog.java` - Audit log entity

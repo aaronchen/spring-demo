@@ -10,6 +10,7 @@ import cc.desuka.demo.event.TaskUpdatedEvent;
 import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
+import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.Sprint;
@@ -40,6 +41,7 @@ public class TaskService {
     private final TagService tagService;
     private final UserService userService;
     private final RecentViewService recentViewService;
+    private final PinnedItemService pinnedItemService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -51,6 +53,7 @@ public class TaskService {
             TagService tagService,
             UserService userService,
             RecentViewService recentViewService,
+            PinnedItemService pinnedItemService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.taskRepository = taskRepository;
@@ -60,6 +63,7 @@ public class TaskService {
         this.tagService = tagService;
         this.userService = userService;
         this.recentViewService = recentViewService;
+        this.pinnedItemService = pinnedItemService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -186,6 +190,7 @@ public class TaskService {
 
         String snapshot = AuditDetails.toJson(task.toAuditSnapshot());
         recentViewService.deleteByEntity(RecentView.TYPE_TASK, id);
+        pinnedItemService.deleteByEntity(PinnedItem.TYPE_TASK, id);
         taskRepository.delete(task);
         eventPublisher.publishEvent(
                 new AuditEvent(

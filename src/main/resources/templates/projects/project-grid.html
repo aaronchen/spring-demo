@@ -12,6 +12,7 @@
                         <a th:href="@{/projects/{id}(id=${project.id})}"
                            class="text-decoration-none"
                            th:text="${project.name}">Project Name</a>
+                        <th:block th:replace="~{fragments/pin-icon :: pin-icon('PROJECT', ${project.id}, ${project.name})}" />
                     </h5>
                     <p class="card-text text-muted small" th:if="${project.description}"
                        th:text="${#strings.abbreviate(project.description, 120)}">Description</p>

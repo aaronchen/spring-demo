@@ -11,10 +11,12 @@ import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Notification;
 import cc.desuka.demo.model.NotificationType;
+import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.Recurrence;
 import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Role;
@@ -29,8 +31,10 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.AuditLogRepository;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.repository.NotificationRepository;
+import cc.desuka.demo.repository.PinnedItemRepository;
 import cc.desuka.demo.repository.ProjectMemberRepository;
 import cc.desuka.demo.repository.ProjectRepository;
+import cc.desuka.demo.repository.RecentViewRepository;
 import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.repository.SavedViewRepository;
 import cc.desuka.demo.repository.SettingRepository;
@@ -69,6 +73,8 @@ public class DataLoader implements CommandLineRunner {
     private final SettingRepository settingRepository;
     private final SprintRepository sprintRepository;
     private final RecurringTaskTemplateRepository recurringTaskTemplateRepository;
+    private final RecentViewRepository recentViewRepository;
+    private final PinnedItemRepository pinnedItemRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataLoader(
@@ -84,6 +90,8 @@ public class DataLoader implements CommandLineRunner {
             SettingRepository settingRepository,
             SprintRepository sprintRepository,
             RecurringTaskTemplateRepository recurringTaskTemplateRepository,
+            RecentViewRepository recentViewRepository,
+            PinnedItemRepository pinnedItemRepository,
             PasswordEncoder passwordEncoder) {
         this.taskRepository = taskRepository;
         this.tagRepository = tagRepository;
@@ -97,6 +105,8 @@ public class DataLoader implements CommandLineRunner {
         this.settingRepository = settingRepository;
         this.sprintRepository = sprintRepository;
         this.recurringTaskTemplateRepository = recurringTaskTemplateRepository;
+        this.recentViewRepository = recentViewRepository;
+        this.pinnedItemRepository = pinnedItemRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -2327,6 +2337,121 @@ public class DataLoader implements CommandLineRunner {
                                 taskQuery(null, null, null),
                                 "board",
                                 sortUpdatedAtDesc)));
+
+        // ── Recent Views ──────────────────────────────────────────────────────
+        // Alice recently viewed some tasks and projects
+        recentViewRepository.saveAll(
+                List.of(
+                        recentView(
+                                alice,
+                                RecentView.TYPE_PROJECT,
+                                platform.getId(),
+                                platform.getName(),
+                                now.minusHours(1)),
+                        recentView(
+                                alice,
+                                RecentView.TYPE_TASK,
+                                t1.getId(),
+                                t1.getTitle(),
+                                now.minusHours(2)),
+                        recentView(
+                                alice,
+                                RecentView.TYPE_TASK,
+                                t2.getId(),
+                                t2.getTitle(),
+                                now.minusHours(3)),
+                        recentView(
+                                alice,
+                                RecentView.TYPE_PROJECT,
+                                product.getId(),
+                                product.getName(),
+                                now.minusHours(5)),
+                        recentView(
+                                alice,
+                                RecentView.TYPE_TASK,
+                                t4.getId(),
+                                t4.getTitle(),
+                                now.minusHours(6))));
+
+        // Bob recently viewed some tasks and projects
+        recentViewRepository.saveAll(
+                List.of(
+                        recentView(
+                                bob,
+                                RecentView.TYPE_TASK,
+                                t7.getId(),
+                                t7.getTitle(),
+                                now.minusHours(1)),
+                        recentView(
+                                bob,
+                                RecentView.TYPE_PROJECT,
+                                security.getId(),
+                                security.getName(),
+                                now.minusHours(2)),
+                        recentView(
+                                bob,
+                                RecentView.TYPE_TASK,
+                                t8.getId(),
+                                t8.getTitle(),
+                                now.minusHours(4))));
+
+        // ── Pinned Items ──────────────────────────────────────────────────────
+        // Alice pinned her key projects and a few important tasks
+        pinnedItemRepository.saveAll(
+                List.of(
+                        pinnedItem(
+                                alice,
+                                PinnedItem.TYPE_PROJECT,
+                                platform.getId(),
+                                platform.getName(),
+                                now.minusDays(5),
+                                0),
+                        pinnedItem(
+                                alice,
+                                PinnedItem.TYPE_PROJECT,
+                                product.getId(),
+                                product.getName(),
+                                now.minusDays(3),
+                                1),
+                        pinnedItem(
+                                alice,
+                                PinnedItem.TYPE_TASK,
+                                t1.getId(),
+                                t1.getTitle(),
+                                now.minusDays(2),
+                                2),
+                        pinnedItem(
+                                alice,
+                                PinnedItem.TYPE_TASK,
+                                t2.getId(),
+                                t2.getTitle(),
+                                now.minusDays(1),
+                                3)));
+
+        // Bob pinned one project and two tasks
+        pinnedItemRepository.saveAll(
+                List.of(
+                        pinnedItem(
+                                bob,
+                                PinnedItem.TYPE_PROJECT,
+                                security.getId(),
+                                security.getName(),
+                                now.minusDays(4),
+                                0),
+                        pinnedItem(
+                                bob,
+                                PinnedItem.TYPE_TASK,
+                                t7.getId(),
+                                t7.getTitle(),
+                                now.minusDays(2),
+                                1),
+                        pinnedItem(
+                                bob,
+                                PinnedItem.TYPE_TASK,
+                                t8.getId(),
+                                t8.getTitle(),
+                                now.minusDays(1),
+                                2)));
     }
 
     private Task task(
@@ -2423,5 +2548,25 @@ public class DataLoader implements CommandLineRunner {
             List<SavedViewData.SortField> sort) {
         SavedViewData data = SavedViewData.ofTask(query, view, sort);
         return new SavedView(user, name, data.toJson());
+    }
+
+    private RecentView recentView(
+            User user, String entityType, Object entityId, String title, LocalDateTime viewedAt) {
+        RecentView rv = new RecentView(user, entityType, entityId.toString(), title);
+        rv.setViewedAt(viewedAt);
+        return rv;
+    }
+
+    private PinnedItem pinnedItem(
+            User user,
+            String entityType,
+            Object entityId,
+            String title,
+            LocalDateTime pinnedAt,
+            int sortOrder) {
+        PinnedItem pin = new PinnedItem(user, entityType, entityId.toString(), title);
+        pin.setPinnedAt(pinnedAt);
+        pin.setSortOrder(sortOrder);
+        return pin;
     }
 }

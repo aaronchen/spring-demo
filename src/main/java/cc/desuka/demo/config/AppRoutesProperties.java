@@ -83,6 +83,7 @@ public class AppRoutesProperties {
     private RouteTemplate apiUsers = new RouteTemplate("/api/users");
     private RouteTemplate apiTags = new RouteTemplate("/api/tags");
     private RouteTemplate apiNotifications = new RouteTemplate("/api/notifications");
+    private RouteTemplate apiPins = new RouteTemplate("/api/pins");
     private RouteTemplate apiPresence = new RouteTemplate("/api/presence");
     private RouteTemplate apiAnalytics = new RouteTemplate("/api/analytics");
     private RouteTemplate apiViews = new RouteTemplate("/api/views");

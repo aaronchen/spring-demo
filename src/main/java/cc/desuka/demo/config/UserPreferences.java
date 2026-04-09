@@ -25,6 +25,13 @@ public class UserPreferences {
 
     public static final String KEY_DEFAULT_USER_FILTER = "defaultUserFilter";
     public static final String KEY_DUE_REMINDER = "dueReminder";
+    public static final String KEY_PINNED_SORT_ORDER = "pinnedSortOrder";
+    public static final String KEY_PINNED_LIMIT = "pinnedLimit";
+
+    public static final String SORT_PINNED_DATE = "pinnedDate";
+    public static final String SORT_NAME = "name";
+    public static final String SORT_LAST_VIEWED = "lastViewed";
+    public static final String SORT_MANUAL = "manual";
 
     public static final String VIEW_CARDS = "cards";
     public static final String VIEW_TABLE = "table";
@@ -36,6 +43,8 @@ public class UserPreferences {
     private String taskView = VIEW_TABLE;
     private String defaultUserFilter = FILTER_MINE;
     private boolean dueReminder = true;
+    private String pinnedSortOrder = SORT_PINNED_DATE;
+    private int pinnedLimit = 20;
 
     public String getTaskView() {
         return taskView;
@@ -59,5 +68,21 @@ public class UserPreferences {
 
     public void setDueReminder(boolean dueReminder) {
         this.dueReminder = dueReminder;
+    }
+
+    public String getPinnedSortOrder() {
+        return pinnedSortOrder;
+    }
+
+    public void setPinnedSortOrder(String pinnedSortOrder) {
+        this.pinnedSortOrder = pinnedSortOrder;
+    }
+
+    public int getPinnedLimit() {
+        return pinnedLimit;
+    }
+
+    public void setPinnedLimit(int pinnedLimit) {
+        this.pinnedLimit = pinnedLimit;
     }
 }

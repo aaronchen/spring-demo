@@ -323,6 +323,26 @@ Controllers call `RecentViewService.recordView()` directly — not event-driven 
 
 **Frontend:** `recent-views.js` fetches via API after WebSocket connect, then live-updates via WebSocket. Vertical left-side drawer tab (CSS `writing-mode: vertical-lr`), lg+ only. Styles in `base.css`.
 
+### Pinned Items Pattern
+
+User-initiated bookmarking of projects and tasks. Mirrors RecentView architecture (entity, service, API, WebSocket, Stimulus controller) but explicit (pin/unpin toggle) rather than automatic.
+
+**Data model:** `PinnedItem` entity (implements `OwnedEntity`) stores (user, entityType, entityId, entityTitle, pinnedAt, sortOrder). `PinnedItemRepository` with sort variants and `deleteByUserAndProject` join query. Limit configurable via `UserPreferences.pinnedLimit` (default 30).
+
+**API:** `GET /api/pins`, `POST /api/pins` (201 or 409 if limit), `DELETE /api/pins/{id}` (ownership guard), `PATCH /api/pins/reorder`.
+
+**WebSocket push:** `/user/queue/pins` — `PinnedItemPushEvent` with `pinned`/`titleOnly`/`deleted` flags. `PinnedItemEventListener` handles title sync on `TaskUpdatedEvent`/`ProjectUpdatedEvent`.
+
+**Sort options** (user preference `pinnedSortOrder`): pinnedDate (default), name, lastViewed (cross-references RecentView), manual (drag-and-drop via sortOrder).
+
+**Pin icon fragment:** `fragments/pin-icon.html` — dispatches `pin:toggle` custom event on `document`. Shown in card view, table view, project grid, project page header. Hidden on small screens (`d-none d-lg-inline`).
+
+**Drawer:** `fragments/pinned-items.html` — left side below recent views in shared `#left-drawers` container. Dynamic 1-2 column grid based on pin count. `drawer:opened` event ensures only one drawer open at a time.
+
+**Cleanup:** Task deleted / project deleted → `deleteByEntity`. Member removed → `deleteByUserAndProject` (join query, no task IDs needed from caller). User deleted → `deleteByUserId`. Archive keeps pins.
+
+**Color:** `--pin-color` CSS custom property (default `#d63384` pink). Themes can override.
+
 ### Analytics Pattern
 
 Chart.js 4.5.1 (via WebJar) renders 7 charts: status/priority doughnuts, workload stacked bar, burndown/velocity lines, overdue bar, effort-by-assignee horizontal bar. Velocity chart includes optional effort line (dual Y-axis) when effort data exists. Thymeleaf page is a shell — JS fetches JSON from REST API and renders client-side. Shared template for both cross-project (`/analytics`) and project-scoped (`/projects/{id}/analytics`) views via `<meta name="_analyticsApi">`. `AnalyticsRepository` uses `EntityManager` with dynamic JPQL for aggregate projections (avoids triplicating queries). Cross-project filter: checkboxes per project + Select All; server intersects requested `projectIds` with accessible projects for security. Sprint-scoped analytics pass `sprintId` to repository queries; burndown uses sprint date range instead of rolling 30-day window.

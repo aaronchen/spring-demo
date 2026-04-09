@@ -5,17 +5,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "recent_views",
+        name = "pinned_items",
         uniqueConstraints =
                 @UniqueConstraint(columnNames = {"user_id", "entity_type", "entity_id"}))
-public class RecentView implements OwnedEntity {
-
-    public static final String FIELD_ID = "id";
-    public static final String FIELD_USER = "user";
-    public static final String FIELD_ENTITY_TYPE = "entityType";
-    public static final String FIELD_ENTITY_ID = "entityId";
-    public static final String FIELD_ENTITY_TITLE = "entityTitle";
-    public static final String FIELD_VIEWED_AT = "viewedAt";
+public class PinnedItem implements OwnedEntity {
 
     public static final String TYPE_TASK = "TASK";
     public static final String TYPE_PROJECT = "PROJECT";
@@ -37,17 +30,21 @@ public class RecentView implements OwnedEntity {
     @Column(name = "entity_title", nullable = false, length = 200)
     private String entityTitle;
 
-    @Column(nullable = false)
-    private LocalDateTime viewedAt;
+    @Column(name = "pinned_at", nullable = false)
+    private LocalDateTime pinnedAt;
 
-    public RecentView() {}
+    @Column(name = "sort_order", nullable = false)
+    private int sortOrder;
 
-    public RecentView(User user, String entityType, String entityId, String entityTitle) {
+    public PinnedItem() {}
+
+    public PinnedItem(User user, String entityType, String entityId, String entityTitle) {
         this.user = user;
         this.entityType = entityType;
         this.entityId = entityId;
         this.entityTitle = entityTitle;
-        this.viewedAt = LocalDateTime.now();
+        this.pinnedAt = LocalDateTime.now();
+        this.sortOrder = 0;
     }
 
     public Long getId() {
@@ -58,6 +55,7 @@ public class RecentView implements OwnedEntity {
         this.id = id;
     }
 
+    @Override
     public User getUser() {
         return user;
     }
@@ -90,11 +88,19 @@ public class RecentView implements OwnedEntity {
         this.entityTitle = entityTitle;
     }
 
-    public LocalDateTime getViewedAt() {
-        return viewedAt;
+    public LocalDateTime getPinnedAt() {
+        return pinnedAt;
     }
 
-    public void setViewedAt(LocalDateTime viewedAt) {
-        this.viewedAt = viewedAt;
+    public void setPinnedAt(LocalDateTime pinnedAt) {
+        this.pinnedAt = pinnedAt;
+    }
+
+    public int getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(int sortOrder) {
+        this.sortOrder = sortOrder;
     }
 }

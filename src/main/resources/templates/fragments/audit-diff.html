@@ -3,7 +3,7 @@
 
      Usage:
        <th:block th:each="field : ${detailsMap}">
-           <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+           <div th:replace="~{fragments/audit-diff :: field(${field.key}, ${field.value})}"></div>
        </th:block>
 
      Detection logic:

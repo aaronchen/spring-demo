@@ -111,6 +111,11 @@ public class RecentViewService {
         recentViewRepository.deleteByUserId(userId);
     }
 
+    /** Delete a user's recent views for a project and all its tasks (member removal cleanup). */
+    public void deleteByUserAndProject(UUID userId, UUID projectId) {
+        recentViewRepository.deleteByUserAndProject(userId, projectId);
+    }
+
     private String resolveHref(String entityType, String entityId) {
         if (RecentView.TYPE_TASK.equals(entityType)) {
             return appRoutes.getTaskDetail().params("taskId", entityId).build();

@@ -26,6 +26,7 @@ import TasksKeyboardShortcutsController from "controllers/tasks/keyboard-shortcu
 import TasksDependenciesController from "controllers/tasks/dependencies";
 import TasksLiveUpdateController from "controllers/tasks/live-update";
 import DashboardController from "controllers/dashboard";
+import PinsController from "controllers/pins";
 
 const app = Application.start();
 
@@ -45,6 +46,7 @@ app.register("tasks--keyboard-shortcuts", TasksKeyboardShortcutsController);
 app.register("tasks--dependencies", TasksDependenciesController);
 app.register("tasks--live-update", TasksLiveUpdateController);
 app.register("dashboard", DashboardController);
+app.register("pins", PinsController);
 
 // Expose for debugging: window.Stimulus.controllers shows all active instances
 window.Stimulus = app;

@@ -489,6 +489,8 @@ spring-demo/
 │   │   │   ├── ProjectRole.java         # VIEWER / EDITOR / OWNER enum (Translatable)
 │   │   │   ├── ProjectStatus.java       # ACTIVE / ARCHIVED enum (Translatable)
 │   │   │   ├── Role.java                # USER / ADMIN enum (Translatable)
+│   │   │   ├── PinnedItem.java          # Pinned item entity (OwnedEntity)
+│   │   │   ├── RecentView.java          # Recently viewed entity (OwnedEntity)
 │   │   │   ├── SavedView.java          # Saved filter view entity (OwnedEntity)
 │   │   │   ├── Setting.java             # Key-value setting entity
 │   │   │   ├── Tag.java
@@ -565,6 +567,7 @@ spring-demo/
 │       │   │   │   ├── audit_controller.js
 │       │   │   │   ├── dashboard_controller.js
 │       │   │   │   ├── mention_controller.js
+│       │   │   │   ├── pins_controller.js        # Pinned items drawer + pin state
 │       │   │   │   ├── presence_controller.js
 │       │   │   │   ├── recent_views_controller.js
 │       │   │   │   ├── notifications/  # Notification controllers
@@ -598,6 +601,13 @@ spring-demo/
 │       │   │       └── searchable-select.js # <searchable-select> custom element
 │       │   ├── favicon.svg             # SVG favicon
 │       ├── templates/
+│       │   ├── fragments/
+│       │   │   ├── audit-diff.html      # Audit diff rendering fragment
+│       │   │   ├── maintenance-banner.html # Maintenance banner with dismiss cookie
+│       │   │   ├── pagination.html      # Reusable pagination controls
+│       │   │   ├── pin-icon.html        # Pin toggle icon fragment
+│       │   │   ├── pinned-items.html    # Pinned items drawer
+│       │   │   └── recent-views.html    # Recently viewed drawer
 │       │   ├── dashboard/
 │       │   │   ├── dashboard.html        # Dashboard page with WebSocket subscriptions
 │       │   │   └── dashboard-stats.html  # Stats fragment (bare, HTMX-refreshable)

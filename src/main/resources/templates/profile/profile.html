@@ -122,6 +122,8 @@
                              data-flash-toast th:data-message="#{toast.profile.preferencesSaved}"></div>
 
                         <form th:action="@{/profile/preferences}" method="post">
+                            <h6 class="pref-section-header"><i class="bi bi-check2-square me-1"></i> <span th:text="#{profile.preferences.section.tasks}">Tasks</span></h6>
+
                             <!-- Task View Mode -->
                             <div class="mb-3">
                                 <label class="form-label fw-semibold"
@@ -192,6 +194,8 @@
                                 </div>
                             </div>
 
+                            <h6 class="pref-section-header mt-4"><i class="bi bi-bell me-1"></i> <span th:text="#{profile.preferences.section.notifications}">Notifications</span></h6>
+
                             <!-- Due Date Reminders -->
                             <div class="mb-3">
                                 <label class="form-label fw-semibold"
@@ -203,6 +207,39 @@
                                     <label class="form-check-label" for="pref-due-reminder"
                                            th:text="#{profile.preferences.dueReminder.description}">Notify me 1 day before a task is due</label>
                                 </div>
+                            </div>
+
+                            <h6 class="pref-section-header mt-4"><i class="bi bi-pin-angle me-1"></i> <span th:text="#{profile.preferences.section.pinnedItems}">Pinned Items</span></h6>
+
+                            <!-- Pinned Items Sort Order -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"
+                                       th:text="#{profile.preferences.pinnedSortOrder}">Pinned Items Sort</label>
+                                <select name="pinnedSortOrder" class="form-select">
+                                    <option value="pinnedDate"
+                                            th:selected="${userPreferences.pinnedSortOrder == 'pinnedDate'}"
+                                            th:text="#{pins.sort.pinnedDate}">Date Pinned</option>
+                                    <option value="name"
+                                            th:selected="${userPreferences.pinnedSortOrder == 'name'}"
+                                            th:text="#{pins.sort.name}">Name</option>
+                                    <option value="lastViewed"
+                                            th:selected="${userPreferences.pinnedSortOrder == 'lastViewed'}"
+                                            th:text="#{pins.sort.lastViewed}">Last Viewed</option>
+                                    <option value="manual"
+                                            th:selected="${userPreferences.pinnedSortOrder == 'manual'}"
+                                            th:text="#{pins.sort.manual}">Manual</option>
+                                </select>
+                            </div>
+
+                            <!-- Pinned Items Limit -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold"
+                                       th:text="#{profile.preferences.pinnedLimit}">Max Pinned Items</label>
+                                <select name="pinnedLimit" class="form-select">
+                                    <option th:each="n : ${#numbers.sequence(10, 30, 5)}"
+                                            th:value="${n}" th:text="${n}"
+                                            th:selected="${userPreferences.pinnedLimit == n}">10</option>
+                                </select>
                             </div>
 
                             <button type="submit" class="btn btn-primary"

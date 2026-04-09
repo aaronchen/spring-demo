@@ -41,6 +41,7 @@
                hx-swap="innerHTML"
                class="fw-semibold text-decoration-none"
                th:text="${task.title}">Title</a>
+            <th:block th:replace="~{fragments/pin-icon :: pin-icon('TASK', ${task.id}, ${task.title})}" />
             <a th:each="tag : ${task.tags}" href="#"
                class="badge bg-secondary text-decoration-none text-white"
                th:data-tag-id="${tag.id}"

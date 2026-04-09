@@ -71,6 +71,7 @@
             "controllers/analytics": /*[[@{/js/controllers/analytics_controller.js}]]*/ "",
             "controllers/audit": /*[[@{/js/controllers/audit_controller.js}]]*/ "",
             "controllers/dashboard": /*[[@{/js/controllers/dashboard_controller.js}]]*/ "",
+            "controllers/pins": /*[[@{/js/controllers/pins_controller.js}]]*/ "",
             "controllers/mention": /*[[@{/js/controllers/mention_controller.js}]]*/ "",
             "controllers/notifications/badge": /*[[@{/js/controllers/notifications/badge_controller.js}]]*/ "",
             "controllers/notifications/page": /*[[@{/js/controllers/notifications/page_controller.js}]]*/ "",
@@ -256,50 +257,12 @@
         </div>
     </nav>
 
-    <!--/* Recently Viewed — vertical tab on left edge, lg+ only.
-         Panel slides out to the right; live updates via WebSocket (recent-views.js). */-->
-    <div th:if="${currentUser != null}" id="recent-views-wrapper" class="d-none d-lg-flex"
-         data-controller="recent-views">
-        <!-- Panel (drawer body — populated via API fetch) -->
-        <div id="recent-views-panel" data-recent-views-target="panel" class="card shadow d-none">
-            <div id="recent-views-empty" data-recent-views-target="empty" class="px-3 py-3 text-muted small text-center">
-                <i class="bi bi-clock me-1"></i>
-                <span th:text="#{recentlyViewed.empty}">No recently viewed items.</span>
-            </div>
-            <div data-recent-views-target="list" class="list-group list-group-flush"></div>
-        </div>
-        <!-- Vertical tab (drawer handle) -->
-        <a href="#" data-recent-views-target="toggle" class="recent-views-tab shadow-sm"
-           data-action="click->recent-views#toggle">
-            <i class="bi bi-clock-history"></i>
-            <span th:text="#{recentlyViewed.heading}">Recently Viewed</span>
-        </a>
+    <div th:if="${currentUser != null}" id="left-drawers" class="d-none d-lg-flex">
+        <th:block th:replace="~{fragments/recent-views}" />
+        <th:block th:replace="~{fragments/pinned-items}" />
     </div>
 
-    <!--/* Maintenance Banner — included automatically with navbar.
-         Dismiss state persisted via cookie keyed on server-side version,
-         so the banner reappears only when the admin changes the message. */-->
-    <div th:if="${settings != null and !settings.maintenanceBanner.isEmpty()}"
-         id="maintenance-banner"
-         th:data-banner-version="${settings.maintenanceBannerVersion}"
-         class="alert alert-warning alert-dismissible mb-0 rounded-0 text-center d-none" role="alert">
-        <i class="bi bi-exclamation-triangle me-1"></i>
-        <span th:text="${settings.maintenanceBanner}">Maintenance notice</span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <script>
-        (function() {
-            const banner = document.getElementById('maintenance-banner');
-            if (!banner) return;
-            const version = banner.dataset.bannerVersion;
-            const match = document.cookie.match(/(?:^|;\s*)bannerDismissed=([^;]*)/);
-            if (match && match[1] === version) return;
-            banner.classList.remove('d-none');
-            banner.addEventListener('closed.bs.alert', function() {
-                document.cookie = 'bannerDismissed=' + version + '; path=/; max-age=31536000';
-            });
-        })();
-    </script>
+    <th:block th:replace="~{fragments/maintenance-banner}" />
 
     </th:block>
 

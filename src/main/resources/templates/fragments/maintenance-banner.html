@@ -1,0 +1,25 @@
+<!--/* Maintenance Banner — dismiss state persisted via cookie keyed on server-side version,
+     so the banner reappears only when the admin changes the message. */-->
+<th:block xmlns:th="http://www.thymeleaf.org">
+    <div th:if="${settings != null and !settings.maintenanceBanner.isEmpty()}"
+         id="maintenance-banner"
+         th:data-banner-version="${settings.maintenanceBannerVersion}"
+         class="alert alert-warning alert-dismissible mb-0 rounded-0 text-center d-none" role="alert">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        <span th:text="${settings.maintenanceBanner}">Maintenance notice</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <script>
+        (function() {
+            const banner = document.getElementById('maintenance-banner');
+            if (!banner) return;
+            const version = banner.dataset.bannerVersion;
+            const match = document.cookie.match(/(?:^|;\s*)bannerDismissed=([^;]*)/);
+            if (match && match[1] === version) return;
+            banner.classList.remove('d-none');
+            banner.addEventListener('closed.bs.alert', function() {
+                document.cookie = 'bannerDismissed=' + version + '; path=/; max-age=31536000';
+            });
+        })();
+    </script>
+</th:block>

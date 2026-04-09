@@ -35,6 +35,8 @@ class UserServiceTest {
     @Mock private TaskQueryService taskQueryService;
     @Mock private TaskCommandService taskAssignmentService;
     @Mock private CommentQueryService commentQueryService;
+    @Mock private PinnedItemService pinnedItemService;
+    @Mock private RecentViewService recentViewService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private UserService userService;

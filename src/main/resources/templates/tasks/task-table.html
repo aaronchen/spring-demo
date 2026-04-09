@@ -14,7 +14,7 @@
     <!-- Content: top bar + table + bottom bar -->
     <th:block th:if="${!taskPage.isEmpty()}">
 
-        <div th:replace="~{layouts/pagination :: controlBar(${taskPage}, 'top', #{task.pagination.label})}"></div>
+        <div th:replace="~{fragments/pagination :: controlBar(${taskPage}, 'top', #{task.pagination.label})}"></div>
 
         <div class="table-responsive mb-3">
             <table class="table table-hover align-middle">
@@ -123,7 +123,7 @@
             </table>
         </div>
 
-        <div th:replace="~{layouts/pagination :: controlBar(${taskPage}, 'bottom', #{task.pagination.label})}"></div>
+        <div th:replace="~{fragments/pagination :: controlBar(${taskPage}, 'bottom', #{task.pagination.label})}"></div>
 
     </th:block>
 

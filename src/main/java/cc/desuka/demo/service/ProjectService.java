@@ -4,6 +4,7 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.event.ProjectUpdatedEvent;
+import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
@@ -32,6 +33,7 @@ public class ProjectService {
     private final SprintService sprintService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final RecentViewService recentViewService;
+    private final PinnedItemService pinnedItemService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
@@ -43,6 +45,7 @@ public class ProjectService {
             SprintService sprintService,
             RecurringTaskTemplateService recurringTaskTemplateService,
             RecentViewService recentViewService,
+            PinnedItemService pinnedItemService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.projectRepository = projectRepository;
@@ -52,6 +55,7 @@ public class ProjectService {
         this.sprintService = sprintService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.recentViewService = recentViewService;
+        this.pinnedItemService = pinnedItemService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
     }
@@ -157,6 +161,7 @@ public class ProjectService {
 
         String snapshot = AuditDetails.toJson(project.toAuditSnapshot());
         recentViewService.deleteByEntity(RecentView.TYPE_PROJECT, id);
+        pinnedItemService.deleteByEntity(PinnedItem.TYPE_PROJECT, id);
         projectRepository.delete(project);
 
         eventPublisher.publishEvent(
@@ -207,6 +212,8 @@ public class ProjectService {
 
         String snapshot = AuditDetails.toJson(member.toAuditSnapshot());
         taskCommandService.unassignTasksInProject(member.getUser(), projectId);
+        pinnedItemService.deleteByUserAndProject(userId, projectId);
+        recentViewService.deleteByUserAndProject(userId, projectId);
         project.getMembers().remove(member);
 
         eventPublisher.publishEvent(

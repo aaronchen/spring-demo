@@ -18,7 +18,10 @@
                 <!-- Project Header -->
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div>
-                        <h1 class="display-4" th:text="${project.name}">Project Name</h1>
+                        <h1 class="display-4">
+                            <span th:text="${project.name}">Project Name</span>
+                            <th:block th:replace="~{fragments/pin-icon :: pin-icon('PROJECT', ${project.id}, ${project.name})}" />
+                        </h1>
                         <p class="text-muted mb-0" th:if="${project.description}" th:text="${project.description}">Description</p>
                         <span th:if="${project.status.name() == 'ARCHIVED'}" class="badge bg-secondary">
                             <i class="bi bi-archive"></i>

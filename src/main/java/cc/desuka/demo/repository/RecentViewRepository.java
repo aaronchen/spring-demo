@@ -39,4 +39,12 @@ public interface RecentViewRepository extends JpaRepository<RecentView, Long> {
     void deleteByEntityTypeAndEntityId(String entityType, String entityId);
 
     void deleteByUserId(UUID userId);
+
+    @Modifying
+    @Query(
+            "DELETE FROM RecentView rv WHERE rv.user.id = :userId "
+                    + "AND ((rv.entityType = 'PROJECT' AND rv.entityId = CAST(:projectId AS string)) "
+                    + "OR (rv.entityType = 'TASK' AND rv.entityId IN "
+                    + "(SELECT CAST(t.id AS string) FROM Task t WHERE t.project.id = :projectId)))")
+    void deleteByUserAndProject(UUID userId, UUID projectId);
 }

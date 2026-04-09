@@ -26,6 +26,8 @@ public class UserService {
     private final TaskQueryService taskQueryService;
     private final TaskCommandService taskAssignmentService;
     private final CommentQueryService commentQueryService;
+    private final PinnedItemService pinnedItemService;
+    private final RecentViewService recentViewService;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(
@@ -33,11 +35,15 @@ public class UserService {
             TaskQueryService taskQueryService,
             TaskCommandService taskAssignmentService,
             CommentQueryService commentQueryService,
+            PinnedItemService pinnedItemService,
+            RecentViewService recentViewService,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskQueryService = taskQueryService;
         this.taskAssignmentService = taskAssignmentService;
         this.commentQueryService = commentQueryService;
+        this.pinnedItemService = pinnedItemService;
+        this.recentViewService = recentViewService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -244,6 +250,8 @@ public class UserService {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
         taskAssignmentService.unassignTasks(user);
+        pinnedItemService.deleteByUserId(id);
+        recentViewService.deleteByUserId(id);
         userRepository.delete(user);
         eventPublisher.publishEvent(
                 new AuditEvent(

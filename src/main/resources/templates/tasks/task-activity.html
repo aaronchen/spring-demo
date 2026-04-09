@@ -58,7 +58,7 @@
                         </div>
                         <div th:if="${entry.auditDetails() != null}">
                             <th:block th:each="field : ${entry.auditDetails()}">
-                                <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+                                <div th:replace="~{fragments/audit-diff :: field(${field.key}, ${field.value})}"></div>
                             </th:block>
                         </div>
                     </div>

@@ -46,6 +46,7 @@ class TaskServiceTest {
     @Mock private TagService tagService;
     @Mock private UserService userService;
     @Mock private RecentViewService recentViewService;
+    @Mock private PinnedItemService pinnedItemService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Messages messages;
 

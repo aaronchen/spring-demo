@@ -1,0 +1,22 @@
+<!--/* Pinned Items — vertical tab on left edge below recent views, lg+ only.
+     Panel slides out to the right; live updates via WebSocket. */-->
+<div id="pins-wrapper"
+     data-controller="pins"
+     th:data-pins-sort-order-value="${userPreferences.pinnedSortOrder}"
+     xmlns:th="http://www.thymeleaf.org">
+    <!-- Panel -->
+    <div id="pins-panel" data-pins-target="panel" class="card shadow d-none">
+        <div id="pins-empty" data-pins-target="empty" class="px-3 py-3 text-muted small text-center">
+            <i class="bi bi-pin-angle me-1"></i>
+            <span th:text="#{pins.empty}">No pinned items.</span>
+        </div>
+        <div data-pins-target="list" class="pins-grid"></div>
+    </div>
+    <!-- Vertical tab -->
+    <a href="#" data-pins-target="toggle" class="pins-tab shadow-sm"
+       data-action="click->pins#toggle">
+        <i class="bi bi-pin-angle"></i>
+        <span th:text="#{pins.heading}">Pinned</span>
+        <span data-pins-target="count" class="pins-count badge rounded-pill">0</span>
+    </a>
+</div>

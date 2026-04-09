@@ -39,6 +39,7 @@ class ProjectServiceTest {
     @Mock private SprintService sprintService;
     @Mock private RecurringTaskTemplateService recurringTaskTemplateService;
     @Mock private RecentViewService recentViewService;
+    @Mock private PinnedItemService pinnedItemService;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Messages messages;
 

@@ -9,7 +9,7 @@
 
 <th:block th:if="${!auditPage.isEmpty()}" xmlns:th="http://www.thymeleaf.org">
 
-    <div th:replace="~{layouts/pagination :: controlBar(${auditPage}, 'top', #{audit.pagination.label})}"></div>
+    <div th:replace="~{fragments/pagination :: controlBar(${auditPage}, 'top', #{audit.pagination.label})}"></div>
 
     <div class="table-responsive">
         <table class="table table-hover table-sm mb-0">
@@ -43,7 +43,7 @@
                     <td>
                         <div th:if="${entry.detailsMap != null}">
                             <th:block th:each="field : ${entry.detailsMap}">
-                                <div th:replace="~{layouts/audit-diff :: field(${field.key}, ${field.value})}"></div>
+                                <div th:replace="~{fragments/audit-diff :: field(${field.key}, ${field.value})}"></div>
                             </th:block>
                         </div>
                         <small th:unless="${entry.detailsMap != null}" th:text="${entry.details}">details</small>
@@ -53,6 +53,6 @@
         </table>
     </div>
 
-    <div th:replace="~{layouts/pagination :: controlBar(${auditPage}, 'bottom', #{audit.pagination.label})}"></div>
+    <div th:replace="~{fragments/pagination :: controlBar(${auditPage}, 'bottom', #{audit.pagination.label})}"></div>
 
 </th:block>
