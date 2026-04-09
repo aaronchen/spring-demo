@@ -2,13 +2,13 @@ package cc.desuka.demo.controller.api;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import cc.desuka.demo.exception.PinLimitReachedException;
 import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
@@ -91,7 +91,8 @@ class PinnedItemApiControllerTest {
 
     @Test
     void pin_returns409WhenLimitReached() throws Exception {
-        when(pinnedItemService.pin(any(), any(), any(), any())).thenReturn(null);
+        when(pinnedItemService.pin(any(), any(), any(), any()))
+                .thenThrow(new PinLimitReachedException(20, 20));
 
         mockMvc.perform(
                         post("/api/pins")
@@ -100,7 +101,8 @@ class PinnedItemApiControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(
                                         "{\"entityType\":\"TASK\",\"entityId\":\"task-id\",\"entityTitle\":\"My Task\"}"))
-                .andExpect(status().isConflict());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.limit").value(20));
     }
 
     @Test
@@ -113,6 +115,6 @@ class PinnedItemApiControllerTest {
                 .andExpect(status().isNoContent());
 
         verify(ownershipGuard).requireAccess(pin, aliceDetails);
-        verify(pinnedItemService).unpin(1L);
+        verify(pinnedItemService).unpin(pin);
     }
 }

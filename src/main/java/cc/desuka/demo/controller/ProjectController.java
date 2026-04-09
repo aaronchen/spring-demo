@@ -14,7 +14,6 @@ import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
 import cc.desuka.demo.mapper.SprintMapper;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectRole;
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
@@ -34,6 +33,7 @@ import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.CalendarHelper;
+import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.HtmxUtils.ToastType;
 import cc.desuka.demo.util.Messages;
@@ -198,7 +198,7 @@ public class ProjectController {
         if (!HtmxUtils.isHtmxRequest(request)) {
             recentViewService.recordView(
                     currentDetails.getUser(),
-                    RecentView.TYPE_PROJECT,
+                    EntityTypes.PROJECT,
                     project.getId(),
                     project.getName());
         }

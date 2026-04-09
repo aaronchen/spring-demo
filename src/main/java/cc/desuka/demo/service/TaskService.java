@@ -10,15 +10,14 @@ import cc.desuka.demo.event.TaskUpdatedEvent;
 import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.ChecklistItem;
-import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Priority;
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.Messages;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -189,8 +188,8 @@ public class TaskService {
         task.getBlocks().clear();
 
         String snapshot = AuditDetails.toJson(task.toAuditSnapshot());
-        recentViewService.deleteByEntity(RecentView.TYPE_TASK, id);
-        pinnedItemService.deleteByEntity(PinnedItem.TYPE_TASK, id);
+        recentViewService.deleteByEntity(EntityTypes.TASK, id);
+        pinnedItemService.deleteByEntity(EntityTypes.TASK, id);
         taskRepository.delete(task);
         eventPublisher.publishEvent(
                 new AuditEvent(

@@ -30,7 +30,6 @@ public class UserPreferences {
 
     public static final String SORT_PINNED_DATE = "pinnedDate";
     public static final String SORT_NAME = "name";
-    public static final String SORT_LAST_VIEWED = "lastViewed";
     public static final String SORT_MANUAL = "manual";
 
     public static final String VIEW_CARDS = "cards";

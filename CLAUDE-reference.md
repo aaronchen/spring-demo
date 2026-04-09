@@ -171,12 +171,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `model/RecentView.java` - JPA entity for recently viewed items; implements `OwnedEntity`
   - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (String), entityTitle (max 200), viewedAt (LocalDateTime)
-  - `TYPE_TASK`, `TYPE_PROJECT` — entity type constants
+  - Entity type values use `EntityTypes.TASK` / `EntityTypes.PROJECT` constants
   - Unique constraint: (user_id, entity_type, entity_id)
 
 - `model/PinnedItem.java` - JPA entity for user-pinned items; implements `OwnedEntity`
   - Fields: id, user (ManyToOne LAZY), entityType (String), entityId (String), entityTitle (max 200), pinnedAt (LocalDateTime), sortOrder (int)
-  - `TYPE_TASK`, `TYPE_PROJECT` — entity type constants
+  - Entity type values use `EntityTypes.TASK` / `EntityTypes.PROJECT` constants
   - Unique constraint: (user_id, entity_type, entity_id)
   - Manual getters/setters (no Lombok on entities)
 
@@ -1148,15 +1148,18 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `exception/CyclicDependencyException.java` - Custom unchecked exception for dependency cycles
 
+- `exception/PinLimitReachedException.java` - Thrown when a user's pin limit is reached; carries `currentCount` and `limit` fields; mapped to 409 ProblemDetail with localized message
+
 - `exception/ApiExceptionHandler.java` - `@RestControllerAdvice` scoped to `controller.api`; extends `ResponseEntityExceptionHandler`
   - Ordered at `HIGHEST_PRECEDENCE` to win over `WebExceptionHandler`
+  - Constructor injection: `Messages` — used for i18n-aware error detail strings
   - Returns RFC 9457 `ProblemDetail` responses (`application/problem+json` content type)
   - Overrides `handleMethodArgumentNotValid()` — adds field-level `errors` map via `ProblemDetail.setProperty("errors", fieldErrors)`
   - Handlers sorted by error code:
     - 400: `MethodArgumentNotValidException`, `IllegalArgumentException`
     - 403: `AccessDeniedException`
     - 404: `EntityNotFoundException`
-    - 409: `StaleDataException`, `BlockedTaskException` (adds `blockers` property with blocker names list)
+    - 409: `StaleDataException`, `BlockedTaskException` (adds `blockers` property), `PinLimitReachedException` (localized message from `messages.properties`)
     - 422: `CyclicDependencyException`
     - 500: catch-all `Exception`
 
@@ -1186,6 +1189,11 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
   - `isHtmxRequest(HttpServletRequest)` - checks for `HX-Request: true` header
   - `triggerEvent(String eventName)` - returns `ResponseEntity` with `HX-Trigger` header set
   - `toastTrigger(String message, ToastType type)` — returns JSON `HX-Trigger` header value that fires a `showToast` event, picked up by the global listener in `application.js`; used for HTMX responses that need toast feedback (project settings, tag management)
+
+- `util/EntityTypes.java` - Shared entity type constants and URL resolution for polymorphic references (pins, recent views, audit)
+  - `TASK`, `PROJECT` — string constants for entity type values (single source of truth; replaces per-entity constants)
+  - `resolveHref(AppRoutesProperties, entityType, entityId)` — returns detail page URL; accepts both uppercase ("TASK") and class simple names ("Task") via `equalsIgnoreCase`; returns `null` for unknown types (User, Sprint, etc.)
+  - Used by `PinnedItemService`, `RecentViewService`, `PinnedItemMapper`, `RecentViewApiController`, `AuditTemplateHelper`
 
 - `util/CalendarHelper.java` - Utility for building calendar grid data (weeks of `CalendarDay` records) from a `YearMonth` and task list; used by `TaskController` for calendar view
 

@@ -1,16 +1,18 @@
 package cc.desuka.demo.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.event.PinnedItemPushEvent;
+import cc.desuka.demo.exception.PinLimitReachedException;
 import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.PinnedItemRepository;
-import cc.desuka.demo.repository.RecentViewRepository;
+import cc.desuka.demo.util.RouteTemplate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,17 +21,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class PinnedItemServiceTest {
 
     @Mock private PinnedItemRepository pinnedItemRepository;
-    @Mock private RecentViewRepository recentViewRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AppRoutesProperties appRoutes;
-    @Mock private ApplicationContext applicationContext;
     @Mock private UserPreferenceService userPreferenceService;
 
     private PinnedItemService pinnedItemService;
@@ -41,11 +40,7 @@ class PinnedItemServiceTest {
     void setUp() {
         pinnedItemService =
                 new PinnedItemService(
-                        pinnedItemRepository,
-                        recentViewRepository,
-                        eventPublisher,
-                        appRoutes,
-                        applicationContext);
+                        pinnedItemRepository, eventPublisher, appRoutes, userPreferenceService);
 
         aliceId = UUID.randomUUID();
         alice = new User();
@@ -53,15 +48,10 @@ class PinnedItemServiceTest {
         alice.setName("Alice");
         alice.setEmail("alice@example.com");
 
-        lenient()
-                .when(applicationContext.getBean(UserPreferenceService.class))
-                .thenReturn(userPreferenceService);
-        lenient()
-                .when(appRoutes.getTaskDetail())
-                .thenReturn(new cc.desuka.demo.util.RouteTemplate("/tasks/{taskId}"));
+        lenient().when(appRoutes.getTaskDetail()).thenReturn(new RouteTemplate("/tasks/{taskId}"));
         lenient()
                 .when(appRoutes.getProjectDetail())
-                .thenReturn(new cc.desuka.demo.util.RouteTemplate("/projects/{projectId}"));
+                .thenReturn(new RouteTemplate("/projects/{projectId}"));
     }
 
     @Test
@@ -95,7 +85,7 @@ class PinnedItemServiceTest {
     }
 
     @Test
-    void pin_returnsNullWhenLimitReached() {
+    void pin_throwsWhenLimitReached() {
         UserPreferences prefs = new UserPreferences();
         prefs.setPinnedLimit(10);
         when(userPreferenceService.load(aliceId)).thenReturn(prefs);
@@ -103,9 +93,8 @@ class PinnedItemServiceTest {
                 .thenReturn(Optional.empty());
         when(pinnedItemRepository.countByUserId(aliceId)).thenReturn(10L);
 
-        PinnedItem result = pinnedItemService.pin(alice, "TASK", "task-123", "My Task");
-
-        assertThat(result).isNull();
+        assertThatThrownBy(() -> pinnedItemService.pin(alice, "TASK", "task-123", "My Task"))
+                .isInstanceOf(PinLimitReachedException.class);
         verify(pinnedItemRepository, never()).save(any());
     }
 
@@ -113,9 +102,8 @@ class PinnedItemServiceTest {
     void unpin_deletesAndPublishesEvent() {
         PinnedItem pin = new PinnedItem(alice, "TASK", "task-123", "My Task");
         pin.setId(1L);
-        when(pinnedItemRepository.findById(1L)).thenReturn(Optional.of(pin));
 
-        pinnedItemService.unpin(1L);
+        pinnedItemService.unpin(pin);
 
         verify(pinnedItemRepository).delete(pin);
         verify(eventPublisher).publishEvent(any(PinnedItemPushEvent.class));

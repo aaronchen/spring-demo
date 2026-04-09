@@ -10,7 +10,6 @@ import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.service.PinnedItemService;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,7 +43,7 @@ public class PinnedItemApiController {
     }
 
     @PostMapping
-    public ResponseEntity<?> pin(
+    public ResponseEntity<PinnedItemResponse> pin(
             @Valid @RequestBody PinnedItemRequest request,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         PinnedItem pin =
@@ -53,10 +52,6 @@ public class PinnedItemApiController {
                         request.entityType(),
                         request.entityId(),
                         request.entityTitle());
-        if (pin == null) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "Pin limit reached"));
-        }
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(pinnedItemMapper.toResponse(pin, appRoutes));
     }
@@ -66,7 +61,7 @@ public class PinnedItemApiController {
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         PinnedItem pin = pinnedItemService.getPinById(id);
         ownershipGuard.requireAccess(pin, currentDetails);
-        pinnedItemService.unpin(id);
+        pinnedItemService.unpin(pin);
         return ResponseEntity.noContent().build();
     }
 

@@ -5,20 +5,18 @@ import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.PinnedItemResponse;
 import cc.desuka.demo.event.PinnedItemPushEvent;
 import cc.desuka.demo.exception.EntityNotFoundException;
+import cc.desuka.demo.exception.PinLimitReachedException;
 import cc.desuka.demo.model.PinnedItem;
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.PinnedItemRepository;
-import cc.desuka.demo.repository.RecentViewRepository;
-import java.time.LocalDateTime;
-import java.util.Comparator;
+import cc.desuka.demo.util.EntityTypes;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,85 +26,62 @@ import org.springframework.transaction.annotation.Transactional;
 public class PinnedItemService {
 
     private final PinnedItemRepository pinnedItemRepository;
-    private final RecentViewRepository recentViewRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AppRoutesProperties appRoutes;
-    private final ApplicationContext applicationContext;
+    private final UserPreferenceService userPreferenceService;
 
     public PinnedItemService(
             PinnedItemRepository pinnedItemRepository,
-            RecentViewRepository recentViewRepository,
             ApplicationEventPublisher eventPublisher,
             AppRoutesProperties appRoutes,
-            ApplicationContext applicationContext) {
+            @Lazy UserPreferenceService userPreferenceService) {
         this.pinnedItemRepository = pinnedItemRepository;
-        this.recentViewRepository = recentViewRepository;
         this.eventPublisher = eventPublisher;
         this.appRoutes = appRoutes;
-        this.applicationContext = applicationContext;
-    }
-
-    private UserPreferenceService userPreferenceService() {
-        return applicationContext.getBean(UserPreferenceService.class);
+        this.userPreferenceService = userPreferenceService;
     }
 
     /**
-     * Pin an item. Returns the pinned item, or null if the limit is reached. If the item is already
-     * pinned, returns the existing pin.
+     * Pin an item. Returns the pinned item. If the item is already pinned, returns the existing
+     * pin.
+     *
+     * @throws PinLimitReachedException if the user's pin limit is reached
      */
     public PinnedItem pin(User user, String entityType, String entityId, String entityTitle) {
-        String idStr = entityId.toString();
         Optional<PinnedItem> existing =
                 pinnedItemRepository.findByUserIdAndEntityTypeAndEntityId(
-                        user.getId(), entityType, idStr);
+                        user.getId(), entityType, entityId);
         if (existing.isPresent()) {
             return existing.get();
         }
 
-        UserPreferences prefs = userPreferenceService().load(user.getId());
+        UserPreferences prefs = userPreferenceService.load(user.getId());
         long count = pinnedItemRepository.countByUserId(user.getId());
         if (count >= prefs.getPinnedLimit()) {
-            return null;
+            throw new PinLimitReachedException(count, prefs.getPinnedLimit());
         }
 
-        PinnedItem pin = new PinnedItem(user, entityType, idStr, entityTitle);
+        PinnedItem pin = new PinnedItem(user, entityType, entityId, entityTitle);
         pin.setSortOrder((int) count);
         pinnedItemRepository.save(pin);
 
-        String href = resolveHref(entityType, idStr);
         PinnedItemResponse payload =
-                new PinnedItemResponse(
+                PinnedItemResponse.pinned(
                         pin.getId(),
                         entityType,
-                        idStr,
+                        entityId,
                         entityTitle,
-                        href,
-                        pin.getPinnedAt(),
-                        true,
-                        false,
-                        false);
+                        EntityTypes.resolveHref(appRoutes, entityType, entityId),
+                        pin.getPinnedAt());
         eventPublisher.publishEvent(new PinnedItemPushEvent(user.getEmail(), payload));
 
         return pin;
     }
 
-    /** Unpin an item by ID. Pushes a deleted event via WebSocket. */
-    public void unpin(Long id) {
-        PinnedItem pin =
-                pinnedItemRepository
-                        .findById(id)
-                        .orElseThrow(() -> new EntityNotFoundException(PinnedItem.class, id));
+    /** Unpin an item. Pushes a deleted event via WebSocket. */
+    public void unpin(PinnedItem pin) {
         PinnedItemResponse payload =
-                new PinnedItemResponse(
-                        pin.getId(),
-                        pin.getEntityType(),
-                        pin.getEntityId(),
-                        null,
-                        null,
-                        null,
-                        false,
-                        false,
-                        true);
+                PinnedItemResponse.deleted(pin.getId(), pin.getEntityType(), pin.getEntityId());
         eventPublisher.publishEvent(new PinnedItemPushEvent(pin.getUser().getEmail(), payload));
         pinnedItemRepository.delete(pin);
     }
@@ -122,7 +97,7 @@ public class PinnedItemService {
     /** Get user's pinned items, sorted per their preference. */
     @Transactional(readOnly = true)
     public List<PinnedItem> getPinnedItems(UUID userId) {
-        UserPreferences prefs = userPreferenceService().load(userId);
+        UserPreferences prefs = userPreferenceService.load(userId);
         String sortOrder = prefs.getPinnedSortOrder();
 
         return switch (sortOrder) {
@@ -130,22 +105,20 @@ public class PinnedItemService {
                     pinnedItemRepository.findByUserIdOrderByEntityTitleAsc(userId);
             case UserPreferences.SORT_MANUAL ->
                     pinnedItemRepository.findByUserIdOrderBySortOrderAsc(userId);
-            case UserPreferences.SORT_LAST_VIEWED -> sortByLastViewed(userId);
             default -> pinnedItemRepository.findByUserIdOrderByPinnedAtDesc(userId);
         };
     }
 
     /** Update sort order for manual drag-and-drop reordering. */
     public void reorder(UUID userId, List<Long> orderedIds) {
+        Map<Long, Integer> idToIndex = new HashMap<>();
         for (int i = 0; i < orderedIds.size(); i++) {
-            pinnedItemRepository
-                    .findById(orderedIds.get(i))
-                    .ifPresent(
-                            pin -> {
-                                if (pin.getUser().getId().equals(userId)) {
-                                    pin.setSortOrder(orderedIds.indexOf(pin.getId()));
-                                }
-                            });
+            idToIndex.put(orderedIds.get(i), i);
+        }
+        for (PinnedItem pin : pinnedItemRepository.findAllById(orderedIds)) {
+            if (pin.getUser().getId().equals(userId)) {
+                pin.setSortOrder(idToIndex.get(pin.getId()));
+            }
         }
     }
 
@@ -155,19 +128,11 @@ public class PinnedItemService {
         String idStr = entityId.toString();
         pinnedItemRepository.updateTitle(entityType, idStr, title);
 
-        String href = resolveHref(entityType, idStr);
+        String href = EntityTypes.resolveHref(appRoutes, entityType, idStr);
         for (PinnedItem pin : pinnedItemRepository.findByEntityTypeAndEntityId(entityType, idStr)) {
             PinnedItemResponse payload =
-                    new PinnedItemResponse(
-                            pin.getId(),
-                            entityType,
-                            idStr,
-                            title,
-                            href,
-                            pin.getPinnedAt(),
-                            false,
-                            true,
-                            false);
+                    PinnedItemResponse.titleUpdate(
+                            pin.getId(), entityType, idStr, title, href, pin.getPinnedAt());
             eventPublisher.publishEvent(new PinnedItemPushEvent(pin.getUser().getEmail(), payload));
         }
     }
@@ -177,16 +142,7 @@ public class PinnedItemService {
         String idStr = entityId.toString();
         for (PinnedItem pin : pinnedItemRepository.findByEntityTypeAndEntityId(entityType, idStr)) {
             PinnedItemResponse payload =
-                    new PinnedItemResponse(
-                            pin.getId(),
-                            pin.getEntityType(),
-                            idStr,
-                            null,
-                            null,
-                            null,
-                            false,
-                            false,
-                            true);
+                    PinnedItemResponse.deleted(pin.getId(), pin.getEntityType(), idStr);
             eventPublisher.publishEvent(new PinnedItemPushEvent(pin.getUser().getEmail(), payload));
         }
         pinnedItemRepository.deleteByEntityTypeAndEntityId(entityType, idStr);
@@ -200,36 +156,5 @@ public class PinnedItemService {
     /** Delete a user's pins for a specific project and all its tasks (member removal cleanup). */
     public void deleteByUserAndProject(UUID userId, UUID projectId) {
         pinnedItemRepository.deleteByUserAndProject(userId, projectId);
-    }
-
-    private List<PinnedItem> sortByLastViewed(UUID userId) {
-        List<PinnedItem> pins = pinnedItemRepository.findByUserIdOrderByPinnedAtDesc(userId);
-        List<RecentView> recentViews =
-                recentViewRepository.findTop10ByUserIdOrderByViewedAtDesc(userId);
-
-        Map<String, LocalDateTime> viewedAtMap =
-                recentViews.stream()
-                        .collect(
-                                Collectors.toMap(
-                                        rv -> rv.getEntityType() + ":" + rv.getEntityId(),
-                                        RecentView::getViewedAt,
-                                        (a, b) -> a));
-
-        pins.sort(
-                Comparator.comparing(
-                                (PinnedItem pin) ->
-                                        viewedAtMap.getOrDefault(
-                                                pin.getEntityType() + ":" + pin.getEntityId(),
-                                                LocalDateTime.MIN))
-                        .reversed());
-
-        return pins;
-    }
-
-    private String resolveHref(String entityType, String entityId) {
-        if (PinnedItem.TYPE_TASK.equals(entityType)) {
-            return appRoutes.getTaskDetail().params("taskId", entityId).build();
-        }
-        return appRoutes.getProjectDetail().params("projectId", entityId).build();
     }
 }

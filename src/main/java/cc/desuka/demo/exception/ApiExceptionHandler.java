@@ -1,5 +1,6 @@
 package cc.desuka.demo.exception;
 
+import cc.desuka.demo.util.Messages;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.core.Ordered;
@@ -29,6 +30,12 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 @RestControllerAdvice(basePackages = "cc.desuka.demo.controller.api")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private final Messages messages;
+
+    public ApiExceptionHandler(Messages messages) {
+        this.messages = messages;
+    }
 
     // 400 — validation errors from @Valid on @RequestBody
     // Overrides the default handler to include per-field error details.
@@ -73,6 +80,15 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(StaleDataException.class)
     public ProblemDetail handleConflict(StaleDataException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    // 409 — pin limit reached
+    @ExceptionHandler(PinLimitReachedException.class)
+    public ProblemDetail handlePinLimitReached(PinLimitReachedException ex) {
+        String detail = messages.get("pins.limit.reached", ex.getLimit());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, detail);
+        problem.setProperty("limit", ex.getLimit());
+        return problem;
     }
 
     // 409 — task has unresolved blockers

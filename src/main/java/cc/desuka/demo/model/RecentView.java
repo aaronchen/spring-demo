@@ -17,9 +17,6 @@ public class RecentView implements OwnedEntity {
     public static final String FIELD_ENTITY_TITLE = "entityTitle";
     public static final String FIELD_VIEWED_AT = "viewedAt";
 
-    public static final String TYPE_TASK = "TASK";
-    public static final String TYPE_PROJECT = "PROJECT";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

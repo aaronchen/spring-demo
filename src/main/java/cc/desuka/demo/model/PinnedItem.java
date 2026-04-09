@@ -10,9 +10,6 @@ import java.time.LocalDateTime;
                 @UniqueConstraint(columnNames = {"user_id", "entity_type", "entity_id"}))
 public class PinnedItem implements OwnedEntity {
 
-    public static final String TYPE_TASK = "TASK";
-    public static final String TYPE_PROJECT = "PROJECT";
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -3,9 +3,12 @@ import { requireOk, csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 import { onConnect } from "lib/websocket";
 import { escapeHtml } from "lib/html";
+import { setupDrawer } from "lib/drawer";
 
 // Pinned items — manages the pinned drawer and pin toggle icons across the page.
 // Pin icons dispatch "pin:toggle" custom events; this controller listens on document.
+
+const COLUMN_THRESHOLD = 10;
 
 export default class extends Controller {
     static targets = ["toggle", "panel", "list", "empty", "count"];
@@ -14,28 +17,22 @@ export default class extends Controller {
     // In-memory map: "TASK:uuid" → pinId (Long)
     pinnedIds = new Map();
     dragItem = null;
+    dropHandled = false;
 
     connect() {
-        // Close panel on outside click
-        this.outsideClickHandler = (e) => {
-            if (this.hasPanelTarget && !this.element.contains(e.target)) {
-                this.closePanel();
-            }
-        };
-        document.addEventListener("click", this.outsideClickHandler);
-
-        // Close when another drawer opens
-        this.drawerOpenedHandler = (e) => {
-            if (e.detail !== "pins") this.closePanel();
-        };
-        document.addEventListener("drawer:opened", this.drawerOpenedHandler);
+        this.drawer = setupDrawer({
+            element: this.element,
+            name: "pins",
+            getPanel: () => (this.hasPanelTarget ? this.panelTarget : null),
+            getToggle: () => (this.hasToggleTarget ? this.toggleTarget : null),
+        });
 
         // Listen for pin:toggle from pin icons anywhere on the page
         this.pinToggleHandler = (e) => this.handleToggle(e);
         document.addEventListener("pin:toggle", this.pinToggleHandler);
 
-        // Re-sync icons after HTMX content swaps
-        this.afterSettleHandler = () => this.syncAllPinIcons();
+        // Re-sync icons after HTMX content swaps (scoped to swapped element)
+        this.afterSettleHandler = (e) => this.syncPinIcons(e.detail?.elt || document);
         document.addEventListener("htmx:afterSettle", this.afterSettleHandler);
 
         // WebSocket subscription + initial load
@@ -55,31 +52,14 @@ export default class extends Controller {
     }
 
     disconnect() {
-        document.removeEventListener("click", this.outsideClickHandler);
-        document.removeEventListener("drawer:opened", this.drawerOpenedHandler);
+        this.drawer.destroy();
         document.removeEventListener("pin:toggle", this.pinToggleHandler);
         document.removeEventListener("htmx:afterSettle", this.afterSettleHandler);
         if (this.deregisterWs) this.deregisterWs();
     }
 
     toggle(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        if (this.hasPanelTarget) {
-            const isOpening = this.panelTarget.classList.contains("d-none");
-            this.panelTarget.classList.toggle("d-none");
-            if (this.hasToggleTarget) {
-                this.toggleTarget.classList.toggle("active", isOpening);
-            }
-            if (isOpening) {
-                document.dispatchEvent(new CustomEvent("drawer:opened", { detail: "pins" }));
-            }
-        }
-    }
-
-    closePanel() {
-        if (this.hasPanelTarget) this.panelTarget.classList.add("d-none");
-        if (this.hasToggleTarget) this.toggleTarget.classList.remove("active");
+        this.drawer.toggle(event);
     }
 
     // ── API ────────────────────────────────────────────────────────────
@@ -97,10 +77,7 @@ export default class extends Controller {
                         this.listTarget.appendChild(this.createItem(item));
                     }
                 });
-                this.updateEmptyState();
-                this.updateCount();
-                this.updateColumns();
-                this.syncAllPinIcons();
+                this.refreshUI();
             })
             .catch((err) => console.error("Failed to load pins:", err));
     }
@@ -126,12 +103,9 @@ export default class extends Controller {
             })
                 .then((res) => {
                     if (res.status === 409) {
-                        const limit = this.pinnedIds.size;
-                        showToast(
-                            APP_CONFIG.messages["pins.limit.reached"]?.replace("{0}", limit)?.replace("{1}", limit) ||
-                                `Pin limit reached (${limit})`,
-                            "warning",
-                        );
+                        res.json().then((body) => {
+                            showToast(body.detail, "warning");
+                        });
                         return null;
                     }
                     return requireOk(res);
@@ -151,24 +125,17 @@ export default class extends Controller {
             this.removeItemFromList(data.entityType, data.entityId);
             this.listTarget.prepend(this.createItem(data));
         }
-        this.updateEmptyState();
-        this.updateCount();
-        this.updateColumns();
-        this.syncAllPinIcons();
+        this.refreshUI();
     }
 
     handleRemoved(data) {
         const key = `${data.entityType}:${data.entityId}`;
         this.pinnedIds.delete(key);
         this.removeItemFromList(data.entityType, data.entityId);
-        this.updateEmptyState();
-        this.updateCount();
-        this.updateColumns();
-        this.syncAllPinIcons();
+        this.refreshUI();
     }
 
     handleTitleSync(data) {
-        // Update pinnedIds map (id doesn't change)
         if (this.hasListTarget) {
             const item = this.listTarget.querySelector(
                 `[data-entity-type="${data.entityType}"][data-entity-id="${data.entityId}"]`,
@@ -185,6 +152,13 @@ export default class extends Controller {
 
     get isManualSort() {
         return this.sortOrderValue === "manual";
+    }
+
+    refreshUI() {
+        this.updateEmptyState();
+        this.updateCount();
+        this.updateColumns();
+        this.syncPinIcons(document);
     }
 
     createItem(item) {
@@ -258,13 +232,12 @@ export default class extends Controller {
 
     updateColumns() {
         if (!this.hasPanelTarget) return;
-        const count = this.pinnedIds.size;
-        const cols = count > 10 ? "2" : "1";
+        const cols = this.pinnedIds.size > COLUMN_THRESHOLD ? "2" : "1";
         this.panelTarget.dataset.columns = cols;
     }
 
-    syncAllPinIcons() {
-        document.querySelectorAll("[data-pin-target]").forEach((el) => {
+    syncPinIcons(root) {
+        root.querySelectorAll("[data-pin-target]").forEach((el) => {
             const key = `${el.dataset.entityType}:${el.dataset.entityId}`;
             const isPinned = this.pinnedIds.has(key);
             const pinIcon = el.querySelector(".bi-pin-angle");
@@ -278,6 +251,7 @@ export default class extends Controller {
 
     onDragStart(e) {
         this.dragItem = e.currentTarget;
+        this.dropHandled = false;
         this.dragItem.classList.add("pins-dragging");
         e.dataTransfer.effectAllowed = "move";
     }
@@ -299,6 +273,7 @@ export default class extends Controller {
 
     onDrop(e) {
         e.preventDefault();
+        this.dropHandled = true;
         this.saveOrder();
     }
 
@@ -307,7 +282,9 @@ export default class extends Controller {
             this.dragItem.classList.remove("pins-dragging");
             this.dragItem = null;
         }
-        this.saveOrder();
+        if (!this.dropHandled) {
+            this.saveOrder();
+        }
     }
 
     saveOrder() {

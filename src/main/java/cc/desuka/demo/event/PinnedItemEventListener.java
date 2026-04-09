@@ -1,7 +1,7 @@
 package cc.desuka.demo.event;
 
-import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.service.PinnedItemService;
+import cc.desuka.demo.util.EntityTypes;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,13 +21,13 @@ public class PinnedItemEventListener {
     @TransactionalEventListener
     public void onTaskUpdated(TaskUpdatedEvent event) {
         pinnedItemService.updateTitle(
-                PinnedItem.TYPE_TASK, event.task().getId(), event.task().getTitle());
+                EntityTypes.TASK, event.task().getId(), event.task().getTitle());
     }
 
     @TransactionalEventListener
     public void onProjectUpdated(ProjectUpdatedEvent event) {
         pinnedItemService.updateTitle(
-                PinnedItem.TYPE_PROJECT, event.project().getId(), event.project().getName());
+                EntityTypes.PROJECT, event.project().getId(), event.project().getName());
     }
 
     @TransactionalEventListener

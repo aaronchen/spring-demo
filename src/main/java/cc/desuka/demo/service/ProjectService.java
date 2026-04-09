@@ -4,16 +4,15 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.event.ProjectUpdatedEvent;
-import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
 import cc.desuka.demo.model.ProjectStatus;
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.ProjectRepository;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.Messages;
 import java.util.Map;
 import java.util.Optional;
@@ -160,8 +159,8 @@ public class ProjectService {
         }
 
         String snapshot = AuditDetails.toJson(project.toAuditSnapshot());
-        recentViewService.deleteByEntity(RecentView.TYPE_PROJECT, id);
-        pinnedItemService.deleteByEntity(PinnedItem.TYPE_PROJECT, id);
+        recentViewService.deleteByEntity(EntityTypes.PROJECT, id);
+        pinnedItemService.deleteByEntity(EntityTypes.PROJECT, id);
         projectRepository.delete(project);
 
         eventPublisher.publishEvent(

@@ -6,6 +6,7 @@ import cc.desuka.demo.event.RecentViewPushEvent;
 import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.RecentViewRepository;
+import cc.desuka.demo.util.EntityTypes;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -57,7 +58,7 @@ public class RecentViewService {
             }
         }
 
-        String href = resolveHref(entityType, idStr);
+        String href = EntityTypes.resolveHref(appRoutes, entityType, idStr);
         RecentViewResponse payload =
                 new RecentViewResponse(
                         entityType, idStr, entityTitle, href, LocalDateTime.now(), false);
@@ -83,7 +84,7 @@ public class RecentViewService {
             if (isActor) {
                 rv.setViewedAt(now);
             }
-            String href = resolveHref(entityType, idStr);
+            String href = EntityTypes.resolveHref(appRoutes, entityType, idStr);
             RecentViewResponse payload =
                     new RecentViewResponse(
                             entityType,
@@ -114,12 +115,5 @@ public class RecentViewService {
     /** Delete a user's recent views for a project and all its tasks (member removal cleanup). */
     public void deleteByUserAndProject(UUID userId, UUID projectId) {
         recentViewRepository.deleteByUserAndProject(userId, projectId);
-    }
-
-    private String resolveHref(String entityType, String entityId) {
-        if (RecentView.TYPE_TASK.equals(entityType)) {
-            return appRoutes.getTaskDetail().params("taskId", entityId).build();
-        }
-        return appRoutes.getProjectDetail().params("projectId", entityId).build();
     }
 }

@@ -15,7 +15,6 @@ import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.report.TaskReport;
@@ -33,6 +32,7 @@ import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.CalendarHelper;
+import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.FormMode;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.Messages;
@@ -259,7 +259,7 @@ public class TaskController {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
         recentViewService.recordView(
-                currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
+                currentDetails.getUser(), EntityTypes.TASK, task.getId(), task.getTitle());
         populateFormModel(task, FormMode.VIEW, currentDetails, model);
         return taskFormView(request);
     }
@@ -350,7 +350,7 @@ public class TaskController {
         Task task = taskQueryService.getTaskWithDependencies(id);
         projectAccessGuard.requireEditAccess(task.getProject().getId(), currentDetails);
         recentViewService.recordView(
-                currentDetails.getUser(), RecentView.TYPE_TASK, task.getId(), task.getTitle());
+                currentDetails.getUser(), EntityTypes.TASK, task.getId(), task.getTitle());
         populateFormModel(task, FormMode.EDIT, currentDetails, model);
         return taskFormView(request);
     }

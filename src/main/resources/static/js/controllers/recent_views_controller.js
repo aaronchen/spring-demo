@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
 import { onConnect } from "lib/websocket";
 import { escapeHtml } from "lib/html";
+import { setupDrawer } from "lib/drawer";
 
 export default class extends Controller {
     static targets = ["toggle", "panel", "list", "empty"];
@@ -11,19 +12,12 @@ export default class extends Controller {
     };
 
     connect() {
-        // Close on outside click
-        this.outsideClickHandler = (e) => {
-            if (!this.element.contains(e.target) && !this.panelTarget.classList.contains("d-none")) {
-                this.closePanel();
-            }
-        };
-        document.addEventListener("click", this.outsideClickHandler);
-
-        // Close when another drawer opens
-        this.drawerOpenedHandler = (e) => {
-            if (e.detail !== "recent-views") this.closePanel();
-        };
-        document.addEventListener("drawer:opened", this.drawerOpenedHandler);
+        this.drawer = setupDrawer({
+            element: this.element,
+            name: "recent-views",
+            getPanel: () => (this.hasPanelTarget ? this.panelTarget : null),
+            getToggle: () => (this.hasToggleTarget ? this.toggleTarget : null),
+        });
 
         onConnect((client) => {
             client.subscribe("/user/queue/recent-views", (message) => {
@@ -42,24 +36,11 @@ export default class extends Controller {
     }
 
     disconnect() {
-        document.removeEventListener("click", this.outsideClickHandler);
-        document.removeEventListener("drawer:opened", this.drawerOpenedHandler);
+        this.drawer.destroy();
     }
 
     toggle(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        const isOpening = this.panelTarget.classList.contains("d-none");
-        this.panelTarget.classList.toggle("d-none");
-        this.toggleTarget.classList.toggle("active", isOpening);
-        if (isOpening) {
-            document.dispatchEvent(new CustomEvent("drawer:opened", { detail: "recent-views" }));
-        }
-    }
-
-    closePanel() {
-        this.panelTarget.classList.add("d-none");
-        this.toggleTarget.classList.remove("active");
+        this.drawer.toggle(event);
     }
 
     loadRecentViews() {

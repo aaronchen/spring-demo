@@ -42,6 +42,7 @@ import cc.desuka.demo.repository.SprintRepository;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.repository.TaskRepository;
 import cc.desuka.demo.repository.UserRepository;
+import cc.desuka.demo.util.EntityTypes;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -2344,31 +2345,31 @@ public class DataLoader implements CommandLineRunner {
                 List.of(
                         recentView(
                                 alice,
-                                RecentView.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 platform.getId(),
                                 platform.getName(),
                                 now.minusHours(1)),
                         recentView(
                                 alice,
-                                RecentView.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t1.getId(),
                                 t1.getTitle(),
                                 now.minusHours(2)),
                         recentView(
                                 alice,
-                                RecentView.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t2.getId(),
                                 t2.getTitle(),
                                 now.minusHours(3)),
                         recentView(
                                 alice,
-                                RecentView.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 product.getId(),
                                 product.getName(),
                                 now.minusHours(5)),
                         recentView(
                                 alice,
-                                RecentView.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t4.getId(),
                                 t4.getTitle(),
                                 now.minusHours(6))));
@@ -2378,19 +2379,19 @@ public class DataLoader implements CommandLineRunner {
                 List.of(
                         recentView(
                                 bob,
-                                RecentView.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t7.getId(),
                                 t7.getTitle(),
                                 now.minusHours(1)),
                         recentView(
                                 bob,
-                                RecentView.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 security.getId(),
                                 security.getName(),
                                 now.minusHours(2)),
                         recentView(
                                 bob,
-                                RecentView.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t8.getId(),
                                 t8.getTitle(),
                                 now.minusHours(4))));
@@ -2401,28 +2402,28 @@ public class DataLoader implements CommandLineRunner {
                 List.of(
                         pinnedItem(
                                 alice,
-                                PinnedItem.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 platform.getId(),
                                 platform.getName(),
                                 now.minusDays(5),
                                 0),
                         pinnedItem(
                                 alice,
-                                PinnedItem.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 product.getId(),
                                 product.getName(),
                                 now.minusDays(3),
                                 1),
                         pinnedItem(
                                 alice,
-                                PinnedItem.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t1.getId(),
                                 t1.getTitle(),
                                 now.minusDays(2),
                                 2),
                         pinnedItem(
                                 alice,
-                                PinnedItem.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t2.getId(),
                                 t2.getTitle(),
                                 now.minusDays(1),
@@ -2433,21 +2434,21 @@ public class DataLoader implements CommandLineRunner {
                 List.of(
                         pinnedItem(
                                 bob,
-                                PinnedItem.TYPE_PROJECT,
+                                EntityTypes.PROJECT,
                                 security.getId(),
                                 security.getName(),
                                 now.minusDays(4),
                                 0),
                         pinnedItem(
                                 bob,
-                                PinnedItem.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t7.getId(),
                                 t7.getTitle(),
                                 now.minusDays(2),
                                 1),
                         pinnedItem(
                                 bob,
-                                PinnedItem.TYPE_TASK,
+                                EntityTypes.TASK,
                                 t8.getId(),
                                 t8.getTitle(),
                                 now.minusDays(1),

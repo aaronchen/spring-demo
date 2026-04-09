@@ -291,7 +291,7 @@ All `fetch()` calls must chain `.then(requireOk)` before parsing the response. `
 
 ### ProblemDetail Error Response Pattern
 
-REST API uses RFC 9457 `ProblemDetail` via `ApiExceptionHandler` (scoped to `controller.api`). Web UI errors handled separately by `WebExceptionHandler`.
+REST API uses RFC 9457 `ProblemDetail` via `ApiExceptionHandler` (scoped to `controller.api`). `ApiExceptionHandler` injects `Messages` for i18n-aware error detail strings (e.g., `PinLimitReachedException` → 409 with localized message from `messages.properties`). Web UI errors handled separately by `WebExceptionHandler`.
 
 ### @Mention Pattern
 
@@ -331,9 +331,9 @@ User-initiated bookmarking of projects and tasks. Mirrors RecentView architectur
 
 **API:** `GET /api/pins`, `POST /api/pins` (201 or 409 if limit), `DELETE /api/pins/{id}` (ownership guard), `PATCH /api/pins/reorder`.
 
-**WebSocket push:** `/user/queue/pins` — `PinnedItemPushEvent` with `pinned`/`titleOnly`/`deleted` flags. `PinnedItemEventListener` handles title sync on `TaskUpdatedEvent`/`ProjectUpdatedEvent`.
+**WebSocket push:** `/user/queue/pins` — `PinnedItemResponse` payload built via factory methods (`pinned()`, `titleUpdate()`, `deleted()`), published via `PinnedItemPushEvent`. `PinnedItemEventListener` handles title sync on `TaskUpdatedEvent`/`ProjectUpdatedEvent`.
 
-**Sort options** (user preference `pinnedSortOrder`): pinnedDate (default), name, lastViewed (cross-references RecentView), manual (drag-and-drop via sortOrder).
+**Sort options** (user preference `pinnedSortOrder`): pinnedDate (default), name, manual (drag-and-drop via sortOrder).
 
 **Pin icon fragment:** `fragments/pin-icon.html` — dispatches `pin:toggle` custom event on `document`. Shown in card view, table view, project grid, project page header. Hidden on small screens (`d-none d-lg-inline`).
 

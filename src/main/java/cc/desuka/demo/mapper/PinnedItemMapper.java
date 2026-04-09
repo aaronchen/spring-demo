@@ -3,6 +3,7 @@ package cc.desuka.demo.mapper;
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.PinnedItemResponse;
 import cc.desuka.demo.model.PinnedItem;
+import cc.desuka.demo.util.EntityTypes;
 import java.util.List;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
@@ -21,9 +22,6 @@ public interface PinnedItemMapper {
             List<PinnedItem> pins, @Context AppRoutesProperties appRoutes);
 
     default String resolveHref(PinnedItem pin, AppRoutesProperties appRoutes) {
-        if (PinnedItem.TYPE_TASK.equals(pin.getEntityType())) {
-            return appRoutes.getTaskDetail().params("taskId", pin.getEntityId()).build();
-        }
-        return appRoutes.getProjectDetail().params("projectId", pin.getEntityId()).build();
+        return EntityTypes.resolveHref(appRoutes, pin.getEntityType(), pin.getEntityId());
     }
 }

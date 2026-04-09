@@ -1,9 +1,8 @@
 package cc.desuka.demo.audit;
 
 import cc.desuka.demo.config.AppRoutesProperties;
-import cc.desuka.demo.model.Project;
-import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.Translatable;
+import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.MentionUtils;
 import java.util.Collection;
 import java.util.List;
@@ -55,14 +54,7 @@ public class AuditTemplateHelper {
     // --- Reference URL resolution ---
 
     public String resolveUrl(String refType, String refId) {
-        if (refType == null || refId == null) return null;
-        if (Project.class.getSimpleName().equals(refType)) {
-            return appRoutes.getProjectDetail().params("projectId", refId).build();
-        }
-        if (Task.class.getSimpleName().equals(refType)) {
-            return appRoutes.getTaskDetail().params("taskId", refId).build();
-        }
-        return null;
+        return EntityTypes.resolveHref(appRoutes, refType, refId);
     }
 
     // --- Checklist helpers ---

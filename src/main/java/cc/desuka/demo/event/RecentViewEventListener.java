@@ -1,7 +1,7 @@
 package cc.desuka.demo.event;
 
-import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.service.RecentViewService;
+import cc.desuka.demo.util.EntityTypes;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -21,13 +21,13 @@ public class RecentViewEventListener {
     @TransactionalEventListener
     public void onTaskUpdated(TaskUpdatedEvent event) {
         recentViewService.updateTitle(
-                RecentView.TYPE_TASK, event.task().getId(), event.task().getTitle(), event.actor());
+                EntityTypes.TASK, event.task().getId(), event.task().getTitle(), event.actor());
     }
 
     @TransactionalEventListener
     public void onProjectUpdated(ProjectUpdatedEvent event) {
         recentViewService.updateTitle(
-                RecentView.TYPE_PROJECT,
+                EntityTypes.PROJECT,
                 event.project().getId(),
                 event.project().getName(),
                 event.actor());
