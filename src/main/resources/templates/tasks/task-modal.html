@@ -6,6 +6,7 @@
         <h5 class="modal-title mb-0">
             <i th:class="${mode == 'view'} ? 'bi bi-eye' : (${mode == 'edit'} ? 'bi bi-pencil-square' : 'bi bi-plus-circle')"></i>
             <span th:text="${mode == 'view'} ? #{task.view.heading} : (${mode == 'edit'} ? #{task.edit.heading} : #{action.newTask})">Task</span>
+            <th:block th:if="${mode != 'create'}" th:replace="~{fragments/pin-icon :: pin-icon('TASK', ${task.id}, ${task.title})}" />
         </h5>
         <small th:if="${task.project != null && (mode != 'create' || editableProjects == null)}" class="text-muted">
             <i class="bi bi-folder"></i>
