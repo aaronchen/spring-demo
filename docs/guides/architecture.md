@@ -106,6 +106,10 @@ Use query services when they materially improve:
 
 Do not invent command/query classes for every domain up front. Use them when the service boundary is becoming unclear.
 
+**Command services** handle cross-cutting write operations that multiple services need — extracted to break circular dependencies. Examples: `TaskCommandService` (bulk task unassignment), `UserCommandService` (user deletion cascade). Command services may inject foreign repositories directly when the owning service would create a cycle, and delegate to services for domains that don't.
+
+**Never use `@Lazy`** to break circular dependencies. It hides the cycle, defers errors to runtime, and makes the dependency graph opaque. Extract a command or query service instead.
+
 ## Transaction Boundaries
 
 Defaults:
@@ -133,6 +137,11 @@ Use `ApplicationEventPublisher` in services.
 Keep delivery concerns out of core services where practical.
 
 Do not force everything through events. Scheduled jobs and tightly coupled domain writes can still call services directly.
+
+### Event Naming Convention
+
+- **Domain events**: `*UpdatedEvent`, `*AssignedEvent`, `*AddedEvent` — trigger side effects (audit, notifications, title sync)
+- **WebSocket push events**: `*PushEvent` — ephemeral browser broadcasts, no DB persistence. Examples: `TaskPushEvent`, `ProjectPushEvent`, `PinnedItemPushEvent`, `RecentViewPushEvent`
 
 ## Security Layers
 

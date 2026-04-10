@@ -136,6 +136,8 @@ Use `appRoutes` and `APP_CONFIG.routes`.
 
 Use the `RouteTemplate` builder API consistently: `.params().build()` / `.query().build()`.
 
+Always call `.build()` when passing a route to `fetch()` or `htmx.ajax()` — these APIs expect a string, and `RouteTemplate` objects are not auto-coerced. Non-parameterized routes also need `.build()` (e.g., `APP_CONFIG.routes.apiPins.build()`). Thymeleaf `th:hx-*` attributes call `.toString()` implicitly, so `.build()` is not needed there.
+
 Do not hardcode URLs in:
 
 - templates
@@ -147,10 +149,19 @@ Do not hardcode URLs in:
 Shared browser config belongs in `APP_CONFIG`:
 
 - routes
-- messages
+- messages (accessed via `t()` from `lib/i18n.js`)
 - enum metadata
 
 Do not put controller-specific data into `APP_CONFIG`.
+
+### Message Access
+
+Use `t(key, ...args)` from `lib/i18n.js` for all message lookups. Never access `APP_CONFIG.messages` directly outside `i18n.js`.
+
+- `t("key")` — plain lookup, returns `undefined` if missing
+- `t("key", arg1, arg2)` — parameterized, replaces `{0}`, `{1}`, etc.
+- `t("key") || "fallback"` — defensive default for UI labels
+- `resolveLabel(prefix, enumValue)` — enum label lookup, delegates to `t()` internally
 
 For controller-specific data, use Stimulus values.
 
