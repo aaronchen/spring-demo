@@ -9,7 +9,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="display-4 mb-0" th:text="#{admin.users.heading}">User Management</h1>
             <button class="btn btn-primary"
-                    hx-get="/admin/users/new" hx-target="#user-modal-content" hx-swap="innerHTML">
+                    th:hx-get="${appRoutes.adminUsersNew}" hx-target="#user-modal-content" hx-swap="innerHTML">
                 <i class="bi bi-plus-circle"></i> <span th:text="#{admin.users.create}">New User</span>
             </button>
         </div>
@@ -18,7 +18,7 @@
             <input type="search" class="form-control"
                    id="admin-user-search"
                    th:placeholder="#{user.search.placeholder}"
-                   hx-get="/admin/users"
+                   th:hx-get="${appRoutes.adminUsers}"
                    hx-target="#user-table-content"
                    hx-swap="outerHTML"
                    hx-trigger="input changed delay:300ms, search"
@@ -58,7 +58,9 @@
 
             function refreshTable() {
                 const search = document.getElementById('admin-user-search').value;
-                const url = '/admin/users' + (search ? `?search=${encodeURIComponent(search)}` : '');
+                const url = search
+                    ? APP_CONFIG.routes.adminUsers.query({search}).build()
+                    : APP_CONFIG.routes.adminUsers.build();
                 htmx.ajax('GET', url, {target: '#user-table-content', swap: 'outerHTML'});
             }
 
@@ -104,7 +106,7 @@
                         errEl.style.display = '';
                         return false;
                     }
-                    htmx.ajax('POST', `/admin/users/${userId}/reset-password`,
+                    htmx.ajax('POST', APP_CONFIG.routes.adminUserResetPassword.params({userId}).build(),
                         {swap: 'none', values: {password: pw}});
                 });
             });
@@ -117,7 +119,7 @@
                 const userId = btn.dataset.userId;
                 const userName = btn.dataset.userName;
 
-                fetch(`/admin/users/${userId}/info`)
+                fetch(APP_CONFIG.routes.adminUserInfo.params({userId}).build())
                     .then(requireOk)
                     .then(r => r.json())
                     .then(function(info) {
@@ -137,7 +139,7 @@
                                 headerClass: 'bg-danger text-white',
                                 confirmClass: 'btn btn-danger'
                             }, function() {
-                                htmx.ajax('DELETE', `/admin/users/${userId}`, {swap: 'none'});
+                                htmx.ajax('DELETE', APP_CONFIG.routes.adminUserDelete.params({userId}).build(), {swap: 'none'});
                             });
                         } else if (!info.canDisable) {
                             showToast(t('admin.users.soleOwner.cannotRemove'), 'warning');
@@ -163,7 +165,7 @@
                                 headerClass: 'bg-warning',
                                 confirmClass: 'btn btn-warning'
                             }, function() {
-                                htmx.ajax('POST', `/admin/users/${userId}/disable`, {swap: 'none'});
+                                htmx.ajax('POST', APP_CONFIG.routes.adminUserDisable.params({userId}).build(), {swap: 'none'});
                             });
                         }
                     })

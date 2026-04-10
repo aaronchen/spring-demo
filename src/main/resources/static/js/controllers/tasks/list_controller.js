@@ -592,7 +592,7 @@ export default class extends Controller {
     // ── Saved Views ──────────────────────────────────────────────────────
 
     loadSavedViews() {
-        fetch(APP_CONFIG.routes.apiViews)
+        fetch(APP_CONFIG.routes.apiViews.build())
             .then(requireOk)
             .then((r) => r.json())
             .then((views) => this.renderSavedViewsList(views))
@@ -754,7 +754,7 @@ export default class extends Controller {
                     sort: this.activeSorts.slice(),
                 };
 
-                fetch(APP_CONFIG.routes.apiViews, {
+                fetch(APP_CONFIG.routes.apiViews.build(), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ name, data }),

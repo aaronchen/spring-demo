@@ -19,7 +19,7 @@
         import { showToast } from 'lib/toast';
         document.body.addEventListener('tagDeleted', function() {
             showToast(t('toast.admin.tags.deleted'));
-            htmx.ajax('GET', APP_CONFIG.routes.adminTags, {target: '#tag-management-content', swap: 'outerHTML'});
+            htmx.ajax('GET', APP_CONFIG.routes.adminTags.build(), {target: '#tag-management-content', swap: 'outerHTML'});
         });
     </script>
 </body>

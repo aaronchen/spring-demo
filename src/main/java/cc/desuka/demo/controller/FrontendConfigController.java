@@ -1,6 +1,7 @@
 package cc.desuka.demo.controller;
 
 import cc.desuka.demo.config.AppRoutesProperties;
+import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.util.RouteTemplate;
@@ -39,7 +40,8 @@ public class FrontendConfigController {
                 "enums",
                 Map.of(
                         "taskStatus", buildTaskStatusMap(),
-                        "priority", buildPriorityMap()));
+                        "priority", buildPriorityMap(),
+                        "notificationType", buildNotificationTypeMap()));
 
         return "(function() {\n"
                 + RouteTemplate.JS_CLASS
@@ -100,6 +102,18 @@ public class FrontendConfigController {
                             "btnCss", priority.getBtnClass(),
                             "icon", priority.getIcon(),
                             "chartColor", priority.getChartColor()));
+        }
+        return map;
+    }
+
+    private Map<String, Map<String, Object>> buildNotificationTypeMap() {
+        Map<String, Map<String, Object>> map = new LinkedHashMap<>();
+        for (NotificationType type : NotificationType.values()) {
+            map.put(
+                    type.name(),
+                    Map.of(
+                            "icon", type.getIcon(),
+                            "css", type.getCssClass()));
         }
         return map;
     }

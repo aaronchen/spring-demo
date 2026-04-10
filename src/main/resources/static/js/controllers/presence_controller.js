@@ -13,7 +13,7 @@ export default class extends Controller {
                 this.updateUI(data.count, data.users);
             });
 
-            fetch(APP_CONFIG.routes.apiPresence)
+            fetch(APP_CONFIG.routes.apiPresence.build())
                 .then(requireOk)
                 .then((res) => res.json())
                 .then((data) => this.updateUI(data.count, data.users));

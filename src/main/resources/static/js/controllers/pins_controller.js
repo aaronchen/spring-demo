@@ -66,7 +66,7 @@ export default class extends Controller {
     // ── API ────────────────────────────────────────────────────────────
 
     loadPins() {
-        fetch(APP_CONFIG.routes.apiPins)
+        fetch(APP_CONFIG.routes.apiPins.build())
             .then(requireOk)
             .then((res) => res.json())
             .then((items) => {
@@ -97,7 +97,7 @@ export default class extends Controller {
                 .then(requireOk)
                 .catch((err) => console.error("Failed to unpin:", err));
         } else {
-            fetch(APP_CONFIG.routes.apiPins, {
+            fetch(APP_CONFIG.routes.apiPins.build(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...csrfHeaders() },
                 body: JSON.stringify({ entityType, entityId, entityTitle }),

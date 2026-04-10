@@ -44,7 +44,7 @@ export default class extends Controller {
     }
 
     loadRecentViews() {
-        fetch(APP_CONFIG.routes.apiRecentViews)
+        fetch(APP_CONFIG.routes.apiRecentViews.build())
             .then(requireOk)
             .then((res) => res.json())
             .then((items) => {

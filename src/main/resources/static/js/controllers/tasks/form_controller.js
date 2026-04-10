@@ -30,7 +30,7 @@ export default class extends Controller {
             assigneeSelect.setSrc(
                 projectId
                     ? APP_CONFIG.routes.apiProjectMembersAssignable.params({ projectId }).build()
-                    : APP_CONFIG.routes.apiUsers,
+                    : APP_CONFIG.routes.apiUsers.build(),
             );
             assigneeSelect.reset();
             this.updateSprintDropdown(projectId);

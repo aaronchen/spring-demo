@@ -91,7 +91,7 @@
                         <div class="card h-100 theme-card"
                              th:classappend="${theme.id == settings.theme} ? 'border-primary shadow' : 'border'"
                              style="cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease;"
-                             hx-post="/admin/settings/theme"
+                             th:hx-post="${appRoutes.adminSettingsTheme}"
                              hx-swap="none"
                              th:hx-vals='|{"theme":"${theme.id}"}|'>
 
@@ -164,7 +164,7 @@
 
         // Save all general settings
         document.getElementById('save-general-btn').addEventListener('click', function() {
-            htmx.ajax('POST', '/admin/settings/general', {
+            htmx.ajax('POST', APP_CONFIG.routes.adminSettingsGeneral.build(), {
                 values: {
                     siteName: document.getElementById('setting-site-name').value,
                     registrationEnabled: document.getElementById('setting-registration').checked,

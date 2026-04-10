@@ -203,6 +203,7 @@ public class RouteTemplate {
                 query(queryOrKey, value, ...rest) {
                     return new RouteBuilder(this.template, {}, {}).query(queryOrKey, value, ...rest);
                 }
+                build() { return this.template; }
                 toString() { return this.template; }
                 valueOf() { return this.template; }
             }

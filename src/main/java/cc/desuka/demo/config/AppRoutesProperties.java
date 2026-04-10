@@ -74,8 +74,17 @@ public class AppRoutesProperties {
 
     // ── Admin routes ──────────────────────────────────────────────────
     private RouteTemplate adminTags = new RouteTemplate("/admin/tags");
+    private RouteTemplate adminUsers = new RouteTemplate("/admin/users");
+    private RouteTemplate adminUsersNew = new RouteTemplate("/admin/users/new");
+    private RouteTemplate adminSettingsTheme = new RouteTemplate("/admin/settings/theme");
+    private RouteTemplate adminSettingsGeneral = new RouteTemplate("/admin/settings/general");
     private RouteTemplate adminUserEdit = new RouteTemplate("/admin/users/{userId}/edit");
     private RouteTemplate adminUserEnable = new RouteTemplate("/admin/users/{userId}/enable");
+    private RouteTemplate adminUserInfo = new RouteTemplate("/admin/users/{userId}/info");
+    private RouteTemplate adminUserResetPassword =
+            new RouteTemplate("/admin/users/{userId}/reset-password");
+    private RouteTemplate adminUserDisable = new RouteTemplate("/admin/users/{userId}/disable");
+    private RouteTemplate adminUserDelete = new RouteTemplate("/admin/users/{userId}");
     private RouteTemplate adminTagDelete = new RouteTemplate("/admin/tags/{tagId}");
 
     // ── API resource routes ───────────────────────────────────────────

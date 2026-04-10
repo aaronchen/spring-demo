@@ -58,7 +58,7 @@ export default class extends Controller {
     markAllRead(event) {
         event.preventDefault();
         event.stopPropagation();
-        fetch(APP_CONFIG.routes.apiNotificationsReadAll, { method: "PATCH" })
+        fetch(APP_CONFIG.routes.apiNotificationsReadAll.build(), { method: "PATCH" })
             .then(requireOk)
             .then(() => fire("notification:allRead"))
             .catch((err) => console.error("Failed to mark all as read:", err));
@@ -67,7 +67,7 @@ export default class extends Controller {
     // ── Badge ────────────────────────────────────────────────────────────
 
     refreshBadge() {
-        fetch(APP_CONFIG.routes.apiNotificationsUnreadCount)
+        fetch(APP_CONFIG.routes.apiNotificationsUnreadCount.build())
             .then(requireOk)
             .then((res) => res.json())
             .then((data) => this.updateBadge(data.count));
