@@ -38,4 +38,8 @@ public class SavedViewService {
     public void deleteView(SavedView view) {
         savedViewRepository.delete(view);
     }
+
+    public void deleteByUserId(UUID userId) {
+        savedViewRepository.deleteByUserId(userId);
+    }
 }

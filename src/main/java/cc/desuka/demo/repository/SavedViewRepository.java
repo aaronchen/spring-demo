@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SavedViewRepository extends JpaRepository<SavedView, Long> {
     List<SavedView> findByUserIdOrderByNameAsc(UUID userId);
+
+    void deleteByUserId(UUID userId);
 }

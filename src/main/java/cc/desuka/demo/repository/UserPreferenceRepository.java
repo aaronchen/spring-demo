@@ -13,4 +13,6 @@ public interface UserPreferenceRepository extends JpaRepository<UserPreference, 
     List<UserPreference> findByUserId(UUID userId);
 
     Optional<UserPreference> findByUserIdAndKey(UUID userId, String key);
+
+    void deleteByUserId(UUID userId);
 }

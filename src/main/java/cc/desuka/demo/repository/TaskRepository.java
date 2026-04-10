@@ -55,7 +55,11 @@ public interface TaskRepository extends JpaRepository<Task, UUID>, JpaSpecificat
 
     long countByUser(User user);
 
+    long countByUserId(UUID userId);
+
     long countByUserAndStatus(User user, TaskStatus status);
+
+    long countByUserIdAndStatus(UUID userId, TaskStatus status);
 
     long countByUserAndDueDateBeforeAndStatusNotIn(
             User user, LocalDate date, Collection<TaskStatus> statuses);

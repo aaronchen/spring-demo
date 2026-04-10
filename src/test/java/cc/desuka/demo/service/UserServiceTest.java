@@ -35,8 +35,8 @@ class UserServiceTest {
     @Mock private TaskQueryService taskQueryService;
     @Mock private TaskCommandService taskAssignmentService;
     @Mock private CommentQueryService commentQueryService;
-    @Mock private PinnedItemService pinnedItemService;
-    @Mock private RecentViewService recentViewService;
+    @Mock private ProjectQueryService projectQueryService;
+    @Mock private UserCommandService userCommandService;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private UserService userService;
@@ -211,27 +211,45 @@ class UserServiceTest {
     // ── canDelete ────────────────────────────────────────────────────────
 
     @Test
-    void canDelete_noCompletedTasksNoComments_returnsTrue() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
-        when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(0L);
+    void canDelete_noBlockers_returnsTrue() {
+        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
         when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
+        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(0L);
+        when(projectQueryService.isSoleOwnerOfAnyProject(ID_2)).thenReturn(false);
 
         assertThat(userService.canDelete(ID_2)).isTrue();
     }
 
     @Test
     void canDelete_hasCompletedTasks_returnsFalse() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
-        when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(3L);
+        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(3L);
 
         assertThat(userService.canDelete(ID_2)).isFalse();
     }
 
     @Test
     void canDelete_hasComments_returnsFalse() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
-        when(taskQueryService.countByUserAndStatus(bob, TaskStatus.COMPLETED)).thenReturn(0L);
+        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
         when(commentQueryService.countByUserId(ID_2)).thenReturn(5L);
+
+        assertThat(userService.canDelete(ID_2)).isFalse();
+    }
+
+    @Test
+    void canDelete_hasRecurringTemplates_returnsFalse() {
+        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
+        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
+        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(2L);
+
+        assertThat(userService.canDelete(ID_2)).isFalse();
+    }
+
+    @Test
+    void canDelete_isSoleOwner_returnsFalse() {
+        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
+        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
+        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(0L);
+        when(projectQueryService.isSoleOwnerOfAnyProject(ID_2)).thenReturn(true);
 
         assertThat(userService.canDelete(ID_2)).isFalse();
     }
@@ -275,7 +293,7 @@ class UserServiceTest {
     // ── deleteUser ───────────────────────────────────────────────────────
 
     @Test
-    void deleteUser_unassignsTasksAndDeletes() {
+    void deleteUser_delegatesToCleanupServiceAndDeletes() {
         when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -283,8 +301,8 @@ class UserServiceTest {
 
             userService.deleteUser(ID_2);
 
-            var inOrder = inOrder(taskAssignmentService, userRepository);
-            inOrder.verify(taskAssignmentService).unassignTasks(bob);
+            var inOrder = inOrder(userCommandService, userRepository);
+            inOrder.verify(userCommandService).cleanupBeforeDeletion(bob);
             inOrder.verify(userRepository).delete(bob);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
         }

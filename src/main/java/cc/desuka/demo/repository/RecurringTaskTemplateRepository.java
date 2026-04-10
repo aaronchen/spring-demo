@@ -45,4 +45,10 @@ public interface RecurringTaskTemplateRepository
             "UPDATE RecurringTaskTemplate t SET t.enabled = false "
                     + "WHERE t.project.id = :projectId AND t.enabled = true")
     int disableAllByProjectId(UUID projectId);
+
+    long countByCreatedById(UUID userId);
+
+    @Modifying
+    @Query("UPDATE RecurringTaskTemplate t SET t.assignee = null WHERE t.assignee.id = :userId")
+    void nullAssigneeByUserId(UUID userId);
 }

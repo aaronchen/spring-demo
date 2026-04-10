@@ -100,8 +100,16 @@ public class TaskQueryService {
         return taskRepository.countByUserAndStatus(user, status);
     }
 
+    public long countByUserIdAndStatus(UUID userId, TaskStatus status) {
+        return taskRepository.countByUserIdAndStatus(userId, status);
+    }
+
     public long countAssignedTasks(User user) {
         return taskRepository.countByUser(user);
+    }
+
+    public long countAssignedTasks(UUID userId) {
+        return taskRepository.countByUserId(userId);
     }
 
     public long countByUserOverdue(User user) {

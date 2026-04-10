@@ -121,4 +121,8 @@ public class ProjectQueryService {
                 .map(role -> role == ProjectRole.OWNER || role == ProjectRole.EDITOR)
                 .orElse(false);
     }
+
+    public boolean isSoleOwnerOfAnyProject(UUID userId) {
+        return memberRepository.isSoleOwnerOfAnyProject(userId);
+    }
 }

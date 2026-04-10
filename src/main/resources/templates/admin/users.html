@@ -41,6 +41,9 @@
 
     <script type="module">
         import { showConfirm } from 'lib/confirm';
+        import { requireOk } from 'lib/api';
+        import { t } from 'lib/i18n';
+        const msg = APP_CONFIG.messages;
         function toast(message, type) {
             document.dispatchEvent(new CustomEvent('showToast', { detail: { message, type: type || 'success' } }));
         }
@@ -65,13 +68,13 @@
             // Refresh table and close modal on save
             document.body.addEventListener('userSaved', function() {
                 if (bsModal) bsModal.hide();
-                toast(APP_CONFIG.messages['toast.admin.users.saved']);
+                toast(msg['toast.admin.users.saved']);
                 refreshTable();
             });
 
             // Password reset event
             document.body.addEventListener('passwordReset', function() {
-                toast(APP_CONFIG.messages['toast.admin.users.passwordReset']);
+                toast(msg['toast.admin.users.passwordReset']);
             });
 
             // Reset password button handler
@@ -83,10 +86,9 @@
                 const userName = btn.dataset.userName;
                 const inputId = 'reset-pw-input';
                 const errorId = 'reset-pw-error';
-                const msg = APP_CONFIG.messages;
 
                 showConfirm({
-                    title: msg['admin.users.resetPassword.title'].replace('{0}', userName),
+                    title: t('admin.users.resetPassword.title', userName),
                     message: `<div>
                         <label class="form-label fw-bold form-label-required">${msg['admin.users.resetPassword.label']}</label>
                         <input type="password" id="${inputId}" class="form-control"
@@ -119,44 +121,47 @@
                 const userName = btn.dataset.userName;
 
                 fetch(`/admin/users/${userId}/info`)
+                    .then(requireOk)
                     .then(r => r.json())
                     .then(function(info) {
-                        const msg = APP_CONFIG.messages;
                         if (info.isSelf) {
                             toast(msg['admin.users.self.cannotRemove'], 'warning');
                             return;
                         }
                         if (info.canDelete) {
-                            // User has no completed tasks or comments — offer delete
                             let confirmMsg = msg['admin.users.delete.confirm'];
                             if (info.assignedTasks > 0) {
-                                confirmMsg += ` ${msg['admin.users.delete.taskWarning'].replace('{0}', info.assignedTasks)}`;
+                                confirmMsg += ` ${t('admin.users.delete.taskWarning', info.assignedTasks)}`;
                             }
                             showConfirm({
                                 message: confirmMsg,
-                                title: msg['admin.users.delete.title'].replace('{0}', userName),
+                                title: t('admin.users.delete.title', userName),
                                 confirmText: msg['action.delete'],
                                 headerClass: 'bg-danger text-white',
                                 confirmClass: 'btn btn-danger'
                             }, function() {
                                 htmx.ajax('DELETE', `/admin/users/${userId}`, {swap: 'none'});
                             });
+                        } else if (!info.canDisable) {
+                            toast(msg['admin.users.soleOwner.cannotRemove'], 'warning');
                         } else {
-                            // User has history — offer disable
                             const parts = [];
                             if (info.completedTasks > 0) {
-                                parts.push(msg['admin.users.disable.completedTasks'].replace('{0}', info.completedTasks));
+                                parts.push(t('admin.users.disable.completedTasks', info.completedTasks));
                             }
                             if (info.comments > 0) {
-                                parts.push(msg['admin.users.disable.comments'].replace('{0}', info.comments));
+                                parts.push(t('admin.users.disable.comments', info.comments));
                             }
-                            let disableMsg = msg['admin.users.disable.confirm'].replace('{0}', parts.join(', '));
+                            if (info.recurringTemplates > 0) {
+                                parts.push(t('admin.users.disable.recurringTemplates', info.recurringTemplates));
+                            }
+                            let disableMsg = t('admin.users.disable.confirm', parts.join(', '));
                             if (info.assignedTasks > 0) {
-                                disableMsg += ` ${msg['admin.users.disable.taskWarning'].replace('{0}', info.assignedTasks)}`;
+                                disableMsg += ` ${t('admin.users.disable.taskWarning', info.assignedTasks)}`;
                             }
                             showConfirm({
                                 message: disableMsg,
-                                title: msg['admin.users.disable.title'].replace('{0}', userName),
+                                title: t('admin.users.disable.title', userName),
                                 confirmText: msg['admin.users.action.disable'],
                                 headerClass: 'bg-warning',
                                 confirmClass: 'btn btn-warning'
@@ -164,7 +169,8 @@
                                 htmx.ajax('POST', `/admin/users/${userId}/disable`, {swap: 'none'});
                             });
                         }
-                    });
+                    })
+                    .catch(err => console.error('Failed to load user info:', err));
             });
         })();
     </script>

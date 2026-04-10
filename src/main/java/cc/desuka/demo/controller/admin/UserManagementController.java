@@ -130,7 +130,7 @@ public class UserManagementController {
     @PostMapping("/{id}/disable")
     @ResponseBody
     public ResponseEntity<Void> disableUser(@PathVariable UUID id) {
-        if (SecurityUtils.isCurrentUser(id)) {
+        if (SecurityUtils.isCurrentUser(id) || !userService.canDisable(id)) {
             return ResponseEntity.badRequest().build();
         }
         userService.disableUser(id);
@@ -166,6 +166,8 @@ public class UserManagementController {
         info.put("completedTasks", userService.countCompletedTasks(id));
         info.put("comments", userService.countComments(id));
         info.put("assignedTasks", userService.countAssignedTasks(id));
+        info.put("recurringTemplates", userService.countRecurringTemplates(id));
+        info.put("canDisable", userService.canDisable(id));
         return info;
     }
 

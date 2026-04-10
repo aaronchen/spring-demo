@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +33,7 @@ public class PinnedItemService {
             PinnedItemRepository pinnedItemRepository,
             ApplicationEventPublisher eventPublisher,
             AppRoutesProperties appRoutes,
-            @Lazy UserPreferenceService userPreferenceService) {
+            UserPreferenceService userPreferenceService) {
         this.pinnedItemRepository = pinnedItemRepository;
         this.eventPublisher = eventPublisher;
         this.appRoutes = appRoutes;

@@ -76,4 +76,8 @@ public class NotificationService {
     public void clearAll(UUID userId) {
         notificationRepository.deleteByUserId(userId);
     }
+
+    public void nullActorByUserId(UUID userId) {
+        notificationRepository.nullActorByUserId(userId);
+    }
 }

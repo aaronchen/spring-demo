@@ -34,5 +34,9 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     void deleteByUserId(UUID userId);
 
+    @Modifying
+    @Query("UPDATE Notification n SET n.actor = null WHERE n.actor.id = :userId")
+    void nullActorByUserId(UUID userId);
+
     int deleteByCreatedAtBefore(LocalDateTime cutoff);
 }

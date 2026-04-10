@@ -26,8 +26,8 @@ public class UserService {
     private final TaskQueryService taskQueryService;
     private final TaskCommandService taskAssignmentService;
     private final CommentQueryService commentQueryService;
-    private final PinnedItemService pinnedItemService;
-    private final RecentViewService recentViewService;
+    private final ProjectQueryService projectQueryService;
+    private final UserCommandService userCommandService;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(
@@ -35,15 +35,15 @@ public class UserService {
             TaskQueryService taskQueryService,
             TaskCommandService taskAssignmentService,
             CommentQueryService commentQueryService,
-            PinnedItemService pinnedItemService,
-            RecentViewService recentViewService,
+            ProjectQueryService projectQueryService,
+            UserCommandService userCommandService,
             ApplicationEventPublisher eventPublisher) {
         this.userRepository = userRepository;
         this.taskQueryService = taskQueryService;
         this.taskAssignmentService = taskAssignmentService;
         this.commentQueryService = commentQueryService;
-        this.pinnedItemService = pinnedItemService;
-        this.recentViewService = recentViewService;
+        this.projectQueryService = projectQueryService;
+        this.userCommandService = userCommandService;
         this.eventPublisher = eventPublisher;
     }
 
@@ -168,8 +168,7 @@ public class UserService {
     }
 
     public long countCompletedTasks(UUID userId) {
-        User user = getUserById(userId);
-        return taskQueryService.countByUserAndStatus(user, TaskStatus.COMPLETED);
+        return taskQueryService.countByUserIdAndStatus(userId, TaskStatus.COMPLETED);
     }
 
     public long countComments(UUID userId) {
@@ -177,12 +176,26 @@ public class UserService {
     }
 
     public long countAssignedTasks(UUID userId) {
-        User user = getUserById(userId);
-        return taskQueryService.countAssignedTasks(user);
+        return taskQueryService.countAssignedTasks(userId);
+    }
+
+    public long countRecurringTemplates(UUID userId) {
+        return userCommandService.countRecurringTemplatesCreatedBy(userId);
+    }
+
+    public boolean isSoleOwnerOfAnyProject(UUID userId) {
+        return projectQueryService.isSoleOwnerOfAnyProject(userId);
     }
 
     public boolean canDelete(UUID userId) {
-        return countCompletedTasks(userId) == 0 && countComments(userId) == 0;
+        return countCompletedTasks(userId) == 0
+                && countComments(userId) == 0
+                && countRecurringTemplates(userId) == 0
+                && !isSoleOwnerOfAnyProject(userId);
+    }
+
+    public boolean canDisable(UUID userId) {
+        return !isSoleOwnerOfAnyProject(userId);
     }
 
     public User disableUser(UUID userId) {
@@ -249,10 +262,10 @@ public class UserService {
     public void deleteUser(UUID id) {
         User user = getUserById(id);
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
-        taskAssignmentService.unassignTasks(user);
-        pinnedItemService.deleteByUserId(id);
-        recentViewService.deleteByUserId(id);
+
+        userCommandService.cleanupBeforeDeletion(user);
         userRepository.delete(user);
+
         eventPublisher.publishEvent(
                 new AuditEvent(
                         AuditEvent.USER_DELETED,

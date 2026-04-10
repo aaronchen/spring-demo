@@ -158,7 +158,7 @@ Class-level annotation on DTOs (not entities) for field uniqueness. `@Repeatable
 
 ### User Enable/Disable Pattern
 
-Users disabled (not deleted) when they have completed tasks or comments. `UserService.canDelete(id)` checks. Disabled users can't log in, hidden from assignment dropdowns. Disabling unassigns open/in-progress tasks.
+Users disabled (not deleted) when they have completed tasks, comments, or recurring task templates, or are the sole owner of a project. `UserService.canDelete(id)` checks all four conditions. Sole owners cannot be disabled either — `canDisable(id)` guards both the controller and the admin UI. `UserCommandService.cleanupBeforeDeletion(user)` handles cascade cleanup: unassigns tasks, nulls notification actors and recurring template assignees, deletes notifications, project memberships, pins, recent views, saved views, and user preferences. Disabled users can't log in, hidden from assignment dropdowns. Disabling unassigns open/in-progress tasks.
 
 ### Site Settings Pattern
 
@@ -260,7 +260,7 @@ Every task belongs to a project. `ProjectAccessGuard` enforces view/edit/owner a
 
 ### Cross-Service Dependency Rule
 
-Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads. `TaskCommandService` handles cross-cutting task write operations (e.g., bulk unassignment) needed by multiple services — extracted to break circular dependencies.
+Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads. Command services handle cross-cutting write operations needed by multiple services — extracted to break circular dependencies: `TaskCommandService` (bulk task unassignment), `UserCommandService` (user deletion cascade cleanup). Command services may access foreign repositories directly when the owning service would create a cycle.
 
 ### Transactional Boundaries
 
