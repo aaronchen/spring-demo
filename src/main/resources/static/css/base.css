@@ -310,6 +310,17 @@ body {
     opacity: 1;
 }
 
+/* Reset positioning when pin is inside input-group */
+.input-group-text .btn-pin {
+    position: static;
+    margin-left: 0;
+}
+
+.input-group-text:has(.btn-pin) {
+    background-color: transparent;
+    border-right: none;
+}
+
 .pin-color {
     color: var(--pin-color, #d63384);
 }

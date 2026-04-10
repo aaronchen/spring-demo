@@ -51,15 +51,32 @@
         <label for="title" class="form-label fw-bold"
                th:classappend="${mode != 'view'} ? 'form-label-required'"
                th:text="#{task.field.title}">Title</label>
-        <input type="text"
-               th:field="*{title}"
-               class="form-control"
-               th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
-               th:placeholder="#{task.field.title.placeholder}"
-               th:disabled="${mode == 'view'}">
-        <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
-            Title error
+        <!--/* input-group wrapper only when pin icon is shown (view/edit mode) */-->
+        <div th:if="${mode != 'create'}" class="input-group">
+            <span class="input-group-text">
+                <th:block th:replace="~{fragments/pin-icon :: pin-icon('TASK', ${task.id}, ${task.title})}" />
+            </span>
+            <input type="text"
+                   th:field="*{title}"
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
+                   th:placeholder="#{task.field.title.placeholder}"
+                   th:disabled="${mode == 'view'}">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
+                Title error
+            </div>
         </div>
+        <!--/* Plain input for create mode (no task to pin yet) */-->
+        <th:block th:if="${mode == 'create'}">
+            <input type="text"
+                   th:field="*{title}"
+                   class="form-control"
+                   th:classappend="${#fields.hasErrors('title')} ? 'is-invalid' : ''"
+                   th:placeholder="#{task.field.title.placeholder}">
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('title')}" th:errors="*{title}">
+                Title error
+            </div>
+        </th:block>
     </div>
 
     <!-- Description -->
