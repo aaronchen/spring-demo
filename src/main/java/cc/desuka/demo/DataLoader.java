@@ -1617,8 +1617,8 @@ public class DataLoader implements CommandLineRunner {
         addChecklist(
                 t1,
                 List.of(
-                        checklist("Configure build stage", 0, true),
-                        checklist("Add test stage with coverage", 1, true),
+                        checklist("Configure build stage", 0, false),
+                        checklist("Add test stage with coverage", 1, false),
                         checklist("Set up staging deploy", 2, false),
                         checklist("Add Slack notifications", 3, false),
                         checklist("Document pipeline in wiki", 4, false)));
@@ -1678,8 +1678,8 @@ public class DataLoader implements CommandLineRunner {
         addChecklist(
                 t2,
                 List.of(
-                        checklist("Research sliding window algorithms", 0, true),
-                        checklist("Draft architecture section", 1, true),
+                        checklist("Research sliding window algorithms", 0, false),
+                        checklist("Draft architecture section", 1, false),
                         checklist("Add Redis schema design", 2, false),
                         checklist("Get review from team", 3, false)));
         t2 = taskRepository.save(t2);
@@ -1811,8 +1811,8 @@ public class DataLoader implements CommandLineRunner {
         addChecklist(
                 t4,
                 List.of(
-                        checklist("Research STOMP protocol", 0, true),
-                        checklist("Design message schema", 1, true),
+                        checklist("Research STOMP protocol", 0, false),
+                        checklist("Design message schema", 1, false),
                         checklist("Plan connection lifecycle", 2, false),
                         checklist("Document offline strategy", 3, false)));
         t4 = taskRepository.save(t4);
@@ -2293,6 +2293,15 @@ public class DataLoader implements CommandLineRunner {
                         now.minusDays(1).plusHours(6)));
 
         auditLogRepository.saveAll(auditLogs);
+
+        // Check off checklist items to match the audit update entries above.
+        // Reload to avoid optimistic lock conflict (version incremented by earlier save).
+        for (UUID taskId : List.of(t1.getId(), t2.getId(), t4.getId())) {
+            Task task = taskRepository.findById(taskId).orElseThrow();
+            task.getChecklistItems().get(0).setChecked(true);
+            task.getChecklistItems().get(1).setChecked(true);
+            taskRepository.save(task);
+        }
 
         // ── Saved Views ──────────────────────────────────────────────────────
         var sortPriorityDesc = List.of(new SavedViewData.SortField("priorityOrder", "desc"));
