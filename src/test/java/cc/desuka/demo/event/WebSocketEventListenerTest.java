@@ -27,12 +27,21 @@ class WebSocketEventListenerTest {
     @InjectMocks private WebSocketEventListener listener;
 
     @Test
-    void onTaskChange_broadcastsToProjectTopic() {
-        TaskChangeEvent event = new TaskChangeEvent("created", ID_1, ID_10, ID_2);
+    void onTaskPush_broadcastsToProjectTopic() {
+        TaskPushEvent event = new TaskPushEvent("created", ID_1, ID_10, ID_2);
 
-        listener.onTaskChange(event);
+        listener.onTaskPush(event);
 
         verify(messagingTemplate).convertAndSend("/topic/projects/" + ID_10 + "/tasks", event);
+    }
+
+    @Test
+    void onProjectPush_broadcastsToProjectTopic() {
+        ProjectPushEvent event = new ProjectPushEvent(ProjectPushEvent.ACTION_UPDATED, ID_10, ID_2);
+
+        listener.onProjectPush(event);
+
+        verify(messagingTemplate).convertAndSend("/topic/projects/" + ID_10, event);
     }
 
     @Test

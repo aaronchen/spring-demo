@@ -105,7 +105,7 @@ Two categories of routes:
 - **Parameterized admin routes**: `adminUserEdit`, `adminUserEnable`, `adminTagDelete` — admin HTMX endpoints
 - **API resource routes**: `apiTasks`, `apiProjects`, `apiUsers`, `apiTags`, `apiNotifications`, `apiPresence`, `apiAnalytics`, `apiViews`, `apiAudit` — used for fetch calls and HTMX attributes
 - **Parameterized API routes**: `apiProjectAnalytics`, `apiProjectSprints`, `apiProjectMembers`, `apiProjectMembersAssignable`, `apiNotificationRead`, `apiNotificationsUnreadCount`, `apiNotificationsReadAll`, `apiTaskSearchForDependency`, `apiViewById` — URL templates with `{placeholder}` tokens
-- **STOMP topic routes**: `topicProjectTasks`, `topicTaskComments`, `topicPresence` — WebSocket broadcast channels, also `RouteTemplate` fields (auto-exposed in `/config.js`)
+- **STOMP topic routes**: `topicProject`, `topicProjectTasks`, `topicTaskComments`, `topicPresence` — WebSocket broadcast channels, also `RouteTemplate` fields (auto-exposed in `/config.js`)
 
 **RouteTemplate builder API** (symmetric Java/Thymeleaf/JS):
 - Java: `route.params("projectId", id).build()`, `route.params("k1", v1, "k2", v2).query("q", "test").build()`
@@ -246,7 +246,7 @@ Services publish domain events via `ApplicationEventPublisher`. Four listeners:
 - `WebSocketEventListener` (event/) — broadcasts ephemeral events (WebSocket only)
 - `RecentViewEventListener` (event/) — syncs titles in recently viewed items (DB + per-user WebSocket)
 
-Domain events: `TaskAssignedEvent`, `TaskUpdatedEvent`, `ProjectUpdatedEvent`, `CommentAddedEvent` (`actor` field). WebSocket events: `TaskChangeEvent`, `CommentChangeEvent` (`userId` field).
+Domain events: `TaskAssignedEvent`, `TaskUpdatedEvent`, `ProjectUpdatedEvent`, `CommentAddedEvent` (`actor` field). WebSocket push events: `TaskPushEvent`, `ProjectPushEvent`, `CommentChangeEvent` (`userId` field), `PinnedItemPushEvent`, `RecentViewPushEvent` (per-user via `/user/queue/*`).
 
 Services never depend on `SimpMessagingTemplate`, `NotificationService`, or `MessageSource` — only `eventPublisher`. Exception: `ScheduledTaskService` calls `NotificationService` directly (cron doesn't fit event pattern).
 

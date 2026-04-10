@@ -5,7 +5,7 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.event.TaskAssignedEvent;
-import cc.desuka.demo.event.TaskChangeEvent;
+import cc.desuka.demo.event.TaskPushEvent;
 import cc.desuka.demo.event.TaskUpdatedEvent;
 import cc.desuka.demo.exception.BlockedTaskException;
 import cc.desuka.demo.exception.StaleDataException;
@@ -97,8 +97,8 @@ public class TaskService {
         User actor = SecurityUtils.getCurrentUser();
         eventPublisher.publishEvent(new TaskAssignedEvent(saved, actor));
         eventPublisher.publishEvent(
-                new TaskChangeEvent(
-                        TaskChangeEvent.ACTION_CREATED,
+                new TaskPushEvent(
+                        TaskPushEvent.ACTION_CREATED,
                         saved.getId(),
                         saved.getProject().getId(),
                         actorId(actor)));
@@ -163,8 +163,8 @@ public class TaskService {
             eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
         }
         eventPublisher.publishEvent(
-                new TaskChangeEvent(
-                        TaskChangeEvent.ACTION_UPDATED,
+                new TaskPushEvent(
+                        TaskPushEvent.ACTION_UPDATED,
                         saved.getId(),
                         saved.getProject().getId(),
                         actorId(actor)));
@@ -199,8 +199,8 @@ public class TaskService {
                         SecurityUtils.getCurrentPrincipal(),
                         snapshot));
         eventPublisher.publishEvent(
-                new TaskChangeEvent(
-                        TaskChangeEvent.ACTION_DELETED,
+                new TaskPushEvent(
+                        TaskPushEvent.ACTION_DELETED,
                         id,
                         task.getProject().getId(),
                         actorId(SecurityUtils.getCurrentUser())));
@@ -289,8 +289,8 @@ public class TaskService {
             User actor = SecurityUtils.getCurrentUser();
             eventPublisher.publishEvent(new TaskUpdatedEvent(saved, actor));
             eventPublisher.publishEvent(
-                    new TaskChangeEvent(
-                            TaskChangeEvent.ACTION_UPDATED,
+                    new TaskPushEvent(
+                            TaskPushEvent.ACTION_UPDATED,
                             saved.getId(),
                             saved.getProject().getId(),
                             actorId(actor)));

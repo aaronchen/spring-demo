@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import cc.desuka.demo.audit.AuditEvent;
+import cc.desuka.demo.event.ProjectPushEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
 import cc.desuka.demo.model.ProjectRole;
@@ -103,12 +104,14 @@ class ProjectServiceTest {
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
+            mocked.when(SecurityUtils::getCurrentUser).thenReturn(alice);
 
             Project projectDetails = new Project("Updated Name", "Updated Description");
             Project result = projectService.updateProject(ID_1, projectDetails);
 
             assertThat(result.getName()).isEqualTo("Updated Name");
             assertThat(result.getDescription()).isEqualTo("Updated Description");
+            verify(eventPublisher).publishEvent(any(ProjectPushEvent.class));
         }
     }
 
@@ -121,11 +124,13 @@ class ProjectServiceTest {
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
+            mocked.when(SecurityUtils::getCurrentUser).thenReturn(alice);
 
             projectService.archiveProject(ID_1);
 
             assertThat(project.getStatus()).isEqualTo(ProjectStatus.ARCHIVED);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
+            verify(eventPublisher).publishEvent(any(ProjectPushEvent.class));
         }
     }
 

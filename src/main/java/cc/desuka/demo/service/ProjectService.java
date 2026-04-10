@@ -3,6 +3,7 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
+import cc.desuka.demo.event.ProjectPushEvent;
 import cc.desuka.demo.event.ProjectUpdatedEvent;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.ProjectMember;
@@ -112,6 +113,11 @@ public class ProjectService {
                             AuditDetails.toJson(changes)));
             eventPublisher.publishEvent(
                     new ProjectUpdatedEvent(saved, SecurityUtils.getCurrentUser()));
+            eventPublisher.publishEvent(
+                    new ProjectPushEvent(
+                            ProjectPushEvent.ACTION_UPDATED,
+                            saved.getId(),
+                            SecurityUtils.getCurrentUser().getId()));
         }
 
         return saved;
@@ -129,6 +135,11 @@ public class ProjectService {
                         id,
                         SecurityUtils.getCurrentPrincipal(),
                         null));
+        eventPublisher.publishEvent(
+                new ProjectPushEvent(
+                        ProjectPushEvent.ACTION_ARCHIVED,
+                        id,
+                        SecurityUtils.getCurrentUser().getId()));
     }
 
     public void unarchiveProject(UUID id) {
@@ -143,6 +154,11 @@ public class ProjectService {
                         id,
                         SecurityUtils.getCurrentPrincipal(),
                         null));
+        eventPublisher.publishEvent(
+                new ProjectPushEvent(
+                        ProjectPushEvent.ACTION_UNARCHIVED,
+                        id,
+                        SecurityUtils.getCurrentUser().getId()));
     }
 
     /**

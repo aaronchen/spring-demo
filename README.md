@@ -456,8 +456,9 @@ spring-demo/
 │   │   │   ├── CommentAddedEvent.java        # Domain event: comment created
 │   │   │   ├── CommentChangeEvent.java       # WebSocket: comment created/deleted
 │   │   │   ├── NotificationEventListener.java # Routes notifications to recipients
+│   │   │   ├── ProjectPushEvent.java          # WebSocket: project updated/archived
 │   │   │   ├── TaskAssignedEvent.java        # Domain event: task assigned
-│   │   │   ├── TaskChangeEvent.java          # WebSocket: task created/updated/deleted
+│   │   │   ├── TaskPushEvent.java            # WebSocket: task created/updated/deleted
 │   │   │   ├── TaskUpdatedEvent.java         # Domain event: task fields changed
 │   │   │   └── WebSocketEventListener.java   # Broadcasts ephemeral WebSocket messages
 │   │   ├── exception/

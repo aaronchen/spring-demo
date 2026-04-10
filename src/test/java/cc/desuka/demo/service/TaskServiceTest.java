@@ -9,7 +9,7 @@ import static org.mockito.Mockito.*;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.event.TaskAssignedEvent;
-import cc.desuka.demo.event.TaskChangeEvent;
+import cc.desuka.demo.event.TaskPushEvent;
 import cc.desuka.demo.exception.StaleDataException;
 import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
@@ -103,13 +103,13 @@ class TaskServiceTest {
             assertThat(result.getTags()).containsExactly(tag);
             assertThat(result.getUser()).isEqualTo(alice);
 
-            // Verify 3 events published: AuditEvent, TaskAssignedEvent, TaskChangeEvent
+            // Verify 3 events published: AuditEvent, TaskAssignedEvent, TaskPushEvent
             ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
             verify(eventPublisher, times(3)).publishEvent(captor.capture());
             List<Object> events = captor.getAllValues();
             assertThat(events.get(0)).isInstanceOf(AuditEvent.class);
             assertThat(events.get(1)).isInstanceOf(TaskAssignedEvent.class);
-            assertThat(events.get(2)).isInstanceOf(TaskChangeEvent.class);
+            assertThat(events.get(2)).isInstanceOf(TaskPushEvent.class);
         }
     }
 
@@ -271,7 +271,7 @@ class TaskServiceTest {
 
             verify(taskRepository).delete(task);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
-            verify(eventPublisher).publishEvent(any(TaskChangeEvent.class));
+            verify(eventPublisher).publishEvent(any(TaskPushEvent.class));
         }
     }
 }

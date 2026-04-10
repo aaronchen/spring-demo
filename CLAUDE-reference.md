@@ -223,12 +223,13 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `event/TaskUpdatedEvent.java` - Record published when task fields change; fields: `task` (Task), `actor` (User)
 - `event/ProjectUpdatedEvent.java` - Record published when project fields change; fields: `project` (Project), `actor` (User)
 - `event/CommentAddedEvent.java` - Record published when a comment is created; fields: `comment` (Comment), `task` (Task), `actor` (User)
-- `event/TaskChangeEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (long), `projectId` (long), `userId` (long); serialized to JSON for JS clients
-- `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (long), `commentId` (long), `userId` (long); serialized to JSON for JS clients
+- `event/TaskPushEvent.java` - Record for WebSocket task change broadcast; fields: `action` (String), `taskId` (UUID), `projectId` (UUID), `userId` (UUID); serialized to JSON for JS clients
+- `event/ProjectPushEvent.java` - Record for WebSocket project change broadcast; fields: `action` (String), `projectId` (UUID), `userId` (UUID); actions: updated, archived, unarchived
+- `event/CommentChangeEvent.java` - Record for WebSocket comment change broadcast; fields: `action` (String), `taskId` (UUID), `commentId` (Long), `userId` (UUID); serialized to JSON for JS clients
 - `event/RecentViewPushEvent.java` - Record for WebSocket recent-view push; fields: `userEmail`, `payload` (RecentViewResponse); published by `RecentViewService`, handled by `RecentViewEventListener`
 - `event/RecentViewEventListener.java` - `@TransactionalEventListener` for recent view updates and title sync; handles `TaskUpdatedEvent`, `ProjectUpdatedEvent` (title sync), and `RecentViewPushEvent` (WebSocket push via `SimpMessagingTemplate`)
 - `event/NotificationEventListener.java` - Centralized notification routing; listens for domain events (`TaskAssignedEvent`, `TaskUpdatedEvent`, `CommentAddedEvent`) and decides who gets notified via `NotificationService.create()`
-- `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting via `AppRoutesProperties` topic templates; listens for `TaskChangeEvent` → `/topic/projects/{projectId}/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
+- `event/WebSocketEventListener.java` - Handles ephemeral WebSocket broadcasting via `AppRoutesProperties` topic templates; listens for `ProjectPushEvent` → `/topic/projects/{projectId}`, `TaskPushEvent` → `/topic/projects/{projectId}/tasks`, `CommentChangeEvent` → `/topic/tasks/{taskId}/comments`
 
 ### Presence Package
 - `presence/PresenceService.java` - Online user tracking via `ConcurrentHashMap<String, Long>` (session ID → user ID)
@@ -649,12 +650,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `service/TaskService.java` - Write-only task operations with audit and domain event publishing
   - Constructor injection: `TaskRepository`, `TaskQueryService`, `TaskDependencyService`, `SprintQueryService`, `TagService`, `UserService`, `RecentViewService`, `ApplicationEventPublisher`, `Messages`
-  - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskChangeEvent("created")`
-  - `updateTask(id, TaskUpdateCriteria)` — accepts `TaskUpdateCriteria` record (replaces telescoping overloads); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskChangeEvent("updated")`
-  - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
-  - `setStatus(id, TaskStatus)` — sets status directly (for kanban drop); publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
-  - `updateField(id, fieldName, value)` — updates a single named field (title, description, priority, status, dueDate) in-place; used by inline editing in table view; publishes `TaskUpdatedEvent` and `TaskChangeEvent("updated")`
-  - `deleteTask` — blocks deletion of COMPLETED tasks; publishes `TaskChangeEvent("deleted")`
+  - `createTask(task, tagIds, assigneeId)` and `createTask(task, tagIds, assigneeId, checklistTexts, checklistChecked)` — validates task has a project; publishes `TaskAssignedEvent` and `TaskPushEvent("created")`
+  - `updateTask(id, TaskUpdateCriteria)` — accepts `TaskUpdateCriteria` record (replaces telescoping overloads); publishes `TaskAssignedEvent` (if assignment changed), `TaskUpdatedEvent` (if fields changed), and `TaskPushEvent("updated")`
+  - `advanceStatus(id)` — cycles BACKLOG → OPEN → IN_PROGRESS → IN_REVIEW → COMPLETED → OPEN; CANCELLED → OPEN; publishes `TaskUpdatedEvent` and `TaskPushEvent("updated")`
+  - `setStatus(id, TaskStatus)` — sets status directly (for kanban drop); publishes `TaskUpdatedEvent` and `TaskPushEvent("updated")`
+  - `updateField(id, fieldName, value)` — updates a single named field (title, description, priority, status, dueDate) in-place; used by inline editing in table view; publishes `TaskUpdatedEvent` and `TaskPushEvent("updated")`
+  - `deleteTask` — blocks deletion of COMPLETED tasks; publishes `TaskPushEvent("deleted")`
   - `updateTask` — reassigning an IN_PROGRESS task to a different user resets status to OPEN (new assignee hasn't started); uses `TaskUpdateCriteria` record for all update parameters
   - `assignSprint(taskId, sprintId)` — sets sprint on task; publishes audit and change events via `saveAndPublish`
   - Private `saveAndPublish(task, before)` — DRY helper for save + audit diff + event publishing; used by `updateField`, `setStatus`, `advanceStatus`, `assignSprint`

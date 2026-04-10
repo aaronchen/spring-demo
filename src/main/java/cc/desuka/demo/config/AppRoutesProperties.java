@@ -129,6 +129,7 @@ public class AppRoutesProperties {
     private RouteTemplate apiViewById = new RouteTemplate("/api/views/{id}");
 
     // WebSocket STOMP topics
+    private RouteTemplate topicProject = new RouteTemplate("/topic/projects/{projectId}");
     private RouteTemplate topicProjectTasks =
             new RouteTemplate("/topic/projects/{projectId}/tasks");
     private RouteTemplate topicTaskComments = new RouteTemplate("/topic/tasks/{taskId}/comments");
