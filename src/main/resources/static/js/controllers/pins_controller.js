@@ -90,7 +90,7 @@ export default class extends Controller {
         const key = `${entityType}:${entityId}`;
         if (this.pinnedIds.has(key)) {
             const pinId = this.pinnedIds.get(key);
-            fetch(`${APP_CONFIG.routes.apiPins}/${pinId}`, {
+            fetch(APP_CONFIG.routes.apiPinById.params({ pinId }).build(), {
                 method: "DELETE",
                 headers: csrfHeaders(),
             })
@@ -293,7 +293,7 @@ export default class extends Controller {
         const orderedIds = [...this.listTarget.querySelectorAll("[data-pin-id]")].map((el) =>
             parseInt(el.dataset.pinId),
         );
-        fetch(`${APP_CONFIG.routes.apiPins}/reorder`, {
+        fetch(APP_CONFIG.routes.apiPinsReorder.build(), {
             method: "PATCH",
             headers: { "Content-Type": "application/json", ...csrfHeaders() },
             body: JSON.stringify(orderedIds),

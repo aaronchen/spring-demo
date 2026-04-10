@@ -85,7 +85,7 @@ export default class extends Controller {
     // ── Dropdown list ────────────────────────────────────────────────────
 
     loadRecentNotifications() {
-        fetch(`${APP_CONFIG.routes.apiNotifications}?size=10`)
+        fetch(APP_CONFIG.routes.apiNotifications.query({ size: 10 }).build())
             .then(requireOk)
             .then((res) => res.json())
             .then((data) => this.renderList(data.content));

@@ -27,7 +27,7 @@
                         <a th:if="${editableProjects != null && !editableProjects.isEmpty()}"
                            th:href="@{/tasks/new}"
                            class="btn btn-primary btn-lg"
-                           hx-get="/tasks/new"
+                           th:hx-get="${appRoutes.taskNew}"
                            hx-target="#task-modal-content"
                            hx-swap="innerHTML">
                             <i class="bi bi-plus-circle"></i> <span th:text="#{action.newTask}">New Task</span>

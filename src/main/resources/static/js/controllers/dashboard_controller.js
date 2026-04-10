@@ -25,7 +25,7 @@ export default class extends Controller {
     }
 
     refreshStats() {
-        htmx.ajax("GET", `${APP_CONFIG.routes.dashboard}/stats`, {
+        htmx.ajax("GET", APP_CONFIG.routes.dashboardStats.build(), {
             target: `#${this.statsTarget.id}`,
             swap: "outerHTML",
         });

@@ -13,7 +13,7 @@
                    id="user-search"
                    th:placeholder="#{user.search.placeholder}"
                    th:value="${search}"
-                   hx-get="/users"
+                   th:hx-get="${appRoutes.users}"
                    hx-target="#user-table"
                    hx-swap="outerHTML"
                    hx-trigger="input changed delay:300ms, search"

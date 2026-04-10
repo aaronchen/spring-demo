@@ -165,7 +165,7 @@ export default class extends Controller {
 
         const headers = { "Content-Type": "application/json", ...csrfHeaders() };
 
-        fetch(`${APP_CONFIG.routes.tasks}/bulk`, {
+        fetch(APP_CONFIG.routes.taskBulk.build(), {
             method: "POST",
             headers,
             body: JSON.stringify({ taskIds: Array.from(this.selectedIds), action, value: value || "" }),

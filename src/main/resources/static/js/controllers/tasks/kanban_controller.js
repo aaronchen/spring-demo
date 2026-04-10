@@ -74,7 +74,7 @@ export default class extends Controller {
 
         const headers = { "Content-Type": "application/x-www-form-urlencoded", "HX-Request": "true", ...csrfHeaders() };
 
-        fetch(`${APP_CONFIG.routes.tasks}/${taskId}/status`, {
+        fetch(APP_CONFIG.routes.taskStatus.params({ taskId }).build(), {
             method: "POST",
             headers,
             body: params.toString(),

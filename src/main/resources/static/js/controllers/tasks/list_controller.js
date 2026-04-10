@@ -141,7 +141,10 @@ export default class extends Controller {
                 if (!btn) return;
                 document.getElementById("task-delete-modal-title").textContent = btn.dataset.taskTitle;
                 const confirmBtn = document.getElementById("delete-confirm-btn");
-                confirmBtn.setAttribute("hx-delete", `${APP_CONFIG.routes.tasks}/${btn.dataset.taskId}`);
+                confirmBtn.setAttribute(
+                    "hx-delete",
+                    APP_CONFIG.routes.taskDetail.params({ taskId: btn.dataset.taskId }).build(),
+                );
                 htmx.process(confirmBtn);
             });
 

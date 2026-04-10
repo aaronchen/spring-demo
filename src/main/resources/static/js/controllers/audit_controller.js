@@ -71,17 +71,16 @@ export default class extends Controller {
     // ── Internal ─────────────────────────────────────────────────────────
 
     buildUrl(page) {
-        const params = new URLSearchParams();
+        const q = { size: this.pageSize };
         const search = this.searchInputTarget.value;
         const from = this.dateFromTarget.value;
         const to = this.dateToTarget.value;
-        if (search) params.set("search", search);
-        if (this.currentCategory) params.set("category", this.currentCategory);
-        if (from) params.set("from", from);
-        if (to) params.set("to", to);
-        params.set("size", this.pageSize);
-        if (page > 0) params.set("page", page);
-        return `${APP_CONFIG.routes.audit}?${params.toString()}`;
+        if (search) q.search = search;
+        if (this.currentCategory) q.category = this.currentCategory;
+        if (from) q.from = from;
+        if (to) q.to = to;
+        if (page > 0) q.page = page;
+        return APP_CONFIG.routes.audit.query(q).build();
     }
 
     doSearch(resetPage) {

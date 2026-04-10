@@ -46,7 +46,7 @@ export default class extends Controller {
                     (message) => {
                         const data = JSON.parse(message.body);
                         if (currentUserId && String(data.userId) === currentUserId) return;
-                        htmx.ajax("GET", `${APP_CONFIG.routes.tasks}/${this.taskIdValue}/activity`, {
+                        htmx.ajax("GET", APP_CONFIG.routes.taskActivity.params({ taskId: this.taskIdValue }).build(), {
                             target: "#task-activity",
                             swap: "outerHTML",
                         });

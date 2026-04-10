@@ -27,8 +27,10 @@ public class AppRoutesProperties {
     // ── Web routes ────────────────────────────────────────────────────
     private RouteTemplate projects = new RouteTemplate("/projects");
     private RouteTemplate tasks = new RouteTemplate("/tasks");
+    private RouteTemplate users = new RouteTemplate("/users");
     private RouteTemplate audit = new RouteTemplate("/admin/audit");
     private RouteTemplate dashboard = new RouteTemplate("/dashboard");
+    private RouteTemplate dashboardStats = new RouteTemplate("/dashboard/stats");
     private RouteTemplate analytics = new RouteTemplate("/analytics");
 
     private RouteTemplate login = new RouteTemplate("/login");
@@ -42,6 +44,10 @@ public class AppRoutesProperties {
     private RouteTemplate taskToggle = new RouteTemplate("/tasks/{taskId}/toggle");
     private RouteTemplate taskNew = new RouteTemplate("/tasks/new");
     private RouteTemplate taskComments = new RouteTemplate("/tasks/{taskId}/comments");
+    private RouteTemplate taskActivity = new RouteTemplate("/tasks/{taskId}/activity");
+    private RouteTemplate taskStatus = new RouteTemplate("/tasks/{taskId}/status");
+    private RouteTemplate taskField = new RouteTemplate("/tasks/{taskId}/field");
+    private RouteTemplate taskBulk = new RouteTemplate("/tasks/bulk");
     private RouteTemplate taskCommentDelete =
             new RouteTemplate("/tasks/{taskId}/comments/{commentId}");
 
@@ -94,6 +100,8 @@ public class AppRoutesProperties {
     private RouteTemplate apiTags = new RouteTemplate("/api/tags");
     private RouteTemplate apiNotifications = new RouteTemplate("/api/notifications");
     private RouteTemplate apiPins = new RouteTemplate("/api/pins");
+    private RouteTemplate apiPinById = new RouteTemplate("/api/pins/{pinId}");
+    private RouteTemplate apiPinsReorder = new RouteTemplate("/api/pins/reorder");
     private RouteTemplate apiPresence = new RouteTemplate("/api/presence");
     private RouteTemplate apiAnalytics = new RouteTemplate("/api/analytics");
     private RouteTemplate apiViews = new RouteTemplate("/api/views");

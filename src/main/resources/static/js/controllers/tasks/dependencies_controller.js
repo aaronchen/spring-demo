@@ -83,7 +83,7 @@ export default class extends Controller {
         });
 
         const idsParam = Array.from(excludeIds).join(",");
-        const src = `${APP_CONFIG.routes.apiTaskSearchForDependency}?projectId=${projectId}&excludeTaskIds=${idsParam}`;
+        const src = APP_CONFIG.routes.apiTaskSearchForDependency.query({ projectId, excludeTaskIds: idsParam }).build();
 
         pickers.forEach((picker) => {
             picker.setSrc(src);
