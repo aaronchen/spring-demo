@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
+import { t } from "lib/i18n";
 
 // Task form — project-aware assignee list + sprint dropdown + checklist management.
 // Shared by task list modal and full-page task view.
@@ -57,7 +58,7 @@ export default class extends Controller {
                     select.innerHTML = "";
                     return;
                 }
-                const noneLabel = APP_CONFIG.messages["task.field.sprint.none"] || "No Sprint";
+                const noneLabel = t("task.field.sprint.none") || "No Sprint";
                 let options = `<option value="">${noneLabel}</option>`;
                 for (const s of sprints) {
                     if (s.status !== "past") {
@@ -112,8 +113,7 @@ export default class extends Controller {
         const container = document.getElementById("checklist-container");
         if (!heading || !container) return;
         const count = container.children.length;
-        const template = APP_CONFIG.messages["task.field.checklist.heading"] || "Checklist ({0})";
-        heading.textContent = template.replace("{0}", count);
+        heading.textContent = t("task.field.checklist.heading", count) || `Checklist (${count})`;
     }
 
     checklistDragStart(e) {

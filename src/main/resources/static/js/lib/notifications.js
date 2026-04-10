@@ -1,6 +1,7 @@
 // Shared notification helpers — used by both badge and page controllers.
 // escapeHtml and fire re-exported from lib/html for backward compat with existing consumers.
 
+import { t } from "lib/i18n";
 export { escapeHtml, fire } from "lib/html";
 
 export function getNotificationIcon(type) {
@@ -32,8 +33,8 @@ export function formatRelativeTime(dateStr) {
     const diffHr = Math.floor(diffMs / 3600000);
     const diffDay = Math.floor(diffMs / 86400000);
 
-    if (diffMin < 1) return APP_CONFIG.messages["notification.time.now"];
-    if (diffMin < 60) return APP_CONFIG.messages["notification.time.minutes"].replace("{0}", diffMin);
-    if (diffHr < 24) return APP_CONFIG.messages["notification.time.hours"].replace("{0}", diffHr);
-    return APP_CONFIG.messages["notification.time.days"].replace("{0}", diffDay);
+    if (diffMin < 1) return t("notification.time.now");
+    if (diffMin < 60) return t("notification.time.minutes", diffMin);
+    if (diffHr < 24) return t("notification.time.hours", diffHr);
+    return t("notification.time.days", diffDay);
 }

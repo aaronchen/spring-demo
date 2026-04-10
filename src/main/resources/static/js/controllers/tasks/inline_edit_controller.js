@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import { csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
-import { resolveLabel } from "lib/i18n";
+import { resolveLabel, t } from "lib/i18n";
 
 const INLINE_PRIORITY_OPTIONS = Object.keys(APP_CONFIG.enums.priority).map((v) => ({
     value: v,
@@ -293,7 +293,7 @@ export default class extends Controller {
             })
             .catch((err) => {
                 this.cancelInlineEdit(cell, originalContent);
-                showToast(err.message || APP_CONFIG.messages["toast.error.generic"] || "Failed to save", "danger");
+                showToast(err.message || t("toast.error.generic") || "Failed to save", "danger");
             });
     }
 }

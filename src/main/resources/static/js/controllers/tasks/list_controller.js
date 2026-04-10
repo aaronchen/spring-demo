@@ -4,7 +4,7 @@ import { showToast } from "lib/toast";
 import { showConfirm } from "lib/confirm";
 import { getCookie, setCookie } from "lib/cookies";
 import { onConnect } from "lib/websocket";
-import { resolveLabel } from "lib/i18n";
+import { resolveLabel, t } from "lib/i18n";
 
 // Task list page — sort, filter, search, pagination, view switching, saved views,
 // WebSocket stale-data banners, and modal state management.
@@ -13,20 +13,19 @@ import { resolveLabel } from "lib/i18n";
 // TASKS_BASE is configured via data-tasks--list-base-value.
 
 function buildSortLabels() {
-    const m = APP_CONFIG.messages;
     return {
-        "title,asc": m["task.sort.title.asc"],
-        "title,desc": m["task.sort.title.desc"],
-        "createdAt,asc": m["task.sort.createdAt.asc"],
-        "createdAt,desc": m["task.sort.createdAt.desc"],
-        "priorityOrder,asc": m["task.sort.priorityOrder.asc"],
-        "priorityOrder,desc": m["task.sort.priorityOrder.desc"],
-        "dueDate,asc": m["task.sort.dueDate.asc"],
-        "dueDate,desc": m["task.sort.dueDate.desc"],
-        "updatedAt,asc": m["task.sort.updatedAt.asc"],
-        "updatedAt,desc": m["task.sort.updatedAt.desc"],
-        "description,asc": m["task.sort.description.asc"],
-        "description,desc": m["task.sort.description.desc"],
+        "title,asc": t("task.sort.title.asc"),
+        "title,desc": t("task.sort.title.desc"),
+        "createdAt,asc": t("task.sort.createdAt.asc"),
+        "createdAt,desc": t("task.sort.createdAt.desc"),
+        "priorityOrder,asc": t("task.sort.priorityOrder.asc"),
+        "priorityOrder,desc": t("task.sort.priorityOrder.desc"),
+        "dueDate,asc": t("task.sort.dueDate.asc"),
+        "dueDate,desc": t("task.sort.dueDate.desc"),
+        "updatedAt,asc": t("task.sort.updatedAt.asc"),
+        "updatedAt,desc": t("task.sort.updatedAt.desc"),
+        "description,asc": t("task.sort.description.asc"),
+        "description,desc": t("task.sort.description.desc"),
     };
 }
 
@@ -123,13 +122,13 @@ export default class extends Controller {
         this.taskSavedHandler = () => {
             const modal = document.getElementById("task-modal");
             if (modal) bootstrap.Modal.getInstance(modal)?.hide();
-            showToast(APP_CONFIG.messages["toast.task.saved"], "success");
+            showToast(t("toast.task.saved"), "success");
             this.doSearch(false);
         };
         document.body.addEventListener("taskSaved", this.taskSavedHandler);
 
         this.taskDeletedHandler = () => {
-            showToast(APP_CONFIG.messages["toast.task.deleted"], "success");
+            showToast(t("toast.task.deleted"), "success");
             this.doSearch(false);
         };
         document.body.addEventListener("taskDeleted", this.taskDeletedHandler);
@@ -386,7 +385,7 @@ export default class extends Controller {
             label.textContent = defaultLabel;
             clearIcon.classList.add("d-none");
         } else {
-            label.textContent = userName || APP_CONFIG.messages["task.field.user"];
+            label.textContent = userName || t("task.field.user");
             clearIcon.classList.remove("d-none");
         }
     }
@@ -400,9 +399,9 @@ export default class extends Controller {
         if (hidden) hidden.value = value;
         if (label) {
             if (!value) {
-                label.textContent = APP_CONFIG.messages["task.field.sprint"] || "Sprint";
+                label.textContent = t("task.field.sprint") || "Sprint";
             } else if (value === "0") {
-                label.textContent = APP_CONFIG.messages["sprint.filter.noSprint"] || "No Sprint";
+                label.textContent = t("sprint.filter.noSprint") || "No Sprint";
             } else {
                 const item = document.querySelector(`.sprint-filter-item[data-value="${value}"]`);
                 if (item) label.textContent = item.dataset.name || item.textContent.trim();
@@ -461,7 +460,7 @@ export default class extends Controller {
         const label = document.getElementById("status-filter-label");
         const btn = document.getElementById("statusDropdown");
         const icon = btn.querySelector("i");
-        const baseLabel = APP_CONFIG.messages["task.field.status"] || "Status";
+        const baseLabel = t("task.field.status") || "Status";
 
         const effectiveStatus = overdue ? "OVERDUE" : statusFilter !== "ALL" ? statusFilter : "";
 
@@ -486,7 +485,7 @@ export default class extends Controller {
         if (statusCfg) {
             label.textContent =
                 effectiveStatus === "OVERDUE"
-                    ? APP_CONFIG.messages["task.dueDate.overdue"] || "Overdue"
+                    ? t("task.dueDate.overdue") || "Overdue"
                     : resolveLabel("task.status", effectiveStatus);
             icon.className = `bi ${statusCfg.icon}`;
             btn.className = `btn btn-sm ${statusCfg.btnCss} dropdown-toggle`;
@@ -518,7 +517,7 @@ export default class extends Controller {
         const label = document.getElementById("priority-filter-label");
         const btn = document.getElementById("priorityDropdown");
         const icon = btn.querySelector("i");
-        const baseLabel = APP_CONFIG.messages["task.field.priority"] || "Priority";
+        const baseLabel = t("task.field.priority") || "Priority";
 
         document.querySelectorAll(".priority-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
@@ -608,7 +607,7 @@ export default class extends Controller {
         if (views.length === 0) {
             const empty = document.createElement("div");
             empty.className = "dropdown-item-text text-muted small";
-            empty.textContent = APP_CONFIG.messages["task.views.empty"] || "No saved views";
+            empty.textContent = t("task.views.empty") || "No saved views";
             container.appendChild(empty);
             return;
         }
@@ -629,7 +628,7 @@ export default class extends Controller {
             const deleteBtn = document.createElement("button");
             deleteBtn.className = "btn btn-sm text-danger border-0 px-2";
             deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
-            deleteBtn.title = APP_CONFIG.messages["task.views.delete"] || "Delete";
+            deleteBtn.title = t("task.views.delete") || "Delete";
             deleteBtn.addEventListener("click", (e) => {
                 e.stopPropagation();
                 this.deleteSavedView(view.id);
@@ -647,7 +646,7 @@ export default class extends Controller {
         const icon = btn?.querySelector("i.bi");
         if (!label) return;
 
-        const defaultText = APP_CONFIG.messages["task.views.saved"] || "Views";
+        const defaultText = t("task.views.saved") || "Views";
         if (this.activeViewName) {
             label.textContent = this.activeViewName;
             btn?.classList.replace("btn-outline-secondary", "btn-primary");
@@ -682,14 +681,14 @@ export default class extends Controller {
             const label = document.getElementById("sprint-filter-label");
             if (label) {
                 if (!query.sprintId) {
-                    label.textContent = APP_CONFIG.messages["task.field.sprint"] || "Sprint";
+                    label.textContent = t("task.field.sprint") || "Sprint";
                 } else if (query.sprintId === "0" || query.sprintId === 0) {
-                    label.textContent = APP_CONFIG.messages["sprint.filter.noSprint"] || "No Sprint";
+                    label.textContent = t("sprint.filter.noSprint") || "No Sprint";
                 } else {
                     const item = document.querySelector(`[data-value="${query.sprintId}"]`);
                     label.textContent = item
                         ? item.dataset.name || item.textContent.trim()
-                        : APP_CONFIG.messages["task.field.sprint"] || "Sprint";
+                        : t("task.field.sprint") || "Sprint";
                 }
             }
         }
@@ -718,15 +717,15 @@ export default class extends Controller {
         const dd = document.getElementById("savedViewsDropdown");
         if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
 
-        const promptLabel = APP_CONFIG.messages["task.views.name.prompt"] || "View name:";
+        const promptLabel = t("task.views.name.prompt") || "View name:";
         const inputId = "save-view-name-input";
 
         showConfirm(
             {
-                title: APP_CONFIG.messages["task.views.save"] || "Save Current View",
+                title: t("task.views.save") || "Save Current View",
                 message: `<label for="${inputId}" class="form-label">${promptLabel}</label>
                       <input type="text" id="${inputId}" class="form-control" maxlength="80" autocomplete="off" autofocus>`,
-                confirmText: APP_CONFIG.messages["admin.settings.save"] || "Save",
+                confirmText: t("admin.settings.save") || "Save",
                 confirmClass: "btn btn-primary",
                 headerClass: "bg-primary text-white",
             },
@@ -765,7 +764,7 @@ export default class extends Controller {
                         this.activeViewName = name;
                         this.renderActiveViewLabel();
                         this.loadSavedViews();
-                        showToast(APP_CONFIG.messages["toast.view.saved"] || "View saved", "success");
+                        showToast(t("toast.view.saved") || "View saved", "success");
                     })
                     .catch((err) => console.error("Failed to save view:", err));
             },

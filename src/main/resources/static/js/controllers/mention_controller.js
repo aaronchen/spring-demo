@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk } from "lib/api";
+import { t } from "lib/i18n";
 import { initMentionMap, getMentionMap, findMentionAtCursor, isMentionMenuActive, clearMentions } from "lib/mentions";
 
 // Initializes Tribute.js @mention autocomplete on the controlled element.
@@ -65,7 +66,7 @@ export default class extends Controller {
                 return `@${item.original.name}`;
             },
             menuItemTemplate: (item) => `<i class="bi bi-person me-1"></i>${item.string}`,
-            noMatchTemplate: () => `<li class="tribute-no-match">${APP_CONFIG.messages["user.empty"]}</li>`,
+            noMatchTemplate: () => `<li class="tribute-no-match">${t("user.empty")}</li>`,
             requireLeadingSpace: true,
         });
 

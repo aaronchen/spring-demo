@@ -6,16 +6,17 @@
 //
 // onConfirm callback: return false to keep modal open (e.g. for input validation).
 
+import { t } from "lib/i18n";
+
 const CONFIRM_DEFAULTS = {
     headerClass: "bg-danger text-white",
     confirmClass: "btn btn-danger",
 };
 
 export function showConfirm(options, onConfirm) {
-    const defaults = window.APP_CONFIG ? APP_CONFIG.messages : {};
-    const title = options.title || defaults["action.confirm"] || "Confirm";
-    const cancelText = options.cancelText || defaults["action.cancel"] || "Cancel";
-    const confirmText = options.confirmText || defaults["action.confirm"] || "Confirm";
+    const title = options.title || t("action.confirm") || "Confirm";
+    const cancelText = options.cancelText || t("action.cancel") || "Cancel";
+    const confirmText = options.confirmText || t("action.confirm") || "Confirm";
     const headerClass = options.headerClass || CONFIRM_DEFAULTS.headerClass;
     const confirmClass = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
     const width = options.width || "420px";

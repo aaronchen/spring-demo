@@ -72,7 +72,8 @@ public class AppRoutesProperties {
     private RouteTemplate projectRecurringToggle =
             new RouteTemplate("/projects/{projectId}/recurring-templates/{templateId}/toggle");
 
-    // ── Parameterized admin routes ──────────────────────────────────────
+    // ── Admin routes ──────────────────────────────────────────────────
+    private RouteTemplate adminTags = new RouteTemplate("/admin/tags");
     private RouteTemplate adminUserEdit = new RouteTemplate("/admin/users/{userId}/edit");
     private RouteTemplate adminUserEnable = new RouteTemplate("/admin/users/{userId}/enable");
     private RouteTemplate adminTagDelete = new RouteTemplate("/admin/tags/{tagId}");

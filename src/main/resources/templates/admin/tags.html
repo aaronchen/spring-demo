@@ -15,11 +15,11 @@
     <div th:replace="~{layouts/base :: scripts}"></div>
 
     <script type="module">
+        import { t } from 'lib/i18n';
+        import { showToast } from 'lib/toast';
         document.body.addEventListener('tagDeleted', function() {
-            document.dispatchEvent(new CustomEvent('showToast', {
-                detail: { message: APP_CONFIG.messages['toast.admin.tags.deleted'], type: 'success' }
-            }));
-            htmx.ajax('GET', '/admin/tags', {target: '#tag-management-content', swap: 'outerHTML'});
+            showToast(t('toast.admin.tags.deleted'));
+            htmx.ajax('GET', APP_CONFIG.routes.adminTags, {target: '#tag-management-content', swap: 'outerHTML'});
         });
     </script>
 </body>

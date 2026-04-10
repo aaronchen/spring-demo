@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { t } from "lib/i18n";
 import { getNotificationIcon, formatRelativeTime, escapeHtml, fire } from "lib/notifications";
 
 // Full notifications page — handles HTMX mark-read/clear events and
@@ -72,7 +73,7 @@ export default class extends Controller {
                 <small class="text-muted">${formatRelativeTime(n.createdAt)}</small>
             </div>
             ${actionLink}
-            <span class="badge bg-primary ms-2 align-self-center">${APP_CONFIG.messages["notification.new"]}</span>
+            <span class="badge bg-primary ms-2 align-self-center">${t("notification.new")}</span>
         </div>`;
 
         this.listTarget.prepend(row);

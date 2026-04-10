@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { csrfHeaders } from "lib/api";
+import { t } from "lib/i18n";
 import { showToast } from "lib/toast";
 
 // Kanban board — drag-and-drop status changes using native HTML5 DnD API.
@@ -54,7 +55,7 @@ export default class extends Controller {
         if (oldStatus === newStatus) return;
 
         if (card.dataset.blocked === "true" && newStatus === "COMPLETED") {
-            showToast(APP_CONFIG.messages["task.dependency.blocked.drag"] || "This task is blocked", "warning");
+            showToast(t("task.dependency.blocked.drag") || "This task is blocked", "warning");
             return;
         }
 
@@ -86,26 +87,21 @@ export default class extends Controller {
                             .json()
                             .then((data) => {
                                 showToast(
-                                    data.detail ||
-                                        APP_CONFIG.messages["task.dependency.blocked.drag"] ||
-                                        "This task is blocked",
+                                    data.detail || t("task.dependency.blocked.drag") || "This task is blocked",
                                     "warning",
                                 );
                             })
                             .catch(() => {
-                                showToast(
-                                    APP_CONFIG.messages["task.dependency.blocked.drag"] || "This task is blocked",
-                                    "warning",
-                                );
+                                showToast(t("task.dependency.blocked.drag") || "This task is blocked", "warning");
                             });
                     } else {
-                        showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
+                        showToast(t("toast.error.generic") || "Failed to update status", "danger");
                     }
                 }
             })
             .catch(() => {
                 this.revertCard(card, oldStatus);
-                showToast(APP_CONFIG.messages["toast.error.generic"] || "Failed to update status", "danger");
+                showToast(t("toast.error.generic") || "Failed to update status", "danger");
             });
     }
 
@@ -129,7 +125,7 @@ export default class extends Controller {
             if (count === 0 && !existing) {
                 const emptyDiv = document.createElement("div");
                 emptyDiv.className = "kanban-empty text-muted small text-center py-3";
-                emptyDiv.textContent = APP_CONFIG.messages["task.board.empty"] || "No tasks";
+                emptyDiv.textContent = t("task.board.empty") || "No tasks";
                 body.appendChild(emptyDiv);
             } else if (count > 0 && existing) {
                 existing.remove();

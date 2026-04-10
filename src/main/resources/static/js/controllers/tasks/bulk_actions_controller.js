@@ -2,6 +2,7 @@ import { Controller } from "@hotwired/stimulus";
 import { requireOk, csrfHeaders } from "lib/api";
 import { showToast } from "lib/toast";
 import { showConfirm } from "lib/confirm";
+import { t } from "lib/i18n";
 
 // Bulk actions for table view — cross-page selection with floating action bar.
 
@@ -131,7 +132,7 @@ export default class extends Controller {
         const count = this.selectedIds.size;
         if (count > 0) {
             bar.classList.remove("d-none");
-            const label = (APP_CONFIG.messages["task.bulk.selected"] || "{0} selected").replace("{0}", count);
+            const label = t("task.bulk.selected", count) || `${count} selected`;
             document.getElementById("bulk-selected-count").textContent = label;
         } else {
             bar.classList.add("d-none");
@@ -174,14 +175,14 @@ export default class extends Controller {
             .then((data) => {
                 const count = data.count || 0;
                 const msgKey = action === "DELETE" ? "toast.task.bulk.deleted" : "toast.task.bulk.success";
-                const msg = (APP_CONFIG.messages[msgKey] || `${count} tasks updated.`).replace("{0}", count);
+                const msg = t(msgKey, count) || `${count} tasks updated.`;
                 showToast(msg, "success");
                 if (data.skipped > 0) showToast(data.skippedMessage, "warning");
                 this.clearSelection();
                 this.element.dispatchEvent(new CustomEvent("tasks:refresh", { bubbles: true }));
             })
             .catch(() => {
-                showToast(APP_CONFIG.messages["toast.error.generic"] || "An error occurred", "danger");
+                showToast(t("toast.error.generic") || "An error occurred", "danger");
             });
     }
 
@@ -193,15 +194,13 @@ export default class extends Controller {
     executeDelete() {
         if (this.selectedIds.size === 0) return;
         const count = this.selectedIds.size;
-        const msg = (
-            APP_CONFIG.messages["task.bulk.confirm.delete"] || `Are you sure you want to delete ${count} tasks?`
-        ).replace("{0}", count);
+        const msg = t("task.bulk.confirm.delete", count) || `Are you sure you want to delete ${count} tasks?`;
 
         showConfirm(
             {
-                title: APP_CONFIG.messages["task.bulk.confirm.delete.title"] || "Delete Tasks",
+                title: t("task.bulk.confirm.delete.title") || "Delete Tasks",
                 message: msg,
-                confirmText: APP_CONFIG.messages["action.delete"] || "Delete",
+                confirmText: t("action.delete") || "Delete",
                 confirmClass: "btn btn-danger",
                 headerClass: "bg-danger text-white",
             },
@@ -244,7 +243,7 @@ export default class extends Controller {
         const unassignLink = document.createElement("a");
         unassignLink.className = "dropdown-item text-muted";
         unassignLink.href = "#";
-        unassignLink.innerHTML = `<i class="bi bi-person-slash"></i> ${APP_CONFIG.messages["task.field.user.unassigned"] || "Unassigned"}`;
+        unassignLink.innerHTML = `<i class="bi bi-person-slash"></i> ${t("task.field.user.unassigned") || "Unassigned"}`;
         unassignLink.addEventListener("click", (e) => {
             e.preventDefault();
             this.executeAction("ASSIGN", "");

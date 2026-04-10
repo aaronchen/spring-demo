@@ -1,5 +1,6 @@
 export function t(key, ...args) {
-    const template = APP_CONFIG.messages[key] || key;
+    const template = APP_CONFIG.messages[key];
+    if (!template) return undefined;
     return args.reduce((s, v, i) => s.replaceAll(`{${i}}`, v), template);
 }
 
@@ -9,5 +10,5 @@ export function enumToCamelCase(value) {
 
 export function resolveLabel(prefix, value) {
     const key = `${prefix}.${enumToCamelCase(value)}`;
-    return APP_CONFIG.messages[key] || value;
+    return t(key) || value;
 }

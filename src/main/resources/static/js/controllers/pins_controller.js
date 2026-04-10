@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { requireOk, csrfHeaders } from "lib/api";
+import { t } from "lib/i18n";
 import { showToast } from "lib/toast";
 import { onConnect } from "lib/websocket";
 import { escapeHtml } from "lib/html";
@@ -187,7 +188,7 @@ export default class extends Controller {
                 <div class="text-truncate small pin-title">${escapeHtml(item.entityTitle)}</div>
             </div>
             <button type="button" class="btn btn-sm btn-link p-0 pin-unpin-btn pin-color"
-                    title="${APP_CONFIG.messages["pins.toggle"] || "Unpin"}">
+                    title="${t("pins.toggle") || "Unpin"}">
                 <i class="bi bi-pin-angle-fill"></i>
             </button>`;
 
