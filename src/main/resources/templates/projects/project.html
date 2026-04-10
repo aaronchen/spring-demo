@@ -68,7 +68,7 @@
                         </button>
                         <!--/* Split button: "New Task" + dropdown with "New Recurring Task" on non-sprint projects */-->
                         <div th:if="${canEditProject && !project.sprintEnabled}" class="btn-group">
-                            <button class="btn btn-primary btn-lg"
+                            <button id="new-task-btn" class="btn btn-primary btn-lg"
                                     th:hx-get="${appRoutes.taskNew.query('projectId', project.id).build()}"
                                     hx-target="#task-modal-content"
                                     hx-swap="innerHTML">
@@ -89,7 +89,7 @@
                             </ul>
                         </div>
                         <!--/* Simple button for sprint projects (no recurring tasks) */-->
-                        <button th:if="${canEditProject && project.sprintEnabled}" class="btn btn-primary btn-lg"
+                        <button th:if="${canEditProject && project.sprintEnabled}" id="new-task-btn" class="btn btn-primary btn-lg"
                                 th:hx-get="${appRoutes.taskNew.query('projectId', project.id).build()}"
                                 hx-target="#task-modal-content"
                                 hx-swap="innerHTML">

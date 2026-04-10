@@ -26,6 +26,7 @@
                         </button>
                         <a th:if="${editableProjects != null && !editableProjects.isEmpty()}"
                            th:href="@{/tasks/new}"
+                           id="new-task-btn"
                            class="btn btn-primary btn-lg"
                            th:hx-get="${appRoutes.taskNew}"
                            hx-target="#task-modal-content"

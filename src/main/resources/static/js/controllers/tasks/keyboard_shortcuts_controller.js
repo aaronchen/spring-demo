@@ -72,7 +72,7 @@ export default class extends Controller {
     }
 
     triggerNewTask() {
-        const newBtn = document.querySelector('a[hx-get$="/tasks/new"], button[hx-get*="/tasks/new"]');
+        const newBtn = document.getElementById("new-task-btn");
         if (newBtn) newBtn.click();
     }
 
