@@ -106,76 +106,149 @@
 }
 
 /* ==========================================================================
-   1b. Theme Palette — "Sapphire"
-   Rich blue primary with teal In Review, emerald success, honey warning,
-   and scarlet danger. Bold, authoritative, classic SaaS feel.
+   1b. Theme Palette — "Notebook"
+   Warm editorial palette. Cream canvas, terracotta accent, warm neutrals,
+   multi-layer shadows, whisper borders.
    ========================================================================== */
 
-[data-theme="sapphire"] {
-    /* Primary: Sapphire — deep blue, conveys trust */
-    --theme-primary: #3b52d4;
-    --theme-primary-rgb: 59, 82, 212;
-    --theme-primary-hover: #3045b8;
-    --theme-primary-active: #28399e;
+[data-theme="notebook"] {
+    /* Primary: Terracotta — warm, editorial, confident (4.92:1) */
+    --theme-primary: #b35537;
+    --theme-primary-rgb: 179, 85, 55;
+    --theme-primary-hover: #9a4930;
+    --theme-primary-active: #843e29;
 
-    /* Secondary: Storm — neutral for Open status */
-    --theme-secondary: #586774;
-    --theme-secondary-rgb: 88, 103, 116;
-    --theme-secondary-hover: #475563;
+    /* Secondary: Warm Stone — muted, natural */
+    --theme-secondary: #78716c;
+    --theme-secondary-rgb: 120, 113, 108;
+    --theme-secondary-hover: #615b56;
 
-    /* Info: Teal — In Review, clearly distinct from deep blue (190° vs 232°) */
-    --theme-info: #0891b2;
-    --theme-info-rgb: 8, 145, 178;
-    --theme-info-hover: #0e7490;
+    /* Info: Dusty Plum — In Review, distinct from terracotta (295° vs 15°) */
+    --theme-info: #8b5e83;
+    --theme-info-rgb: 139, 94, 131;
+    --theme-info-hover: #764f6f;
 
-    /* Success: Emerald — Completed */
-    --theme-success: #059669;
-    --theme-success-rgb: 5, 150, 105;
-    --theme-success-hover: #047857;
+    /* Success: Olive — Completed, earthy green (4.70:1) */
+    --theme-success: #358254;
+    --theme-success-rgb: 53, 130, 84;
+    --theme-success-hover: #2d6d46;
 
-    /* Warning: Honey — In Progress, warm gold */
-    --theme-warning: #ca8a04;
-    --theme-warning-rgb: 202, 138, 4;
-    --theme-warning-hover: #a16207;
+    /* Warning: Amber — In Progress, warm gold */
+    --theme-warning: #c48a2c;
+    --theme-warning-rgb: 196, 138, 44;
+    --theme-warning-hover: #a87524;
 
-    /* Danger: Scarlet — Overdue/delete */
-    --theme-danger: #dc2626;
-    --theme-danger-rgb: 220, 38, 38;
-    --theme-danger-hover: #b91c1c;
+    /* Danger: Brick — Overdue/delete, warm red */
+    --theme-danger: #c4362a;
+    --theme-danger-rgb: 196, 54, 42;
+    --theme-danger-hover: #a32d22;
 
-    /* Surfaces — blue-tinted neutrals */
-    --theme-body-bg: #f7f8fc;
-    --theme-body-bg-rgb: 247, 248, 252;
-    --theme-body-color: #1a1e2e;
-    --theme-body-color-rgb: 26, 30, 46;
-    --theme-border-color: #dde0ed;
-    --theme-light: #eef0f7;
-    --theme-light-rgb: 238, 240, 247;
+    /* Surfaces — warm cream canvas */
+    --theme-body-bg: #f9f7f3;
+    --theme-body-bg-rgb: 249, 247, 243;
+    --theme-body-color: #1c1c1e;
+    --theme-body-color-rgb: 28, 28, 30;
+    --theme-border-color: #e5e0d8;
+    --theme-light: #f0ece5;
+    --theme-light-rgb: 240, 236, 229;
+
+    /* Surface layers — warm tints */
+    --theme-surface-raised: #ffffff;
+    --theme-surface-sunken: #f0ece5;
+
+    /* Focus */
+    --theme-focus-ring: rgba(179, 85, 55, 0.25);
+    --theme-focus-border: #cf9279;
+
+    /* Button text — WCAG AA contrast-safe */
+    --theme-primary-text: #fff; /* white on terracotta — 4.92:1 */
+    --theme-info-text: #fff; /* white on dusty plum — 5.22:1 */
+    --theme-success-text: #fff; /* white on olive — 4.70:1 */
+    --theme-warning-text: #1c1c1e; /* dark on amber — 8.6:1 */
+    --theme-danger-text: #fff; /* white on brick — 5.84:1 */
+
+    /* Links: slightly deeper terracotta for white-bg readability */
+    --theme-link: #9a4930;
+    --theme-link-rgb: 154, 73, 48;
+    --theme-link-hover: #843e29;
+    --theme-link-hover-rgb: 132, 62, 41;
+
+    /* Navbar: warm dark with terracotta glow */
+    --theme-navbar-bg: rgba(40, 36, 32, 0.94);
+    --theme-navbar-border: rgba(179, 85, 55, 0.15);
+}
+
+/* ==========================================================================
+   1c. Theme Palette — "Titanium"
+   Industrial precision. Zero border-radius,
+   flat depth via background layering, compressed typography, dark masthead.
+   ========================================================================== */
+
+[data-theme="titanium"] {
+    /* Primary: Steel Blue — the singular interactive color */
+    --theme-primary: #0f62fe;
+    --theme-primary-rgb: 15, 98, 254;
+    --theme-primary-hover: #0353e9;
+    --theme-primary-active: #002d9c;
+
+    /* Secondary: Graphite — neutral text/icon color */
+    --theme-secondary: #525252;
+    --theme-secondary-rgb: 82, 82, 82;
+    --theme-secondary-hover: #393939;
+
+    /* Info: Purple 60 — In Review, distinct from blue (270° vs 220°, 5.83:1) */
+    --theme-info: #8a3ffc;
+    --theme-info-rgb: 138, 63, 252;
+    --theme-info-hover: #6929c4;
+
+    /* Success: Industrial Green — Completed (5.02:1) */
+    --theme-success: #198038;
+    --theme-success-rgb: 25, 128, 56;
+    --theme-success-hover: #0e6027;
+
+    /* Warning: Signal Yellow — high visibility */
+    --theme-warning: #f1c21b;
+    --theme-warning-rgb: 241, 194, 27;
+    --theme-warning-hover: #d2a106;
+
+    /* Danger: Engineering Red — error/delete */
+    --theme-danger: #da1e28;
+    --theme-danger-rgb: 218, 30, 40;
+    --theme-danger-hover: #ba1b23;
+
+    /* Surfaces — white/gray layering for depth */
+    --theme-body-bg: #ffffff;
+    --theme-body-bg-rgb: 255, 255, 255;
+    --theme-body-color: #161616;
+    --theme-body-color-rgb: 22, 22, 22;
+    --theme-border-color: #e0e0e0;
+    --theme-light: #f8f8f8;
+    --theme-light-rgb: 248, 248, 248;
 
     /* Surface layers */
     --theme-surface-raised: #ffffff;
-    --theme-surface-sunken: #eef0f7;
+    --theme-surface-sunken: #e8e8e8;
 
-    /* Focus */
-    --theme-focus-ring: rgba(59, 82, 212, 0.3);
-    --theme-focus-border: #8b9ef0;
+    /* Focus — strong blue ring */
+    --theme-focus-ring: rgba(15, 98, 254, 0.4);
+    --theme-focus-border: #0f62fe;
 
-    /* Button text — WCAG AA contrast-safe */
-    --theme-primary-text: #fff; /* white on sapphire — 6.42:1 */
-    --theme-info-text: #fff; /* white on teal — 4.51:1 */
-    --theme-success-text: #fff; /* white on emerald — 4.56:1 */
-    --theme-warning-text: #1e293b; /* dark on honey — 8.3:1 */
-    --theme-danger-text: #fff; /* white on scarlet — 5.63:1 */
+    /* Button text — WCAG AA verified */
+    --theme-primary-text: #fff; /* white on Blue 60 — 4.62:1 */
+    --theme-info-text: #fff; /* white on Purple 60 — 5.83:1 */
+    --theme-success-text: #fff; /* white on Green 60 — 5.02:1 */
+    --theme-warning-text: #161616; /* dark on Yellow 30 — 13.0:1 */
+    --theme-danger-text: #fff; /* white on Red 60 — 5.00:1 */
 
-    /* Links */
-    --theme-link: #3045b8;
-    --theme-link-rgb: 48, 69, 184;
-    --theme-link-hover: #28399e;
-    --theme-link-hover-rgb: 40, 57, 158;
+    /* Links: steel blue */
+    --theme-link: #0f62fe;
+    --theme-link-rgb: 15, 98, 254;
+    --theme-link-hover: #0043ce;
+    --theme-link-hover-rgb: 0, 67, 206;
 
-    /* Navbar: frosted deep blue */
-    --theme-navbar-bg: rgba(30, 30, 80, 0.92);
-    --theme-navbar-border: rgba(59, 82, 212, 0.12);
+    /* Navbar: Gray 100 solid dark masthead */
+    --theme-navbar-bg: #161616;
+    --theme-navbar-border: #262626;
 }
 
 /* ==========================================================================
@@ -408,7 +481,7 @@
 
 [data-theme] .form-check-input {
     background-color: #fff;
-    border-color: var(--bs-border-color, #dee2e6);
+    border-color: var(--bs-secondary-color, #6c757d);
 }
 
 [data-theme] .form-check-input:checked {
@@ -418,7 +491,7 @@
 
 [data-theme] .form-check-input:disabled {
     background-color: var(--theme-surface-sunken);
-    border-color: var(--bs-border-color, #dee2e6);
+    border-color: var(--theme-border-color);
     opacity: 1;
 }
 [data-theme] .form-check-input:checked:disabled {
@@ -566,9 +639,14 @@
     transform: translateY(-4px);
 }
 
-[data-theme] .card,
+[data-theme] .card {
+    --bs-card-border-radius: var(--radius-lg);
+    --bs-card-inner-border-radius: var(--radius-lg);
+}
+
 [data-theme] .modal-content {
-    border-radius: var(--radius-lg);
+    --bs-modal-border-radius: var(--radius-lg);
+    --bs-modal-inner-border-radius: var(--radius-lg);
 }
 
 /* ── Dropdowns ─────────────────────────────────────────────────────── */
@@ -578,13 +656,17 @@
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     padding: 0.375rem;
-    scrollbar-gutter: stable;
 }
 
 [data-theme] .dropdown-item {
     border-radius: var(--radius-sm);
     padding: 0.45rem 0.75rem;
     transition: background-color var(--duration-fast) var(--ease-in-out);
+}
+
+[data-theme] .dropdown-item:hover,
+[data-theme] .dropdown-item:focus {
+    background-color: rgba(var(--theme-body-color-rgb), 0.06);
 }
 
 /* ── Form Controls ─────────────────────────────────────────────────── */
@@ -623,6 +705,12 @@
     padding: 0.5rem 0.875rem;
 }
 
+/* input-group-text must match form-control padding so they align in input-groups */
+[data-theme] .input-group-text {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
 [data-theme] .form-select {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
@@ -640,6 +728,11 @@
     padding: 0.3rem 0.625rem;
 }
 
+[data-theme] .input-group-sm > .input-group-text {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
 [data-theme] .form-select-sm {
     padding-top: 0.3rem;
     padding-bottom: 0.3rem;
@@ -651,11 +744,20 @@
 [data-theme] .btn {
     border-radius: var(--radius-sm);
     font-weight: 500;
+    /* Match vertical padding to form-control so buttons align in same-row layouts */
+    --bs-btn-padding-y: 0.5rem;
+    --bs-btn-padding-x: 0.875rem;
     transition: all var(--duration-fast) var(--ease-out);
 }
 
 [data-theme] .btn:active {
     transform: scale(0.97);
+}
+
+[data-theme] .btn-sm,
+[data-theme] .btn-group-sm > .btn {
+    --bs-btn-padding-y: 0.3rem;
+    --bs-btn-padding-x: 0.625rem;
 }
 
 [data-theme] .btn-lg {
@@ -759,4 +861,504 @@
 
 [data-theme] .list-group-item-action:hover {
     background-color: var(--theme-surface-sunken, var(--bs-light));
+}
+
+/* ==========================================================================
+   5. Notebook Theme Refinements
+   Elevated visual polish: warm editorial feel, multi-layer depth,
+   tighter typography, whisper borders, inset button shadows.
+   Only active when data-theme="notebook".
+   ========================================================================== */
+
+/* ── Token overrides — must come AFTER the shared [data-theme] design tokens. */
+[data-theme="notebook"] {
+    /* Multi-layer shadows — ring + soft blur + lift */
+    --shadow-xs: 0 1px 2px rgba(28, 28, 30, 0.04);
+    --shadow-sm: 0 0 0 1px rgba(28, 28, 30, 0.02), 0 1px 4px rgba(28, 28, 30, 0.04), 0 4px 12px rgba(28, 28, 30, 0.06);
+    --shadow-md: 0 0 0 1px rgba(28, 28, 30, 0.02), 0 2px 6px rgba(28, 28, 30, 0.05), 0 8px 24px rgba(28, 28, 30, 0.08);
+    --shadow-lg: 0 0 0 1px rgba(28, 28, 30, 0.02), 0 4px 8px rgba(28, 28, 30, 0.06), 0 16px 40px rgba(28, 28, 30, 0.1);
+    --shadow-xl:
+        0 0 0 1px rgba(28, 28, 30, 0.02), 0 8px 16px rgba(28, 28, 30, 0.08), 0 32px 64px rgba(28, 28, 30, 0.12);
+
+    /* Border radius — tighter, more professional */
+    --radius-sm: 0.3125rem; /* 5px */
+    --radius-md: 0.5rem; /* 8px */
+    --radius-lg: 0.625rem; /* 10px */
+    --radius-xl: 1rem; /* 16px */
+}
+
+/* ── Typography: tighter heading tracking + positive small-text tracking ─ */
+
+[data-theme="notebook"] h1,
+[data-theme="notebook"] .h1 {
+    letter-spacing: -0.04em;
+}
+
+[data-theme="notebook"] h2,
+[data-theme="notebook"] .h2 {
+    letter-spacing: -0.035em;
+}
+
+[data-theme="notebook"] h3,
+[data-theme="notebook"] .h3 {
+    letter-spacing: -0.03em;
+}
+
+[data-theme="notebook"] .display-4 {
+    font-weight: 600;
+    letter-spacing: -0.045em;
+}
+
+/* Positive tracking on small text for legibility */
+[data-theme="notebook"] .badge {
+    letter-spacing: 0.02em;
+}
+
+[data-theme="notebook"] .table thead th {
+    letter-spacing: 0.06em;
+}
+
+/* ── Cards: whisper border + refined shadow ──────────────────────────── */
+
+[data-theme="notebook"] .card {
+    border: 1px solid rgba(28, 28, 30, 0.06);
+}
+
+[data-theme="notebook"] .card.card-lift:hover {
+    border-color: rgba(28, 28, 30, 0.1);
+}
+
+/* ── Buttons: inset highlight on primary ────────────────────────────── */
+
+[data-theme="notebook"] .btn-primary {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 1px 2px rgba(28, 28, 30, 0.12);
+}
+
+[data-theme="notebook"] .btn-primary:hover {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 2px 4px rgba(28, 28, 30, 0.16);
+}
+
+[data-theme="notebook"] .btn-primary:active {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* Subtle inset on other solid buttons too */
+[data-theme="notebook"] .btn-success,
+[data-theme="notebook"] .btn-danger,
+[data-theme="notebook"] .btn-info {
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        0 1px 2px rgba(28, 28, 30, 0.1);
+}
+
+/* ── Form controls: warm border tint ─────────────────────────────────── */
+
+[data-theme="notebook"] .form-control,
+[data-theme="notebook"] .form-select {
+    border-color: #ddd8d0;
+}
+
+[data-theme="notebook"] .form-control:focus,
+[data-theme="notebook"] .form-select:focus {
+    border-color: var(--theme-focus-border);
+    box-shadow: 0 0 0 3px var(--theme-focus-ring);
+}
+
+/* ── Dropdowns: warm border ──────────────────────────────────────────── */
+
+[data-theme="notebook"] .dropdown-menu {
+    border-color: #ddd8d0;
+}
+
+/* ── Navbar: warmer frosted glass ────────────────────────────────────── */
+
+[data-theme="notebook"] .navbar.bg-primary {
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+/* ── Section alternation helper ───────────────────────────────────────── */
+
+[data-theme="notebook"] .bg-light {
+    background-color: var(--theme-light) !important;
+}
+
+/* ── Modal: whisper border + warm shadow ─────────────────────────────── */
+
+[data-theme="notebook"] .modal-content {
+    border: 1px solid rgba(28, 28, 30, 0.06);
+}
+
+/* ── Pagination: softer borders ──────────────────────────────────────── */
+
+[data-theme="notebook"] .page-link {
+    border-color: #ddd8d0;
+}
+
+/* ── Alerts: warm transparent tints ──────────────────────────────────── */
+
+[data-theme="notebook"] .alert-primary {
+    --bs-alert-bg: rgba(var(--theme-primary-rgb), 0.08);
+    --bs-alert-border-color: rgba(var(--theme-primary-rgb), 0.15);
+}
+
+/* ==========================================================================
+   6. Titanium Theme Refinements
+   Industrial precision: zero border-radius on ALL elements, flat depth
+   via background-color layering, compressed typography, bottom-border
+   inputs, solid dark masthead.
+   Only active when data-theme="titanium".
+   ========================================================================== */
+
+/* ── Token overrides — must come AFTER the shared [data-theme] design tokens
+   section so these values win (same specificity, later source order). */
+[data-theme="titanium"] {
+    /* Shadows — minimal; depth via background layering */
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 2px 6px rgba(0, 0, 0, 0.3);
+
+    /* Border radius — ZERO everywhere, angular identity */
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --radius-full: 9999px;
+
+    /* Bootstrap's own radius variables */
+    --bs-border-radius: 0;
+    --bs-border-radius-sm: 0;
+    --bs-border-radius-lg: 0;
+    --bs-border-radius-xl: 0;
+    --bs-border-radius-xxl: 0;
+    --bs-border-radius-pill: 9999px;
+
+    /* Titanium surface tokens — centralize repeated gray values */
+    --theme-input-bg: #f4f4f4;
+}
+
+/* ── Nuclear zero radius — override EVERY Bootstrap component ────────── */
+/* Bootstrap hardcodes border-radius on many components. The --bs-border-radius
+   variables only cover some. This catches everything else. */
+
+[data-theme="titanium"] .btn,
+[data-theme="titanium"] .card,
+[data-theme="titanium"] .card-header:first-child,
+[data-theme="titanium"] .card-footer:last-child,
+[data-theme="titanium"] .card-img-top,
+[data-theme="titanium"] .card-img-bottom,
+[data-theme="titanium"] .modal-content,
+[data-theme="titanium"] .modal-header,
+[data-theme="titanium"] .modal-footer,
+[data-theme="titanium"] .dropdown-menu,
+[data-theme="titanium"] .dropdown-item,
+[data-theme="titanium"] .form-control,
+[data-theme="titanium"] .form-select,
+[data-theme="titanium"] .form-check-input,
+[data-theme="titanium"] .input-group > :not(:first-child),
+[data-theme="titanium"] .input-group > :not(:last-child),
+[data-theme="titanium"] .input-group-text,
+[data-theme="titanium"] .alert,
+[data-theme="titanium"] .toast,
+[data-theme="titanium"] .toast-header,
+[data-theme="titanium"] .badge,
+[data-theme="titanium"] .list-group,
+[data-theme="titanium"] .list-group-item,
+[data-theme="titanium"] .list-group-item:first-child,
+[data-theme="titanium"] .list-group-item:last-child,
+[data-theme="titanium"] .page-link,
+[data-theme="titanium"] .page-item:first-child .page-link,
+[data-theme="titanium"] .page-item:last-child .page-link,
+[data-theme="titanium"] .accordion-item,
+[data-theme="titanium"] .accordion-button,
+[data-theme="titanium"] .nav-link,
+[data-theme="titanium"] .nav-tabs .nav-link,
+[data-theme="titanium"] .breadcrumb,
+[data-theme="titanium"] .progress,
+[data-theme="titanium"] .progress-bar,
+[data-theme="titanium"] .popover,
+[data-theme="titanium"] .tooltip-inner,
+[data-theme="titanium"] .btn-group > .btn,
+[data-theme="titanium"] .btn-group > .btn:first-child,
+[data-theme="titanium"] .btn-group > .btn:last-child,
+[data-theme="titanium"] .btn-close,
+[data-theme="titanium"] searchable-select .ss-wrapper::after,
+[data-theme="titanium"] searchable-select .ss-wrapper.open .ss-input,
+[data-theme="titanium"] searchable-select .ss-menu {
+    border-radius: 0 !important;
+}
+
+/* Exception: pill badges keep full radius */
+[data-theme="titanium"] .rounded-pill {
+    border-radius: 9999px !important;
+}
+
+/* ── Typography: light display, compressed, productive scale ──────────── */
+
+[data-theme="titanium"] h1,
+[data-theme="titanium"] .h1 {
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 1.17;
+}
+
+[data-theme="titanium"] h2,
+[data-theme="titanium"] .h2 {
+    font-weight: 400;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+[data-theme="titanium"] h3,
+[data-theme="titanium"] .h3 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+}
+
+[data-theme="titanium"] h4,
+[data-theme="titanium"] .h4,
+[data-theme="titanium"] h5,
+[data-theme="titanium"] .h5,
+[data-theme="titanium"] h6,
+[data-theme="titanium"] .h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+}
+
+[data-theme="titanium"] .display-4 {
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+}
+
+/* Body text: tighter line-height */
+[data-theme="titanium"] body {
+    line-height: 1.4;
+}
+
+/* Micro-tracking on small text */
+[data-theme="titanium"] .badge {
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+}
+
+[data-theme="titanium"] .table thead th {
+    letter-spacing: 0.08em;
+    font-size: 0.72rem;
+}
+
+/* ── Cards: flat — NO shadow, border only, background-color hover ────── */
+
+[data-theme="titanium"] .card {
+    box-shadow: none;
+    border: 1px solid var(--theme-border-color);
+    background: var(--theme-surface-raised);
+}
+
+[data-theme="titanium"] .card.card-lift:hover {
+    box-shadow: none !important;
+    transform: none;
+    background-color: var(--theme-input-bg);
+    border-color: #c6c6c6;
+}
+
+/* Card headers on gray surface for layering depth */
+[data-theme="titanium"] .card-header {
+    border-bottom: 1px solid var(--theme-border-color);
+}
+
+/* ── Buttons: flat — no shadow, no transform ──────────────────────────── */
+
+[data-theme="titanium"] .btn {
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+
+[data-theme="titanium"] .btn:active {
+    transform: none;
+}
+
+/* Focus: inset blue + white inner ring */
+[data-theme="titanium"] .btn:focus-visible {
+    outline: none !important;
+    box-shadow:
+        inset 0 0 0 1px var(--theme-primary),
+        inset 0 0 0 2px #fff !important;
+}
+
+/* ── Form controls: flat gray-filled inputs ──────────────────────────── */
+/* KEY RULE: never override padding, border-width, or height. Only change
+   visual properties: background-color, border-color. Bootstrap handles sizing. */
+
+[data-theme="titanium"] .form-control,
+[data-theme="titanium"] .form-select {
+    background-color: var(--theme-input-bg);
+    border-color: transparent;
+}
+
+[data-theme="titanium"] .input-group-text {
+    background-color: var(--theme-input-bg);
+    border-color: transparent;
+    color: #525252;
+}
+
+/* Bootstrap uses margin-left:-1px on non-first input-group children to overlap
+   adjacent borders. With transparent borders this creates a visible 1px shift
+   where the gray background peeks through asymmetrically. Remove it. */
+[data-theme="titanium"]
+    .input-group
+    > :not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(
+        .invalid-feedback
+    ) {
+    margin-left: 0;
+}
+
+/* Focus: use the standard theme focus ring (not bottom-border) — Bootstrap's
+   input-group border merging makes bottom-border focus unreliable. */
+[data-theme="titanium"] .form-control:focus,
+[data-theme="titanium"] .form-select:focus {
+    background-color: var(--theme-input-bg);
+    border-color: var(--theme-focus-border);
+}
+
+[data-theme="titanium"] .form-control:disabled,
+[data-theme="titanium"] .form-select:disabled {
+    background-color: #e8e8e8;
+    border-color: transparent;
+    color: #8d8d8d;
+}
+
+[data-theme="titanium"] .form-control:read-only:not(:disabled) {
+    background-color: var(--theme-input-bg);
+    border-color: transparent;
+    border-bottom-style: dashed;
+    border-bottom-color: #c6c6c6;
+    color: #525252;
+}
+
+/* Labels: small, weighted */
+[data-theme="titanium"] .form-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #525252;
+    margin-bottom: 0.375rem;
+}
+
+/* Checkboxes: square */
+[data-theme="titanium"] .form-check-input {
+    border-color: #161616;
+}
+
+[data-theme="titanium"] .form-check-input:checked {
+    background-color: var(--theme-primary);
+    border-color: var(--theme-primary);
+}
+
+/* ── Searchable-select: use standard theme focus ─────────────────────── */
+
+[data-theme="titanium"] searchable-select .ss-input {
+    background-color: var(--theme-input-bg);
+    border-color: transparent;
+}
+
+/* Disabled/readonly */
+[data-theme="titanium"] searchable-select[disabled] .ss-input {
+    background-color: #e8e8e8;
+    border-color: transparent;
+}
+
+[data-theme="titanium"] searchable-select[readonly] .ss-input {
+    background-color: var(--theme-input-bg);
+    border-color: transparent;
+    border-bottom-style: dashed;
+    border-bottom-color: #c6c6c6;
+}
+
+/* ── Dropdowns: sharp, floating ──────────────────────────────────────── */
+
+[data-theme="titanium"] .dropdown-menu {
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    padding: 0.25rem 0;
+}
+
+[data-theme="titanium"] .dropdown-item {
+    padding: 0.5rem 1rem;
+    transition: background-color var(--duration-fast) var(--ease-in-out);
+}
+
+[data-theme="titanium"] .dropdown-item:hover,
+[data-theme="titanium"] .dropdown-item:focus {
+    background-color: #e8e8e8;
+}
+
+/* ── Navbar: solid Gray 100 masthead ─────────────────────────────────── */
+
+[data-theme="titanium"] .navbar.bg-primary {
+    background-color: #161616 !important;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-bottom: 1px solid #393939;
+}
+
+/* ── Modals: sharp, slide-down entrance ──────────────────────────────── */
+
+[data-theme="titanium"] .modal-content {
+    border: none;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="titanium"] .modal.fade .modal-dialog {
+    transform: translateY(-20px) scale(1);
+}
+
+[data-theme="titanium"] .modal.show .modal-dialog {
+    transform: translateY(0) scale(1);
+}
+
+/* ── Alerts: left-border accent band ──────────────────────────────────── */
+
+[data-theme="titanium"] .alert {
+    border: none;
+    border-left: 3px solid;
+}
+
+[data-theme="titanium"] .alert-primary {
+    --bs-alert-bg: #edf5ff;
+    --bs-alert-color: #002d9c;
+    --bs-alert-border-color: var(--theme-primary);
+}
+
+/* ── Tables: tighter, denser ─────────────────────────────────────────── */
+
+[data-theme="titanium"] .table {
+    --bs-table-striped-bg: var(--theme-input-bg);
+}
+
+[data-theme="titanium"] .table thead th {
+    vertical-align: middle;
+}
+
+/* ── List groups: flat, tight ────────────────────────────────────────── */
+
+[data-theme="titanium"] .list-group-item-action:hover {
+    background-color: #e8e8e8;
+}
+
+/* ── Toasts: sharp ───────────────────────────────────────────────────── */
+
+[data-theme="titanium"] .toast {
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }

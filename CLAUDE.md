@@ -50,6 +50,13 @@ For database schema, available URLs, config properties, Maven dependencies, and 
 
 ### Thymeleaf Fragment Pattern
 
+**Layout fragments** — every page includes four fragments from `layouts/base.html`:
+- `head(title, cssFile)` — `<head>` with meta, CSS, import map
+- `navbar` — nav bar only
+- `chrome` — UI shell: drawers, maintenance banner, global JS templates (confirm dialog)
+- `footer` — footer
+- `scripts` — script tags only
+
 Three fragment styles:
 - **Bare fragment** (no HTML wrapper) — controller returns `"tasks/task-modal"` (no `::` selector)
 - **Fragment in HTML wrapper** — controller returns `"tasks/task-card :: card"` (needs `::` selector)
@@ -180,7 +187,7 @@ Three controllers for User concerns: `UserController` (`/users` — public list)
 
 Custom color schemes via `data-theme` attribute on `<html>`. Palette tokens in `theme.css` mapped to Bootstrap `--bs-*` variables. Design tokens (motion, shadows, radius) and shared refinements (typography, forms, cards, dropdowns) also live in `theme.css` under `[data-theme]`.
 
-Three themes: `default` (stock Bootstrap), `workshop` (cerulean + violet), `sapphire` (deep blue + teal). All custom palettes include `--theme-info` for In Review status — Bootstrap's stock Info is too close to blue primaries.
+Four themes: `default` (stock Bootstrap), `workshop` (cerulean + violet), `notebook` (warm cream + terracotta), `titanium` (industrial precision + steel blue, zero border-radius). All custom palettes include `--theme-info` for In Review status — Bootstrap's stock Info is too close to blue primaries.
 
 To add a theme: (1) `THEME_*` constant in `Settings.java`, (2) `[data-theme="name"]` palette in `theme.css`, (3) `ThemeOption` in `SettingsController.THEMES`, (4) `admin.settings.theme.<name>.{name,description}` in `messages.properties`.
 
@@ -205,7 +212,7 @@ Enums implement `Translatable.getMessageKey()`. Templates use `#{${enum.messageK
 
 ### Confirm Dialog Pattern
 
-`showConfirm(options, onConfirm)` in `utils.js` — Bootstrap modal replacing `window.confirm()`. Created fresh per call, destroyed on hide. HTMX integration via `htmx:confirm` interception with `data-confirm-*` attributes.
+`showConfirm(options, onConfirm)` in `lib/confirm.js` — Bootstrap modal replacing `window.confirm()`. Clones `<template id="confirm-dialog-template">` from `base.html` (Thymeleaf processes `#{...}` for i18n), sets dynamic content via `data-confirm-*` attribute hooks, destroyed on hide. HTMX integration via `htmx:confirm` interception with `data-confirm-*` attributes.
 
 ### Searchable Select Component
 
@@ -370,7 +377,7 @@ static/js/
 - **Server data to JS** — Use Stimulus value attributes (`th:data-controller-name-value="${value}"`). Never use `window.GLOBAL = ...` or `<meta>` tags for controller-specific data. Exception: `APP_CONFIG` stays as a window global (dynamically generated, read everywhere).
 - **Destructive confirmations** — Use `hx-confirm` + `data-confirm-*` attributes. Never use `showConfirm` from inline scripts.
 - **CSRF** — Handled globally by `lib/htmx-csrf.js`. No per-page CSRF handling.
-- **`<template>` for JS-cloned markup** — When JS needs to add DOM elements that duplicate server-rendered markup, put a `<template id="...">` in the Thymeleaf file and clone via `template.content.firstElementChild.cloneNode(true)`. Thymeleaf processes `#{...}` inside `<template>` for i18n. JS populates dynamic values after cloning. Used by checklist items and dependency items.
+- **`<template>` for JS-cloned markup** — When JS needs to add DOM elements, put a `<template id="...">` in the Thymeleaf file and clone via `template.content.firstElementChild.cloneNode(true)`. Thymeleaf processes `#{...}` inside `<template>` for i18n. JS populates dynamic values after cloning. Global templates (any page) go in the `chrome` fragment in `base.html`; feature templates go in the page that loads the controller. `<template>` is NOT a fragment — don't put in `fragments/`. Used by checklist items, dependency items, and confirm dialog.
 
 #### Frontend JS Rules
 

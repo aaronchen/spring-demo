@@ -59,17 +59,27 @@ Bootstrap Components + Our Overrides
 | Secondary / Open (Slate) | Gray | `#64748b` | white | 4.54:1 | 215° |
 | Backlog (Silver) | Light gray | `#94a3b8` | dark | 7.1:1 | 215° |
 
-### Sapphire Palette
+### Notebook Palette
 
-| Role | Color | Hex | Text | WCAG | Hue |
-|------|-------|-----|------|------|-----|
-| Primary (Sapphire) | Deep blue | `#3b52d4` | white | 6.42:1 | 232° |
-| Info / In Review (Teal) | Teal | `#0891b2` | white | 4.51:1 | 190° |
-| Success / Completed (Emerald) | Green | `#059669` | white | 4.56:1 | 160° |
-| Warning / In Progress (Honey) | Gold | `#ca8a04` | dark | 8.3:1 | 45° |
-| Danger / Overdue (Scarlet) | Red | `#dc2626` | white | 5.63:1 | 0° |
-| Secondary / Open (Storm) | Gray | `#586774` | white | 5.32:1 | 205° |
-| Backlog (Mist) | Light gray | `#8fa0af` | dark | 6.5:1 | 205° |
+| Role | Color | Hex | Text | WCAG |
+|------|-------|-----|------|------|
+| Primary (Terracotta) | Warm red-brown | `#b35537` | white | 4.92:1 |
+| Info (Dusty Plum) | Muted purple | `#8b5e83` | white | 5.22:1 |
+| Success (Olive) | Earthy green | `#358254` | white | 4.70:1 |
+| Warning (Amber) | Warm gold | `#c48a2c` | dark | 8.6:1 |
+| Danger (Brick) | Warm red | `#c4362a` | white | 5.84:1 |
+| Secondary (Warm Stone) | Muted neutral | `#78716c` | white | 4.80:1 |
+
+### Titanium Palette
+
+| Role | Color | Hex | Text | WCAG |
+|------|-------|-----|------|------|
+| Primary (Steel Blue) | Blue | `#0f62fe` | white | 5.00:1 |
+| Info (Purple) | Vivid purple | `#8a3ffc` | white | 5.00:1 |
+| Success (Industrial Green) | Green | `#198038` | white | 5.02:1 |
+| Warning (Signal Yellow) | Bright yellow | `#f1c21b` | dark | 10.75:1 |
+| Danger (Engineering Red) | Red | `#da1e28` | white | 5.00:1 |
+| Secondary (Graphite) | Neutral gray | `#525252` | white | 7.81:1 |
 
 ### Adding a Theme
 
@@ -84,6 +94,7 @@ Bootstrap Components + Our Overrides
 - **Don't trust Bootstrap's default contrast** — Stock `bg-info + text-white` fails WCAG at 1.96:1. Always verify.
 - **Backlog needs dark text** — Light gray backgrounds (`#94a3b8`) with white text fail at 2.02:1. Use `text-dark`.
 - **`bg-*` utilities pick up `--bs-*-rgb`** — Setting `--bs-info-rgb` in the theme automatically flows to `bg-info` class. No need to override each utility individually.
+- **Theme token overrides must come after shared tokens** — Same-specificity selectors (`[data-theme="notebook"]` vs `[data-theme]`) resolve by source order. If a theme palette (section 1 in `theme.css`) defines `--radius-*` or `--shadow-*` overrides before the shared `[data-theme]` design tokens section (section 3), the shared defaults silently overwrite them. Put token overrides in the theme's refinement section (sections 5/6), not in the palette section.
 
 ---
 
@@ -158,6 +169,10 @@ Never override right padding on `form-select` — Bootstrap reserves ~2.25rem fo
 
 ## 5. Component Patterns
 
+### Border Radius Tokens
+
+Use `var(--radius-sm)`, `var(--radius-md)`, etc. instead of hardcoded `4px` or `0.375rem` in component CSS. Themes set these tokens — hardcoded values bypass the theme system entirely. Bootstrap components need a "nuclear" `border-radius: 0 !important` selector list because Bootstrap itself hardcodes radius on many components.
+
 ### Cards
 
 - **Borderless** (`border: none`) — cleaner look, status shown via colored headers
@@ -183,6 +198,21 @@ Never override right padding on `form-select` — Bootstrap reserves ~2.25rem fo
 
 - Borderless (`border: none`), `--shadow-xl` for floating effect
 - Entrance: `translateY(20px) scale(0.96)` → `translateY(0) scale(1)`
+
+### Edit Mode Interaction
+
+- When disabling interactive elements in edit mode, use `opacity: 0.3; pointer-events: none` rather than `display: none` or `visibility: hidden` — avoids layout shift.
+- Remove `hx-get` attributes (not just `href`) to prevent HTMX from firing during edit mode.
+- Use `pointer-events: none` on cell children (`td.inline-edit-active > *`) to block clicks on nested elements.
+
+### JS-Only Templates
+
+When JS needs to create DOM elements (modals, cards, etc.), use `<template>` elements in Thymeleaf files — never build DOM in JS strings.
+
+- **Global templates** (used on any page): put in the `chrome` fragment in `layouts/base.html`
+- **Feature-specific templates**: put in the page template that loads the JS controller
+- `<template>` is NOT a Thymeleaf fragment — don't put it in `fragments/`. Nobody `th:replace`s it.
+- Thymeleaf processes `#{...}` inside `<template>` for i18n
 
 ---
 
@@ -242,6 +272,18 @@ Never use color alone to convey meaning. All status indicators pair color with a
 | Put delete buttons inside `input-group` | Inherits squared corners, border merging | Place outside as standalone icon button |
 | Set `border-width: 0; border-left-width: 4px` on alerts | Left border clips into rounded corners | Use default border all around |
 | Use `text-white` on light backgrounds | WCAG failure (e.g., backlog `#94a3b8` + white = 2.02:1) | Always verify contrast ratios |
+| Use Bootstrap's default dropdown hover on themed apps | `#f8f9fa` is nearly invisible on white backgrounds | Override with `rgba(var(--theme-body-color-rgb), 0.06)` for themed, `rgba(0, 0, 0, 0.06)` for unthemed |
+| Put `scrollbar-gutter: stable` on `.dropdown-menu` | Reserves scrollbar space even when content doesn't scroll | Only use on actually-scrolling containers |
+| Override `padding`, `border-width`, or `height` on form controls in a theme | Bootstrap's sizing system relies on these being consistent across `.form-control`, `.form-select`, `.input-group-text`, and `.btn` | Only change visual properties: `background-color`, `border-color`, `border-style`, `box-shadow`, `color` |
+| Use raw `padding` to align buttons with inputs in the same row | Different elements have different computed padding | Use `--bs-btn-padding-y` and `--bs-btn-padding-x` (Bootstrap's own CSS variables) |
+| Hardcode `border-radius` values (`4px`, `0.375rem`) in component CSS | Bypasses the theme token system | Use `var(--radius-sm)`, `var(--radius-md)`, etc. |
+
+### Theme-Safe Component Rules
+
+- **Never override sizing properties** (`padding`, `border-width`, `height`) on form controls in a theme. Bootstrap's sizing system relies on these being consistent across `.form-control`, `.form-select`, `.input-group-text`, and `.btn`. Only change visual properties: `background-color`, `border-color`, `border-style`, `box-shadow`, `color`.
+- **Button/input alignment** — To align buttons with inputs in the same row, use `--bs-btn-padding-y` and `--bs-btn-padding-x` (Bootstrap's own CSS variables), not raw `padding`.
+- **`input-group-text` vertical padding** must match `form-control` padding. The shared `[data-theme]` section handles this.
+- **Transparent border overlap** — Bootstrap's `input-group > :not(:first-child)` uses `margin-left: -1px` to overlap borders. Themes with transparent borders may need `margin-left: 0` to prevent visual shifts.
 
 ---
 

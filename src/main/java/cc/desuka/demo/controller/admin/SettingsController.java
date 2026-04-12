@@ -33,8 +33,11 @@ public class SettingsController {
                             Settings.THEME_WORKSHOP,
                             List.of("#2b7de9", "#16a34a", "#e6a740", "#dc2626")),
                     new ThemeOption(
-                            Settings.THEME_SAPPHIRE,
-                            List.of("#3b52d4", "#059669", "#ca8a04", "#dc2626")));
+                            Settings.THEME_NOTEBOOK,
+                            List.of("#b35537", "#358254", "#c48a2c", "#c4362a")),
+                    new ThemeOption(
+                            Settings.THEME_TITANIUM,
+                            List.of("#0f62fe", "#198038", "#f1c21b", "#da1e28")));
 
     @GetMapping
     public String settingsPage(Model model) {

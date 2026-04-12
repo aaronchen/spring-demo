@@ -154,6 +154,8 @@ export default class extends Controller {
             this.doSearch(false);
         };
         window.addEventListener("popstate", this.popstateHandler);
+
+        this.initSavedViewsDelegation();
     }
 
     // ── WebSocket ────────────────────────────────────────────────────────
@@ -402,9 +404,9 @@ export default class extends Controller {
         if (hidden) hidden.value = value;
         if (label) {
             if (!value) {
-                label.textContent = t("task.field.sprint") || "Sprint";
+                label.textContent = t("task.field.sprint");
             } else if (value === "0") {
-                label.textContent = t("sprint.filter.noSprint") || "No Sprint";
+                label.textContent = t("sprint.filter.noSprint");
             } else {
                 const item = document.querySelector(`.sprint-filter-item[data-value="${value}"]`);
                 if (item) label.textContent = item.dataset.name || item.textContent.trim();
@@ -463,7 +465,7 @@ export default class extends Controller {
         const label = document.getElementById("status-filter-label");
         const btn = document.getElementById("statusDropdown");
         const icon = btn.querySelector("i");
-        const baseLabel = t("task.field.status") || "Status";
+        const baseLabel = t("task.field.status");
 
         const effectiveStatus = overdue ? "OVERDUE" : statusFilter !== "ALL" ? statusFilter : "";
 
@@ -488,7 +490,7 @@ export default class extends Controller {
         if (statusCfg) {
             label.textContent =
                 effectiveStatus === "OVERDUE"
-                    ? t("task.dueDate.overdue") || "Overdue"
+                    ? t("task.dueDate.overdue")
                     : resolveLabel("task.status", effectiveStatus);
             icon.className = `bi ${statusCfg.icon}`;
             btn.className = `btn btn-sm ${statusCfg.btnCss} dropdown-toggle`;
@@ -520,7 +522,7 @@ export default class extends Controller {
         const label = document.getElementById("priority-filter-label");
         const btn = document.getElementById("priorityDropdown");
         const icon = btn.querySelector("i");
-        const baseLabel = t("task.field.priority") || "Priority";
+        const baseLabel = t("task.field.priority");
 
         document.querySelectorAll(".priority-filter-item").forEach((item) => {
             const check = item.querySelector(".filter-check");
@@ -602,42 +604,56 @@ export default class extends Controller {
             .catch((err) => console.error("Failed to load saved views:", err));
     }
 
+    initSavedViewsDelegation() {
+        const container = document.getElementById("saved-views-list");
+        if (!container) return;
+        container.addEventListener("click", (e) => {
+            const deleteBtn = e.target.closest("[data-view-delete]");
+            if (deleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.deleteSavedView(deleteBtn.dataset.viewDelete);
+                return;
+            }
+            const viewItem = e.target.closest("[data-view-id]");
+            if (viewItem) {
+                e.preventDefault();
+                this.applySavedView(this.savedViews.find((v) => String(v.id) === viewItem.dataset.viewId));
+            }
+        });
+    }
+
     renderSavedViewsList(views) {
         const container = document.getElementById("saved-views-list");
         if (!container) return;
+        this.savedViews = views;
         container.innerHTML = "";
 
         if (views.length === 0) {
             const empty = document.createElement("div");
             empty.className = "dropdown-item-text text-muted small";
-            empty.textContent = t("task.views.empty") || "No saved views";
+            empty.textContent = t("task.views.empty");
             container.appendChild(empty);
             return;
         }
 
         views.forEach((view) => {
-            const item = document.createElement("div");
-            item.className = "d-flex align-items-center";
+            const item = document.createElement("a");
+            item.className = "dropdown-item d-flex align-items-center gap-2";
+            item.href = "#";
+            item.dataset.viewId = view.id;
 
-            const link = document.createElement("a");
-            link.className = "dropdown-item flex-grow-1 text-truncate";
-            link.href = "#";
-            link.textContent = view.name;
-            link.addEventListener("click", (e) => {
-                e.preventDefault();
-                this.applySavedView(view);
-            });
+            const label = document.createElement("span");
+            label.className = "flex-grow-1 text-truncate";
+            label.textContent = view.name;
 
             const deleteBtn = document.createElement("button");
-            deleteBtn.className = "btn btn-sm text-danger border-0 px-2";
+            deleteBtn.className = "btn btn-sm text-danger border-0 p-0 lh-1";
             deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
-            deleteBtn.title = t("task.views.delete") || "Delete";
-            deleteBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                this.deleteSavedView(view.id);
-            });
+            deleteBtn.title = t("task.views.delete");
+            deleteBtn.dataset.viewDelete = view.id;
 
-            item.appendChild(link);
+            item.appendChild(label);
             item.appendChild(deleteBtn);
             container.appendChild(item);
         });
@@ -649,7 +665,7 @@ export default class extends Controller {
         const icon = btn?.querySelector("i.bi");
         if (!label) return;
 
-        const defaultText = t("task.views.saved") || "Views";
+        const defaultText = t("task.views.saved");
         if (this.activeViewName) {
             label.textContent = this.activeViewName;
             btn?.classList.replace("btn-outline-secondary", "btn-primary");
@@ -684,14 +700,12 @@ export default class extends Controller {
             const label = document.getElementById("sprint-filter-label");
             if (label) {
                 if (!query.sprintId) {
-                    label.textContent = t("task.field.sprint") || "Sprint";
+                    label.textContent = t("task.field.sprint");
                 } else if (query.sprintId === "0" || query.sprintId === 0) {
-                    label.textContent = t("sprint.filter.noSprint") || "No Sprint";
+                    label.textContent = t("sprint.filter.noSprint");
                 } else {
                     const item = document.querySelector(`[data-value="${query.sprintId}"]`);
-                    label.textContent = item
-                        ? item.dataset.name || item.textContent.trim()
-                        : t("task.field.sprint") || "Sprint";
+                    label.textContent = item ? item.dataset.name || item.textContent.trim() : t("task.field.sprint");
                 }
             }
         }
@@ -720,15 +734,15 @@ export default class extends Controller {
         const dd = document.getElementById("savedViewsDropdown");
         if (dd) bootstrap.Dropdown.getOrCreateInstance(dd).hide();
 
-        const promptLabel = t("task.views.name.prompt") || "View name:";
+        const promptLabel = t("task.views.name.prompt");
         const inputId = "save-view-name-input";
 
         showConfirm(
             {
-                title: t("task.views.save") || "Save Current View",
+                title: t("task.views.save"),
                 message: `<label for="${inputId}" class="form-label">${promptLabel}</label>
                       <input type="text" id="${inputId}" class="form-control" maxlength="80" autocomplete="off" autofocus>`,
-                confirmText: t("admin.settings.save") || "Save",
+                confirmText: t("admin.settings.save"),
                 confirmClass: "btn btn-primary",
                 headerClass: "bg-primary text-white",
             },
@@ -767,7 +781,7 @@ export default class extends Controller {
                         this.activeViewName = name;
                         this.renderActiveViewLabel();
                         this.loadSavedViews();
-                        showToast(t("toast.view.saved") || "View saved", "success");
+                        showToast(t("toast.view.saved"), "success");
                     })
                     .catch((err) => console.error("Failed to save view:", err));
             },

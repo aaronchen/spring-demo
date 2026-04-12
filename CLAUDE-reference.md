@@ -1136,7 +1136,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `config/Settings.java` - Typed POJO for site-wide settings with defaults (not a JPA entity)
   - `KEY_*` constants — DB key names matching field names exactly (`BeanWrapper` resolves by name)
-  - `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_INDIGO` — theme id constants
+  - `THEME_DEFAULT`, `THEME_WORKSHOP`, `THEME_NOTEBOOK`, `THEME_TITANIUM` — theme id constants
   - Fields: `theme` (default `"default"`), `siteName` (default `"Spring Workshop"`), `registrationEnabled` (default `true`), `maintenanceBanner` (default `""`), `maintenanceBannerVersion` (default `""`), `notificationPurgeDays` (default `30`)
 
 ### Exception Handling
@@ -1227,9 +1227,12 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ## Thymeleaf Templates
 
 ### Layouts
-- `templates/layouts/base.html` - Base layout with reusable fragments
-  - `head(title, cssFile)` - two-parameter head fragment; `cssFile` is nullable for pages without page-specific CSS; includes `<link rel="icon">` for SVG favicon; `<meta name="_userId">` exposes current user ID for JS (WebSocket filtering); loads `mentions.css` globally
-  - `sec:authorize="isAuthenticated()"` guard on WebSocket scripts (STOMP UMD) — prevents connection attempts for anonymous users
+- `templates/layouts/base.html` - Base layout with five fragments included by every page
+  - `head(title, cssFile)` — `<head>` with meta, CSS, import map; `cssFile` nullable; `<meta name="_userId">` for JS
+  - `navbar` — nav bar only
+  - `chrome` — UI shell: left drawers, maintenance banner, global JS `<template>` elements (confirm dialog)
+  - `footer` — footer
+  - `scripts` — script tags: Bootstrap, HTMX, config.js, Tribute, searchable-select, STOMP (auth-gated), Stimulus
   - `<script type="importmap">` maps `@hotwired/stimulus` to Stimulus WebJar for ES module imports
   - `navbar` - navigation bar with auth-aware elements:
     - Left nav links: Dashboard, Projects, Tasks, Analytics, Tags, Users — each with `currentPath`-based active highlighting via `th:classappend`
@@ -1427,7 +1430,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `static/js/lib/` - Shared ES modules (imported by controllers, no global state)
   - `api.js` — `requireOk(response)` validates fetch response status (throws on non-ok)
   - `toast.js` — `showToast(message, type, options)` for Bootstrap toast notifications (optional `options.href` for clickable toasts)
-  - `confirm.js` — `showConfirm(options, onConfirm)` for styled Bootstrap confirm dialogs; HTMX `htmx:confirm` integration with `data-confirm-*` attributes
+  - `confirm.js` — `showConfirm(options, onConfirm)` clones `<template id="confirm-dialog-template">` from `base.html`; HTMX `htmx:confirm` integration with `data-confirm-*` attributes
   - `cookies.js` — `getCookie(name)`, `setCookie(name, value, days)`
   - `html.js` — HTML utility functions (escaping, element creation)
   - `i18n.js` — message resolution helpers using `APP_CONFIG.messages`

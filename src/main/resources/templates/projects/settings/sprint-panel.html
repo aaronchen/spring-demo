@@ -22,7 +22,7 @@
                   th:hx-post="${formUrl}"
                   hx-target="#sprint-panel-content"
                   hx-swap="outerHTML">
-                <div class="row g-2">
+                <div class="row g-2 align-items-end">
                     <div class="col-md-6">
                         <label class="form-label fw-bold form-label-required"
                                th:text="#{sprint.field.name}">Name</label>
@@ -55,7 +55,6 @@
                              th:errors="*{endDate}">Date error</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-bold d-none d-md-block invisible">.</label>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-sm btn-primary w-100">
                                 <i class="bi bi-check-circle"></i>

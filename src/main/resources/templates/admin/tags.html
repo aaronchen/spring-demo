@@ -4,6 +4,7 @@
 <body class="d-flex flex-column min-vh-100">
 
     <div th:replace="~{layouts/base :: navbar}"></div>
+    <th:block th:replace="~{layouts/base :: chrome}" />
 
     <main class="container flex-grow-1 mb-4">
         <h1 class="display-4 mb-4" th:text="#{admin.tags.heading}">Tag Management</h1>

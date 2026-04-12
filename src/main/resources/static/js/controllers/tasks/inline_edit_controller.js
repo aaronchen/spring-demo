@@ -27,13 +27,16 @@ export default class extends Controller {
             const cell = e.target.closest('td[data-editable="true"]');
             if (!cell || cell.querySelector(".inline-edit-input")) return;
             e.preventDefault();
-            e.stopPropagation();
+            e.stopImmediatePropagation();
             this.startInlineEdit(cell);
         };
         tasksView.addEventListener("click", this.cellClickHandler, true);
 
         this.afterSwapHandler = (evt) => {
             if (evt.detail.target?.id === "tasks-view" && this.editModeActive) {
+                // Skip if an inline edit input is currently active — the swap
+                // came from a stale request and reapplying styles would interfere
+                if (document.querySelector(".inline-edit-input")) return;
                 this.applyEditModeStyles();
             }
         };
@@ -77,26 +80,49 @@ export default class extends Controller {
     }
 
     applyEditModeStyles() {
+        document.getElementById("tasks-view")?.classList.add("edit-mode");
         document.querySelectorAll('td[data-editable="true"]').forEach((cell) => {
-            cell.classList.add("inline-edit-active");
-            cell.querySelectorAll("a").forEach((link) => {
-                link.dataset.originalHref = link.getAttribute("href");
-                link.removeAttribute("href");
-                link.style.pointerEvents = "none";
-            });
+            this.markCellEditable(cell);
         });
     }
 
     removeEditModeStyles() {
+        document.getElementById("tasks-view")?.classList.remove("edit-mode");
         document.querySelectorAll("td.inline-edit-active").forEach((cell) => {
+            this.restoreCellLinks(cell);
             cell.classList.remove("inline-edit-active");
-            cell.querySelectorAll("a").forEach((link) => {
-                if (link.dataset.originalHref) {
-                    link.setAttribute("href", link.dataset.originalHref);
-                    delete link.dataset.originalHref;
-                }
-                link.style.pointerEvents = "";
-            });
+        });
+    }
+
+    markCellEditable(cell) {
+        cell.classList.add("inline-edit-active");
+        this.disableCellLinks(cell);
+    }
+
+    disableCellLinks(cell) {
+        cell.querySelectorAll("a").forEach((link) => {
+            link.dataset.originalHref = link.getAttribute("href");
+            link.removeAttribute("href");
+            link.style.pointerEvents = "none";
+            if (link.hasAttribute("hx-get")) {
+                link.dataset.originalHxGet = link.getAttribute("hx-get");
+                link.removeAttribute("hx-get");
+            }
+        });
+    }
+
+    restoreCellLinks(cell) {
+        cell.querySelectorAll("a").forEach((link) => {
+            if (link.dataset.originalHref) {
+                link.setAttribute("href", link.dataset.originalHref);
+                delete link.dataset.originalHref;
+            }
+            if (link.dataset.originalHxGet) {
+                link.setAttribute("hx-get", link.dataset.originalHxGet);
+                delete link.dataset.originalHxGet;
+                htmx.process(link);
+            }
+            link.style.pointerEvents = "";
         });
     }
 
@@ -221,7 +247,6 @@ export default class extends Controller {
         cell.innerHTML = "";
         cell.appendChild(input);
         input.focus();
-        input.select();
 
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
@@ -241,12 +266,7 @@ export default class extends Controller {
     cancelInlineEdit(cell, originalContent) {
         cell.innerHTML = originalContent;
         if (this.editModeActive) {
-            cell.classList.add("inline-edit-active");
-            cell.querySelectorAll("a").forEach((link) => {
-                link.dataset.originalHref = link.getAttribute("href");
-                link.removeAttribute("href");
-                link.style.pointerEvents = "none";
-            });
+            this.markCellEditable(cell);
         }
     }
 
@@ -267,10 +287,10 @@ export default class extends Controller {
                 if (response.ok) return response.text();
                 if (response.headers.get("Content-Type")?.includes("json")) {
                     return response.json().then((data) => {
-                        throw new Error(data.detail || "Failed to save");
+                        throw new Error(data.detail || t("toast.error.save"));
                     });
                 }
-                throw new Error("Failed to save");
+                throw new Error(t("toast.error.save"));
             })
             .then((html) => {
                 const template = document.createElement("template");
@@ -281,19 +301,14 @@ export default class extends Controller {
                     htmx.process(newRow);
                     if (this.editModeActive) {
                         newRow.querySelectorAll('td[data-editable="true"]').forEach((c) => {
-                            c.classList.add("inline-edit-active");
-                            c.querySelectorAll("a").forEach((link) => {
-                                link.dataset.originalHref = link.getAttribute("href");
-                                link.removeAttribute("href");
-                                link.style.pointerEvents = "none";
-                            });
+                            this.markCellEditable(c);
                         });
                     }
                 }
             })
             .catch((err) => {
                 this.cancelInlineEdit(cell, originalContent);
-                showToast(err.message || t("toast.error.generic") || "Failed to save", "danger");
+                showToast(err.message || t("toast.error.generic") || t("toast.error.save"), "danger");
             });
     }
 }

@@ -259,12 +259,47 @@
         </div>
     </nav>
 
+    </th:block>
+
+    <!-- Chrome Fragment — UI shell around content: drawers, banners, global JS templates -->
+    <th:block th:fragment="chrome">
+
     <div th:if="${currentUser != null}" id="left-drawers" class="d-none d-lg-flex">
         <th:block th:replace="~{fragments/recent-views}" />
         <th:block th:replace="~{fragments/pinned-items}" />
     </div>
 
     <th:block th:replace="~{fragments/maintenance-banner}" />
+
+    <!--/* JS-only template: confirm dialog. Cloned by lib/confirm.js.
+         Thymeleaf processes #{...} for i18n; JS sets title/message/classes. */-->
+    <template id="confirm-dialog-template">
+        <div class="modal fade" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0">
+                    <div class="modal-header border-0" data-confirm-header>
+                        <h5 class="modal-title">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <span data-confirm-title th:text="#{action.confirm}">Confirm</span>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white"
+                                data-bs-dismiss="modal" th:aria-label="#{action.close}"></button>
+                    </div>
+                    <div class="modal-body py-4" data-confirm-message></div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="bi bi-x-circle"></i>
+                            <span data-confirm-cancel th:text="#{action.cancel}">Cancel</span>
+                        </button>
+                        <button type="button" data-confirm-action>
+                            <i class="bi bi-check-circle"></i>
+                            <span data-confirm-ok th:text="#{action.confirm}">Confirm</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 
     </th:block>
 
