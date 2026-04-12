@@ -3,6 +3,7 @@
 <head th:replace="~{layouts/base :: head(${project != null} ? #{page.title.projectAnalytics(${project.name})} : #{page.title.analytics}, '/css/analytics.css')}"></head>
 <body class="d-flex flex-column min-vh-100">
     <div th:replace="~{layouts/base :: navbar}"></div>
+    <th:block th:replace="~{layouts/base :: chrome}" />
 
     <main class="container flex-grow-1 pb-4"
           data-controller="analytics"

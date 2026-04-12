@@ -1,12 +1,11 @@
 // Confirm dialog — Bootstrap modal confirmation replacing window.confirm().
-// Created fresh per call, destroyed on hide (avoids backdrop stacking issues).
+// Clones <template id="confirm-dialog-template"> from base.html, sets dynamic
+// content, then shows. Destroyed on hide (avoids backdrop stacking issues).
 //
 // Options (message is required):
 //   message, title, confirmText, cancelText, headerClass, confirmClass, width
 //
 // onConfirm callback: return false to keep modal open (e.g. for input validation).
-
-import { t } from "lib/i18n";
 
 const CONFIRM_DEFAULTS = {
     headerClass: "bg-danger text-white",
@@ -14,44 +13,33 @@ const CONFIRM_DEFAULTS = {
 };
 
 export function showConfirm(options, onConfirm) {
-    const title = options.title || t("action.confirm") || "Confirm";
-    const cancelText = options.cancelText || t("action.cancel") || "Cancel";
-    const confirmText = options.confirmText || t("action.confirm") || "Confirm";
-    const headerClass = options.headerClass || CONFIRM_DEFAULTS.headerClass;
-    const confirmClass = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
-    const width = options.width || "420px";
-
-    const modal = document.createElement("div");
+    const tpl = document.getElementById("confirm-dialog-template");
+    const modal = tpl.content.firstElementChild.cloneNode(true);
     modal.id = "confirm-modal";
-    modal.className = "modal fade";
-    modal.tabIndex = -1;
-    modal.setAttribute("aria-hidden", "true");
-    modal.style.setProperty("--confirm-width", width);
-    modal.innerHTML = `
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg border-0">
-                <div class="modal-header border-0 ${headerClass}">
-                    <h5 class="modal-title">
-                        <i class="bi bi-exclamation-triangle"></i> ${title}
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white"
-                            data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body py-4">
-                    ${options.message}
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="bi bi-x-circle"></i> ${cancelText}
-                    </button>
-                    <button type="button" class="${confirmClass} confirm-modal-btn">
-                        <i class="bi bi-check-circle"></i> ${confirmText}
-                    </button>
-                </div>
-            </div>
-        </div>`;
 
-    modal.querySelector(".confirm-modal-btn").addEventListener("click", function () {
+    const width = options.width || "420px";
+    modal.style.setProperty("--confirm-width", width);
+
+    const header = modal.querySelector("[data-confirm-header]");
+    header.className = `modal-header border-0 ${options.headerClass || CONFIRM_DEFAULTS.headerClass}`;
+
+    if (options.title) {
+        modal.querySelector("[data-confirm-title]").textContent = options.title;
+    }
+
+    modal.querySelector("[data-confirm-message]").innerHTML = options.message;
+
+    if (options.cancelText) {
+        modal.querySelector("[data-confirm-cancel]").textContent = options.cancelText;
+    }
+
+    const confirmBtn = modal.querySelector("[data-confirm-action]");
+    confirmBtn.className = options.confirmClass || CONFIRM_DEFAULTS.confirmClass;
+    if (options.confirmText) {
+        modal.querySelector("[data-confirm-ok]").textContent = options.confirmText;
+    }
+
+    confirmBtn.addEventListener("click", function () {
         if (onConfirm() === false) return;
         bsModal.hide();
     });

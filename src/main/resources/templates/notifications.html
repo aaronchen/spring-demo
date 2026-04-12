@@ -4,6 +4,7 @@
 <body class="d-flex flex-column min-vh-100">
 
     <div th:replace="~{layouts/base :: navbar}"></div>
+    <th:block th:replace="~{layouts/base :: chrome}" />
 
     <main class="container flex-grow-1 mb-4" data-controller="notifications--page">
         <div class="d-flex justify-content-between align-items-center mb-4">

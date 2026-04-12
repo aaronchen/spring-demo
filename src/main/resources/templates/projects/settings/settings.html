@@ -4,6 +4,7 @@
 <body class="d-flex flex-column min-vh-100">
 
     <div th:replace="~{layouts/base :: navbar}"></div>
+    <th:block th:replace="~{layouts/base :: chrome}" />
 
     <main class="container flex-grow-1 mb-4">
 
@@ -101,7 +102,7 @@
 
                 <!-- Members -->
                 <div class="settings-panel d-none" id="panel-members">
-                    <div class="card shadow-sm">
+                    <div class="card shadow-sm card-clip">
                         <div class="card-header">
                             <h5 class="mb-0" th:text="#{project.members.heading}">Members</h5>
                         </div>
