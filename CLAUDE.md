@@ -25,7 +25,9 @@
    OwnershipGuard      AuthExpressions
    (server-side)       (template-side)
                    ↓
-            Service Layer
+      Service Layer (CQRS Level 1)
+        ↓ reads          ↓ writes
+   *QueryService       *Service
                    ↓
          Repository Layer (Spring Data JPA)
                    ↓
@@ -165,11 +167,11 @@ Class-level annotation on DTOs (not entities) for field uniqueness. `@Repeatable
 
 ### User Enable/Disable Pattern
 
-Users disabled (not deleted) when they have completed tasks, comments, or recurring task templates, or are the sole owner of a project. `UserService.canDelete(id)` checks all four conditions. Sole owners cannot be disabled either — `canDisable(id)` guards both the controller and the admin UI. `UserCommandService.cleanupBeforeDeletion(user)` handles cascade cleanup: unassigns tasks, nulls notification actors and recurring template assignees, deletes notifications, project memberships, pins, recent views, saved views, and user preferences. Disabled users can't log in, hidden from assignment dropdowns. Disabling unassigns open/in-progress tasks.
+Users disabled (not deleted) when they have completed tasks, comments, or recurring task templates, or are the sole owner of a project. `UserQueryService.canDelete(id)` checks all four conditions. Sole owners cannot be disabled either — `canDisable(id)` guards both the controller and the admin UI. `UserService.deleteUser(userId)` handles cascade cleanup: unassigns tasks, nulls notification actors and recurring template assignees, deletes notifications, project memberships, pins, recent views, saved views, and user preferences. Disabled users can't log in, hidden from assignment dropdowns. Disabling unassigns open/in-progress tasks.
 
 ### Site Settings Pattern
 
-`Setting` entity → `Settings` POJO (defaults + `BeanWrapper` auto-mapping) → `SettingService.load()`. `GlobalModelAttributes` exposes `${settings}`.
+`Setting` entity → `Settings` POJO (defaults + `BeanWrapper` auto-mapping) → `SettingQueryService.load()`. `GlobalModelAttributes` exposes `${settings}`.
 
 To add a setting: (1) field + default in `Settings.java`, (2) `KEY_*` constant matching field name, (3) `audit.field.<key>` in `messages.properties`.
 
@@ -177,7 +179,7 @@ To add a setting: (1) field + default in `Settings.java`, (2) `KEY_*` constant m
 
 ### User Preferences Pattern
 
-Mirrors Site Settings: `UserPreference` entity → `UserPreferences` POJO → `UserPreferenceService.load(userId)`. `GlobalModelAttributes` exposes `${userPreferences}`. Current prefs: `taskView` (cards/table/calendar/board), `defaultUserFilter` (mine/all).
+Mirrors Site Settings: `UserPreference` entity → `UserPreferences` POJO → `UserPreferenceQueryService.load(userId)`. `GlobalModelAttributes` exposes `${userPreferences}`. Current prefs: `taskView` (cards/table/calendar/board), `defaultUserFilter` (mine/all).
 
 ### Profile Controller Pattern
 
@@ -265,9 +267,13 @@ Feature packages for internal infrastructure: `audit/`, `event/`, `presence/`, `
 
 Every task belongs to a project. `ProjectAccessGuard` enforces view/edit/owner access at controller level. Cross-project views use `accessibleProjectIds` (`null` = admin bypass, non-null = filtered list).
 
-### Cross-Service Dependency Rule
+### CQRS Service Layer Convention
 
-Services use their own repository, delegate to other services for other domains. Query services (`TaskQueryService`, `ProjectQueryService`, `CommentQueryService`) separate reads from writes and break circular dependencies. Write services (`TaskService`, `ProjectService`) inject the corresponding query service for internal reads. Command services handle cross-cutting write operations needed by multiple services — extracted to break circular dependencies: `TaskCommandService` (bulk task unassignment), `UserCommandService` (user deletion cascade cleanup). Command services may access foreign repositories directly when the owning service would create a cycle.
+Every domain has a clean read/write split. **`*QueryService`** handles all reads (`@Transactional(readOnly = true)` class-level). **`*Service`** handles all writes (`@Transactional` class-level). One service per concern, named after what it manages — split when responsibilities are distinct (e.g., `ProjectService` for project CRUD, `ProjectMemberService` for member management, `TaskService` for task CRUD, `TaskDependencyService` for dependency reconciliation).
+
+Query services: `UserQueryService`, `TaskQueryService`, `ProjectQueryService`, `CommentQueryService`, `NotificationQueryService`, `TagQueryService`, `SprintQueryService`, `RecurringTaskTemplateQueryService`, `RecentViewQueryService`, `PinnedItemQueryService`, `SavedViewQueryService`, `SettingQueryService`, `UserPreferenceQueryService`. Composed read services: `DashboardService`, `AnalyticsService`, `TimelineService`, `AuditLogService`.
+
+Write services may have cross-domain side effects inline (e.g., `UserService.deleteUser()` cleans up tasks, pins, views). No separate command/orchestrator services — cross-domain cleanup lives in the same service as the operation that triggers it.
 
 ### Transactional Boundaries
 
@@ -415,7 +421,7 @@ static/js/
 ```bash
 ./mvnw spring-boot:run                    # http://localhost:8080
 ./mvnw spring-boot:run -Pdebug           # with remote debugging (port 5005)
-./mvnw test                               # 302 tests, 32 test classes
+./mvnw test                               # 318 tests, 39 test classes
 ./mvnw compile                            # regenerate MapStruct after mapper changes
 ```
 

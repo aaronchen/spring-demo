@@ -16,20 +16,22 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Read-only timeline that merges comments and audit history into a chronological stream. */
 @Service
 @Transactional(readOnly = true)
 public class TimelineService {
 
-    private final CommentService commentService;
+    private final CommentQueryService commentQueryService;
     private final AuditLogService auditLogService;
 
-    public TimelineService(CommentService commentService, AuditLogService auditLogService) {
-        this.commentService = commentService;
+    public TimelineService(
+            CommentQueryService commentQueryService, AuditLogService auditLogService) {
+        this.commentQueryService = commentQueryService;
         this.auditLogService = auditLogService;
     }
 
     public List<TimelineEntry> getTimeline(UUID taskId, User currentUser) {
-        List<Comment> comments = commentService.getCommentsByTaskId(taskId);
+        List<Comment> comments = commentQueryService.getCommentsByTaskId(taskId);
         List<AuditLog> auditEntries =
                 auditLogService.getEntityHistory(Task.class, taskId.toString());
 

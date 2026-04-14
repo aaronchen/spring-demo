@@ -4,6 +4,8 @@ import cc.desuka.demo.dto.AdminUserRequest;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.service.UserQueryService;
+import cc.desuka.demo.service.UserQueryService.UserDeletionInfo;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.HtmxUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,10 +24,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/admin/users")
 public class UserManagementController {
 
+    private final UserQueryService userQueryService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserManagementController(UserService userService, PasswordEncoder passwordEncoder) {
+    public UserManagementController(
+            UserQueryService userQueryService,
+            UserService userService,
+            PasswordEncoder passwordEncoder) {
+        this.userQueryService = userQueryService;
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
     }
@@ -52,7 +59,7 @@ public class UserManagementController {
 
     @GetMapping("/{id}/edit")
     public String editUserForm(@PathVariable UUID id, Model model) {
-        User user = userService.getUserById(id);
+        User user = userQueryService.getUserById(id);
         AdminUserRequest request = new AdminUserRequest();
         request.setId(id);
         request.setName(user.getName());
@@ -130,7 +137,7 @@ public class UserManagementController {
     @PostMapping("/{id}/disable")
     @ResponseBody
     public ResponseEntity<Void> disableUser(@PathVariable UUID id) {
-        if (SecurityUtils.isCurrentUser(id) || !userService.canDisable(id)) {
+        if (SecurityUtils.isCurrentUser(id) || !userQueryService.canDisable(id)) {
             return ResponseEntity.badRequest().build();
         }
         userService.disableUser(id);
@@ -158,21 +165,23 @@ public class UserManagementController {
     @GetMapping("/{id}/info")
     @ResponseBody
     public Map<String, Object> getUserInfo(@PathVariable UUID id) {
-        User user = userService.getUserById(id);
+        User user = userQueryService.getUserById(id);
+        UserDeletionInfo deletionInfo = userQueryService.getDeletionInfo(id);
+
         Map<String, Object> info = new LinkedHashMap<>();
         info.put("name", user.getName());
         info.put("isSelf", SecurityUtils.isCurrentUser(id));
-        info.put("canDelete", userService.canDelete(id));
-        info.put("completedTasks", userService.countCompletedTasks(id));
-        info.put("comments", userService.countComments(id));
-        info.put("assignedTasks", userService.countAssignedTasks(id));
-        info.put("recurringTemplates", userService.countRecurringTemplates(id));
-        info.put("canDisable", userService.canDisable(id));
+        info.put("canDelete", deletionInfo.canDelete());
+        info.put("completedTasks", deletionInfo.completedTasks());
+        info.put("comments", deletionInfo.comments());
+        info.put("assignedTasks", deletionInfo.assignedTasks());
+        info.put("recurringTemplates", deletionInfo.recurringTemplates());
+        info.put("canDisable", deletionInfo.canDisable());
         return info;
     }
 
     private void populateModel(Model model, String search) {
-        model.addAttribute("users", userService.searchUsers(search));
+        model.addAttribute("users", userQueryService.searchUsers(search));
         model.addAttribute("roles", Role.values());
     }
 }

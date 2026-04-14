@@ -3,92 +3,64 @@ package cc.desuka.demo.service;
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Role;
-import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.ProjectMemberRepository;
+import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * User write operations (create, update, delete, enable/disable, password, role). Counterpart to
+ * {@link UserQueryService} (reads).
+ */
 @Service
 @Transactional
 public class UserService {
 
+    private final UserQueryService userQueryService;
     private final UserRepository userRepository;
-    private final TaskQueryService taskQueryService;
-    private final TaskCommandService taskAssignmentService;
-    private final CommentQueryService commentQueryService;
-    private final ProjectQueryService projectQueryService;
-    private final UserCommandService userCommandService;
+    private final TaskService taskService;
+    private final NotificationService notificationService;
+    private final PinnedItemService pinnedItemService;
+    private final RecentViewService recentViewService;
+    private final SavedViewService savedViewService;
+    private final UserPreferenceService userPreferenceService;
+    private final ProjectMemberRepository memberRepository;
+    private final RecurringTaskTemplateRepository recurringTaskTemplateRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     public UserService(
+            UserQueryService userQueryService,
             UserRepository userRepository,
-            TaskQueryService taskQueryService,
-            TaskCommandService taskAssignmentService,
-            CommentQueryService commentQueryService,
-            ProjectQueryService projectQueryService,
-            UserCommandService userCommandService,
+            TaskService taskService,
+            NotificationService notificationService,
+            PinnedItemService pinnedItemService,
+            RecentViewService recentViewService,
+            SavedViewService savedViewService,
+            UserPreferenceService userPreferenceService,
+            ProjectMemberRepository memberRepository,
+            RecurringTaskTemplateRepository recurringTaskTemplateRepository,
             ApplicationEventPublisher eventPublisher) {
+        this.userQueryService = userQueryService;
         this.userRepository = userRepository;
-        this.taskQueryService = taskQueryService;
-        this.taskAssignmentService = taskAssignmentService;
-        this.commentQueryService = commentQueryService;
-        this.projectQueryService = projectQueryService;
-        this.userCommandService = userCommandService;
+        this.taskService = taskService;
+        this.notificationService = notificationService;
+        this.pinnedItemService = pinnedItemService;
+        this.recentViewService = recentViewService;
+        this.savedViewService = savedViewService;
+        this.userPreferenceService = userPreferenceService;
+        this.memberRepository = memberRepository;
+        this.recurringTaskTemplateRepository = recurringTaskTemplateRepository;
         this.eventPublisher = eventPublisher;
     }
 
-    public List<User> getAllUsers() {
-        return userRepository.findAllByOrderByNameAsc();
-    }
-
-    public Map<UUID, String> getNamesByIds(List<UUID> ids) {
-        if (ids.isEmpty()) return Map.of();
-        return userRepository.findAllById(ids).stream()
-                .collect(Collectors.toMap(User::getId, User::getName));
-    }
-
-    public User getUserById(UUID id) {
-        return userRepository
-                .findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(User.class, id));
-    }
-
-    public User findUserById(UUID id) {
-        if (id == null) return null;
-        return userRepository.findById(id).orElse(null);
-    }
-
-    public List<User> searchUsers(String query) {
-        if (query == null || query.isBlank()) return getAllUsers();
-        return userRepository
-                .findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(
-                        query, query);
-    }
-
-    public List<User> getEnabledUsers() {
-        return userRepository.findByEnabledTrueOrderByNameAsc();
-    }
-
-    public List<User> searchEnabledUsers(String query) {
-        if (query == null || query.isBlank()) return getEnabledUsers();
-        return userRepository
-                .findByEnabledTrueAndNameContainingIgnoreCaseOrEnabledTrueAndEmailContainingIgnoreCaseOrderByNameAsc(
-                        query, query);
-    }
-
-    public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
-    }
+    // ── Create ───────────────────────────────────────────────────────────
 
     public User createUser(User user) {
         User saved = userRepository.save(user);
@@ -114,8 +86,10 @@ public class UserService {
         return saved;
     }
 
+    // ── Update ───────────────────────────────────────────────────────────
+
     public User updateUser(UUID userId, String name, String email, Role role) {
-        User user = getUserById(userId);
+        User user = userQueryService.getUserById(userId);
         Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
         user.setEmail(email);
@@ -135,7 +109,7 @@ public class UserService {
     }
 
     public User updateProfile(UUID userId, String name, String email) {
-        User user = getUserById(userId);
+        User user = userQueryService.getUserById(userId);
         Map<String, AuditField> before = user.toAuditSnapshot();
         user.setName(name);
         user.setEmail(email);
@@ -154,94 +128,8 @@ public class UserService {
         return saved;
     }
 
-    public void changePassword(UUID userId, String encodedPassword) {
-        User user = getUserById(userId);
-        user.setPassword(encodedPassword);
-        userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.PROFILE_PASSWORD_CHANGED,
-                        User.class,
-                        userId,
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
-    }
-
-    public long countCompletedTasks(UUID userId) {
-        return taskQueryService.countByUserIdAndStatus(userId, TaskStatus.COMPLETED);
-    }
-
-    public long countComments(UUID userId) {
-        return commentQueryService.countByUserId(userId);
-    }
-
-    public long countAssignedTasks(UUID userId) {
-        return taskQueryService.countAssignedTasks(userId);
-    }
-
-    public long countRecurringTemplates(UUID userId) {
-        return userCommandService.countRecurringTemplatesCreatedBy(userId);
-    }
-
-    public boolean isSoleOwnerOfAnyProject(UUID userId) {
-        return projectQueryService.isSoleOwnerOfAnyProject(userId);
-    }
-
-    public boolean canDelete(UUID userId) {
-        return countCompletedTasks(userId) == 0
-                && countComments(userId) == 0
-                && countRecurringTemplates(userId) == 0
-                && !isSoleOwnerOfAnyProject(userId);
-    }
-
-    public boolean canDisable(UUID userId) {
-        return !isSoleOwnerOfAnyProject(userId);
-    }
-
-    public User disableUser(UUID userId) {
-        User user = getUserById(userId);
-        user.setEnabled(false);
-        taskAssignmentService.unassignTasks(user);
-        User saved = userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_DISABLED,
-                        User.class,
-                        saved.getId(),
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(saved.toAuditSnapshot())));
-        return saved;
-    }
-
-    public User enableUser(UUID userId) {
-        User user = getUserById(userId);
-        user.setEnabled(true);
-        User saved = userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_ENABLED,
-                        User.class,
-                        saved.getId(),
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(saved.toAuditSnapshot())));
-        return saved;
-    }
-
-    public void resetPassword(UUID userId, String encodedPassword) {
-        User user = getUserById(userId);
-        user.setPassword(encodedPassword);
-        userRepository.save(user);
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.USER_PASSWORD_RESET,
-                        User.class,
-                        userId,
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
-    }
-
     public User updateRole(UUID userId, Role role) {
-        User user = getUserById(userId);
+        User user = userQueryService.getUserById(userId);
         user.setRole(role);
         User saved = userRepository.save(user);
         eventPublisher.publishEvent(
@@ -259,11 +147,95 @@ public class UserService {
         return saved;
     }
 
-    public void deleteUser(UUID id) {
-        User user = getUserById(id);
+    // ── Password ─────────────────────────────────────────────────────────
+
+    public void changePassword(UUID userId, String encodedPassword) {
+        User user = userQueryService.getUserById(userId);
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.PROFILE_PASSWORD_CHANGED,
+                        User.class,
+                        userId,
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
+    }
+
+    public void resetPassword(UUID userId, String encodedPassword) {
+        User user = userQueryService.getUserById(userId);
+        user.setPassword(encodedPassword);
+        userRepository.save(user);
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_PASSWORD_RESET,
+                        User.class,
+                        userId,
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(Map.of(User.FIELD_NAME, user.getName()))));
+    }
+
+    // ── Enable / Disable ─────────────────────────────────────────────────
+
+    public User enableUser(UUID userId) {
+        User user = userQueryService.getUserById(userId);
+        user.setEnabled(true);
+        User saved = userRepository.save(user);
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_ENABLED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    /**
+     * Disables a user and unassigns all their tasks. Disabled users cannot log in and are hidden
+     * from assignment dropdowns.
+     */
+    public User disableUser(UUID userId) {
+        User user = userQueryService.getUserById(userId);
+        user.setEnabled(false);
+        User saved = userRepository.save(user);
+
+        taskService.unassignTasks(user);
+
+        eventPublisher.publishEvent(
+                new AuditEvent(
+                        AuditEvent.USER_DISABLED,
+                        User.class,
+                        saved.getId(),
+                        SecurityUtils.getCurrentPrincipal(),
+                        AuditDetails.toJson(saved.toAuditSnapshot())));
+        return saved;
+    }
+
+    // ── Delete ───────────────────────────────────────────────────────────
+
+    /**
+     * Deletes a user after cleaning up all cross-domain references: unassigns tasks, nulls
+     * notification actors and recurring template assignees, deletes notifications, project
+     * memberships, pins, recent views, saved views, and preferences.
+     */
+    public void deleteUser(UUID userId) {
+        User user = userQueryService.getUserById(userId);
+        UUID id = user.getId();
         String snapshot = AuditDetails.toJson(user.toAuditSnapshot());
 
-        userCommandService.cleanupBeforeDeletion(user);
+        // Cross-domain cleanup
+        taskService.unassignTasks(user);
+        notificationService.nullActorByUserId(id);
+        recurringTaskTemplateRepository.nullAssigneeByUserId(id);
+        notificationService.clearAll(id);
+        memberRepository.deleteByUserId(id);
+        pinnedItemService.deleteByUserId(id);
+        recentViewService.deleteByUserId(id);
+        savedViewService.deleteByUserId(id);
+        userPreferenceService.deleteByUserId(id);
+
+        // Delete the user entity
         userRepository.delete(user);
 
         eventPublisher.publishEvent(

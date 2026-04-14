@@ -12,8 +12,11 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.TaskRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +29,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TaskQueryServiceTest {
 
     private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID ID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
     @Mock private TaskRepository taskRepository;
@@ -113,5 +118,59 @@ class TaskQueryServiceTest {
         List<Task> result = taskQueryService.searchTasks("test");
 
         assertThat(result).containsExactly(task);
+    }
+
+    // ── getActiveBlockers / hasActiveBlockers ────────────────────────────
+
+    @Test
+    void getActiveBlockers_filtersTerminalTasks() {
+        Task blocker = new Task("Blocker", "");
+        blocker.setId(ID_2);
+        blocker.setStatus(TaskStatus.OPEN);
+
+        Task completedBlocker = new Task("Completed Blocker", "");
+        completedBlocker.setId(ID_3);
+        completedBlocker.setStatus(TaskStatus.COMPLETED);
+
+        task.setBlockedBy(new LinkedHashSet<>(Set.of(blocker, completedBlocker)));
+        task.setChecklistItems(new ArrayList<>());
+        when(taskRepository.findWithDependenciesById(ID_1)).thenReturn(Optional.of(task));
+
+        List<Task> active = taskQueryService.getActiveBlockers(ID_1);
+
+        assertThat(active).containsExactly(blocker);
+    }
+
+    @Test
+    void getActiveBlockers_noBlockers_returnsEmpty() {
+        task.setBlockedBy(new LinkedHashSet<>());
+        task.setChecklistItems(new ArrayList<>());
+        when(taskRepository.findWithDependenciesById(ID_1)).thenReturn(Optional.of(task));
+
+        assertThat(taskQueryService.getActiveBlockers(ID_1)).isEmpty();
+    }
+
+    @Test
+    void hasActiveBlockers_withActiveBlocker_returnsTrue() {
+        Task blocker = new Task("Blocker", "");
+        blocker.setId(ID_2);
+        blocker.setStatus(TaskStatus.OPEN);
+        task.setBlockedBy(new LinkedHashSet<>(Set.of(blocker)));
+        task.setChecklistItems(new ArrayList<>());
+        when(taskRepository.findWithDependenciesById(ID_1)).thenReturn(Optional.of(task));
+
+        assertThat(taskQueryService.hasActiveBlockers(ID_1)).isTrue();
+    }
+
+    @Test
+    void hasActiveBlockers_onlyTerminalBlockers_returnsFalse() {
+        Task completedBlocker = new Task("Done", "");
+        completedBlocker.setId(ID_3);
+        completedBlocker.setStatus(TaskStatus.COMPLETED);
+        task.setBlockedBy(new LinkedHashSet<>(Set.of(completedBlocker)));
+        task.setChecklistItems(new ArrayList<>());
+        when(taskRepository.findWithDependenciesById(ID_1)).thenReturn(Optional.of(task));
+
+        assertThat(taskQueryService.hasActiveBlockers(ID_1)).isFalse();
     }
 }

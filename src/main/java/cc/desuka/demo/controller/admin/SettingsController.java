@@ -1,6 +1,7 @@
 package cc.desuka.demo.controller.admin;
 
 import cc.desuka.demo.config.Settings;
+import cc.desuka.demo.service.SettingQueryService;
 import cc.desuka.demo.service.SettingService;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +17,12 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @RequestMapping("/admin/settings")
 public class SettingsController {
 
+    private final SettingQueryService settingQueryService;
     private final SettingService settingService;
 
-    public SettingsController(SettingService settingService) {
+    public SettingsController(
+            SettingQueryService settingQueryService, SettingService settingService) {
+        this.settingQueryService = settingQueryService;
         this.settingService = settingService;
     }
 
@@ -56,7 +60,7 @@ public class SettingsController {
         settingService.updateValue(Settings.KEY_SITE_NAME, siteName != null ? siteName : "");
         settingService.updateValue(
                 Settings.KEY_REGISTRATION_ENABLED, String.valueOf(registrationEnabled));
-        String previousBanner = settingService.load().getMaintenanceBanner();
+        String previousBanner = settingQueryService.load().getMaintenanceBanner();
         settingService.updateValue(Settings.KEY_MAINTENANCE_BANNER, banner);
         if (!banner.equals(previousBanner)) {
             settingService.updateValue(

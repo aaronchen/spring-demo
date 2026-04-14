@@ -5,6 +5,7 @@ import cc.desuka.demo.dto.UserResponse;
 import cc.desuka.demo.mapper.UserMapper;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.service.UserQueryService;
 import cc.desuka.demo.service.UserService;
 import cc.desuka.demo.util.Messages;
 import jakarta.validation.Valid;
@@ -17,11 +18,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/users")
 public class UserApiController {
 
+    private final UserQueryService userQueryService;
     private final UserService userService;
     private final UserMapper userMapper;
     private final Messages messages;
 
-    public UserApiController(UserService userService, UserMapper userMapper, Messages messages) {
+    public UserApiController(
+            UserQueryService userQueryService,
+            UserService userService,
+            UserMapper userMapper,
+            Messages messages) {
+        this.userQueryService = userQueryService;
         this.userService = userService;
         this.userMapper = userMapper;
         this.messages = messages;
@@ -31,13 +38,13 @@ public class UserApiController {
     // GET /api/users?q=ali
     @GetMapping
     public List<UserResponse> getAllUsers(@RequestParam(required = false) String q) {
-        return userMapper.toResponseList(userService.searchEnabledUsers(q));
+        return userMapper.toResponseList(userQueryService.searchEnabledUsers(q));
     }
 
     // GET /api/users/{id}
     @GetMapping("/{id}")
     public UserResponse getUserById(@PathVariable UUID id) {
-        return userMapper.toResponse(userService.getUserById(id));
+        return userMapper.toResponse(userQueryService.getUserById(id));
     }
 
     // POST /api/users

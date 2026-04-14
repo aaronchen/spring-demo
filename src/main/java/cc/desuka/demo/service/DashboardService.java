@@ -4,6 +4,7 @@ import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditLogService;
 import cc.desuka.demo.dto.DashboardStats;
 import cc.desuka.demo.dto.ProjectSummary;
+import cc.desuka.demo.dto.UserTaskCounts;
 import cc.desuka.demo.model.AuditLog;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.TaskStatus;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Read-only dashboard statistics composed from multiple query services. */
 @Service
 @Transactional(readOnly = true)
 public class DashboardService {
@@ -48,12 +50,7 @@ public class DashboardService {
      * @param accessibleProjectIds null = admin (show all); non-null = scoped to these projects
      */
     public DashboardStats buildStats(User user, List<UUID> accessibleProjectIds) {
-        long myOpen = taskQueryService.countByUserAndStatus(user, TaskStatus.OPEN);
-        long myInProgress = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_PROGRESS);
-        long myInReview = taskQueryService.countByUserAndStatus(user, TaskStatus.IN_REVIEW);
-        long myCompleted = taskQueryService.countByUserAndStatus(user, TaskStatus.COMPLETED);
-        long myOverdue = taskQueryService.countByUserOverdue(user);
-        long myTotal = myOpen + myInProgress + myInReview + myCompleted;
+        UserTaskCounts myCounts = taskQueryService.countsByUser(user);
 
         boolean isAdmin = AuthExpressions.isAdmin(user);
 
@@ -100,12 +97,12 @@ public class DashboardService {
                 .forEach((id, title) -> activityTaskTitles.put(id.toString(), title));
 
         return new DashboardStats(
-                myOpen,
-                myInProgress,
-                myInReview,
-                myCompleted,
-                myOverdue,
-                myTotal,
+                myCounts.open(),
+                myCounts.inProgress(),
+                myCounts.inReview(),
+                myCounts.completed(),
+                myCounts.overdue(),
+                myCounts.total(),
                 taskQueryService.getRecentTasksByUser(user),
                 taskQueryService.getDueSoon(user),
                 projectSummaries,

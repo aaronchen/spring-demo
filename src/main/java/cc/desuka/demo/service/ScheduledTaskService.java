@@ -29,8 +29,8 @@ public class ScheduledTaskService {
     private final NotificationService notificationService;
     private final NotificationRepository notificationRepository;
     private final RecurringTaskGenerationService recurringTaskGenerationService;
-    private final UserPreferenceService userPreferenceService;
-    private final SettingService settingService;
+    private final UserPreferenceQueryService userPreferenceQueryService;
+    private final SettingQueryService settingQueryService;
     private final AppRoutesProperties appRoutes;
     private final Messages messages;
 
@@ -39,16 +39,16 @@ public class ScheduledTaskService {
             NotificationService notificationService,
             NotificationRepository notificationRepository,
             RecurringTaskGenerationService recurringTaskGenerationService,
-            UserPreferenceService userPreferenceService,
-            SettingService settingService,
+            UserPreferenceQueryService userPreferenceQueryService,
+            SettingQueryService settingQueryService,
             AppRoutesProperties appRoutes,
             Messages messages) {
         this.taskQueryService = taskQueryService;
         this.notificationService = notificationService;
         this.notificationRepository = notificationRepository;
         this.recurringTaskGenerationService = recurringTaskGenerationService;
-        this.userPreferenceService = userPreferenceService;
-        this.settingService = settingService;
+        this.userPreferenceQueryService = userPreferenceQueryService;
+        this.settingQueryService = settingQueryService;
         this.appRoutes = appRoutes;
         this.messages = messages;
     }
@@ -58,7 +58,7 @@ public class ScheduledTaskService {
      * notifies users who have the preference enabled.
      */
     @Scheduled(cron = "0 0 8 * * *")
-    @Transactional(readOnly = true)
+    @Transactional
     public void sendDueReminders() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         List<Task> tasks = taskQueryService.getTasksDueOn(tomorrow);
@@ -73,7 +73,7 @@ public class ScheduledTaskService {
                 continue;
             }
 
-            UserPreferences prefs = userPreferenceService.load(task.getUser().getId());
+            UserPreferences prefs = userPreferenceQueryService.load(task.getUser().getId());
             if (!prefs.isDueReminder()) {
                 skipped++;
                 continue;
@@ -120,7 +120,7 @@ public class ScheduledTaskService {
     @Scheduled(cron = "0 0 3 * * *")
     @Transactional
     public void purgeOldNotifications() {
-        int purgeDays = settingService.load().getNotificationPurgeDays();
+        int purgeDays = settingQueryService.load().getNotificationPurgeDays();
         log.info("purgeOldNotifications: starting, retentionDays={}", purgeDays);
         int deleted =
                 notificationRepository.deleteByCreatedAtBefore(

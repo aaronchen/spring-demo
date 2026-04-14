@@ -4,59 +4,52 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.audit.AuditField;
 import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.Messages;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Recurring task template write operations (create, update, delete, toggle). Counterpart to {@link
+ * RecurringTaskTemplateQueryService} (reads).
+ */
 @Service
 @Transactional
 public class RecurringTaskTemplateService {
 
     private final RecurringTaskTemplateRepository templateRepository;
+    private final RecurringTaskTemplateQueryService templateQueryService;
     private final TaskService taskService;
     private final ProjectQueryService projectQueryService;
-    private final TagService tagService;
-    private final UserService userService;
+    private final TagQueryService tagQueryService;
+    private final UserQueryService userQueryService;
     private final ApplicationEventPublisher eventPublisher;
     private final Messages messages;
 
     public RecurringTaskTemplateService(
             RecurringTaskTemplateRepository templateRepository,
+            RecurringTaskTemplateQueryService templateQueryService,
             TaskService taskService,
             ProjectQueryService projectQueryService,
-            TagService tagService,
-            UserService userService,
+            TagQueryService tagQueryService,
+            UserQueryService userQueryService,
             ApplicationEventPublisher eventPublisher,
             Messages messages) {
         this.templateRepository = templateRepository;
+        this.templateQueryService = templateQueryService;
         this.taskService = taskService;
         this.projectQueryService = projectQueryService;
-        this.tagService = tagService;
-        this.userService = userService;
+        this.tagQueryService = tagQueryService;
+        this.userQueryService = userQueryService;
         this.eventPublisher = eventPublisher;
         this.messages = messages;
-    }
-
-    @Transactional(readOnly = true)
-    public List<RecurringTaskTemplate> getTemplatesByProject(UUID projectId) {
-        return templateRepository.findByProjectIdOrderByCreatedAtDesc(projectId);
-    }
-
-    @Transactional(readOnly = true)
-    public RecurringTaskTemplate getTemplateById(Long id) {
-        return templateRepository
-                .findWithDetailsById(id)
-                .orElseThrow(() -> new EntityNotFoundException(RecurringTaskTemplate.class, id));
     }
 
     public RecurringTaskTemplate createTemplate(
@@ -84,7 +77,7 @@ public class RecurringTaskTemplateService {
     }
 
     public RecurringTaskTemplate updateTemplate(Long id, RecurringTaskTemplateRequest request) {
-        RecurringTaskTemplate template = getTemplateById(id);
+        RecurringTaskTemplate template = templateQueryService.getTemplateById(id);
         validateEndDate(request);
 
         Map<String, AuditField> before = template.toAuditSnapshot();
@@ -107,7 +100,7 @@ public class RecurringTaskTemplateService {
     }
 
     public void toggleEnabled(Long id) {
-        RecurringTaskTemplate template = getTemplateById(id);
+        RecurringTaskTemplate template = templateQueryService.getTemplateById(id);
         Map<String, AuditField> before = template.toAuditSnapshot();
 
         template.setEnabled(!template.isEnabled());
@@ -134,7 +127,7 @@ public class RecurringTaskTemplateService {
     }
 
     public void deleteTemplate(Long id) {
-        RecurringTaskTemplate template = getTemplateById(id);
+        RecurringTaskTemplate template = templateQueryService.getTemplateById(id);
         String snapshot = AuditDetails.toJson(template.toAuditSnapshot());
 
         taskService.clearTemplateFromTasks(id);
@@ -162,10 +155,10 @@ public class RecurringTaskTemplateService {
         template.setDueDaysAfter(request.getDueDaysAfter());
         template.setNextRunDate(request.getNextRunDate());
         template.setEndDate(request.getEndDate());
-        template.setTags(tagService.findAllByIds(request.getTagIds()));
+        template.setTags(tagQueryService.findAllByIds(request.getTagIds()));
         User assignee =
                 request.getAssigneeId() != null
-                        ? userService.findUserById(request.getAssigneeId())
+                        ? userQueryService.findUserById(request.getAssigneeId())
                         : null;
         template.setAssignee(assignee);
     }

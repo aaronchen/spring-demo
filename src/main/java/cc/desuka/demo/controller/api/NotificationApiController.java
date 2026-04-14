@@ -2,6 +2,7 @@ package cc.desuka.demo.controller.api;
 
 import cc.desuka.demo.dto.NotificationResponse;
 import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.service.NotificationQueryService;
 import cc.desuka.demo.service.NotificationService;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -14,15 +15,19 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/notifications")
 public class NotificationApiController {
 
+    private final NotificationQueryService notificationQueryService;
     private final NotificationService notificationService;
 
-    public NotificationApiController(NotificationService notificationService) {
+    public NotificationApiController(
+            NotificationQueryService notificationQueryService,
+            NotificationService notificationService) {
+        this.notificationQueryService = notificationQueryService;
         this.notificationService = notificationService;
     }
 
     @GetMapping("/unread-count")
     public Map<String, Long> getUnreadCount(@AuthenticationPrincipal CustomUserDetails user) {
-        return Map.of("count", notificationService.getUnreadCount(user.getUser().getId()));
+        return Map.of("count", notificationQueryService.getUnreadCount(user.getUser().getId()));
     }
 
     @GetMapping
@@ -30,7 +35,7 @@ public class NotificationApiController {
             @AuthenticationPrincipal CustomUserDetails user,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return notificationService.findAllForUser(
+        return notificationQueryService.findAllForUser(
                 user.getUser().getId(), PageRequest.of(page, size));
     }
 

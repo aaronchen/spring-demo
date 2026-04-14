@@ -1,5 +1,6 @@
 package cc.desuka.demo.controller.api;
 
+import cc.desuka.demo.dto.TaskItem;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskRequest;
 import cc.desuka.demo.dto.TaskResponse;
@@ -15,7 +16,6 @@ import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -143,7 +143,7 @@ public class TaskApiController {
     // excludeTaskIds: self + existing blockedBy + existing blocks (prevents duplicates/cycles in
     // UI).
     @GetMapping("/search-for-dependency")
-    public List<Map<String, Object>> searchByTitleForDependency(
+    public List<TaskItem> searchByTitleForDependency(
             @RequestParam UUID projectId,
             @RequestParam(required = false, defaultValue = "") String q,
             @RequestParam List<UUID> excludeTaskIds,

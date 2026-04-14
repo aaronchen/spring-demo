@@ -6,6 +6,7 @@ import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
 import cc.desuka.demo.service.RecurringTaskGenerationService;
+import cc.desuka.demo.service.RecurringTaskTemplateQueryService;
 import cc.desuka.demo.service.RecurringTaskTemplateService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -18,16 +19,19 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/projects/{projectId}/recurring-templates")
 public class RecurringTaskTemplateApiController {
 
+    private final RecurringTaskTemplateQueryService templateQueryService;
     private final RecurringTaskTemplateService templateService;
     private final RecurringTaskGenerationService generationService;
     private final ProjectAccessGuard projectAccessGuard;
     private final RecurringTaskTemplateMapper recurringTaskTemplateMapper;
 
     public RecurringTaskTemplateApiController(
+            RecurringTaskTemplateQueryService templateQueryService,
             RecurringTaskTemplateService templateService,
             RecurringTaskGenerationService generationService,
             ProjectAccessGuard projectAccessGuard,
             RecurringTaskTemplateMapper recurringTaskTemplateMapper) {
+        this.templateQueryService = templateQueryService;
         this.templateService = templateService;
         this.generationService = generationService;
         this.projectAccessGuard = projectAccessGuard;
@@ -40,7 +44,7 @@ public class RecurringTaskTemplateApiController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
         return recurringTaskTemplateMapper.toResponseList(
-                templateService.getTemplatesByProject(projectId));
+                templateQueryService.getTemplatesByProject(projectId));
     }
 
     @GetMapping("/{id}")
@@ -49,7 +53,7 @@ public class RecurringTaskTemplateApiController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireViewAccess(projectId, currentDetails);
-        return recurringTaskTemplateMapper.toResponse(templateService.getTemplateById(id));
+        return recurringTaskTemplateMapper.toResponse(templateQueryService.getTemplateById(id));
     }
 
     @PostMapping
@@ -80,7 +84,7 @@ public class RecurringTaskTemplateApiController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
         templateService.toggleEnabled(id);
-        return recurringTaskTemplateMapper.toResponse(templateService.getTemplateById(id));
+        return recurringTaskTemplateMapper.toResponse(templateQueryService.getTemplateById(id));
     }
 
     @PostMapping("/{id}/generate")
@@ -91,7 +95,7 @@ public class RecurringTaskTemplateApiController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         projectAccessGuard.requireEditAccess(projectId, currentDetails);
         generationService.generateFromTemplate(
-                templateService.getTemplateById(id), currentDetails.getUsername());
+                templateQueryService.getTemplateById(id), currentDetails.getUsername());
     }
 
     @DeleteMapping("/{id}")

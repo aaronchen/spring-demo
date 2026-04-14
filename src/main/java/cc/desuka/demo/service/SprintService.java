@@ -14,6 +14,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Sprint write operations (create, update, delete). Counterpart to {@link SprintQueryService}
+ * (reads).
+ */
 @Service
 @Transactional
 public class SprintService {

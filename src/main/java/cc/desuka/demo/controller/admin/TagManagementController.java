@@ -2,6 +2,7 @@ package cc.desuka.demo.controller.admin;
 
 import cc.desuka.demo.dto.TagRequest;
 import cc.desuka.demo.model.Tag;
+import cc.desuka.demo.service.TagQueryService;
 import cc.desuka.demo.service.TagService;
 import cc.desuka.demo.util.HtmxUtils;
 import cc.desuka.demo.util.HtmxUtils.ToastType;
@@ -22,10 +23,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/admin/tags")
 public class TagManagementController {
 
+    private final TagQueryService tagQueryService;
     private final TagService tagService;
     private final Messages messages;
 
-    public TagManagementController(TagService tagService, Messages messages) {
+    public TagManagementController(
+            TagQueryService tagQueryService, TagService tagService, Messages messages) {
+        this.tagQueryService = tagQueryService;
         this.tagService = tagService;
         this.messages = messages;
     }
@@ -66,10 +70,10 @@ public class TagManagementController {
     }
 
     private void populateModel(Model model) {
-        List<Tag> tags = tagService.getAllTags();
+        List<Tag> tags = tagQueryService.getAllTags();
         Map<Long, Integer> taskCounts = new LinkedHashMap<>();
         for (Tag tag : tags) {
-            taskCounts.put(tag.getId(), tagService.countTasksByTagId(tag.getId()));
+            taskCounts.put(tag.getId(), tagQueryService.countTasksByTagId(tag.getId()));
         }
         model.addAttribute("tags", tags);
         model.addAttribute("taskCounts", taskCounts);

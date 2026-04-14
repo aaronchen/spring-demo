@@ -11,7 +11,6 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.util.Messages;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -162,53 +161,6 @@ class TaskDependencyServiceTest {
 
         assertThat(taskB.getBlocks()).contains(taskA);
         assertThat(taskA.getBlocks()).contains(taskC);
-    }
-
-    // ── getActiveBlockers ────────────────────────────────────────────────
-
-    @Test
-    void getActiveBlockers_filtersTerminalTasks() {
-        Task completedTask = createTask(ID_4, "Completed Blocker");
-        completedTask.setStatus(TaskStatus.COMPLETED);
-
-        taskA.getBlockedBy().addAll(Set.of(taskB, completedTask));
-
-        when(taskQueryService.getTaskById(ID_1)).thenReturn(taskA);
-
-        var activeBlockers = taskDependencyService.getActiveBlockers(ID_1);
-
-        assertThat(activeBlockers).containsExactly(taskB);
-    }
-
-    @Test
-    void getActiveBlockers_noBlockers_returnsEmpty() {
-        when(taskQueryService.getTaskById(ID_1)).thenReturn(taskA);
-
-        var activeBlockers = taskDependencyService.getActiveBlockers(ID_1);
-
-        assertThat(activeBlockers).isEmpty();
-    }
-
-    // ── hasActiveBlockers ────────────────────────────────────────────────
-
-    @Test
-    void hasActiveBlockers_withActiveBlocker_returnsTrue() {
-        taskA.getBlockedBy().add(taskB);
-
-        when(taskQueryService.getTaskById(ID_1)).thenReturn(taskA);
-
-        assertThat(taskDependencyService.hasActiveBlockers(ID_1)).isTrue();
-    }
-
-    @Test
-    void hasActiveBlockers_onlyTerminalBlockers_returnsFalse() {
-        Task completedTask = createTask(ID_4, "Done");
-        completedTask.setStatus(TaskStatus.COMPLETED);
-        taskA.getBlockedBy().add(completedTask);
-
-        when(taskQueryService.getTaskById(ID_1)).thenReturn(taskA);
-
-        assertThat(taskDependencyService.hasActiveBlockers(ID_1)).isFalse();
     }
 
     // ── wouldCreateCycle ─────────────────────────────────────────────────

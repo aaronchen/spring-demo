@@ -35,8 +35,7 @@ class ProjectServiceTest {
 
     @Mock private ProjectRepository projectRepository;
     @Mock private ProjectQueryService projectQueryService;
-    @Mock private UserService userService;
-    @Mock private TaskCommandService taskCommandService;
+    @Mock private UserQueryService userQueryService;
     @Mock private SprintService sprintService;
     @Mock private RecurringTaskTemplateService recurringTaskTemplateService;
     @Mock private RecentViewService recentViewService;
@@ -177,91 +176,5 @@ class ProjectServiceTest {
 
             verify(projectRepository).delete(project);
         }
-    }
-
-    // ── Member management ─────────────────────────────────────────────────
-
-    @Test
-    void addMember_newMember_addedToCollection() {
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-        when(userService.getUserById(ID_2)).thenReturn(bob);
-
-        ProjectMember result = projectService.addMember(ID_1, ID_2, ProjectRole.EDITOR);
-
-        assertThat(result.getUser()).isEqualTo(bob);
-        assertThat(result.getRole()).isEqualTo(ProjectRole.EDITOR);
-        assertThat(project.getMembers()).contains(result);
-    }
-
-    @Test
-    void addMember_existingMember_throwsException() {
-        ProjectMember existing = new ProjectMember(project, bob, ProjectRole.VIEWER);
-        project.getMembers().add(existing);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-        when(userService.getUserById(ID_2)).thenReturn(bob);
-        when(messages.get("project.member.alreadyExists")).thenReturn("Already a member");
-
-        assertThatThrownBy(() -> projectService.addMember(ID_1, ID_2, ProjectRole.EDITOR))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void removeMember_lastOwner_throwsException() {
-        ProjectMember ownerMember = new ProjectMember(project, alice, ProjectRole.OWNER);
-        project.getMembers().add(ownerMember);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-        when(messages.get("project.member.lastOwner.remove"))
-                .thenReturn("Cannot remove the last owner.");
-
-        assertThatThrownBy(() -> projectService.removeMember(ID_1, ID_1))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void removeMember_nonOwner_succeeds() {
-        ProjectMember memberShip = new ProjectMember(project, bob, ProjectRole.EDITOR);
-        project.getMembers().add(memberShip);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-
-        projectService.removeMember(ID_1, ID_2);
-
-        assertThat(project.getMembers()).doesNotContain(memberShip);
-    }
-
-    @Test
-    void updateMemberRole_lastOwnerDemoted_throwsException() {
-        ProjectMember ownerMember = new ProjectMember(project, alice, ProjectRole.OWNER);
-        project.getMembers().add(ownerMember);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-        when(messages.get("project.member.lastOwner.demote"))
-                .thenReturn("Cannot demote the last owner.");
-
-        assertThatThrownBy(() -> projectService.updateMemberRole(ID_1, ID_1, ProjectRole.EDITOR))
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void updateMemberRole_succeeds() {
-        ProjectMember memberShip = new ProjectMember(project, bob, ProjectRole.VIEWER);
-        project.getMembers().add(memberShip);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-
-        projectService.updateMemberRole(ID_1, ID_2, ProjectRole.EDITOR);
-
-        assertThat(memberShip.getRole()).isEqualTo(ProjectRole.EDITOR);
-        verify(taskCommandService, never()).unassignTasksInProject(any(), any());
-    }
-
-    @Test
-    void updateMemberRole_demoteToViewer_unassignsTasks() {
-        ProjectMember memberShip = new ProjectMember(project, bob, ProjectRole.EDITOR);
-        project.getMembers().add(memberShip);
-        when(projectQueryService.getProjectById(ID_1)).thenReturn(project);
-        when(userService.getUserById(ID_2)).thenReturn(bob);
-
-        projectService.updateMemberRole(ID_1, ID_2, ProjectRole.VIEWER);
-
-        assertThat(memberShip.getRole()).isEqualTo(ProjectRole.VIEWER);
-        verify(taskCommandService).unassignTasksInProject(bob, ID_1);
     }
 }

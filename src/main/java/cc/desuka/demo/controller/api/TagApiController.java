@@ -3,6 +3,7 @@ package cc.desuka.demo.controller.api;
 import cc.desuka.demo.dto.TagRequest;
 import cc.desuka.demo.dto.TagResponse;
 import cc.desuka.demo.mapper.TagMapper;
+import cc.desuka.demo.service.TagQueryService;
 import cc.desuka.demo.service.TagService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -13,10 +14,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/tags")
 public class TagApiController {
 
+    private final TagQueryService tagQueryService;
     private final TagService tagService;
     private final TagMapper tagMapper;
 
-    public TagApiController(TagService tagService, TagMapper tagMapper) {
+    public TagApiController(
+            TagQueryService tagQueryService, TagService tagService, TagMapper tagMapper) {
+        this.tagQueryService = tagQueryService;
         this.tagService = tagService;
         this.tagMapper = tagMapper;
     }
@@ -24,13 +28,13 @@ public class TagApiController {
     // GET /api/tags
     @GetMapping
     public List<TagResponse> getAllTags() {
-        return tagMapper.toResponseList(tagService.getAllTags());
+        return tagMapper.toResponseList(tagQueryService.getAllTags());
     }
 
     // GET /api/tags/1
     @GetMapping("/{id}")
     public TagResponse getTagById(@PathVariable Long id) {
-        return tagMapper.toResponse(tagService.getTagById(id));
+        return tagMapper.toResponse(tagQueryService.getTagById(id));
     }
 
     // POST /api/tags

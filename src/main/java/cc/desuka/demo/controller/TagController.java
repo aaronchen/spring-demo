@@ -1,6 +1,6 @@
 package cc.desuka.demo.controller;
 
-import cc.desuka.demo.service.TagService;
+import cc.desuka.demo.service.TagQueryService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,15 +10,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/tags")
 public class TagController {
 
-    private final TagService tagService;
+    private final TagQueryService tagQueryService;
 
-    public TagController(TagService tagService) {
-        this.tagService = tagService;
+    public TagController(TagQueryService tagQueryService) {
+        this.tagQueryService = tagQueryService;
     }
 
     @GetMapping
     public String listTags(Model model) {
-        model.addAttribute("tags", tagService.getAllTags());
+        model.addAttribute("tags", tagQueryService.getAllTags());
         return "tags/tags";
     }
 }

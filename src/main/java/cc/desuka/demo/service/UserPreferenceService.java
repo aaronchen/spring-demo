@@ -1,52 +1,29 @@
 package cc.desuka.demo.service;
 
-import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.model.UserPreference;
 import cc.desuka.demo.repository.UserPreferenceRepository;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.springframework.beans.BeanWrapper;
-import org.springframework.beans.BeanWrapperImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * User preference write operations (save, delete). Counterpart to {@link
+ * UserPreferenceQueryService} (reads).
+ */
 @Service
 @Transactional
 public class UserPreferenceService {
 
     private final UserPreferenceRepository preferenceRepository;
-    private final UserService userService;
+    private final UserQueryService userQueryService;
 
     public UserPreferenceService(
-            UserPreferenceRepository preferenceRepository, UserService userService) {
+            UserPreferenceRepository preferenceRepository, UserQueryService userQueryService) {
         this.preferenceRepository = preferenceRepository;
-        this.userService = userService;
-    }
-
-    /**
-     * Loads all preferences for a user into a typed {@link UserPreferences} object. DB keys that
-     * match a field name are set automatically via {@link BeanWrapper}. Missing keys fall back to
-     * the defaults defined in {@link UserPreferences}.
-     */
-    public UserPreferences load(UUID userId) {
-        Map<String, String> db =
-                preferenceRepository.findByUserId(userId).stream()
-                        .collect(
-                                Collectors.toMap(
-                                        UserPreference::getKey,
-                                        p -> p.getValue() != null ? p.getValue() : ""));
-
-        UserPreferences prefs = new UserPreferences();
-        BeanWrapper wrapper = new BeanWrapperImpl(prefs);
-        db.forEach(
-                (key, value) -> {
-                    if (wrapper.isWritableProperty(key)) {
-                        wrapper.setPropertyValue(key, value);
-                    }
-                });
-        return prefs;
+        this.userQueryService = userQueryService;
     }
 
     /** Creates or updates a single preference for a user. */
@@ -56,7 +33,7 @@ public class UserPreferenceService {
                         .findByUserIdAndKey(userId, key)
                         .orElseGet(
                                 () -> {
-                                    User user = userService.getUserById(userId);
+                                    User user = userQueryService.getUserById(userId);
                                     return new UserPreference(user, key, null);
                                 });
         pref.setValue(value);
@@ -74,12 +51,16 @@ public class UserPreferenceService {
             UserPreference pref = existing.get(entry.getKey());
             if (pref == null) {
                 if (user == null) {
-                    user = userService.getUserById(userId);
+                    user = userQueryService.getUserById(userId);
                 }
                 pref = new UserPreference(user, entry.getKey(), null);
             }
             pref.setValue(entry.getValue());
             preferenceRepository.save(pref);
         }
+    }
+
+    public void deleteByUserId(UUID userId) {
+        preferenceRepository.deleteByUserId(userId);
     }
 }

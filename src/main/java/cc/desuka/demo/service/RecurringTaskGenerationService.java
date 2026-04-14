@@ -17,6 +17,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Generates tasks from recurring templates on schedule or on demand. */
 @Service
 @Transactional
 public class RecurringTaskGenerationService {

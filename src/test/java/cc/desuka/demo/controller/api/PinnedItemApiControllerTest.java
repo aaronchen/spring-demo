@@ -14,6 +14,7 @@ import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.service.PinnedItemQueryService;
 import cc.desuka.demo.service.PinnedItemService;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +33,7 @@ class PinnedItemApiControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
+    @MockitoBean private PinnedItemQueryService pinnedItemQueryService;
     @MockitoBean private PinnedItemService pinnedItemService;
     @MockitoBean private OwnershipGuard ownershipGuard;
 
@@ -51,7 +53,7 @@ class PinnedItemApiControllerTest {
 
     @Test
     void getPins_returnsEmptyList() throws Exception {
-        when(pinnedItemService.getPinnedItems(alice.getId())).thenReturn(List.of());
+        when(pinnedItemQueryService.getPinnedItems(alice.getId())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/pins").with(user(aliceDetails)))
                 .andExpect(status().isOk())
@@ -63,7 +65,7 @@ class PinnedItemApiControllerTest {
     void getPins_returnsPinnedItems() throws Exception {
         PinnedItem pin = new PinnedItem(alice, "TASK", "task-id", "My Task");
         pin.setId(1L);
-        when(pinnedItemService.getPinnedItems(alice.getId())).thenReturn(List.of(pin));
+        when(pinnedItemQueryService.getPinnedItems(alice.getId())).thenReturn(List.of(pin));
 
         mockMvc.perform(get("/api/pins").with(user(aliceDetails)))
                 .andExpect(status().isOk())
@@ -109,7 +111,7 @@ class PinnedItemApiControllerTest {
     void unpin_returns204() throws Exception {
         PinnedItem pin = new PinnedItem(alice, "TASK", "task-id", "My Task");
         pin.setId(1L);
-        when(pinnedItemService.getPinById(1L)).thenReturn(pin);
+        when(pinnedItemQueryService.getPinById(1L)).thenReturn(pin);
 
         mockMvc.perform(delete("/api/pins/1").with(user(aliceDetails)).with(csrf()))
                 .andExpect(status().isNoContent());

@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Task dependency management — reconciliation and cycle detection. */
 @Service
 @Transactional
 public class TaskDependencyService {
@@ -44,24 +45,14 @@ public class TaskDependencyService {
         }
     }
 
-    /** Returns non-terminal tasks that block the given task. */
-    @Transactional(readOnly = true)
-    public List<Task> getActiveBlockers(UUID taskId) {
-        Task task = taskQueryService.getTaskById(taskId);
-        return task.getBlockedBy().stream().filter(t -> !t.getStatus().isTerminal()).toList();
-    }
-
-    /** Returns true if the task has at least one non-terminal blocker. */
-    @Transactional(readOnly = true)
-    public boolean hasActiveBlockers(UUID taskId) {
-        Task task = taskQueryService.getTaskById(taskId);
-        return task.getBlockedBy().stream().anyMatch(t -> !t.getStatus().isTerminal());
-    }
-
     /**
      * Cycle detection via BFS. Returns true if adding "blockingTask blocks blockedTask" would
      * create a cycle. A cycle exists if blockedTask can reach blockingTask by following the
      * "blocks" edges — meaning blockingTask is already (transitively) blocked by blockedTask.
+     *
+     * <p>Note: loads each node individually (N queries for depth N). Acceptable because dependency
+     * chains are shallow in practice — if chains grow, consider a batch-loading or recursive SQL
+     * approach.
      */
     public boolean wouldCreateCycle(UUID blockedTaskId, UUID blockingTaskId) {
         Set<UUID> visited = new HashSet<>();
@@ -101,16 +92,14 @@ public class TaskDependencyService {
         // Add: new blockers
         for (UUID blockerId : newIds) {
             if (!currentIds.contains(blockerId)) {
-                validateNewEdge(task, blockerId);
+                Task blocker = validateAndLoadTarget(task, blockerId);
                 // "blockerId blocks task" → wouldCreateCycle(task.id, blockerId)
                 if (wouldCreateCycle(task.getId(), blockerId)) {
-                    Task blocker = taskQueryService.getTaskById(blockerId);
                     throw new CyclicDependencyException(
                             messages.get("task.dependency.error.cycle")
                                     + ": "
                                     + blocker.getTitle());
                 }
-                Task blocker = taskQueryService.getTaskById(blockerId);
                 blocker.getBlocks().add(task);
                 task.getBlockedBy().add(blocker);
             }
@@ -129,22 +118,20 @@ public class TaskDependencyService {
         // Add: newly blocked tasks
         for (UUID blockedId : newIds) {
             if (!currentIds.contains(blockedId)) {
-                validateNewEdge(task, blockedId);
+                Task blocked = validateAndLoadTarget(task, blockedId);
                 // "task blocks blockedId" → wouldCreateCycle(blockedId, task.id)
                 if (wouldCreateCycle(blockedId, task.getId())) {
-                    Task blocked = taskQueryService.getTaskById(blockedId);
                     throw new CyclicDependencyException(
                             messages.get("task.dependency.error.cycle")
                                     + ": "
                                     + blocked.getTitle());
                 }
-                Task blocked = taskQueryService.getTaskById(blockedId);
                 task.getBlocks().add(blocked);
             }
         }
     }
 
-    private void validateNewEdge(Task task, UUID targetId) {
+    private Task validateAndLoadTarget(Task task, UUID targetId) {
         if (task.getId().equals(targetId)) {
             throw new IllegalArgumentException(messages.get("task.dependency.error.selfReference"));
         }
@@ -152,5 +139,6 @@ public class TaskDependencyService {
         if (!task.getProject().getId().equals(target.getProject().getId())) {
             throw new IllegalArgumentException(messages.get("task.dependency.error.sameProject"));
         }
+        return target;
     }
 }

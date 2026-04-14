@@ -5,6 +5,7 @@ import cc.desuka.demo.dto.SavedViewResponse;
 import cc.desuka.demo.model.SavedView;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.service.SavedViewQueryService;
 import cc.desuka.demo.service.SavedViewService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -17,10 +18,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/views")
 public class SavedViewController {
 
+    private final SavedViewQueryService savedViewQueryService;
     private final SavedViewService savedViewService;
     private final OwnershipGuard ownershipGuard;
 
-    public SavedViewController(SavedViewService savedViewService, OwnershipGuard ownershipGuard) {
+    public SavedViewController(
+            SavedViewQueryService savedViewQueryService,
+            SavedViewService savedViewService,
+            OwnershipGuard ownershipGuard) {
+        this.savedViewQueryService = savedViewQueryService;
         this.savedViewService = savedViewService;
         this.ownershipGuard = ownershipGuard;
     }
@@ -28,7 +34,7 @@ public class SavedViewController {
     @GetMapping
     public List<SavedViewResponse> listViews(
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        return savedViewService.getViewsForUser(currentDetails.getUser().getId()).stream()
+        return savedViewQueryService.getViewsForUser(currentDetails.getUser().getId()).stream()
                 .map(SavedViewResponse::fromEntity)
                 .toList();
     }
@@ -46,7 +52,7 @@ public class SavedViewController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteView(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        SavedView view = savedViewService.getViewById(id);
+        SavedView view = savedViewQueryService.getViewById(id);
         ownershipGuard.requireAccess(view, currentDetails);
         savedViewService.deleteView(view);
         return ResponseEntity.noContent().build();

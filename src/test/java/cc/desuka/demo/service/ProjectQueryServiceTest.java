@@ -75,15 +75,8 @@ class ProjectQueryServiceTest {
 
     @Test
     void getProjectsForUser_returnsActiveOnly() {
-        Project archived = new Project("Archived", "Old project");
-        archived.setId(ID_2);
-        archived.setStatus(ProjectStatus.ARCHIVED);
-
-        when(memberRepository.findByUserId(ID_1))
-                .thenReturn(
-                        List.of(
-                                new ProjectMember(project, alice, ProjectRole.OWNER),
-                                new ProjectMember(archived, alice, ProjectRole.EDITOR)));
+        when(memberRepository.findByUserIdAndProjectStatus(ID_1, ProjectStatus.ACTIVE))
+                .thenReturn(List.of(new ProjectMember(project, alice, ProjectRole.OWNER)));
 
         List<Project> result = projectQueryService.getProjectsForUser(ID_1);
 

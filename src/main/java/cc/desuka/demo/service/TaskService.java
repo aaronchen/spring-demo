@@ -29,6 +29,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Task write operations (create, update, delete, status changes, field updates). Counterpart to
+ * {@link TaskQueryService} (reads).
+ */
 @Service
 @Transactional
 public class TaskService {
@@ -37,8 +41,8 @@ public class TaskService {
     private final TaskQueryService taskQueryService;
     private final TaskDependencyService taskDependencyService;
     private final SprintQueryService sprintQueryService;
-    private final TagService tagService;
-    private final UserService userService;
+    private final TagQueryService tagQueryService;
+    private final UserQueryService userQueryService;
     private final RecentViewService recentViewService;
     private final PinnedItemService pinnedItemService;
     private final ApplicationEventPublisher eventPublisher;
@@ -49,8 +53,8 @@ public class TaskService {
             TaskQueryService taskQueryService,
             TaskDependencyService taskDependencyService,
             SprintQueryService sprintQueryService,
-            TagService tagService,
-            UserService userService,
+            TagQueryService tagQueryService,
+            UserQueryService userQueryService,
             RecentViewService recentViewService,
             PinnedItemService pinnedItemService,
             ApplicationEventPublisher eventPublisher,
@@ -59,8 +63,8 @@ public class TaskService {
         this.taskQueryService = taskQueryService;
         this.taskDependencyService = taskDependencyService;
         this.sprintQueryService = sprintQueryService;
-        this.tagService = tagService;
-        this.userService = userService;
+        this.tagQueryService = tagQueryService;
+        this.userQueryService = userQueryService;
         this.recentViewService = recentViewService;
         this.pinnedItemService = pinnedItemService;
         this.eventPublisher = eventPublisher;
@@ -82,8 +86,8 @@ public class TaskService {
         if (task.getProject() == null) {
             throw new IllegalStateException("Task must belong to a project");
         }
-        task.setTags(tagService.findAllByIds(tagIds));
-        task.setUser(userService.findUserById(assigneeId));
+        task.setTags(tagQueryService.findAllByIds(tagIds));
+        task.setUser(userQueryService.findUserById(assigneeId));
         updateCompletedAt(task, null);
         applyChecklist(task, checklistTexts, checklistChecked);
         Task saved = taskRepository.save(task);
@@ -126,10 +130,10 @@ public class TaskService {
         task.setDueDate(taskDetails.getDueDate());
         task.setEffort(taskDetails.getEffort());
         task.setSprint(taskDetails.getSprint());
-        task.setTags(tagService.findAllByIds(params.tagIds()));
+        task.setTags(tagQueryService.findAllByIds(params.tagIds()));
         updateCompletedAt(task, previousStatus);
         // Reassigning an in-progress task resets status to OPEN — new assignee hasn't started
-        User newUser = userService.findUserById(params.assigneeId());
+        User newUser = userQueryService.findUserById(params.assigneeId());
         if (task.getStatus() == TaskStatus.IN_PROGRESS
                 && newUser != null
                 && (task.getUser() == null || !task.getUser().getId().equals(newUser.getId()))) {
@@ -231,7 +235,7 @@ public class TaskService {
             case Task.FIELD_USER_ID ->
                     task.setUser(
                             value != null && !value.isBlank()
-                                    ? userService.findUserById(UUID.fromString(value))
+                                    ? userQueryService.findUserById(UUID.fromString(value))
                                     : null);
             default ->
                     throw new IllegalArgumentException(
@@ -321,7 +325,7 @@ public class TaskService {
         if (newStatus != TaskStatus.COMPLETED) {
             return;
         }
-        List<Task> activeBlockers = taskDependencyService.getActiveBlockers(taskId);
+        List<Task> activeBlockers = taskQueryService.getActiveBlockers(taskId);
         if (!activeBlockers.isEmpty()) {
             List<String> blockerNames = activeBlockers.stream().map(Task::getTitle).toList();
             throw new BlockedTaskException(
@@ -372,6 +376,34 @@ public class TaskService {
         }
         return sprint;
     }
+
+    // ── Bulk unassignment (called by orchestrators) ────────────────────
+
+    /** Unassigns all tasks for a user. Non-terminal tasks are reset to OPEN. */
+    public void unassignTasks(User user) {
+        List<Task> tasks = taskRepository.findByUser(user);
+        for (Task task : tasks) {
+            task.setUser(null);
+            if (!task.getStatus().isTerminal()) {
+                task.setStatus(TaskStatus.OPEN);
+            }
+        }
+        taskRepository.saveAll(tasks);
+    }
+
+    /** Unassigns non-terminal tasks for a user in a specific project. */
+    public void unassignTasksInProject(User user, UUID projectId) {
+        List<Task> tasks =
+                taskRepository.findByUserAndProjectIdAndStatusNotIn(
+                        user, projectId, TaskStatus.terminalStatuses());
+        for (Task task : tasks) {
+            task.setUser(null);
+            task.setStatus(TaskStatus.OPEN);
+        }
+        taskRepository.saveAll(tasks);
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────
 
     private void updateCompletedAt(Task task, TaskStatus previousStatus) {
         if (task.getStatus() == TaskStatus.COMPLETED && previousStatus != TaskStatus.COMPLETED) {

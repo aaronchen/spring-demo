@@ -8,6 +8,7 @@ import cc.desuka.demo.model.Task;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.CommentQueryService;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TaskQueryService;
 import jakarta.validation.Valid;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/tasks/{taskId}/comments")
 public class CommentApiController {
 
+    private final CommentQueryService commentQueryService;
     private final CommentService commentService;
     private final CommentMapper commentMapper;
     private final OwnershipGuard ownershipGuard;
@@ -28,11 +30,13 @@ public class CommentApiController {
     private final TaskQueryService taskQueryService;
 
     public CommentApiController(
+            CommentQueryService commentQueryService,
             CommentService commentService,
             CommentMapper commentMapper,
             OwnershipGuard ownershipGuard,
             ProjectAccessGuard projectAccessGuard,
             TaskQueryService taskQueryService) {
+        this.commentQueryService = commentQueryService;
         this.commentService = commentService;
         this.commentMapper = commentMapper;
         this.ownershipGuard = ownershipGuard;
@@ -47,7 +51,7 @@ public class CommentApiController {
             @PathVariable UUID taskId, @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
-        return commentMapper.toResponseList(commentService.getCommentsByTaskId(taskId));
+        return commentMapper.toResponseList(commentQueryService.getCommentsByTaskId(taskId));
     }
 
     // POST /api/tasks/1/comments
@@ -75,7 +79,7 @@ public class CommentApiController {
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         Task task = taskQueryService.getTaskById(taskId);
         projectAccessGuard.requireViewAccess(task.getProject().getId(), currentDetails);
-        Comment comment = commentService.getCommentById(commentId);
+        Comment comment = commentQueryService.getCommentById(commentId);
         ownershipGuard.requireAccess(comment, currentDetails);
         commentService.deleteComment(commentId);
     }
