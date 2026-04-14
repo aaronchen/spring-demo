@@ -1,5 +1,11 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.dto.AnalyticsProjection;
+import cc.desuka.demo.dto.AnalyticsProjection.DailyCount;
+import cc.desuka.demo.dto.AnalyticsProjection.ProjectCount;
+import cc.desuka.demo.dto.AnalyticsProjection.ProjectStatusCount;
+import cc.desuka.demo.dto.AnalyticsProjection.UserCount;
+import cc.desuka.demo.dto.AnalyticsProjection.UserStatusCount;
 import cc.desuka.demo.dto.AnalyticsResponse;
 import cc.desuka.demo.dto.AnalyticsResponse.BurndownPoint;
 import cc.desuka.demo.dto.AnalyticsResponse.EffortDistribution;
@@ -23,13 +29,13 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Read-only analytics aggregations for charts and dashboards. */
 @Service
 @Transactional(readOnly = true)
 public class AnalyticsService {
@@ -40,19 +46,19 @@ public class AnalyticsService {
     private final TaskRepository taskRepository;
     private final AnalyticsRepository analyticsRepository;
     private final SprintQueryService sprintQueryService;
-    private final UserService userService;
+    private final UserQueryService userQueryService;
     private final Messages messages;
 
     public AnalyticsService(
             TaskRepository taskRepository,
             AnalyticsRepository analyticsRepository,
             SprintQueryService sprintQueryService,
-            UserService userService,
+            UserQueryService userQueryService,
             Messages messages) {
         this.taskRepository = taskRepository;
         this.analyticsRepository = analyticsRepository;
         this.sprintQueryService = sprintQueryService;
-        this.userService = userService;
+        this.userQueryService = userQueryService;
         this.messages = messages;
     }
 
@@ -119,20 +125,19 @@ public class AnalyticsService {
 
     private WorkloadDistribution buildWorkloadDistribution(
             UUID projectId, List<UUID> projectIds, Long sprintId) {
-        List<Object[]> rows =
+        List<UserStatusCount> rows =
                 analyticsRepository.countByUserAndStatus(projectId, projectIds, sprintId);
 
         // Collect unique user IDs preserving order, null = unassigned
         List<UUID> userIds = new ArrayList<>();
-        for (Object[] row : rows) {
-            UUID userId = (UUID) row[0];
-            if (!userIds.contains(userId)) {
-                userIds.add(userId);
+        for (UserStatusCount row : rows) {
+            if (!userIds.contains(row.userId())) {
+                userIds.add(row.userId());
             }
         }
 
         // Resolve names
-        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows);
         List<String> assigneeNames = new ArrayList<>();
         Map<UUID, Integer> userIndex = new LinkedHashMap<>();
         for (int i = 0; i < userIds.size(); i++) {
@@ -151,12 +156,9 @@ public class AnalyticsService {
             statusCounts.put(status.name(), counts);
         }
 
-        for (Object[] row : rows) {
-            UUID userId = (UUID) row[0];
-            TaskStatus status = (TaskStatus) row[1];
-            Long count = (Long) row[2];
-            int idx = userIndex.get(userId);
-            statusCounts.get(status.name()).set(idx, count);
+        for (UserStatusCount row : rows) {
+            int idx = userIndex.get(row.userId());
+            statusCounts.get(row.status().name()).set(idx, row.count());
         }
 
         return new WorkloadDistribution(assigneeNames, statusCounts);
@@ -212,9 +214,9 @@ public class AnalyticsService {
         LocalDate weekStart = now.minusWeeks(VELOCITY_WEEKS).with(DayOfWeek.MONDAY);
         LocalDateTime from = weekStart.atStartOfDay();
 
-        List<Object[]> dailyCompleted =
+        List<DailyCount> dailyCompleted =
                 analyticsRepository.countCompletedPerDay(projectId, projectIds, sprintId, from);
-        List<Object[]> dailyEffort =
+        List<DailyCount> dailyEffort =
                 analyticsRepository.sumEffortCompletedPerDay(projectId, projectIds, sprintId, from);
 
         // Bucket by ISO week (Monday)
@@ -227,18 +229,14 @@ public class AnalyticsService {
             weeklyEffort.put(w, 0L);
         }
 
-        for (Object[] row : dailyCompleted) {
-            LocalDate date = (LocalDate) row[0];
-            Long count = (Long) row[1];
-            LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            weeklyTotals.merge(monday, count, (a, b) -> a + b);
+        for (DailyCount row : dailyCompleted) {
+            LocalDate monday = row.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            weeklyTotals.merge(monday, row.value(), (a, b) -> a + b);
         }
 
-        for (Object[] row : dailyEffort) {
-            LocalDate date = (LocalDate) row[0];
-            Long effort = (Long) row[1];
-            LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            weeklyEffort.merge(monday, effort, (a, b) -> a + b);
+        for (DailyCount row : dailyEffort) {
+            LocalDate monday = row.date().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+            weeklyEffort.merge(monday, row.value(), (a, b) -> a + b);
         }
 
         return weeklyTotals.entrySet().stream()
@@ -256,17 +254,15 @@ public class AnalyticsService {
     private OverdueAnalysis buildOverdueAnalysis(
             UUID projectId, List<UUID> projectIds, Long sprintId) {
         List<TaskStatus> terminal = TaskStatus.terminalStatuses();
-        List<Object[]> rows =
+        List<UserCount> rows =
                 analyticsRepository.countOverdueByUser(projectId, projectIds, sprintId, terminal);
 
-        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows);
         List<String> assignees = new ArrayList<>();
         List<Long> counts = new ArrayList<>();
-        for (Object[] row : rows) {
-            UUID userId = (UUID) row[0];
-            Long count = (Long) row[1];
-            assignees.add(resolveUserName(userId, nameMap));
-            counts.add(count);
+        for (UserCount row : rows) {
+            assignees.add(resolveUserName(row.userId(), nameMap));
+            counts.add(row.count());
         }
 
         return new OverdueAnalysis(assignees, counts);
@@ -276,16 +272,14 @@ public class AnalyticsService {
 
     private EffortDistribution buildEffortDistribution(
             UUID projectId, List<UUID> projectIds, Long sprintId) {
-        List<Object[]> rows = analyticsRepository.sumEffortByUser(projectId, projectIds, sprintId);
+        List<UserCount> rows = analyticsRepository.sumEffortByUser(projectId, projectIds, sprintId);
 
-        Map<UUID, String> nameMap = buildUserNameMap(rows, 0);
+        Map<UUID, String> nameMap = buildUserNameMap(rows);
         List<String> assignees = new ArrayList<>();
         List<Long> efforts = new ArrayList<>();
-        for (Object[] row : rows) {
-            UUID userId = (UUID) row[0];
-            Long effort = (Long) row[1];
-            assignees.add(resolveUserName(userId, nameMap));
-            efforts.add(effort);
+        for (UserCount row : rows) {
+            assignees.add(resolveUserName(row.userId(), nameMap));
+            efforts.add(row.count());
         }
 
         return new EffortDistribution(assignees, efforts);
@@ -295,35 +289,30 @@ public class AnalyticsService {
 
     public Map<UUID, Map<TaskStatus, Long>> countByProjectAndStatus(List<UUID> projectIds) {
         Map<UUID, Map<TaskStatus, Long>> result = new LinkedHashMap<>();
-        for (Object[] row : analyticsRepository.countByProjectAndStatus(projectIds)) {
-            UUID pid = (UUID) row[0];
-            TaskStatus status = (TaskStatus) row[1];
-            long count = (Long) row[2];
-            result.computeIfAbsent(pid, k -> new LinkedHashMap<>()).put(status, count);
+        for (ProjectStatusCount row : analyticsRepository.countByProjectAndStatus(projectIds)) {
+            result.computeIfAbsent(row.projectId(), k -> new LinkedHashMap<>())
+                    .put(row.status(), row.count());
         }
         return result;
     }
 
     public Map<UUID, Long> countOverdueByProject(List<UUID> projectIds) {
         Map<UUID, Long> result = new LinkedHashMap<>();
-        for (Object[] row :
+        for (ProjectCount row :
                 analyticsRepository.countOverdueByProject(
                         projectIds, TaskStatus.terminalStatuses())) {
-            result.put((UUID) row[0], (Long) row[1]);
+            result.put(row.projectId(), row.count());
         }
         return result;
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────
 
-    private Map<UUID, String> buildUserNameMap(List<Object[]> rows, int userIdIndex) {
+    private Map<UUID, String> buildUserNameMap(
+            List<? extends AnalyticsProjection.UserScoped> rows) {
         List<UUID> userIds =
-                rows.stream()
-                        .map(row -> (UUID) row[userIdIndex])
-                        .filter(Objects::nonNull)
-                        .distinct()
-                        .toList();
-        return userService.getNamesByIds(userIds);
+                rows.stream().map(AnalyticsProjection.UserScoped::userId).distinct().toList();
+        return userQueryService.getNamesByIds(userIds);
     }
 
     private String resolveUserName(UUID userId, Map<UUID, String> nameMap) {
@@ -343,10 +332,10 @@ public class AnalyticsService {
         return (root, query, cb) -> cb.conjunction();
     }
 
-    private Map<LocalDate, Long> toDateMap(List<Object[]> rows) {
+    private Map<LocalDate, Long> toDateMap(List<DailyCount> rows) {
         Map<LocalDate, Long> map = new LinkedHashMap<>();
-        for (Object[] row : rows) {
-            map.put((LocalDate) row[0], (Long) row[1]);
+        for (DailyCount row : rows) {
+            map.put(row.date(), row.value());
         }
         return map;
     }

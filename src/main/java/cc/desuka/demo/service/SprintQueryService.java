@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Read-only sprint lookups. Counterpart to {@link SprintService} (writes). */
 @Service
 @Transactional(readOnly = true)
 public class SprintQueryService {

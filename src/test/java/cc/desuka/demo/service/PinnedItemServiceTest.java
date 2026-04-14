@@ -29,7 +29,7 @@ class PinnedItemServiceTest {
     @Mock private PinnedItemRepository pinnedItemRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AppRoutesProperties appRoutes;
-    @Mock private UserPreferenceService userPreferenceService;
+    @Mock private UserPreferenceQueryService userPreferenceQueryService;
 
     private PinnedItemService pinnedItemService;
 
@@ -40,7 +40,10 @@ class PinnedItemServiceTest {
     void setUp() {
         pinnedItemService =
                 new PinnedItemService(
-                        pinnedItemRepository, eventPublisher, appRoutes, userPreferenceService);
+                        pinnedItemRepository,
+                        eventPublisher,
+                        appRoutes,
+                        userPreferenceQueryService);
 
         aliceId = UUID.randomUUID();
         alice = new User();
@@ -57,7 +60,7 @@ class PinnedItemServiceTest {
     @Test
     void pin_createsNewPinAndPublishesEvent() {
         UserPreferences prefs = new UserPreferences();
-        when(userPreferenceService.load(aliceId)).thenReturn(prefs);
+        when(userPreferenceQueryService.load(aliceId)).thenReturn(prefs);
         when(pinnedItemRepository.findByUserIdAndEntityTypeAndEntityId(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(pinnedItemRepository.countByUserId(aliceId)).thenReturn(0L);
@@ -88,7 +91,7 @@ class PinnedItemServiceTest {
     void pin_throwsWhenLimitReached() {
         UserPreferences prefs = new UserPreferences();
         prefs.setPinnedLimit(10);
-        when(userPreferenceService.load(aliceId)).thenReturn(prefs);
+        when(userPreferenceQueryService.load(aliceId)).thenReturn(prefs);
         when(pinnedItemRepository.findByUserIdAndEntityTypeAndEntityId(any(), any(), any()))
                 .thenReturn(Optional.empty());
         when(pinnedItemRepository.countByUserId(aliceId)).thenReturn(10L);
@@ -107,30 +110,6 @@ class PinnedItemServiceTest {
 
         verify(pinnedItemRepository).delete(pin);
         verify(eventPublisher).publishEvent(any(PinnedItemPushEvent.class));
-    }
-
-    @Test
-    void getPinnedItems_defaultSortByPinnedDate() {
-        UserPreferences prefs = new UserPreferences();
-        when(userPreferenceService.load(aliceId)).thenReturn(prefs);
-        when(pinnedItemRepository.findByUserIdOrderByPinnedAtDesc(aliceId)).thenReturn(List.of());
-
-        List<PinnedItem> result = pinnedItemService.getPinnedItems(aliceId);
-
-        assertThat(result).isEmpty();
-        verify(pinnedItemRepository).findByUserIdOrderByPinnedAtDesc(aliceId);
-    }
-
-    @Test
-    void getPinnedItems_sortByName() {
-        UserPreferences prefs = new UserPreferences();
-        prefs.setPinnedSortOrder(UserPreferences.SORT_NAME);
-        when(userPreferenceService.load(aliceId)).thenReturn(prefs);
-        when(pinnedItemRepository.findByUserIdOrderByEntityTitleAsc(aliceId)).thenReturn(List.of());
-
-        pinnedItemService.getPinnedItems(aliceId);
-
-        verify(pinnedItemRepository).findByUserIdOrderByEntityTitleAsc(aliceId);
     }
 
     @Test

@@ -4,7 +4,7 @@ import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.RecentViewResponse;
 import cc.desuka.demo.model.RecentView;
 import cc.desuka.demo.security.CustomUserDetails;
-import cc.desuka.demo.service.RecentViewService;
+import cc.desuka.demo.service.RecentViewQueryService;
 import cc.desuka.demo.util.EntityTypes;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,19 +16,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/recent-views")
 public class RecentViewApiController {
 
-    private final RecentViewService recentViewService;
+    private final RecentViewQueryService recentViewQueryService;
     private final AppRoutesProperties appRoutes;
 
     public RecentViewApiController(
-            RecentViewService recentViewService, AppRoutesProperties appRoutes) {
-        this.recentViewService = recentViewService;
+            RecentViewQueryService recentViewQueryService, AppRoutesProperties appRoutes) {
+        this.recentViewQueryService = recentViewQueryService;
         this.appRoutes = appRoutes;
     }
 
     @GetMapping
     public List<RecentViewResponse> getRecentViews(
             @AuthenticationPrincipal CustomUserDetails user) {
-        return recentViewService.getRecentViews(user.getUser().getId()).stream()
+        return recentViewQueryService.getRecentViews(user.getUser().getId()).stream()
                 .map(this::toResponse)
                 .toList();
     }

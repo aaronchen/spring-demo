@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Recent view write operations (record, title sync, delete). Counterpart to {@link
+ * RecentViewQueryService} (reads).
+ */
 @Service
 @Transactional
 public class RecentViewService {
@@ -63,11 +67,6 @@ public class RecentViewService {
                 new RecentViewResponse(
                         entityType, idStr, entityTitle, href, LocalDateTime.now(), false);
         eventPublisher.publishEvent(new RecentViewPushEvent(user.getEmail(), payload));
-    }
-
-    @Transactional(readOnly = true)
-    public List<RecentView> getRecentViews(UUID userId) {
-        return recentViewRepository.findTop10ByUserIdOrderByViewedAtDesc(userId);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)

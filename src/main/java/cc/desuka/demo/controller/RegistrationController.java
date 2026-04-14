@@ -3,7 +3,7 @@ package cc.desuka.demo.controller;
 import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.dto.RegistrationRequest;
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.service.SettingService;
+import cc.desuka.demo.service.SettingQueryService;
 import cc.desuka.demo.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,23 +19,23 @@ public class RegistrationController {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final SettingService settingService;
+    private final SettingQueryService settingQueryService;
     private final AppRoutesProperties appRoutes;
 
     public RegistrationController(
             UserService userService,
             PasswordEncoder passwordEncoder,
-            SettingService settingService,
+            SettingQueryService settingQueryService,
             AppRoutesProperties appRoutes) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
-        this.settingService = settingService;
+        this.settingQueryService = settingQueryService;
         this.appRoutes = appRoutes;
     }
 
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {
-        if (!settingService.load().isRegistrationEnabled()) {
+        if (!settingQueryService.load().isRegistrationEnabled()) {
             return "redirect:" + appRoutes.getLogin();
         }
         model.addAttribute("registrationRequest", new RegistrationRequest());
@@ -45,7 +45,7 @@ public class RegistrationController {
     @PostMapping("/register")
     public String register(
             @Valid @ModelAttribute RegistrationRequest registrationRequest, BindingResult result) {
-        if (!settingService.load().isRegistrationEnabled()) {
+        if (!settingQueryService.load().isRegistrationEnabled()) {
             return "redirect:" + appRoutes.getLogin();
         }
 

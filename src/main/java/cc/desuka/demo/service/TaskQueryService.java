@@ -1,6 +1,8 @@
 package cc.desuka.demo.service;
 
+import cc.desuka.demo.dto.TaskItem;
 import cc.desuka.demo.dto.TaskSearchCriteria;
+import cc.desuka.demo.dto.UserTaskCounts;
 import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
@@ -23,8 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Read-only task lookups and cross-service task operations. Breaks circular dependency: TaskService
- * → UserService/CommentService → TaskService.
+ * Read-only task lookups, counts, and dependency queries. Counterpart to {@link TaskService}
+ * (writes).
  */
 @Service
 @Transactional(readOnly = true)
@@ -117,6 +119,24 @@ public class TaskQueryService {
                 user, LocalDate.now(), TaskStatus.terminalStatuses());
     }
 
+    /**
+     * Dashboard aggregate: status counts + overdue for a user in 2 queries (one group-by + one
+     * overdue count) instead of 5 individual counts.
+     */
+    public UserTaskCounts countsByUser(User user) {
+        Map<TaskStatus, Long> byStatus = new LinkedHashMap<>();
+        for (Object[] row : taskRepository.countGroupedByStatusForUser(user)) {
+            byStatus.put((TaskStatus) row[0], (Long) row[1]);
+        }
+
+        return new UserTaskCounts(
+                byStatus.getOrDefault(TaskStatus.OPEN, 0L),
+                byStatus.getOrDefault(TaskStatus.IN_PROGRESS, 0L),
+                byStatus.getOrDefault(TaskStatus.IN_REVIEW, 0L),
+                byStatus.getOrDefault(TaskStatus.COMPLETED, 0L),
+                countByUserOverdue(user));
+    }
+
     // ── Counts (global) ───────────────────────────────────────────────────
 
     public long countByStatus(TaskStatus status) {
@@ -195,7 +215,7 @@ public class TaskQueryService {
 
     // ── Dependency picker search ──────────────────────────────────────────
 
-    public List<Map<String, Object>> searchByTitleForDependency(
+    public List<TaskItem> searchByTitleForDependency(
             UUID projectId, String query, List<UUID> excludeTaskIds) {
         Specification<Task> spec = TaskSpecifications.withProjectId(projectId);
         if (query != null && !query.isBlank()) {
@@ -206,12 +226,7 @@ public class TaskQueryService {
         }
         Sort sort = Sort.by(Sort.Direction.DESC, Task.FIELD_CREATED_AT);
         return taskRepository.findAll(spec, sort).stream()
-                .map(
-                        t ->
-                                Map.<String, Object>of(
-                                        "id", t.getId(),
-                                        "title", t.getTitle(),
-                                        "status", t.getStatus().name()))
+                .map(t -> new TaskItem(t.getId(), t.getTitle(), t.getStatus().name()))
                 .toList();
     }
 
@@ -224,6 +239,22 @@ public class TaskQueryService {
                 .filter(t -> accessibleProjectIds.contains(t.getProject().getId()))
                 .toList();
     }
+
+    // ── Dependency queries ─────────────────────────────────────────────
+
+    /** Returns non-terminal tasks that block the given task. */
+    public List<Task> getActiveBlockers(UUID taskId) {
+        Task task = getTaskWithDependencies(taskId);
+        return task.getBlockedBy().stream().filter(t -> !t.getStatus().isTerminal()).toList();
+    }
+
+    /** Returns true if the task has at least one non-terminal blocker. */
+    public boolean hasActiveBlockers(UUID taskId) {
+        Task task = getTaskWithDependencies(taskId);
+        return task.getBlockedBy().stream().anyMatch(t -> !t.getStatus().isTerminal());
+    }
+
+    // ── Grouping ──────────────────────────────────────────────────────────
 
     public Map<TaskStatus, List<Task>> groupByStatus(List<Task> tasks) {
         Map<TaskStatus, List<Task>> map = new LinkedHashMap<>();

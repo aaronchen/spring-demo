@@ -4,58 +4,45 @@ import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
 import cc.desuka.demo.event.CommentAddedEvent;
 import cc.desuka.demo.event.CommentChangeEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.CommentRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import cc.desuka.demo.util.MentionUtils;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Comment write operations (create, delete). Counterpart to {@link CommentQueryService} (reads).
+ */
 @Service
 @Transactional
 public class CommentService {
 
     private final CommentRepository commentRepository;
+    private final CommentQueryService commentQueryService;
     private final TaskQueryService taskQueryService;
-    private final UserService userService;
+    private final UserQueryService userQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
     public CommentService(
             CommentRepository commentRepository,
+            CommentQueryService commentQueryService,
             TaskQueryService taskQueryService,
-            UserService userService,
+            UserQueryService userQueryService,
             ApplicationEventPublisher eventPublisher) {
         this.commentRepository = commentRepository;
+        this.commentQueryService = commentQueryService;
         this.taskQueryService = taskQueryService;
-        this.userService = userService;
+        this.userQueryService = userQueryService;
         this.eventPublisher = eventPublisher;
-    }
-
-    public Comment getCommentById(Long id) {
-        return commentRepository
-                .findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(Comment.class, id));
-    }
-
-    public List<Comment> getCommentsByTaskId(UUID taskId) {
-        return commentRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
-    }
-
-    public void deleteByTaskId(UUID taskId) {
-        commentRepository.deleteByTaskId(taskId);
     }
 
     public Comment createComment(String text, UUID taskId, UUID userId) {
         Task task = taskQueryService.getTaskById(taskId);
-        User user = userService.getUserById(userId);
+        User user = userQueryService.getUserById(userId);
 
         Comment comment = new Comment();
         comment.setText(text);
@@ -77,7 +64,7 @@ public class CommentService {
     }
 
     public void deleteComment(Long id) {
-        Comment comment = getCommentById(id);
+        Comment comment = commentQueryService.getCommentById(id);
         UUID taskId = comment.getTask().getId();
         String snapshot = AuditDetails.toJson(comment.toAuditSnapshot());
         commentRepository.delete(comment);
@@ -93,34 +80,7 @@ public class CommentService {
         eventPublisher.publishEvent(new CommentChangeEvent("deleted", taskId, id, actorId));
     }
 
-    /**
-     * Returns the set of user IDs "subscribed" to a task via comments or @mentions. Includes all
-     * users who have commented and all users @mentioned in any comment.
-     */
-    public Set<UUID> getSubscriberIds(UUID taskId) {
-        Set<UUID> ids = new HashSet<>(getCommenterIds(taskId));
-        ids.addAll(getPreviouslyMentionedUserIds(taskId));
-        return ids;
-    }
-
-    /** Returns user IDs of all distinct commenters on a task. */
-    public Set<UUID> getCommenterIds(UUID taskId) {
-        Set<UUID> ids = new HashSet<>();
-        for (User commenter : commentRepository.findDistinctUsersByTaskId(taskId)) {
-            ids.add(commenter.getId());
-        }
-        return ids;
-    }
-
-    /**
-     * Collect all user IDs @mentioned in previous comments on a task. Mentions are stored as
-     * encoded tokens in comment text — parsed at read time.
-     */
-    public Set<UUID> getPreviouslyMentionedUserIds(UUID taskId) {
-        Set<UUID> ids = new HashSet<>();
-        for (String text : commentRepository.findCommentTextsByTaskId(taskId)) {
-            ids.addAll(MentionUtils.extractMentionedUserIds(text));
-        }
-        return ids;
+    public void deleteByTaskId(UUID taskId) {
+        commentRepository.deleteByTaskId(taskId);
     }
 }

@@ -1,8 +1,14 @@
 package cc.desuka.demo.repository;
 
+import cc.desuka.demo.dto.AnalyticsProjection.DailyCount;
+import cc.desuka.demo.dto.AnalyticsProjection.ProjectCount;
+import cc.desuka.demo.dto.AnalyticsProjection.ProjectStatusCount;
+import cc.desuka.demo.dto.AnalyticsProjection.UserCount;
+import cc.desuka.demo.dto.AnalyticsProjection.UserStatusCount;
 import cc.desuka.demo.model.TaskStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -12,9 +18,9 @@ import org.springframework.stereotype.Repository;
 /**
  * Aggregate projection queries for analytics charts.
  *
- * <p>Uses {@link EntityManager} directly because these queries return {@code Object[]} projections
- * (not entities), and the project-scoping logic (single project, project list, or all) is handled
- * with dynamic WHERE clauses to avoid triplicating every query in a Spring Data interface.
+ * <p>Uses {@link EntityManager} directly because these queries return typed projections (not
+ * entities), and the project-scoping logic (single project, project list, or all) is handled with
+ * dynamic WHERE clauses to avoid triplicating every query in a Spring Data interface.
  */
 @Repository
 public class AnalyticsRepository {
@@ -27,17 +33,21 @@ public class AnalyticsRepository {
 
     // ── Dashboard: project summaries (batch) ────────────────────────────
 
-    public List<Object[]> countByProjectAndStatus(List<UUID> projectIds) {
+    public List<ProjectStatusCount> countByProjectAndStatus(List<UUID> projectIds) {
         String jpql =
                 "SELECT t.project.id, t.status, COUNT(t) FROM Task t"
                         + " WHERE t.project.id IN :projectIds"
                         + " GROUP BY t.project.id, t.status";
-        return em.createQuery(jpql, Object[].class)
+        return em
+                .createQuery(jpql, Object[].class)
                 .setParameter("projectIds", projectIds)
-                .getResultList();
+                .getResultList()
+                .stream()
+                .map(r -> new ProjectStatusCount((UUID) r[0], (TaskStatus) r[1], (Long) r[2]))
+                .toList();
     }
 
-    public List<Object[]> countOverdueByProject(
+    public List<ProjectCount> countOverdueByProject(
             List<UUID> projectIds, Collection<TaskStatus> terminalStatuses) {
         String jpql =
                 "SELECT t.project.id, COUNT(t) FROM Task t"
@@ -45,15 +55,19 @@ public class AnalyticsRepository {
                         + " AND t.dueDate < CURRENT_DATE"
                         + " AND t.status NOT IN :terminalStatuses"
                         + " GROUP BY t.project.id";
-        return em.createQuery(jpql, Object[].class)
+        return em
+                .createQuery(jpql, Object[].class)
                 .setParameter("projectIds", projectIds)
                 .setParameter("terminalStatuses", terminalStatuses)
-                .getResultList();
+                .getResultList()
+                .stream()
+                .map(r -> new ProjectCount((UUID) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Workload: group by user + status ─────────────────────────────────
 
-    public List<Object[]> countByUserAndStatus(
+    public List<UserStatusCount> countByUserAndStatus(
             UUID projectId, List<UUID> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, t.status, COUNT(t) FROM Task t"
@@ -63,12 +77,14 @@ public class AnalyticsRepository {
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new UserStatusCount((UUID) r[0], (TaskStatus) r[1], (Long) r[2]))
+                .toList();
     }
 
     // ── Burndown: created per day ────────────────────────────────────────
 
-    public List<Object[]> countCreatedPerDay(
+    public List<DailyCount> countCreatedPerDay(
             UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.createdAt AS LocalDate), COUNT(t) FROM Task t"
@@ -81,12 +97,14 @@ public class AnalyticsRepository {
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new DailyCount((LocalDate) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Burndown: completed per day ──────────────────────────────────────
 
-    public List<Object[]> countCompletedPerDay(
+    public List<DailyCount> countCompletedPerDay(
             UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), COUNT(t) FROM Task t"
@@ -99,7 +117,9 @@ public class AnalyticsRepository {
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new DailyCount((LocalDate) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Burndown: initial open count at start date ───────────────────────
@@ -127,7 +147,7 @@ public class AnalyticsRepository {
 
     // ── Overdue by assignee ──────────────────────────────────────────────
 
-    public List<Object[]> countOverdueByUser(
+    public List<UserCount> countOverdueByUser(
             UUID projectId,
             List<UUID> projectIds,
             Long sprintId,
@@ -143,12 +163,14 @@ public class AnalyticsRepository {
         query.setParameter("terminalStatuses", terminalStatuses);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new UserCount((UUID) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Effort by assignee ────────────────────────────────────────────────
 
-    public List<Object[]> sumEffortByUser(UUID projectId, List<UUID> projectIds, Long sprintId) {
+    public List<UserCount> sumEffortByUser(UUID projectId, List<UUID> projectIds, Long sprintId) {
         String jpql =
                 "SELECT t.user.id, SUM(t.effort) FROM Task t"
                         + " WHERE t.effort IS NOT NULL"
@@ -158,12 +180,14 @@ public class AnalyticsRepository {
         TypedQuery<Object[]> query = em.createQuery(jpql, Object[].class);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new UserCount((UUID) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Effort completed per day ────────────────────────────────────────
 
-    public List<Object[]> sumEffortCompletedPerDay(
+    public List<DailyCount> sumEffortCompletedPerDay(
             UUID projectId, List<UUID> projectIds, Long sprintId, LocalDateTime from) {
         String jpql =
                 "SELECT CAST(t.completedAt AS LocalDate), SUM(t.effort) FROM Task t"
@@ -177,7 +201,9 @@ public class AnalyticsRepository {
         query.setParameter("from", from);
         bindProjectParams(query, projectId, projectIds);
         bindSprintParam(query, sprintId);
-        return query.getResultList();
+        return query.getResultList().stream()
+                .map(r -> new DailyCount((LocalDate) r[0], (Long) r[1]))
+                .toList();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

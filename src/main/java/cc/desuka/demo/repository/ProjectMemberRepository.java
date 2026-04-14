@@ -1,7 +1,6 @@
 package cc.desuka.demo.repository;
 
 import cc.desuka.demo.model.ProjectMember;
-import cc.desuka.demo.model.ProjectRole;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,8 +18,6 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
     Optional<ProjectMember> findByProjectIdAndUserId(UUID projectId, UUID userId);
 
     boolean existsByProjectIdAndUserId(UUID projectId, UUID userId);
-
-    long countByProjectIdAndRole(UUID projectId, ProjectRole role);
 
     @EntityGraph(attributePaths = {"project", "project.createdBy"})
     List<ProjectMember> findByUserId(UUID userId);

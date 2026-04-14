@@ -1,6 +1,6 @@
 package cc.desuka.demo.exception;
 
-import cc.desuka.demo.service.SettingService;
+import cc.desuka.demo.service.SettingQueryService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,10 +35,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 @ControllerAdvice
 public class WebExceptionHandler {
 
-    private final SettingService settingService;
+    private final SettingQueryService settingQueryService;
 
-    public WebExceptionHandler(SettingService settingService) {
-        this.settingService = settingService;
+    public WebExceptionHandler(SettingQueryService settingQueryService) {
+        this.settingQueryService = settingQueryService;
     }
 
     // Re-throw so Spring Security's ExceptionTranslationFilter handles it → error/403.html.
@@ -56,7 +56,7 @@ public class WebExceptionHandler {
         ModelAndView mav = new ModelAndView("error/409");
         mav.setStatus(HttpStatus.CONFLICT);
         mav.addObject("message", ex.getMessage());
-        mav.addObject("settings", settingService.load());
+        mav.addObject("settings", settingQueryService.load());
         return mav;
     }
 
@@ -68,7 +68,7 @@ public class WebExceptionHandler {
         ModelAndView mav = new ModelAndView("error/400");
         mav.setStatus(HttpStatus.BAD_REQUEST);
         mav.addObject("message", ex.getMessage());
-        mav.addObject("settings", settingService.load());
+        mav.addObject("settings", settingQueryService.load());
         return mav;
     }
 
@@ -80,7 +80,7 @@ public class WebExceptionHandler {
         ModelAndView mav = new ModelAndView("error/404");
         mav.setStatus(HttpStatus.NOT_FOUND);
         mav.addObject("message", ex.getMessage());
-        mav.addObject("settings", settingService.load());
+        mav.addObject("settings", settingQueryService.load());
         return mav;
     }
 
@@ -91,7 +91,7 @@ public class WebExceptionHandler {
         }
         ModelAndView mav = new ModelAndView("error/500");
         mav.setStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        mav.addObject("settings", settingService.load());
+        mav.addObject("settings", settingQueryService.load());
         return mav;
     }
 

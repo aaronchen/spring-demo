@@ -12,6 +12,7 @@ import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.service.TagQueryService;
 import cc.desuka.demo.service.TagService;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ class TagApiControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    @MockitoBean private TagQueryService tagQueryService;
     @MockitoBean private TagService tagService;
     @MockitoBean private TagMapper tagMapper;
 
@@ -60,7 +62,7 @@ class TagApiControllerTest {
     void getAllTags_returnsJsonList() throws Exception {
         Tag tag = new Tag("Work");
         tag.setId(1L);
-        when(tagService.getAllTags()).thenReturn(List.of(tag));
+        when(tagQueryService.getAllTags()).thenReturn(List.of(tag));
         when(tagMapper.toResponseList(anyCollection()))
                 .thenReturn(List.of(new TagResponse(1L, "Work")));
 
@@ -75,7 +77,7 @@ class TagApiControllerTest {
     void getTagById_returnsJson() throws Exception {
         Tag tag = new Tag("Work");
         tag.setId(1L);
-        when(tagService.getTagById(1L)).thenReturn(tag);
+        when(tagQueryService.getTagById(1L)).thenReturn(tag);
         when(tagMapper.toResponse(tag)).thenReturn(new TagResponse(1L, "Work"));
 
         mockMvc.perform(get("/api/tags/1").with(user(regularDetails)))

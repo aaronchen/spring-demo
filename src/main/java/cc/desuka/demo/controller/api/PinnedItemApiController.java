@@ -7,6 +7,7 @@ import cc.desuka.demo.mapper.PinnedItemMapper;
 import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
+import cc.desuka.demo.service.PinnedItemQueryService;
 import cc.desuka.demo.service.PinnedItemService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -19,16 +20,19 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/pins")
 public class PinnedItemApiController {
 
+    private final PinnedItemQueryService pinnedItemQueryService;
     private final PinnedItemService pinnedItemService;
     private final PinnedItemMapper pinnedItemMapper;
     private final OwnershipGuard ownershipGuard;
     private final AppRoutesProperties appRoutes;
 
     public PinnedItemApiController(
+            PinnedItemQueryService pinnedItemQueryService,
             PinnedItemService pinnedItemService,
             PinnedItemMapper pinnedItemMapper,
             OwnershipGuard ownershipGuard,
             AppRoutesProperties appRoutes) {
+        this.pinnedItemQueryService = pinnedItemQueryService;
         this.pinnedItemService = pinnedItemService;
         this.pinnedItemMapper = pinnedItemMapper;
         this.ownershipGuard = ownershipGuard;
@@ -39,7 +43,7 @@ public class PinnedItemApiController {
     public List<PinnedItemResponse> getPins(
             @AuthenticationPrincipal CustomUserDetails currentDetails) {
         return pinnedItemMapper.toResponseList(
-                pinnedItemService.getPinnedItems(currentDetails.getUser().getId()), appRoutes);
+                pinnedItemQueryService.getPinnedItems(currentDetails.getUser().getId()), appRoutes);
     }
 
     @PostMapping
@@ -59,7 +63,7 @@ public class PinnedItemApiController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> unpin(
             @PathVariable Long id, @AuthenticationPrincipal CustomUserDetails currentDetails) {
-        PinnedItem pin = pinnedItemService.getPinById(id);
+        PinnedItem pin = pinnedItemQueryService.getPinById(id);
         ownershipGuard.requireAccess(pin, currentDetails);
         pinnedItemService.unpin(pin);
         return ResponseEntity.noContent().build();

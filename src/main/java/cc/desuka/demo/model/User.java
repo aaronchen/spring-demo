@@ -58,7 +58,8 @@ public class User implements Auditable {
 
     // LAZY: don't load all tasks for this user unless explicitly requested.
     // No cascade: deleting a user does NOT cascade-delete their tasks.
-    // UserService.deleteUser() handles reassignment (sets task.user = null) before deletion.
+    // UserService.deleteUser() handles reassignment (sets task.user = null) before
+    // deletion.
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
     private Set<Task> tasks = new LinkedHashSet<>();
 

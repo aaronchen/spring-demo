@@ -8,7 +8,6 @@ import cc.desuka.demo.dto.RecurringTaskTemplateRequest;
 import cc.desuka.demo.dto.SprintRequest;
 import cc.desuka.demo.dto.TaskListQuery;
 import cc.desuka.demo.dto.TaskSearchCriteria;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.ProjectMapper;
 import cc.desuka.demo.mapper.RecurringTaskTemplateMapper;
 import cc.desuka.demo.mapper.SprintMapper;
@@ -18,20 +17,23 @@ import cc.desuka.demo.model.RecurringTaskTemplate;
 import cc.desuka.demo.model.Sprint;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
+import cc.desuka.demo.model.User;
 import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.ProjectMemberService;
 import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.ProjectService;
 import cc.desuka.demo.service.RecentViewService;
 import cc.desuka.demo.service.RecurringTaskGenerationService;
+import cc.desuka.demo.service.RecurringTaskTemplateQueryService;
 import cc.desuka.demo.service.RecurringTaskTemplateService;
 import cc.desuka.demo.service.SprintQueryService;
 import cc.desuka.demo.service.SprintService;
-import cc.desuka.demo.service.TagService;
+import cc.desuka.demo.service.TagQueryService;
 import cc.desuka.demo.service.TaskQueryService;
-import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.service.UserQueryService;
 import cc.desuka.demo.util.CalendarHelper;
 import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.HtmxUtils;
@@ -62,14 +64,16 @@ import org.springframework.web.servlet.view.RedirectView;
 public class ProjectController {
 
     private final ProjectService projectService;
+    private final ProjectMemberService projectMemberService;
     private final ProjectQueryService projectQueryService;
     private final TaskQueryService taskQueryService;
     private final SprintQueryService sprintQueryService;
     private final SprintService sprintService;
+    private final RecurringTaskTemplateQueryService recurringTaskTemplateQueryService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final RecurringTaskGenerationService recurringTaskGenerationService;
-    private final TagService tagService;
-    private final UserService userService;
+    private final TagQueryService tagQueryService;
+    private final UserQueryService userQueryService;
     private final RecentViewService recentViewService;
     private final CalendarHelper calendarHelper;
     private final ProjectAccessGuard projectAccessGuard;
@@ -82,14 +86,16 @@ public class ProjectController {
 
     public ProjectController(
             ProjectService projectService,
+            ProjectMemberService projectMemberService,
             ProjectQueryService projectQueryService,
             TaskQueryService taskQueryService,
             SprintQueryService sprintQueryService,
             SprintService sprintService,
+            RecurringTaskTemplateQueryService recurringTaskTemplateQueryService,
             RecurringTaskTemplateService recurringTaskTemplateService,
             RecurringTaskGenerationService recurringTaskGenerationService,
-            TagService tagService,
-            UserService userService,
+            TagQueryService tagQueryService,
+            UserQueryService userQueryService,
             RecentViewService recentViewService,
             CalendarHelper calendarHelper,
             ProjectAccessGuard projectAccessGuard,
@@ -100,14 +106,16 @@ public class ProjectController {
             SprintMapper sprintMapper,
             RecurringTaskTemplateMapper recurringTaskTemplateMapper) {
         this.projectService = projectService;
+        this.projectMemberService = projectMemberService;
         this.projectQueryService = projectQueryService;
         this.taskQueryService = taskQueryService;
         this.sprintQueryService = sprintQueryService;
         this.sprintService = sprintService;
+        this.recurringTaskTemplateQueryService = recurringTaskTemplateQueryService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.recurringTaskGenerationService = recurringTaskGenerationService;
-        this.tagService = tagService;
-        this.userService = userService;
+        this.tagQueryService = tagQueryService;
+        this.userQueryService = userQueryService;
         this.recentViewService = recentViewService;
         this.calendarHelper = calendarHelper;
         this.projectAccessGuard = projectAccessGuard;
@@ -223,7 +231,7 @@ public class ProjectController {
                         : (userPreferences != null
                                 ? userPreferences.getTaskView()
                                 : UserPreferences.VIEW_CARDS);
-        model.addAttribute("allTags", tagService.getAllTags());
+        model.addAttribute("allTags", tagQueryService.getAllTags());
         model.addAttribute("view", resolvedView);
         model.addAttribute("selectedUserId", query.getSelectedUserId());
 
@@ -261,10 +269,9 @@ public class ProjectController {
         UUID currentId = currentDetails.getUser().getId();
         UUID selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
-            try {
-                model.addAttribute(
-                        "filterUserName", userService.getUserById(selectedUserId).getName());
-            } catch (EntityNotFoundException ignored) {
+            User filterUser = userQueryService.findUserById(selectedUserId);
+            if (filterUser != null) {
+                model.addAttribute("filterUserName", filterUser.getName());
             }
         }
 
@@ -417,7 +424,7 @@ public class ProjectController {
             return "projects/settings/member-panel";
         }
         try {
-            projectService.addMember(id, userId, role);
+            projectMemberService.addMember(id, userId, role);
             response.setHeader(
                     "HX-Trigger",
                     HtmxUtils.toastTrigger(
@@ -440,7 +447,7 @@ public class ProjectController {
             HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         try {
-            projectService.updateMemberRole(id, userId, role);
+            projectMemberService.updateMemberRole(id, userId, role);
             response.setHeader(
                     "HX-Trigger",
                     HtmxUtils.toastTrigger(
@@ -462,7 +469,7 @@ public class ProjectController {
             HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
         try {
-            projectService.removeMember(id, userId);
+            projectMemberService.removeMember(id, userId);
             response.setHeader(
                     "HX-Trigger",
                     HtmxUtils.toastTrigger(
@@ -631,14 +638,14 @@ public class ProjectController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             Model model) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
-        RecurringTaskTemplate template = recurringTaskTemplateService.getTemplateById(tid);
+        RecurringTaskTemplate template = recurringTaskTemplateQueryService.getTemplateById(tid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
         model.addAttribute("editTemplate", template);
         model.addAttribute("recurringRequest", recurringTaskTemplateMapper.toRequest(template));
         model.addAttribute(
-                "recurringTemplates", recurringTaskTemplateService.getTemplatesByProject(id));
+                "recurringTemplates", recurringTaskTemplateQueryService.getTemplatesByProject(id));
         model.addAttribute("projectMembers", projectQueryService.getMembers(id));
-        model.addAttribute("allTags", tagService.getAllTags());
+        model.addAttribute("allTags", tagQueryService.getAllTags());
         return "projects/settings/recurring-panel";
     }
 
@@ -690,7 +697,8 @@ public class ProjectController {
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
         if (result.hasErrors()) {
-            model.addAttribute("editTemplate", recurringTaskTemplateService.getTemplateById(tid));
+            model.addAttribute(
+                    "editTemplate", recurringTaskTemplateQueryService.getTemplateById(tid));
             populateRecurringPanelModel(id, model);
             return "projects/settings/recurring-panel";
         }
@@ -704,7 +712,8 @@ public class ProjectController {
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         } catch (IllegalArgumentException e) {
             model.addAttribute("recurringError", e.getMessage());
-            model.addAttribute("editTemplate", recurringTaskTemplateService.getTemplateById(tid));
+            model.addAttribute(
+                    "editTemplate", recurringTaskTemplateQueryService.getTemplateById(tid));
         }
 
         populateRecurringPanelModel(id, model);
@@ -739,7 +748,7 @@ public class ProjectController {
             Model model,
             HttpServletResponse response) {
         projectAccessGuard.requireOwnerAccess(id, currentDetails);
-        RecurringTaskTemplate template = recurringTaskTemplateService.getTemplateById(tid);
+        RecurringTaskTemplate template = recurringTaskTemplateQueryService.getTemplateById(tid);
         model.addAttribute("project", projectQueryService.getProjectById(id));
 
         if (!template.isEnabled()) {
@@ -788,9 +797,9 @@ public class ProjectController {
     private void populateRecurringPanelModel(UUID projectId, Model model) {
         model.addAttribute(
                 "recurringTemplates",
-                recurringTaskTemplateService.getTemplatesByProject(projectId));
+                recurringTaskTemplateQueryService.getTemplatesByProject(projectId));
         model.addAttribute("projectMembers", projectQueryService.getMembers(projectId));
-        model.addAttribute("allTags", tagService.getAllTags());
+        model.addAttribute("allTags", tagQueryService.getAllTags());
         if (!model.containsAttribute("recurringRequest")) {
             model.addAttribute("recurringRequest", new RecurringTaskTemplateRequest());
         }

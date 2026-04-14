@@ -18,6 +18,7 @@ import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.CommentQueryService;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.TaskQueryService;
 import java.time.LocalDateTime;
@@ -47,6 +48,7 @@ class CommentApiControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    @MockitoBean private CommentQueryService commentQueryService;
     @MockitoBean private CommentService commentService;
     @MockitoBean private CommentMapper commentMapper;
     @MockitoBean private OwnershipGuard ownershipGuard;
@@ -98,7 +100,7 @@ class CommentApiControllerTest {
 
     @Test
     void getComments_returnsJsonList() throws Exception {
-        when(commentService.getCommentsByTaskId(ID_1)).thenReturn(List.of(comment));
+        when(commentQueryService.getCommentsByTaskId(ID_1)).thenReturn(List.of(comment));
         when(commentMapper.toResponseList(anyList())).thenReturn(List.of(commentResponse));
 
         mockMvc.perform(get("/api/tasks/" + ID_1 + "/comments").with(user(regularDetails)))
@@ -155,7 +157,7 @@ class CommentApiControllerTest {
 
     @Test
     void deleteComment_owner_returns204() throws Exception {
-        when(commentService.getCommentById(1L)).thenReturn(comment);
+        when(commentQueryService.getCommentById(1L)).thenReturn(comment);
 
         mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/1").with(user(regularDetails)))
                 .andExpect(status().isNoContent());
@@ -165,7 +167,7 @@ class CommentApiControllerTest {
 
     @Test
     void deleteComment_admin_returns204() throws Exception {
-        when(commentService.getCommentById(1L)).thenReturn(comment);
+        when(commentQueryService.getCommentById(1L)).thenReturn(comment);
 
         mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/1").with(user(adminDetails)))
                 .andExpect(status().isNoContent());
@@ -175,7 +177,7 @@ class CommentApiControllerTest {
 
     @Test
     void deleteComment_notOwnerNotAdmin_returns403() throws Exception {
-        when(commentService.getCommentById(1L)).thenReturn(comment);
+        when(commentQueryService.getCommentById(1L)).thenReturn(comment);
         doThrow(new AccessDeniedException("Access denied"))
                 .when(ownershipGuard)
                 .requireAccess(any(Comment.class), any(CustomUserDetails.class));
@@ -188,7 +190,7 @@ class CommentApiControllerTest {
 
     @Test
     void deleteComment_notFound_returns404() throws Exception {
-        when(commentService.getCommentById(99L))
+        when(commentQueryService.getCommentById(99L))
                 .thenThrow(new EntityNotFoundException(Comment.class, 99L));
 
         mockMvc.perform(delete("/api/tasks/" + ID_1 + "/comments/99").with(user(regularDetails)))

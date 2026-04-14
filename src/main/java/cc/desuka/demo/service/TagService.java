@@ -2,46 +2,29 @@ package cc.desuka.demo.service;
 
 import cc.desuka.demo.audit.AuditDetails;
 import cc.desuka.demo.audit.AuditEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Tag;
 import cc.desuka.demo.repository.TagRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Tag write operations (create, delete). Counterpart to {@link TagQueryService} (reads). */
 @Service
 @Transactional
 public class TagService {
 
     private final TagRepository tagRepository;
+    private final TagQueryService tagQueryService;
     private final ApplicationEventPublisher eventPublisher;
 
-    public TagService(TagRepository tagRepository, ApplicationEventPublisher eventPublisher) {
+    public TagService(
+            TagRepository tagRepository,
+            TagQueryService tagQueryService,
+            ApplicationEventPublisher eventPublisher) {
         this.tagRepository = tagRepository;
+        this.tagQueryService = tagQueryService;
         this.eventPublisher = eventPublisher;
-    }
-
-    public List<Tag> getAllTags() {
-        return tagRepository.findAllByOrderByNameAsc();
-    }
-
-    public Tag getTagById(Long id) {
-        return tagRepository
-                .findById(id)
-                .orElseThrow(() -> new EntityNotFoundException(Tag.class, id));
-    }
-
-    public Set<Tag> findAllByIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) return new LinkedHashSet<>();
-        return new LinkedHashSet<>(tagRepository.findAllById(ids));
-    }
-
-    public int countTasksByTagId(Long tagId) {
-        return tagRepository.countTasksByTagId(tagId);
     }
 
     public Tag createTag(Tag tag) {
@@ -57,7 +40,7 @@ public class TagService {
     }
 
     public void deleteTag(Long id) {
-        Tag tag = getTagById(id);
+        Tag tag = tagQueryService.getTagById(id);
         String snapshot = AuditDetails.toJson(tag.toAuditSnapshot());
         tagRepository.delete(tag);
         eventPublisher.publishEvent(

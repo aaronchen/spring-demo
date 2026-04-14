@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** Task dependency management — reconciliation and cycle detection. */
 @Service
 @Transactional
 public class TaskDependencyService {
@@ -42,20 +43,6 @@ public class TaskDependencyService {
         if (blocksIds != null) {
             reconcileBlocks(task, blocksIds);
         }
-    }
-
-    /** Returns non-terminal tasks that block the given task. */
-    @Transactional(readOnly = true)
-    public List<Task> getActiveBlockers(UUID taskId) {
-        Task task = taskQueryService.getTaskById(taskId);
-        return task.getBlockedBy().stream().filter(t -> !t.getStatus().isTerminal()).toList();
-    }
-
-    /** Returns true if the task has at least one non-terminal blocker. */
-    @Transactional(readOnly = true)
-    public boolean hasActiveBlockers(UUID taskId) {
-        Task task = taskQueryService.getTaskById(taskId);
-        return task.getBlockedBy().stream().anyMatch(t -> !t.getStatus().isTerminal());
     }
 
     /**

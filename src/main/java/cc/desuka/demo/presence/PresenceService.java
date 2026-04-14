@@ -1,22 +1,22 @@
 package cc.desuka.demo.presence;
 
-import cc.desuka.demo.model.User;
-import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.service.UserQueryService;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PresenceService {
 
     private final ConcurrentHashMap<String, UUID> onlineSessions = new ConcurrentHashMap<>();
-    private final UserService userService;
+    private final UserQueryService userQueryService;
 
-    public PresenceService(UserService userService) {
-        this.userService = userService;
+    public PresenceService(UserQueryService userQueryService) {
+        this.userQueryService = userQueryService;
     }
 
     public void userConnected(String sessionId, UUID userId) {
@@ -28,13 +28,9 @@ public class PresenceService {
     }
 
     public List<String> getOnlineUsers() {
-        Set<UUID> uniqueIds = onlineSessions.values().stream().collect(Collectors.toSet());
-        return uniqueIds.stream()
-                .map(userService::findUserById)
-                .filter(user -> user != null)
-                .map(User::getName)
-                .sorted()
-                .toList();
+        Set<UUID> uniqueIds = new HashSet<>(onlineSessions.values());
+        Map<UUID, String> names = userQueryService.getNamesByIds(uniqueIds);
+        return names.values().stream().sorted().toList();
     }
 
     public int getOnlineCount() {

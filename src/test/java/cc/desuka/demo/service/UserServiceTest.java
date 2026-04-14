@@ -1,19 +1,16 @@
 package cc.desuka.demo.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import cc.desuka.demo.audit.AuditEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.model.Role;
-import cc.desuka.demo.model.TaskStatus;
 import cc.desuka.demo.model.User;
+import cc.desuka.demo.repository.ProjectMemberRepository;
+import cc.desuka.demo.repository.RecurringTaskTemplateRepository;
 import cc.desuka.demo.repository.UserRepository;
 import cc.desuka.demo.security.SecurityUtils;
-import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,14 +26,17 @@ class UserServiceTest {
 
     private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    private static final UUID ID_99 = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
+    @Mock private UserQueryService userQueryService;
     @Mock private UserRepository userRepository;
-    @Mock private TaskQueryService taskQueryService;
-    @Mock private TaskCommandService taskAssignmentService;
-    @Mock private CommentQueryService commentQueryService;
-    @Mock private ProjectQueryService projectQueryService;
-    @Mock private UserCommandService userCommandService;
+    @Mock private TaskService taskService;
+    @Mock private NotificationService notificationService;
+    @Mock private PinnedItemService pinnedItemService;
+    @Mock private RecentViewService recentViewService;
+    @Mock private SavedViewService savedViewService;
+    @Mock private UserPreferenceService userPreferenceService;
+    @Mock private ProjectMemberRepository memberRepository;
+    @Mock private RecurringTaskTemplateRepository recurringTaskTemplateRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private UserService userService;
@@ -50,79 +50,6 @@ class UserServiceTest {
         alice.setId(ID_1);
         bob = new User("Bob", "bob@example.com", "password", Role.USER);
         bob.setId(ID_2);
-    }
-
-    // ── getUserById ──────────────────────────────────────────────────────
-
-    @Test
-    void getUserById_found() {
-        when(userRepository.findById(ID_1)).thenReturn(Optional.of(alice));
-
-        User result = userService.getUserById(ID_1);
-
-        assertThat(result).isEqualTo(alice);
-    }
-
-    @Test
-    void getUserById_notFound_throwsEntityNotFoundException() {
-        when(userRepository.findById(ID_99)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> userService.getUserById(ID_99))
-                .isInstanceOf(EntityNotFoundException.class);
-    }
-
-    // ── findUserById ─────────────────────────────────────────────────────
-
-    @Test
-    void findUserById_found() {
-        when(userRepository.findById(ID_1)).thenReturn(Optional.of(alice));
-
-        assertThat(userService.findUserById(ID_1)).isEqualTo(alice);
-    }
-
-    @Test
-    void findUserById_null_returnsNull() {
-        assertThat(userService.findUserById(null)).isNull();
-    }
-
-    @Test
-    void findUserById_notFound_returnsNull() {
-        when(userRepository.findById(ID_99)).thenReturn(Optional.empty());
-
-        assertThat(userService.findUserById(ID_99)).isNull();
-    }
-
-    // ── searchUsers ──────────────────────────────────────────────────────
-
-    @Test
-    void searchUsers_blankQuery_returnsAll() {
-        when(userRepository.findAllByOrderByNameAsc()).thenReturn(List.of(alice, bob));
-
-        List<User> result = userService.searchUsers("  ");
-
-        assertThat(result).containsExactly(alice, bob);
-    }
-
-    @Test
-    void searchUsers_withQuery_filtersResults() {
-        when(userRepository.findByNameContainingIgnoreCaseOrEmailContainingIgnoreCaseOrderByNameAsc(
-                        "ali", "ali"))
-                .thenReturn(List.of(alice));
-
-        List<User> result = userService.searchUsers("ali");
-
-        assertThat(result).containsExactly(alice);
-    }
-
-    // ── searchEnabledUsers ───────────────────────────────────────────────
-
-    @Test
-    void searchEnabledUsers_blankQuery_returnsAllEnabled() {
-        when(userRepository.findByEnabledTrueOrderByNameAsc()).thenReturn(List.of(alice));
-
-        List<User> result = userService.searchEnabledUsers("");
-
-        assertThat(result).containsExactly(alice);
     }
 
     // ── createUser ───────────────────────────────────────────────────────
@@ -145,7 +72,7 @@ class UserServiceTest {
 
     @Test
     void updateUser_updatesFieldsAndPublishesEvent() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -164,7 +91,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_changedFields_publishesAuditWithDiff() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -179,7 +106,7 @@ class UserServiceTest {
 
     @Test
     void updateProfile_noChanges_doesNotPublishEvent() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -195,7 +122,7 @@ class UserServiceTest {
 
     @Test
     void changePassword_updatesAndPublishesEvent() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("bob@example.com");
@@ -208,76 +135,12 @@ class UserServiceTest {
         }
     }
 
-    // ── canDelete ────────────────────────────────────────────────────────
-
-    @Test
-    void canDelete_noBlockers_returnsTrue() {
-        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
-        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(0L);
-        when(projectQueryService.isSoleOwnerOfAnyProject(ID_2)).thenReturn(false);
-
-        assertThat(userService.canDelete(ID_2)).isTrue();
-    }
-
-    @Test
-    void canDelete_hasCompletedTasks_returnsFalse() {
-        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(3L);
-
-        assertThat(userService.canDelete(ID_2)).isFalse();
-    }
-
-    @Test
-    void canDelete_hasComments_returnsFalse() {
-        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(ID_2)).thenReturn(5L);
-
-        assertThat(userService.canDelete(ID_2)).isFalse();
-    }
-
-    @Test
-    void canDelete_hasRecurringTemplates_returnsFalse() {
-        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
-        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(2L);
-
-        assertThat(userService.canDelete(ID_2)).isFalse();
-    }
-
-    @Test
-    void canDelete_isSoleOwner_returnsFalse() {
-        when(taskQueryService.countByUserIdAndStatus(ID_2, TaskStatus.COMPLETED)).thenReturn(0L);
-        when(commentQueryService.countByUserId(ID_2)).thenReturn(0L);
-        when(userCommandService.countRecurringTemplatesCreatedBy(ID_2)).thenReturn(0L);
-        when(projectQueryService.isSoleOwnerOfAnyProject(ID_2)).thenReturn(true);
-
-        assertThat(userService.canDelete(ID_2)).isFalse();
-    }
-
-    // ── disableUser ──────────────────────────────────────────────────────
-
-    @Test
-    void disableUser_disablesAndUnassignsTasks() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        try (var mocked = mockStatic(SecurityUtils.class)) {
-            mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
-
-            User result = userService.disableUser(ID_2);
-
-            assertThat(result.isEnabled()).isFalse();
-            verify(taskAssignmentService).unassignTasks(bob);
-            verify(eventPublisher).publishEvent(any(AuditEvent.class));
-        }
-    }
-
     // ── enableUser ───────────────────────────────────────────────────────
 
     @Test
     void enableUser_enablesUser() {
         bob.setEnabled(false);
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
@@ -290,20 +153,48 @@ class UserServiceTest {
         }
     }
 
+    // ── disableUser ──────────────────────────────────────────────────────
+
+    @Test
+    void disableUser_disablesAndUnassignsTasks() {
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        try (var mocked = mockStatic(SecurityUtils.class)) {
+            mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
+
+            User result = userService.disableUser(ID_2);
+
+            assertThat(result.isEnabled()).isFalse();
+            verify(taskService).unassignTasks(bob);
+            verify(eventPublisher).publishEvent(any(AuditEvent.class));
+        }
+    }
+
     // ── deleteUser ───────────────────────────────────────────────────────
 
     @Test
-    void deleteUser_delegatesToCleanupServiceAndDeletes() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+    void deleteUser_cleansUpAndDeletes() {
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
 
         try (var mocked = mockStatic(SecurityUtils.class)) {
             mocked.when(SecurityUtils::getCurrentPrincipal).thenReturn("alice@example.com");
 
             userService.deleteUser(ID_2);
 
-            var inOrder = inOrder(userCommandService, userRepository);
-            inOrder.verify(userCommandService).cleanupBeforeDeletion(bob);
-            inOrder.verify(userRepository).delete(bob);
+            // Cross-domain cleanup
+            verify(taskService).unassignTasks(bob);
+            verify(notificationService).nullActorByUserId(ID_2);
+            verify(recurringTaskTemplateRepository).nullAssigneeByUserId(ID_2);
+            verify(notificationService).clearAll(ID_2);
+            verify(memberRepository).deleteByUserId(ID_2);
+            verify(pinnedItemService).deleteByUserId(ID_2);
+            verify(recentViewService).deleteByUserId(ID_2);
+            verify(savedViewService).deleteByUserId(ID_2);
+            verify(userPreferenceService).deleteByUserId(ID_2);
+
+            // Entity deletion + audit
+            verify(userRepository).delete(bob);
             verify(eventPublisher).publishEvent(any(AuditEvent.class));
         }
     }
@@ -312,7 +203,7 @@ class UserServiceTest {
 
     @Test
     void updateRole_changesRoleAndPublishesEvent() {
-        when(userRepository.findById(ID_2)).thenReturn(Optional.of(bob));
+        when(userQueryService.getUserById(ID_2)).thenReturn(bob);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {

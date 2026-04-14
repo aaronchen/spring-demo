@@ -16,20 +16,21 @@ import cc.desuka.demo.security.SecurityUtils;
 import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.Messages;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Project write operations (create, update, delete, archive). Counterpart to {@link
+ * ProjectQueryService} (reads). Member operations are in {@link ProjectMemberService}.
+ */
 @Service
 @Transactional
 public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final ProjectQueryService projectQueryService;
-    private final UserService userService;
-    private final TaskCommandService taskCommandService;
     private final SprintService sprintService;
     private final RecurringTaskTemplateService recurringTaskTemplateService;
     private final RecentViewService recentViewService;
@@ -40,8 +41,6 @@ public class ProjectService {
     public ProjectService(
             ProjectRepository projectRepository,
             ProjectQueryService projectQueryService,
-            UserService userService,
-            TaskCommandService taskCommandService,
             SprintService sprintService,
             RecurringTaskTemplateService recurringTaskTemplateService,
             RecentViewService recentViewService,
@@ -50,8 +49,6 @@ public class ProjectService {
             Messages messages) {
         this.projectRepository = projectRepository;
         this.projectQueryService = projectQueryService;
-        this.userService = userService;
-        this.taskCommandService = taskCommandService;
         this.sprintService = sprintService;
         this.recurringTaskTemplateService = recurringTaskTemplateService;
         this.recentViewService = recentViewService;
@@ -186,105 +183,5 @@ public class ProjectService {
                         id,
                         SecurityUtils.getCurrentPrincipal(),
                         snapshot));
-    }
-
-    // ── Member management ─────────────────────────────────────────────────
-
-    public ProjectMember addMember(UUID projectId, UUID userId, ProjectRole role) {
-        Project project = projectQueryService.getProjectById(projectId);
-        User user = userService.getUserById(userId);
-
-        if (findMember(project, userId).isPresent()) {
-            throw new IllegalStateException(messages.get("project.member.alreadyExists"));
-        }
-
-        ProjectMember member = new ProjectMember(project, user, role);
-        project.getMembers().add(member);
-
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.PROJECT_MEMBER_ADDED,
-                        Project.class,
-                        projectId,
-                        SecurityUtils.getCurrentPrincipal(),
-                        AuditDetails.toJson(member.toAuditSnapshot())));
-
-        return member;
-    }
-
-    public void removeMember(UUID projectId, UUID userId) {
-        Project project = projectQueryService.getProjectById(projectId);
-        ProjectMember member =
-                findMember(project, userId)
-                        .orElseThrow(
-                                () ->
-                                        new cc.desuka.demo.exception.EntityNotFoundException(
-                                                ProjectMember.class, null));
-
-        if (member.getRole() == ProjectRole.OWNER && countOwners(project) <= 1) {
-            throw new IllegalStateException(messages.get("project.member.lastOwner.remove"));
-        }
-
-        String snapshot = AuditDetails.toJson(member.toAuditSnapshot());
-        taskCommandService.unassignTasksInProject(member.getUser(), projectId);
-        pinnedItemService.deleteByUserAndProject(userId, projectId);
-        recentViewService.deleteByUserAndProject(userId, projectId);
-        project.getMembers().remove(member);
-
-        eventPublisher.publishEvent(
-                new AuditEvent(
-                        AuditEvent.PROJECT_MEMBER_REMOVED,
-                        Project.class,
-                        projectId,
-                        SecurityUtils.getCurrentPrincipal(),
-                        snapshot));
-    }
-
-    public void updateMemberRole(UUID projectId, UUID userId, ProjectRole newRole) {
-        Project project = projectQueryService.getProjectById(projectId);
-        ProjectMember member =
-                findMember(project, userId)
-                        .orElseThrow(
-                                () ->
-                                        new cc.desuka.demo.exception.EntityNotFoundException(
-                                                ProjectMember.class, null));
-
-        if (member.getRole() == ProjectRole.OWNER
-                && newRole != ProjectRole.OWNER
-                && countOwners(project) <= 1) {
-            throw new IllegalStateException(messages.get("project.member.lastOwner.demote"));
-        }
-
-        Map<String, AuditField> before = member.toAuditSnapshot();
-        if (member.getRole() != newRole) {
-            member.setRole(newRole);
-
-            // Demoting to VIEWER — unassign non-terminal tasks in this project
-            if (newRole == ProjectRole.VIEWER) {
-                User user = userService.getUserById(userId);
-                taskCommandService.unassignTasksInProject(user, projectId);
-            }
-
-            Map<String, Object> changes = AuditDetails.diff(before, member.toAuditSnapshot());
-            eventPublisher.publishEvent(
-                    new AuditEvent(
-                            AuditEvent.PROJECT_MEMBER_ROLE_CHANGED,
-                            Project.class,
-                            projectId,
-                            SecurityUtils.getCurrentPrincipal(),
-                            AuditDetails.toJson(changes)));
-        }
-    }
-
-    // ── Private helpers ─────────────────────────────────────────────────
-
-    private Optional<ProjectMember> findMember(Project project, UUID userId) {
-        return project.getMembers().stream()
-                .filter(m -> m.getUser().getId().equals(userId))
-                .findFirst();
-    }
-
-    private long countOwners(Project project) {
-        return project.getMembers().stream().filter(m -> m.getRole() == ProjectRole.OWNER).count();
     }
 }

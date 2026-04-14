@@ -5,13 +5,14 @@ import cc.desuka.demo.model.Comment;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.User;
-import cc.desuka.demo.service.CommentService;
+import cc.desuka.demo.service.CommentQueryService;
 import cc.desuka.demo.service.NotificationService;
-import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.service.UserQueryService;
 import cc.desuka.demo.util.MentionUtils;
 import cc.desuka.demo.util.Messages;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -25,20 +26,20 @@ import org.springframework.transaction.event.TransactionalEventListener;
 public class NotificationEventListener {
 
     private final NotificationService notificationService;
-    private final CommentService commentService;
-    private final UserService userService;
+    private final CommentQueryService commentQueryService;
+    private final UserQueryService userQueryService;
     private final Messages messages;
     private final AppRoutesProperties appRoutes;
 
     public NotificationEventListener(
             NotificationService notificationService,
-            CommentService commentService,
-            UserService userService,
+            CommentQueryService commentQueryService,
+            UserQueryService userQueryService,
             Messages messages,
             AppRoutesProperties appRoutes) {
         this.notificationService = notificationService;
-        this.commentService = commentService;
-        this.userService = userService;
+        this.commentQueryService = commentQueryService;
+        this.userQueryService = userQueryService;
         this.messages = messages;
         this.appRoutes = appRoutes;
     }
@@ -86,14 +87,15 @@ public class NotificationEventListener {
             notificationService.create(owner, actor, NotificationType.TASK_UPDATED, message, link);
         }
 
-        // Notify commenters and @mentioned users
-        for (UUID subscriberId : commentService.getSubscriberIds(task.getId())) {
-            if (notifiedIds.add(subscriberId)) {
-                User subscriber = userService.findUserById(subscriberId);
-                if (subscriber != null) {
-                    notificationService.create(
-                            subscriber, actor, NotificationType.TASK_UPDATED, message, link);
-                }
+        // Notify commenters and @mentioned users (batch lookup)
+        Set<UUID> subscriberIds = commentQueryService.getSubscriberIds(task.getId());
+        subscriberIds.removeAll(notifiedIds);
+        if (!subscriberIds.isEmpty()) {
+            Map<UUID, User> subscribers = userQueryService.findAllByIds(subscriberIds);
+            notifiedIds.addAll(subscribers.keySet());
+            for (User subscriber : subscribers.values()) {
+                notificationService.create(
+                        subscriber, actor, NotificationType.TASK_UPDATED, message, link);
             }
         }
     }
@@ -118,46 +120,31 @@ public class NotificationEventListener {
                     taskOwner, actor, NotificationType.COMMENT_ADDED, message, link);
         }
 
-        // Notify previous commenters
-        for (UUID commenterId : commentService.getCommenterIds(task.getId())) {
-            if (notifiedIds.add(commenterId)) {
-                User commenter = userService.findUserById(commenterId);
-                if (commenter != null) {
-                    notificationService.create(
-                            commenter, actor, NotificationType.COMMENT_ADDED, message, link);
-                }
+        // Notify subscribers (commenters + previously @mentioned) — batch lookup
+        Set<UUID> subscriberIds = commentQueryService.getSubscriberIds(task.getId());
+        subscriberIds.removeAll(notifiedIds);
+        if (!subscriberIds.isEmpty()) {
+            Map<UUID, User> subscribers = userQueryService.findAllByIds(subscriberIds);
+            notifiedIds.addAll(subscribers.keySet());
+            for (User subscriber : subscribers.values()) {
+                notificationService.create(
+                        subscriber, actor, NotificationType.COMMENT_ADDED, message, link);
             }
         }
 
-        // Notify previously @mentioned users (subscribed to conversation)
-        for (UUID mentionedId : commentService.getPreviouslyMentionedUserIds(task.getId())) {
-            if (notifiedIds.add(mentionedId)) {
-                User mentioned = userService.findUserById(mentionedId);
-                if (mentioned != null) {
-                    notificationService.create(
-                            mentioned, actor, NotificationType.COMMENT_ADDED, message, link);
-                }
-            }
-        }
-
-        // Notify @mentioned users in this comment (with COMMENT_MENTIONED type)
+        // Notify @mentioned users in this comment (with COMMENT_MENTIONED type) — batch lookup
         List<UUID> mentionedInThisComment = MentionUtils.extractMentionedUserIds(comment.getText());
-        if (!mentionedInThisComment.isEmpty()) {
+        Set<UUID> newMentionIds = new HashSet<>(mentionedInThisComment);
+        newMentionIds.removeAll(notifiedIds);
+        if (!newMentionIds.isEmpty()) {
             String mentionMessage =
                     messages.get(
                             "notification.comment.mentioned", actor.getName(), task.getTitle());
-            for (UUID mentionedId : mentionedInThisComment) {
-                if (notifiedIds.add(mentionedId)) {
-                    User mentioned = userService.findUserById(mentionedId);
-                    if (mentioned != null) {
-                        notificationService.create(
-                                mentioned,
-                                actor,
-                                NotificationType.COMMENT_MENTIONED,
-                                mentionMessage,
-                                link);
-                    }
-                }
+            Map<UUID, User> mentionedUsers = userQueryService.findAllByIds(newMentionIds);
+            notifiedIds.addAll(mentionedUsers.keySet());
+            for (User mentioned : mentionedUsers.values()) {
+                notificationService.create(
+                        mentioned, actor, NotificationType.COMMENT_MENTIONED, mentionMessage, link);
             }
         }
     }

@@ -4,7 +4,6 @@ import cc.desuka.demo.config.AppRoutesProperties;
 import cc.desuka.demo.config.UserPreferences;
 import cc.desuka.demo.dto.PinnedItemResponse;
 import cc.desuka.demo.event.PinnedItemPushEvent;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.exception.PinLimitReachedException;
 import cc.desuka.demo.model.PinnedItem;
 import cc.desuka.demo.model.User;
@@ -20,6 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Pinned item write operations (pin, unpin, reorder, title sync, cleanup). Counterpart to {@link
+ * PinnedItemQueryService} (reads).
+ */
 @Service
 @Transactional
 public class PinnedItemService {
@@ -27,17 +30,17 @@ public class PinnedItemService {
     private final PinnedItemRepository pinnedItemRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final AppRoutesProperties appRoutes;
-    private final UserPreferenceService userPreferenceService;
+    private final UserPreferenceQueryService userPreferenceQueryService;
 
     public PinnedItemService(
             PinnedItemRepository pinnedItemRepository,
             ApplicationEventPublisher eventPublisher,
             AppRoutesProperties appRoutes,
-            UserPreferenceService userPreferenceService) {
+            UserPreferenceQueryService userPreferenceQueryService) {
         this.pinnedItemRepository = pinnedItemRepository;
         this.eventPublisher = eventPublisher;
         this.appRoutes = appRoutes;
-        this.userPreferenceService = userPreferenceService;
+        this.userPreferenceQueryService = userPreferenceQueryService;
     }
 
     /**
@@ -54,7 +57,7 @@ public class PinnedItemService {
             return existing.get();
         }
 
-        UserPreferences prefs = userPreferenceService.load(user.getId());
+        UserPreferences prefs = userPreferenceQueryService.load(user.getId());
         long count = pinnedItemRepository.countByUserId(user.getId());
         if (count >= prefs.getPinnedLimit()) {
             throw new PinLimitReachedException(count, prefs.getPinnedLimit());
@@ -83,29 +86,6 @@ public class PinnedItemService {
                 PinnedItemResponse.deleted(pin.getId(), pin.getEntityType(), pin.getEntityId());
         eventPublisher.publishEvent(new PinnedItemPushEvent(pin.getUser().getEmail(), payload));
         pinnedItemRepository.delete(pin);
-    }
-
-    /** Get a pin by ID with user eagerly loaded (for ownership checks). */
-    @Transactional(readOnly = true)
-    public PinnedItem getPinById(Long id) {
-        return pinnedItemRepository
-                .findWithUserById(id)
-                .orElseThrow(() -> new EntityNotFoundException(PinnedItem.class, id));
-    }
-
-    /** Get user's pinned items, sorted per their preference. */
-    @Transactional(readOnly = true)
-    public List<PinnedItem> getPinnedItems(UUID userId) {
-        UserPreferences prefs = userPreferenceService.load(userId);
-        String sortOrder = prefs.getPinnedSortOrder();
-
-        return switch (sortOrder) {
-            case UserPreferences.SORT_NAME ->
-                    pinnedItemRepository.findByUserIdOrderByEntityTitleAsc(userId);
-            case UserPreferences.SORT_MANUAL ->
-                    pinnedItemRepository.findByUserIdOrderBySortOrderAsc(userId);
-            default -> pinnedItemRepository.findByUserIdOrderByPinnedAtDesc(userId);
-        };
     }
 
     /** Update sort order for manual drag-and-drop reordering. */

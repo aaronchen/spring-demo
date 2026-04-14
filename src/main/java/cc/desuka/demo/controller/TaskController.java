@@ -9,7 +9,6 @@ import cc.desuka.demo.dto.TaskSearchCriteria;
 import cc.desuka.demo.dto.TaskUpdateCriteria;
 import cc.desuka.demo.dto.TimelineEntry;
 import cc.desuka.demo.exception.BlockedTaskException;
-import cc.desuka.demo.exception.EntityNotFoundException;
 import cc.desuka.demo.mapper.TaskFormMapper;
 import cc.desuka.demo.model.ChecklistItem;
 import cc.desuka.demo.model.Comment;
@@ -17,20 +16,22 @@ import cc.desuka.demo.model.Priority;
 import cc.desuka.demo.model.Project;
 import cc.desuka.demo.model.Task;
 import cc.desuka.demo.model.TaskStatus;
+import cc.desuka.demo.model.User;
 import cc.desuka.demo.report.TaskReport;
 import cc.desuka.demo.security.AuthExpressions;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.OwnershipGuard;
 import cc.desuka.demo.security.ProjectAccessGuard;
+import cc.desuka.demo.service.CommentQueryService;
 import cc.desuka.demo.service.CommentService;
 import cc.desuka.demo.service.ProjectQueryService;
 import cc.desuka.demo.service.RecentViewService;
 import cc.desuka.demo.service.SprintQueryService;
-import cc.desuka.demo.service.TagService;
+import cc.desuka.demo.service.TagQueryService;
 import cc.desuka.demo.service.TaskQueryService;
 import cc.desuka.demo.service.TaskService;
 import cc.desuka.demo.service.TimelineService;
-import cc.desuka.demo.service.UserService;
+import cc.desuka.demo.service.UserQueryService;
 import cc.desuka.demo.util.CalendarHelper;
 import cc.desuka.demo.util.EntityTypes;
 import cc.desuka.demo.util.FormMode;
@@ -72,8 +73,9 @@ public class TaskController {
     private final TaskQueryService taskQueryService;
     private final ProjectQueryService projectQueryService;
     private final SprintQueryService sprintQueryService;
-    private final TagService tagService;
-    private final UserService userService;
+    private final TagQueryService tagQueryService;
+    private final UserQueryService userQueryService;
+    private final CommentQueryService commentQueryService;
     private final CommentService commentService;
     private final TimelineService timelineService;
     private final RecentViewService recentViewService;
@@ -90,8 +92,9 @@ public class TaskController {
             TaskQueryService taskQueryService,
             ProjectQueryService projectQueryService,
             SprintQueryService sprintQueryService,
-            TagService tagService,
-            UserService userService,
+            TagQueryService tagQueryService,
+            UserQueryService userQueryService,
+            CommentQueryService commentQueryService,
             CommentService commentService,
             TimelineService timelineService,
             RecentViewService recentViewService,
@@ -106,8 +109,9 @@ public class TaskController {
         this.taskQueryService = taskQueryService;
         this.projectQueryService = projectQueryService;
         this.sprintQueryService = sprintQueryService;
-        this.tagService = tagService;
-        this.userService = userService;
+        this.tagQueryService = tagQueryService;
+        this.userQueryService = userQueryService;
+        this.commentQueryService = commentQueryService;
         this.commentService = commentService;
         this.timelineService = timelineService;
         this.recentViewService = recentViewService;
@@ -168,7 +172,7 @@ public class TaskController {
                         : projectQueryService.getAllActiveProjectIds();
         model.addAttribute("wsProjectIds", wsProjectIds);
 
-        model.addAttribute("allTags", tagService.getAllTags());
+        model.addAttribute("allTags", tagQueryService.getAllTags());
         model.addAttribute("view", resolvedView);
         model.addAttribute("selectedUserId", query.getSelectedUserId());
         addEditableProjects(model, currentDetails);
@@ -177,10 +181,9 @@ public class TaskController {
         UUID currentId = currentDetails.getUser().getId();
         UUID selectedUserId = query.getSelectedUserId();
         if (selectedUserId != null && !selectedUserId.equals(currentId)) {
-            try {
-                model.addAttribute(
-                        "filterUserName", userService.getUserById(selectedUserId).getName());
-            } catch (EntityNotFoundException ignored) {
+            User filterUser = userQueryService.findUserById(selectedUserId);
+            if (filterUser != null) {
+                model.addAttribute("filterUserName", filterUser.getName());
             }
         }
 
@@ -465,7 +468,7 @@ public class TaskController {
             @AuthenticationPrincipal CustomUserDetails currentDetails,
             HttpServletRequest request,
             Model model) {
-        Comment comment = commentService.getCommentById(commentId);
+        Comment comment = commentQueryService.getCommentById(commentId);
         if (comment.getUser() != null) {
             ownershipGuard.requireAccess(comment, currentDetails);
         }
@@ -660,7 +663,7 @@ public class TaskController {
             model.addAttribute("taskFormRequest", taskFormMapper.toRequest(task));
         }
         model.addAttribute("mode", mode.getValue());
-        model.addAttribute("tags", tagService.getAllTags());
+        model.addAttribute("tags", tagQueryService.getAllTags());
         addSprintAttributes(task.getProject(), model);
         model.addAttribute("canEditDependencies", mode == FormMode.EDIT);
         addTimelineAttributes(model, task.getId(), currentDetails);
@@ -687,7 +690,7 @@ public class TaskController {
     }
 
     private void restoreAssignee(Task task, UUID assigneeId) {
-        task.setUser(userService.findUserById(assigneeId));
+        task.setUser(userQueryService.findUserById(assigneeId));
     }
 
     private void restoreSprint(Task task, Long sprintId) {
@@ -701,7 +704,7 @@ public class TaskController {
     // Tags use checkboxes: null means none checked = clear all tags
     private void restoreTags(Task task, List<Long> tagIds) {
         if (tagIds != null) {
-            task.setTags(tagService.findAllByIds(tagIds));
+            task.setTags(tagQueryService.findAllByIds(tagIds));
         } else {
             task.setTags(new LinkedHashSet<>());
         }

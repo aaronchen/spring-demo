@@ -6,14 +6,15 @@ import cc.desuka.demo.model.Notification;
 import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.NotificationRepository;
-import java.util.List;
 import java.util.UUID;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Notification write operations (create, mark read, clear). Counterpart to {@link
+ * NotificationQueryService} (reads).
+ */
 @Service
 @Transactional
 public class NotificationService {
@@ -39,24 +40,6 @@ public class NotificationService {
         NotificationResponse payload = notificationMapper.toResponse(saved);
         messagingTemplate.convertAndSendToUser(
                 recipient.getEmail(), "/queue/notifications", payload);
-    }
-
-    @Transactional(readOnly = true)
-    public long getUnreadCount(UUID userId) {
-        return notificationRepository.countByUserIdAndReadFalse(userId);
-    }
-
-    @Transactional(readOnly = true)
-    public List<NotificationResponse> getRecentForUser(UUID userId) {
-        return notificationMapper.toResponseList(
-                notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(userId));
-    }
-
-    @Transactional(readOnly = true)
-    public Page<NotificationResponse> findAllForUser(UUID userId, Pageable pageable) {
-        return notificationRepository
-                .findByUserIdOrderByCreatedAtDesc(userId, pageable)
-                .map(notificationMapper::toResponse);
     }
 
     public void markAsRead(Long id, UUID userId) {

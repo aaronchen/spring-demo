@@ -12,6 +12,7 @@ import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
 import cc.desuka.demo.security.SecurityUtils;
+import cc.desuka.demo.service.UserQueryService;
 import cc.desuka.demo.service.UserService;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ class UserApiControllerTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    @MockitoBean private UserQueryService userQueryService;
     @MockitoBean private UserService userService;
     @MockitoBean private UserMapper userMapper;
 
@@ -65,7 +67,7 @@ class UserApiControllerTest {
 
     @Test
     void getAllUsers_returnsJsonList() throws Exception {
-        when(userService.searchEnabledUsers(null)).thenReturn(List.of());
+        when(userQueryService.searchEnabledUsers(null)).thenReturn(List.of());
         when(userMapper.toResponseList(anyList())).thenReturn(List.of(userResponse));
 
         mockMvc.perform(get("/api/users").with(user(regularDetails)))
@@ -75,13 +77,13 @@ class UserApiControllerTest {
 
     @Test
     void getAllUsers_withQuery_passesQueryToService() throws Exception {
-        when(userService.searchEnabledUsers("ali")).thenReturn(List.of());
+        when(userQueryService.searchEnabledUsers("ali")).thenReturn(List.of());
         when(userMapper.toResponseList(anyList())).thenReturn(List.of(userResponse));
 
         mockMvc.perform(get("/api/users").param("q", "ali").with(user(regularDetails)))
                 .andExpect(status().isOk());
 
-        verify(userService).searchEnabledUsers("ali");
+        verify(userQueryService).searchEnabledUsers("ali");
     }
 
     // ── GET /api/users/{id} ──────────────────────────────────────────────
@@ -90,7 +92,7 @@ class UserApiControllerTest {
     void getUserById_returnsJson() throws Exception {
         User alice = new User("Alice", "alice@example.com", "password", Role.ADMIN);
         alice.setId(ID_1);
-        when(userService.getUserById(ID_1)).thenReturn(alice);
+        when(userQueryService.getUserById(ID_1)).thenReturn(alice);
         when(userMapper.toResponse(alice)).thenReturn(userResponse);
 
         mockMvc.perform(get("/api/users/" + ID_1).with(user(regularDetails)))

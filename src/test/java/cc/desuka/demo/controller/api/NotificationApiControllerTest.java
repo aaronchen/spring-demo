@@ -10,6 +10,7 @@ import cc.desuka.demo.dto.NotificationResponse;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.CustomUserDetails;
+import cc.desuka.demo.service.NotificationQueryService;
 import cc.desuka.demo.service.NotificationService;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +34,7 @@ class NotificationApiControllerTest {
 
     @Autowired private MockMvc mockMvc;
 
+    @MockitoBean private NotificationQueryService notificationQueryService;
     @MockitoBean private NotificationService notificationService;
 
     private CustomUserDetails regularDetails;
@@ -48,7 +50,7 @@ class NotificationApiControllerTest {
 
     @Test
     void getUnreadCount_returnsCountJson() throws Exception {
-        when(notificationService.getUnreadCount(ID_2)).thenReturn(5L);
+        when(notificationQueryService.getUnreadCount(ID_2)).thenReturn(5L);
 
         mockMvc.perform(get("/api/notifications/unread-count").with(user(regularDetails)))
                 .andExpect(status().isOk())
@@ -62,7 +64,7 @@ class NotificationApiControllerTest {
         NotificationResponse response = new NotificationResponse();
         response.setId(1L);
         response.setMessage("Test notification");
-        when(notificationService.findAllForUser(eq(ID_2), any()))
+        when(notificationQueryService.findAllForUser(eq(ID_2), any()))
                 .thenReturn(new PageImpl<>(List.of(response), PageRequest.of(0, 10), 1));
 
         mockMvc.perform(get("/api/notifications").with(user(regularDetails)))
@@ -73,7 +75,7 @@ class NotificationApiControllerTest {
 
     @Test
     void getNotifications_customPageSize() throws Exception {
-        when(notificationService.findAllForUser(eq(ID_2), any()))
+        when(notificationQueryService.findAllForUser(eq(ID_2), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(1, 5), 0));
 
         mockMvc.perform(
@@ -83,7 +85,7 @@ class NotificationApiControllerTest {
                                 .with(user(regularDetails)))
                 .andExpect(status().isOk());
 
-        verify(notificationService).findAllForUser(eq(ID_2), eq(PageRequest.of(1, 5)));
+        verify(notificationQueryService).findAllForUser(eq(ID_2), eq(PageRequest.of(1, 5)));
     }
 
     // ── PATCH /api/notifications/{id}/read ────────────────────────────────

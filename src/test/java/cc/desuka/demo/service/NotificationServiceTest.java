@@ -12,7 +12,6 @@ import cc.desuka.demo.model.NotificationType;
 import cc.desuka.demo.model.Role;
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.repository.NotificationRepository;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,10 +21,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -87,49 +82,6 @@ class NotificationServiceTest {
         verify(messagingTemplate)
                 .convertAndSendToUser(
                         eq("alice@example.com"), eq("/queue/notifications"), eq(response));
-    }
-
-    // ── getUnreadCount ───────────────────────────────────────────────────
-
-    @Test
-    void getUnreadCount_delegatesToRepository() {
-        when(notificationRepository.countByUserIdAndReadFalse(ID_1)).thenReturn(3L);
-
-        assertThat(notificationService.getUnreadCount(ID_1)).isEqualTo(3L);
-    }
-
-    // ── getRecentForUser ─────────────────────────────────────────────────
-
-    @Test
-    void getRecentForUser_returnsTop10() {
-        Notification notification =
-                new Notification(alice, bob, NotificationType.COMMENT_ADDED, "msg", "/link");
-        NotificationResponse response = new NotificationResponse();
-        when(notificationRepository.findTop10ByUserIdOrderByCreatedAtDesc(ID_1))
-                .thenReturn(List.of(notification));
-        when(notificationMapper.toResponseList(anyList())).thenReturn(List.of(response));
-
-        List<NotificationResponse> result = notificationService.getRecentForUser(ID_1);
-
-        assertThat(result).hasSize(1);
-    }
-
-    // ── findAllForUser ───────────────────────────────────────────────────
-
-    @Test
-    void findAllForUser_returnsPaginatedResults() {
-        Notification notification =
-                new Notification(alice, bob, NotificationType.TASK_UPDATED, "msg", "/link");
-        NotificationResponse response = new NotificationResponse();
-        Pageable pageable = PageRequest.of(0, 10);
-        Page<Notification> page = new PageImpl<>(List.of(notification), pageable, 1);
-        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(ID_1, pageable))
-                .thenReturn(page);
-        when(notificationMapper.toResponse(any(Notification.class))).thenReturn(response);
-
-        Page<NotificationResponse> result = notificationService.findAllForUser(ID_1, pageable);
-
-        assertThat(result.getTotalElements()).isEqualTo(1);
     }
 
     // ── markAsRead ───────────────────────────────────────────────────────

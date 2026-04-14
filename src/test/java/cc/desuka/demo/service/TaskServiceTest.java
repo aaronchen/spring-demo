@@ -43,8 +43,8 @@ class TaskServiceTest {
     @Mock private TaskQueryService taskQueryService;
     @Mock private TaskDependencyService taskDependencyService;
     @Mock private SprintQueryService sprintQueryService;
-    @Mock private TagService tagService;
-    @Mock private UserService userService;
+    @Mock private TagQueryService tagQueryService;
+    @Mock private UserQueryService userQueryService;
     @Mock private RecentViewService recentViewService;
     @Mock private PinnedItemService pinnedItemService;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -82,8 +82,8 @@ class TaskServiceTest {
     void createTask_setsTagsAndUser_publishesEvents() {
         Tag tag = new Tag("Work");
         tag.setId(1L);
-        when(tagService.findAllByIds(List.of(1L))).thenReturn(Set.of(tag));
-        when(userService.findUserById(ID_1)).thenReturn(alice);
+        when(tagQueryService.findAllByIds(List.of(1L))).thenReturn(Set.of(tag));
+        when(userQueryService.findUserById(ID_1)).thenReturn(alice);
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(
                         inv -> {
@@ -115,8 +115,8 @@ class TaskServiceTest {
 
     @Test
     void createTask_noTags_noUser() {
-        when(tagService.findAllByIds(anyList())).thenReturn(Set.of());
-        when(userService.findUserById(null)).thenReturn(null);
+        when(tagQueryService.findAllByIds(anyList())).thenReturn(Set.of());
+        when(userQueryService.findUserById(null)).thenReturn(null);
         when(taskRepository.save(any(Task.class)))
                 .thenAnswer(
                         inv -> {
@@ -156,8 +156,8 @@ class TaskServiceTest {
         task.setStatus(TaskStatus.IN_PROGRESS);
         task.setUser(alice);
         when(taskQueryService.getTaskById(ID_1)).thenReturn(task);
-        when(tagService.findAllByIds(anyList())).thenReturn(Set.of());
-        when(userService.findUserById(ID_2)).thenReturn(bob);
+        when(tagQueryService.findAllByIds(anyList())).thenReturn(Set.of());
+        when(userQueryService.findUserById(ID_2)).thenReturn(bob);
         when(taskRepository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         try (var mocked = mockStatic(SecurityUtils.class)) {

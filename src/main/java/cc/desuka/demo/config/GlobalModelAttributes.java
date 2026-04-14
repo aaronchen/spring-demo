@@ -2,8 +2,8 @@ package cc.desuka.demo.config;
 
 import cc.desuka.demo.model.User;
 import cc.desuka.demo.security.SecurityUtils;
-import cc.desuka.demo.service.SettingService;
-import cc.desuka.demo.service.UserPreferenceService;
+import cc.desuka.demo.service.SettingQueryService;
+import cc.desuka.demo.service.UserPreferenceQueryService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -12,16 +12,16 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 public class GlobalModelAttributes {
 
     private final AppRoutesProperties appRoutes;
-    private final SettingService settingService;
-    private final UserPreferenceService userPreferenceService;
+    private final SettingQueryService settingQueryService;
+    private final UserPreferenceQueryService userPreferenceQueryService;
 
     public GlobalModelAttributes(
             AppRoutesProperties appRoutes,
-            SettingService settingService,
-            UserPreferenceService userPreferenceService) {
+            SettingQueryService settingQueryService,
+            UserPreferenceQueryService userPreferenceQueryService) {
         this.appRoutes = appRoutes;
-        this.settingService = settingService;
-        this.userPreferenceService = userPreferenceService;
+        this.settingQueryService = settingQueryService;
+        this.userPreferenceQueryService = userPreferenceQueryService;
     }
 
     @ModelAttribute("appRoutes")
@@ -46,7 +46,7 @@ public class GlobalModelAttributes {
     /** Exposes all settings as a typed object: ${settings.theme}, etc. */
     @ModelAttribute("settings")
     public Settings settings() {
-        return settingService.load();
+        return settingQueryService.load();
     }
 
     /**
@@ -59,6 +59,6 @@ public class GlobalModelAttributes {
         if (user == null) {
             return new UserPreferences();
         }
-        return userPreferenceService.load(user.getId());
+        return userPreferenceQueryService.load(user.getId());
     }
 }
