@@ -272,12 +272,14 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 
 - `repository/ProjectMemberRepository.java` - Spring Data JPA repository
   - Extends `JpaRepository<ProjectMember, Long>`
-  - `findByProjectId(Long)` — `@EntityGraph(attributePaths = {"user"})` for member list
-  - `findByProjectIdAndUserId(Long, Long)` — single member lookup
-  - `existsByProjectIdAndUserId(Long, Long)` — membership check
-  - `countByProjectIdAndRole(Long, ProjectRole)` — count owners
-  - `findByUserId(Long)` — `@EntityGraph(attributePaths = {"project", "project.createdBy"})` for user's projects
-  - `deleteByProjectIdAndUserId(Long, Long)` — remove member
+  - `findByProjectId(UUID)` — `@EntityGraph(attributePaths = {"user"})` for member list
+  - `findByProjectIdAndUserId(UUID, UUID)` — single member lookup
+  - `existsByProjectIdAndUserId(UUID, UUID)` — membership check
+  - `findByUserId(UUID)` — `@EntityGraph(attributePaths = {"project", "project.createdBy"})` for user's projects (all statuses)
+  - `findByUserIdAndProjectStatus(UUID, ProjectStatus)` — `@EntityGraph` + `@Query` with `ORDER BY LOWER(name)` for case-insensitive sort
+  - `findByUserIdAndProjectStatusAndRoleIn(UUID, ProjectStatus, List<ProjectRole>)` — status + role filter, case-insensitive sort
+  - `findProjectIdsByUserIdAndProjectStatus(UUID, ProjectStatus)` — ID-only scalar projection (no entity hydration)
+  - `deleteByProjectIdAndUserId(UUID, UUID)` — remove member
 
 - `repository/TaskSpecifications.java` - JPA Specifications for dynamic queries
   - Uses entity `FIELD_*` constants everywhere (e.g. `Task.FIELD_STATUS`, `Task.FIELD_PROJECT`, `User.FIELD_ID`, `Tag.FIELD_ID`)
@@ -623,7 +625,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 - `service/UserQueryService.java` - Read-only user lookups and decision queries; `@Transactional(readOnly = true)` class-level
   - Constructor injection: `UserRepository`, `RecurringTaskTemplateRepository`, `TaskQueryService`, `CommentQueryService`, `ProjectQueryService`
   - Lookups: `getAllUsers`, `getUserById`, `findUserById`, `findByEmail`, `getNamesByIds`, `searchUsers`, `getEnabledUsers`, `searchEnabledUsers`
-  - Decision queries: `canDelete`, `canDisable`, `countCompletedTasks`, `countComments`, `countAssignedTasks`, `countRecurringTemplates`, `isSoleOwnerOfAnyProject`
+  - Decision queries: `canDelete`, `canDisable`, `countCompletedTasks`, `countComments`, `countAssignedTasks`, `countRecurringTemplates`
 
 - `service/NotificationQueryService.java` - Read-only notification lookups; `@Transactional(readOnly = true)` class-level
   - `getUnreadCount`, `getRecentForUser`, `findAllForUser`
@@ -1412,7 +1414,7 @@ For architecture, patterns, conventions, and workflow, see [CLAUDE.md](CLAUDE.md
 ## Static Resources
 
 - `static/favicon.svg` - SVG favicon (blue rounded square with white "S")
-- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state; recently viewed drawer styles (`.recent-views-tab` fixed left-side vertical tab, `.recent-views-drawer` slide-out panel, lg+ only via media query); audit diff styles (`.audit-diff-field`, `.audit-added`, `.audit-removed`, `.audit-unchecked`)
+- `static/css/base.css` - Global styles (body, btn transitions, validation, navbar, footer, HTMX indicator, toast container/animations); `.card-clip` for overflow clipping; `#panel-members .table-responsive` border-radius fix (no `card-clip` — would clip searchable-select dropdown); `.card-lift` opt-in hover lift; `#confirm-modal` z-index and width styles; `.nav-link-bright` for brighter navbar links with active state; recently viewed drawer styles (`.recent-views-tab` fixed left-side vertical tab, `.recent-views-drawer` slide-out panel, lg+ only via media query); audit diff styles (`.audit-diff-field`, `.audit-added`, `.audit-removed`, `.audit-unchecked`)
 - `static/css/tasks.css` - Task page styles (filters, search clear button, tag badges, `.task-panels` for constrained two-panel modal layout, `.task-side-panel` and `.task-side-panel-body` for exclusive side panels with independent scrolling, two-column layout styles, timeline entry styles)
 - `static/css/mentions.css` - Tribute.js dropdown styles (Bootstrap-themed: `.tribute-container` positioning/shadow/borders) + rendered mention span styles (`.mention` class with background highlight)
 - `static/css/analytics.css` - Analytics page styles (chart container sizing: 300px default, 350px wide; responsive breakpoints at 768px)

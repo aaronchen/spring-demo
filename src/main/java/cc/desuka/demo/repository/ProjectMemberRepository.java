@@ -1,6 +1,8 @@
 package cc.desuka.demo.repository;
 
 import cc.desuka.demo.model.ProjectMember;
+import cc.desuka.demo.model.ProjectRole;
+import cc.desuka.demo.model.ProjectStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +23,26 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Lo
 
     @EntityGraph(attributePaths = {"project", "project.createdBy"})
     List<ProjectMember> findByUserId(UUID userId);
+
+    @EntityGraph(attributePaths = {"project", "project.createdBy"})
+    @Query(
+            "SELECT m FROM ProjectMember m "
+                    + "WHERE m.user.id = :userId AND m.project.status = :status "
+                    + "ORDER BY LOWER(m.project.name) ASC")
+    List<ProjectMember> findByUserIdAndProjectStatus(UUID userId, ProjectStatus status);
+
+    @EntityGraph(attributePaths = {"project", "project.createdBy"})
+    @Query(
+            "SELECT m FROM ProjectMember m "
+                    + "WHERE m.user.id = :userId AND m.project.status = :status "
+                    + "AND m.role IN :roles ORDER BY LOWER(m.project.name) ASC")
+    List<ProjectMember> findByUserIdAndProjectStatusAndRoleIn(
+            UUID userId, ProjectStatus status, List<ProjectRole> roles);
+
+    @Query(
+            "SELECT m.project.id FROM ProjectMember m "
+                    + "WHERE m.user.id = :userId AND m.project.status = :status")
+    List<UUID> findProjectIdsByUserIdAndProjectStatus(UUID userId, ProjectStatus status);
 
     void deleteByProjectIdAndUserId(UUID projectId, UUID userId);
 

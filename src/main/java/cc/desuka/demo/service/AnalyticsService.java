@@ -27,8 +27,10 @@ import java.time.LocalDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
@@ -129,12 +131,11 @@ public class AnalyticsService {
                 analyticsRepository.countByUserAndStatus(projectId, projectIds, sprintId);
 
         // Collect unique user IDs preserving order, null = unassigned
-        List<UUID> userIds = new ArrayList<>();
+        Set<UUID> seenIds = new LinkedHashSet<>();
         for (UserStatusCount row : rows) {
-            if (!userIds.contains(row.userId())) {
-                userIds.add(row.userId());
-            }
+            seenIds.add(row.userId());
         }
+        List<UUID> userIds = new ArrayList<>(seenIds);
 
         // Resolve names
         Map<UUID, String> nameMap = buildUserNameMap(rows);

@@ -230,7 +230,7 @@ public class TaskQueryService {
                 .toList();
     }
 
-    // ── Grouping ──────────────────────────────────────────────────────────
+    // ── Private helpers ────────────────────────────────────────────────────
 
     private List<Task> filterByAccessibleProjects(
             List<Task> tasks, List<UUID> accessibleProjectIds) {

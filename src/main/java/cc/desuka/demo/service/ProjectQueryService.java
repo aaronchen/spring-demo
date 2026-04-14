@@ -51,31 +51,27 @@ public class ProjectQueryService {
     }
 
     public List<Project> getProjectsForUser(UUID userId) {
-        return memberRepository.findByUserId(userId).stream()
+        return memberRepository.findByUserIdAndProjectStatus(userId, ProjectStatus.ACTIVE).stream()
                 .map(ProjectMember::getProject)
-                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
-                .sorted(Comparator.comparing(Project::getName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 
     public List<Project> getProjectsForUser(UUID userId, boolean includeArchived, String sort) {
+        List<ProjectMember> members =
+                includeArchived
+                        ? memberRepository.findByUserId(userId)
+                        : memberRepository.findByUserIdAndProjectStatus(
+                                userId, ProjectStatus.ACTIVE);
         Comparator<Project> comparator =
                 "newest".equals(sort)
                         ? Comparator.comparing(Project::getCreatedAt, Comparator.reverseOrder())
                         : Comparator.comparing(Project::getName, String.CASE_INSENSITIVE_ORDER);
-        return memberRepository.findByUserId(userId).stream()
-                .map(ProjectMember::getProject)
-                .filter(p -> includeArchived || p.getStatus() == ProjectStatus.ACTIVE)
-                .sorted(comparator)
-                .toList();
+        return members.stream().map(ProjectMember::getProject).sorted(comparator).toList();
     }
 
     public List<UUID> getAccessibleProjectIds(UUID userId) {
-        return memberRepository.findByUserId(userId).stream()
-                .map(ProjectMember::getProject)
-                .filter(p -> p.getStatus() == ProjectStatus.ACTIVE)
-                .map(Project::getId)
-                .toList();
+        return memberRepository.findProjectIdsByUserIdAndProjectStatus(
+                userId, ProjectStatus.ACTIVE);
     }
 
     public List<UUID> getAllActiveProjectIds() {
@@ -83,14 +79,13 @@ public class ProjectQueryService {
     }
 
     public List<Project> getEditableProjectsForUser(UUID userId) {
-        return memberRepository.findByUserId(userId).stream()
-                .filter(
-                        m ->
-                                m.getProject().getStatus() == ProjectStatus.ACTIVE
-                                        && (m.getRole() == ProjectRole.EDITOR
-                                                || m.getRole() == ProjectRole.OWNER))
+        return memberRepository
+                .findByUserIdAndProjectStatusAndRoleIn(
+                        userId,
+                        ProjectStatus.ACTIVE,
+                        List.of(ProjectRole.EDITOR, ProjectRole.OWNER))
+                .stream()
                 .map(ProjectMember::getProject)
-                .sorted(Comparator.comparing(Project::getName, String.CASE_INSENSITIVE_ORDER))
                 .toList();
     }
 

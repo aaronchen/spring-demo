@@ -465,6 +465,11 @@ body {
 .settings-panel {
     font-size: 0.95rem;
 }
+#panel-members .table-responsive {
+    border-bottom-left-radius: var(--bs-card-inner-border-radius);
+    border-bottom-right-radius: var(--bs-card-inner-border-radius);
+    overflow: hidden;
+}
 
 /* Audit diff field rendering */
 .audit-diff-field {

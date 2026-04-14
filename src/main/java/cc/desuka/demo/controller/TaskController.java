@@ -581,7 +581,7 @@ public class TaskController {
                     try {
                         taskService.setStatus(task.getId(), newStatus);
                         count++;
-                    } catch (BlockedTaskException e) {
+                    } catch (BlockedTaskException _) {
                         skipped++;
                     }
                 }
@@ -617,8 +617,8 @@ public class TaskController {
                     try {
                         taskService.deleteTask(task.getId());
                         count++;
-                    } catch (IllegalStateException ignored) {
-                        // Skip completed tasks that cannot be deleted
+                    } catch (IllegalStateException _) {
+                        skipped++;
                     }
                 }
             }

@@ -126,8 +126,4 @@ public class UserQueryService {
     public boolean canDisable(UUID userId) {
         return getDeletionInfo(userId).canDisable();
     }
-
-    public boolean isSoleOwnerOfAnyProject(UUID userId) {
-        return projectQueryService.isSoleOwnerOfAnyProject(userId);
-    }
 }
