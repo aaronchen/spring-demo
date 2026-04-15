@@ -384,131 +384,172 @@ spring-demo/
 ├── src/main/
 │   ├── java/cc/desuka/demo/
 │   │   ├── audit/
+│   │   │   ├── Auditable.java               # Interface for audit snapshots
 │   │   │   ├── AuditDetails.java            # Snapshot/diff/display-name utilities
 │   │   │   ├── AuditEvent.java              # Event class with action constants
 │   │   │   ├── AuditEventListener.java      # Persists AuditEvent → AuditLog
 │   │   │   ├── AuditField.java              # Typed audit value record (FieldType enum, factory methods)
 │   │   │   ├── AuditLogService.java         # Audit search + entity history
 │   │   │   ├── AuditTemplateHelper.java     # Thymeleaf helpers (enum labels, ref URLs, checklist diff)
-│   │   │   ├── Auditable.java               # Interface for audit snapshots
 │   │   │   └── AuthAuditListener.java       # Login success/failure audit events
 │   │   ├── config/
 │   │   │   ├── AppRoutesProperties.java     # @ConfigurationProperties for app.routes.*
-│   │   │   ├── DevSecurityConfig.java      # H2 console security rules (@Profile("dev"))
+│   │   │   ├── DevH2Config.java             # H2 web server + console servlet (@Profile("dev"))
+│   │   │   ├── DevSecurityConfig.java       # H2 console security rules (@Profile("dev"))
 │   │   │   ├── GlobalBindingConfig.java     # Global string trimming (blank→null)
 │   │   │   ├── GlobalModelAttributes.java   # @ControllerAdvice: appRoutes + settings + currentUser
-│   │   │   ├── DevH2Config.java            # H2 web server + console servlet (@Profile("dev"))
 │   │   │   ├── SecurityConfig.java          # Spring Security filter chain, auth rules
-│   │   │   ├── Settings.java               # Typed settings POJO with defaults
-│   │   │   ├── UserPreferences.java        # Typed per-user preferences POJO with defaults
+│   │   │   ├── Settings.java                # Typed settings POJO with defaults
+│   │   │   ├── UserPreferences.java         # Typed per-user preferences POJO with defaults
 │   │   │   └── WebSocketConfig.java         # STOMP broker (/topic, /queue), endpoint /ws
 │   │   ├── controller/
 │   │   │   ├── admin/
-│   │   │   │   ├── AuditController.java     # Audit log page (admin only)
-│   │   │   │   ├── SettingsController.java    # Admin settings page (theme, site name, etc.)
-│   │   │   │   ├── TagManagementController.java # Tag CRUD (admin only)
-│   │   │   │   └── UserManagementController.java # User management with modal UI (admin only)
+│   │   │   │   ├── AuditController.java           # Audit log page (admin only)
+│   │   │   │   ├── SettingsController.java        # Admin settings page (theme, site name, etc.)
+│   │   │   │   ├── TagManagementController.java   # Tag CRUD (admin only)
+│   │   │   │   └── UserManagementController.java  # User management with modal UI (admin only)
 │   │   │   ├── api/
-│   │   │   │   ├── AuditApiController.java  # Audit REST API
-│   │   │   │   ├── CommentApiController.java # Comment REST API (nested under tasks)
-│   │   │   │   ├── NotificationApiController.java # Notification REST API
-│   │   │   │   ├── PresenceApiController.java # GET /api/presence (online users)
-│   │   │   │   ├── ProjectApiController.java # Project REST API (members, assignable)
-│   │   │   │   ├── SavedViewController.java  # Saved views REST API (GET/POST/DELETE)
-│   │   │   │   ├── TagApiController.java    # Tag REST API (admin-only mutations)
-│   │   │   │   ├── TaskApiController.java   # Task REST API (ownership checks)
-│   │   │   │   └── UserApiController.java   # User REST API (admin-only mutations)
+│   │   │   │   ├── AnalyticsApiController.java          # Analytics REST API (JSON chart data)
+│   │   │   │   ├── AuditApiController.java              # Audit REST API
+│   │   │   │   ├── CommentApiController.java            # Comment REST API (nested under tasks)
+│   │   │   │   ├── NotificationApiController.java       # Notification REST API
+│   │   │   │   ├── PinnedItemApiController.java         # Pinned items REST API (CRUD + reorder)
+│   │   │   │   ├── PresenceApiController.java           # GET /api/presence (online users)
+│   │   │   │   ├── ProjectApiController.java            # Project REST API (members, assignable)
+│   │   │   │   ├── RecentViewApiController.java         # Recent views REST API
+│   │   │   │   ├── RecurringTaskTemplateApiController.java # Recurring task template REST API
+│   │   │   │   ├── SavedViewController.java             # Saved views REST API (GET/POST/DELETE)
+│   │   │   │   ├── SprintApiController.java             # Sprint REST API
+│   │   │   │   ├── TagApiController.java                # Tag REST API (admin-only mutations)
+│   │   │   │   ├── TaskApiController.java               # Task REST API (ownership checks)
+│   │   │   │   └── UserApiController.java               # User REST API (admin-only mutations)
+│   │   │   ├── AnalyticsController.java       # Analytics web UI (cross-project + project-scoped)
+│   │   │   ├── DashboardController.java       # Dashboard page + HTMX stats fragment
+│   │   │   ├── FrontendConfigController.java  # Serves /config.js with routes + messages
+│   │   │   ├── HomeController.java            # Home page (GET /)
+│   │   │   ├── LoginController.java           # Login page (GET /login)
+│   │   │   ├── NotificationController.java    # Notifications page (GET /notifications)
+│   │   │   ├── ProfileController.java         # Self-service profile (GET/POST /profile)
 │   │   │   ├── ProjectController.java         # Project web UI (list, create, settings, archive)
-│   │   │   ├── DashboardController.java      # Dashboard page + HTMX stats fragment
-│   │   │   ├── FrontendConfigController.java # Serves /config.js with routes + messages
-│   │   │   ├── HomeController.java          # Home page (GET /)
-│   │   │   ├── NotificationController.java  # Notifications page (GET /notifications)
-│   │   │   ├── LoginController.java         # Login page (GET /login)
-│   │   │   ├── ProfileController.java       # Self-service profile (GET/POST /profile)
-│   │   │   ├── RegistrationController.java  # Self-registration (GET/POST /register)
-│   │   │   ├── TagController.java           # Tag web UI
-│   │   │   ├── TaskController.java          # Task web UI (ownership-aware, CSV export)
-│   │   │   └── UserController.java          # Public user list with search (/users)
+│   │   │   ├── RegistrationController.java    # Self-registration (GET/POST /register)
+│   │   │   ├── TagController.java             # Tag web UI
+│   │   │   ├── TaskController.java            # Task web UI (ownership-aware, CSV export)
+│   │   │   └── UserController.java            # Public user list with search (/users)
 │   │   ├── dto/
-│   │   │   ├── AdminUserRequest.java  # Admin user creation form DTO
-│   │   │   ├── BulkTaskRequest.java   # Bulk action input DTO (taskIds, action, value)
-│   │   │   ├── ChangePasswordRequest.java # Password change form DTO
-│   │   │   ├── CalendarDay.java        # Calendar view day cell record
-│   │   │   ├── CommentRequest.java   # Comment creation form DTO
-│   │   │   ├── CommentResponse.java   # Comment API output DTO
-│   │   │   ├── DashboardStats.java     # Dashboard data carrier record
-│   │   │   ├── NotificationResponse.java # Notification API output DTO
-│   │   │   ├── PresenceResponse.java  # Presence data (REST + WebSocket)
-│   │   │   ├── ProfileRequest.java    # Profile edit form DTO
-│   │   │   ├── ProjectRequest.java   # Project create/edit form DTO
-│   │   │   ├── RegistrationRequest.java # Registration form DTO
-│   │   │   ├── SavedViewRequest.java  # Saved view create DTO (record)
-│   │   │   ├── SavedViewResponse.java # Saved view output DTO (record)
+│   │   │   ├── AdminUserRequest.java              # Admin user creation form DTO
+│   │   │   ├── AnalyticsProjection.java           # Typed analytics query projections (records)
+│   │   │   ├── AnalyticsResponse.java             # Analytics chart data response DTO
+│   │   │   ├── BulkTaskRequest.java               # Bulk action input DTO (taskIds, action, value)
+│   │   │   ├── CalendarDay.java                   # Calendar view day cell record
+│   │   │   ├── ChangePasswordRequest.java         # Password change form DTO
+│   │   │   ├── CommentRequest.java                # Comment creation form DTO
+│   │   │   ├── CommentResponse.java               # Comment API output DTO
+│   │   │   ├── DashboardStats.java                # Dashboard data carrier record
+│   │   │   ├── NotificationResponse.java          # Notification API output DTO
+│   │   │   ├── PinnedItemRequest.java             # Pin creation request DTO
+│   │   │   ├── PinnedItemResponse.java            # Pin API output DTO (factory methods)
+│   │   │   ├── PresenceResponse.java              # Presence data (REST + WebSocket)
+│   │   │   ├── ProfileRequest.java                # Profile edit form DTO
+│   │   │   ├── ProjectListQuery.java              # Project list filter query params
+│   │   │   ├── ProjectRequest.java                # Project create/edit form DTO
+│   │   │   ├── ProjectSummary.java                # Lightweight project summary DTO
+│   │   │   ├── RecentViewResponse.java            # Recent view API output DTO
+│   │   │   ├── RecurringTaskTemplateRequest.java   # Recurring template form DTO
+│   │   │   ├── RecurringTaskTemplateResponse.java  # Recurring template API output DTO
+│   │   │   ├── RegistrationRequest.java           # Registration form DTO
+│   │   │   ├── SavedViewData.java                 # Saved view filter data (JSON-serialized)
+│   │   │   ├── SavedViewRequest.java              # Saved view create DTO (record)
+│   │   │   ├── SavedViewResponse.java             # Saved view output DTO (record)
+│   │   │   ├── SprintRequest.java                 # Sprint form DTO
+│   │   │   ├── SprintResponse.java                # Sprint API output DTO (derived status)
 │   │   │   ├── TagRequest.java
 │   │   │   ├── TagResponse.java
-│   │   │   ├── TaskFormRequest.java     # Web form DTO (parallel array checklist binding)
-│   │   │   ├── TaskRequest.java         # API input DTO (create/update)
-│   │   │   ├── TaskResponse.java        # API output DTO
-│   │   │   ├── TimelineEntry.java       # Unified timeline record (comment or audit)
+│   │   │   ├── TaskDependencyResponse.java        # Task dependency API output DTO
+│   │   │   ├── TaskFormRequest.java               # Web form DTO (parallel array checklist binding)
+│   │   │   ├── TaskItem.java                      # Lightweight task record (dependency search)
+│   │   │   ├── TaskListQuery.java                 # Task list filter query params
+│   │   │   ├── TaskRequest.java                   # API input DTO (create/update)
+│   │   │   ├── TaskResponse.java                  # API output DTO
+│   │   │   ├── TaskSearchCriteria.java            # Task search filter criteria
+│   │   │   ├── TaskUpdateCriteria.java            # Task update field criteria (record)
+│   │   │   ├── TimelineEntry.java                 # Unified timeline record (comment or audit)
 │   │   │   ├── UserRequest.java
-│   │   │   └── UserResponse.java
+│   │   │   ├── UserResponse.java
+│   │   │   └── UserTaskCounts.java                # Dashboard user task count aggregation
 │   │   ├── event/
-│   │   │   ├── CommentAddedEvent.java        # Domain event: comment created
-│   │   │   ├── CommentChangeEvent.java       # WebSocket: comment created/deleted
-│   │   │   ├── NotificationEventListener.java # Routes notifications to recipients
-│   │   │   ├── ProjectPushEvent.java          # WebSocket: project updated/archived
-│   │   │   ├── TaskAssignedEvent.java        # Domain event: task assigned
-│   │   │   ├── TaskPushEvent.java            # WebSocket: task created/updated/deleted
-│   │   │   ├── TaskUpdatedEvent.java         # Domain event: task fields changed
-│   │   │   └── WebSocketEventListener.java   # Broadcasts ephemeral WebSocket messages
+│   │   │   ├── CommentAddedEvent.java             # Domain event: comment created
+│   │   │   ├── CommentChangeEvent.java            # WebSocket: comment created/deleted
+│   │   │   ├── NotificationEventListener.java     # Routes notifications to recipients
+│   │   │   ├── PinnedItemEventListener.java       # Title sync for pinned items
+│   │   │   ├── PinnedItemPushEvent.java           # WebSocket: pin created/updated/deleted
+│   │   │   ├── ProjectPushEvent.java              # WebSocket: project updated/archived
+│   │   │   ├── ProjectUpdatedEvent.java           # Domain event: project fields changed
+│   │   │   ├── RecentViewEventListener.java       # Title sync for recent views
+│   │   │   ├── RecentViewPushEvent.java           # WebSocket: recent view added/updated
+│   │   │   ├── TaskAssignedEvent.java             # Domain event: task assigned
+│   │   │   ├── TaskPushEvent.java                 # WebSocket: task created/updated/deleted
+│   │   │   ├── TaskUpdatedEvent.java              # Domain event: task fields changed
+│   │   │   └── WebSocketEventListener.java        # Broadcasts ephemeral WebSocket messages
 │   │   ├── exception/
-│   │   │   ├── ApiExceptionHandler.java     # JSON error responses for REST API
-│   │   │   ├── EntityNotFoundException.java # Custom 404 exception
-│   │   │   ├── StaleDataException.java      # Custom 409 exception (optimistic locking)
-│   │   │   └── WebExceptionHandler.java     # Thymeleaf error pages for web UI
+│   │   │   ├── ApiExceptionHandler.java           # JSON error responses for REST API
+│   │   │   ├── BlockedTaskException.java          # 409: blocked task status transition
+│   │   │   ├── CyclicDependencyException.java     # 422: circular dependency chain
+│   │   │   ├── EntityNotFoundException.java       # Custom 404 exception
+│   │   │   ├── PinLimitReachedException.java      # 409: pin limit exceeded
+│   │   │   ├── StaleDataException.java            # Custom 409 exception (optimistic locking)
+│   │   │   └── WebExceptionHandler.java           # Thymeleaf error pages for web UI
 │   │   ├── mapper/
-│   │   │   ├── CommentMapper.java       # MapStruct (impl generated at compile time)
-│   │   │   ├── NotificationMapper.java  # MapStruct: actor.name → actorName
-│   │   │   ├── ProjectMapper.java       # MapStruct: Project ↔ ProjectRequest
-│   │   │   ├── RecurringTaskTemplateMapper.java # MapStruct: template ↔ Request/Response
-│   │   │   ├── SprintMapper.java        # MapStruct: Sprint ↔ Request/Response (derived status)
+│   │   │   ├── CommentMapper.java                 # MapStruct (impl generated at compile time)
+│   │   │   ├── NotificationMapper.java            # MapStruct: actor.name → actorName
+│   │   │   ├── PinnedItemMapper.java              # MapStruct: PinnedItem ↔ Response
+│   │   │   ├── ProjectMapper.java                 # MapStruct: Project ↔ ProjectRequest
+│   │   │   ├── RecurringTaskTemplateMapper.java   # MapStruct: template ↔ Request/Response
+│   │   │   ├── SprintMapper.java                  # MapStruct: Sprint ↔ Request/Response (derived status)
 │   │   │   ├── TagMapper.java
-│   │   │   ├── TaskFormMapper.java      # MapStruct: Task ↔ TaskFormRequest (web forms)
+│   │   │   ├── TaskFormMapper.java                # MapStruct: Task ↔ TaskFormRequest (web forms)
 │   │   │   ├── TaskMapper.java
 │   │   │   └── UserMapper.java
 │   │   ├── model/
-│   │   │   ├── AuditLog.java            # Audit log entity
-│   │   │   ├── ChecklistItem.java     # Embeddable checklist item (text + checked)
-│   │   │   ├── Comment.java            # Comment entity (OwnedEntity)
-│   │   │   ├── Notification.java       # Notification entity (@ManyToOne to User)
-│   │   │   ├── NotificationType.java   # TASK_ASSIGNED, TASK_UPDATED, COMMENT_ADDED, COMMENT_MENTIONED, TASK_DUE_REMINDER, TASK_OVERDUE, SYSTEM
-│   │   │   ├── OwnedEntity.java         # Marker interface for ownership checks
-│   │   │   ├── Priority.java            # LOW / MEDIUM / HIGH enum (Translatable)
-│   │   │   ├── Translatable.java       # Interface for enums with i18n message keys
-│   │   │   ├── Project.java             # Project entity (Auditable)
-│   │   │   ├── ProjectMember.java       # Project membership (user + role)
-│   │   │   ├── ProjectRole.java         # VIEWER / EDITOR / OWNER enum (Translatable)
-│   │   │   ├── ProjectStatus.java       # ACTIVE / ARCHIVED enum (Translatable)
-│   │   │   ├── Role.java                # USER / ADMIN enum (Translatable)
-│   │   │   ├── PinnedItem.java          # Pinned item entity (OwnedEntity)
-│   │   │   ├── RecentView.java          # Recently viewed entity (OwnedEntity)
-│   │   │   ├── SavedView.java          # Saved filter view entity (OwnedEntity)
-│   │   │   ├── Setting.java             # Key-value setting entity
+│   │   │   ├── AuditLog.java                # Audit log entity
+│   │   │   ├── ChecklistItem.java           # Embeddable checklist item (text + checked)
+│   │   │   ├── Comment.java                 # Comment entity (OwnedEntity)
+│   │   │   ├── Notification.java            # Notification entity (@ManyToOne to User)
+│   │   │   ├── NotificationType.java        # TASK_ASSIGNED, TASK_UPDATED, COMMENT_ADDED, etc.
+│   │   │   ├── OwnedEntity.java             # Marker interface for ownership checks
+│   │   │   ├── PinnedItem.java              # Pinned item entity (OwnedEntity)
+│   │   │   ├── Priority.java                # LOW / MEDIUM / HIGH enum (Translatable)
+│   │   │   ├── Project.java                 # Project entity (Auditable)
+│   │   │   ├── ProjectMember.java           # Project membership (user + role)
+│   │   │   ├── ProjectRole.java             # VIEWER / EDITOR / OWNER enum (Translatable)
+│   │   │   ├── ProjectStatus.java           # ACTIVE / ARCHIVED enum (Translatable)
+│   │   │   ├── RecentView.java              # Recently viewed entity (OwnedEntity)
+│   │   │   ├── Recurrence.java              # DAILY / WEEKLY / BIWEEKLY / MONTHLY enum (Translatable)
+│   │   │   ├── RecurringTaskTemplate.java   # Recurring task template entity
+│   │   │   ├── Role.java                    # USER / ADMIN enum (Translatable)
+│   │   │   ├── SavedView.java               # Saved filter view entity (OwnedEntity)
+│   │   │   ├── Setting.java                 # Key-value setting entity
+│   │   │   ├── Sprint.java                  # Sprint entity (date-range, per-project)
 │   │   │   ├── Tag.java
-│   │   │   ├── Task.java                # Implements OwnedEntity (belongs to Project)
-│   │   │   ├── TaskStatus.java          # BACKLOG / OPEN / ... / CANCELLED enum (Translatable)
-│   │   │   ├── TaskStatusFilter.java    # ALL / BACKLOG / OPEN / IN_PROGRESS / IN_REVIEW / COMPLETED / CANCELLED enum
-│   │   │   ├── User.java                # Auth fields: password, role
-│   │   │   └── UserPreference.java      # Per-user key/value preference entity
+│   │   │   ├── Task.java                    # Implements OwnedEntity (belongs to Project)
+│   │   │   ├── TaskStatus.java              # BACKLOG / OPEN / ... / CANCELLED enum (Translatable)
+│   │   │   ├── TaskStatusFilter.java        # ALL / BACKLOG / OPEN / ... filter enum
+│   │   │   ├── Translatable.java            # Interface for enums with i18n message keys
+│   │   │   ├── User.java                    # Auth fields: password, role
+│   │   │   └── UserPreference.java          # Per-user key/value preference entity
 │   │   ├── repository/
+│   │   │   ├── AnalyticsRepository.java         # EntityManager-based aggregate projections
 │   │   │   ├── AuditLogRepository.java
-│   │   │   ├── AuditLogSpecifications.java  # Dynamic audit query filters
+│   │   │   ├── AuditLogSpecifications.java      # Dynamic audit query filters
 │   │   │   ├── CommentRepository.java
 │   │   │   ├── NotificationRepository.java
-│   │   │   ├── ProjectRepository.java
+│   │   │   ├── PinnedItemRepository.java
 │   │   │   ├── ProjectMemberRepository.java
+│   │   │   ├── ProjectRepository.java
+│   │   │   ├── RecentViewRepository.java
+│   │   │   ├── RecurringTaskTemplateRepository.java
 │   │   │   ├── SavedViewRepository.java
 │   │   │   ├── SettingRepository.java
+│   │   │   ├── SprintRepository.java
 │   │   │   ├── TagRepository.java
 │   │   │   ├── TaskRepository.java
 │   │   │   ├── TaskSpecifications.java
@@ -520,47 +561,73 @@ spring-demo/
 │   │   │   ├── CustomUserDetails.java       # UserDetails wrapper for User entity
 │   │   │   ├── CustomUserDetailsService.java # Loads user by email for Spring Security
 │   │   │   ├── OwnershipGuard.java          # requireAccess() — owner or admin
-│   │   │   ├── ProjectAccessGuard.java     # requireViewAccess/EditAccess/OwnerAccess
+│   │   │   ├── ProjectAccessGuard.java      # requireViewAccess/EditAccess/OwnerAccess
 │   │   │   └── SecurityUtils.java           # Central user-resolution helpers
 │   │   ├── presence/
-│   │   │   ├── PresenceEventListener.java # WebSocket connect/disconnect → presence broadcast
-│   │   │   └── PresenceService.java       # Online user tracking (ConcurrentHashMap)
+│   │   │   ├── PresenceEventListener.java   # WebSocket connect/disconnect → presence broadcast
+│   │   │   └── PresenceService.java         # Online user tracking (ConcurrentHashMap)
 │   │   ├── report/
-│   │   │   └── TaskReport.java        # Shared CSV export (used by TaskController + ProjectController)
-│   │   ├── service/
-│   │   │   ├── CommentQueryService.java # Read-only comment lookups (breaks circular deps)
-│   │   │   ├── CommentService.java      # Comment CRUD with domain event publishing
-│   │   │   ├── DashboardService.java    # Orchestrates dashboard stats via TaskService/AuditLogService
-│   │   │   ├── NotificationService.java # Create, mark read, clear (DB + WebSocket push)
-│   │   │   ├── ProjectService.java      # Project CRUD, member management, access checks
-│   │   │   ├── SavedViewService.java   # Saved view CRUD (per-user)
-│   │   │   ├── ScheduledTaskService.java # Centralized @Scheduled jobs (reminders, purge)
-│   │   │   ├── SettingService.java      # Load/update settings with BeanWrapper
-│   │   │   ├── TagService.java
-│   │   │   ├── TaskQueryService.java    # Read-only task lookups (breaks circular deps)
-│   │   │   ├── TaskService.java
-│   │   │   ├── UserPreferenceService.java # Per-user preferences with BeanWrapper
-│   │   │   └── UserService.java         # Includes updateRole(), findByEmail(), updateProfile()
+│   │   │   └── TaskReport.java              # Shared CSV export (TaskController + ProjectController)
+│   │   ├── service/                         # CQRS: *QueryService (reads) + *Service (writes)
+│   │   │   ├── AnalyticsService.java              # Chart data aggregation (composed reads)
+│   │   │   ├── CommentQueryService.java           # Read-only comment lookups
+│   │   │   ├── CommentService.java                # Comment CRUD with domain event publishing
+│   │   │   ├── DashboardService.java              # Dashboard stats (composed reads)
+│   │   │   ├── NotificationQueryService.java      # Read-only notification lookups
+│   │   │   ├── NotificationService.java           # Create, mark read, clear (DB + WebSocket push)
+│   │   │   ├── PinnedItemQueryService.java        # Read-only pin lookups
+│   │   │   ├── PinnedItemService.java             # Pin/unpin, reorder, title sync, cleanup
+│   │   │   ├── ProjectMemberService.java          # Member add/remove/role management
+│   │   │   ├── ProjectQueryService.java           # Read-only project + member lookups
+│   │   │   ├── ProjectService.java                # Project CRUD, archive/unarchive
+│   │   │   ├── RecentViewQueryService.java        # Read-only recent view lookups
+│   │   │   ├── RecentViewService.java             # Record views, title sync, cleanup
+│   │   │   ├── RecurringTaskGenerationService.java # @Scheduled task generation from templates
+│   │   │   ├── RecurringTaskTemplateQueryService.java # Read-only recurring template lookups
+│   │   │   ├── RecurringTaskTemplateService.java  # Recurring template CRUD
+│   │   │   ├── SavedViewQueryService.java         # Read-only saved view lookups
+│   │   │   ├── SavedViewService.java              # Saved view CRUD (per-user)
+│   │   │   ├── ScheduledTaskService.java          # Centralized @Scheduled jobs (reminders, purge)
+│   │   │   ├── SettingQueryService.java           # Read-only settings lookups
+│   │   │   ├── SettingService.java                # Settings update with BeanWrapper
+│   │   │   ├── SprintQueryService.java            # Read-only sprint lookups
+│   │   │   ├── SprintService.java                 # Sprint CRUD with overlap validation
+│   │   │   ├── TagQueryService.java               # Read-only tag lookups
+│   │   │   ├── TagService.java                    # Tag CRUD
+│   │   │   ├── TaskDependencyService.java         # Dependency reconciliation + cycle detection
+│   │   │   ├── TaskQueryService.java              # Read-only task lookups + search
+│   │   │   ├── TaskService.java                   # Task CRUD + status transitions
+│   │   │   ├── TimelineService.java               # Merges comments + audit into timeline
+│   │   │   ├── UserPreferenceQueryService.java    # Read-only user preference lookups
+│   │   │   ├── UserPreferenceService.java         # User preference update with BeanWrapper
+│   │   │   ├── UserQueryService.java              # Read-only user lookups + decision queries
+│   │   │   └── UserService.java                   # User CRUD + disable/delete cascade cleanup
 │   │   ├── validation/
 │   │   │   ├── Unique.java              # Generic @Unique annotation (class-level, @Repeatable)
 │   │   │   └── UniqueValidator.java     # EntityManager-based uniqueness check
 │   │   ├── util/
+│   │   │   ├── BeanWrapperLoader.java     # Shared settings/prefs BeanWrapper loading
 │   │   │   ├── CalendarHelper.java        # Calendar view grid builder (weeks of CalendarDay)
-│   │   │   ├── CsvWriter.java             # Generic CSV export utility
-│   │   │   ├── FormMode.java              # Enum: VIEW, CREATE, EDIT (form context modes)
+│   │   │   ├── CsvWriter.java            # Generic CSV export utility
+│   │   │   ├── EntityTypes.java           # Shared entity type constants (TASK/PROJECT) + resolveHref
+│   │   │   ├── FormMode.java             # Enum: VIEW, CREATE, EDIT (form context modes)
 │   │   │   ├── HtmxUtils.java
 │   │   │   ├── MentionUtils.java          # @mention parsing and display rendering
 │   │   │   ├── Messages.java             # MessageSource helper (shorthand for getMessage)
 │   │   │   └── RouteTemplate.java        # URL template with Builder (params/query/build)
-│   │   ├── DataLoader.java              # Seeds 20 users, 8 tags, 56 tasks, comments, notifications (@Profile("dev"))
+│   │   ├── DataLoader.java              # Seeds demo data (@Profile("dev"))
 │   │   └── DemoApplication.java
 │   └── resources/
 │       ├── static/
 │       │   ├── css/
+│       │   │   ├── analytics.css       # Analytics page styles
 │       │   │   ├── audit.css           # Audit page styles
 │       │   │   ├── base.css            # Global styles
+│       │   │   ├── mentions.css        # Tribute.js dropdown + rendered mention styles
 │       │   │   ├── tasks.css           # Task page styles
-│       │   │   └── theme.css           # Theme overrides (Workshop, Sapphire)
+│       │   │   ├── theme.css           # Theme overrides (Workshop, Notebook, Titanium)
+│       │   │   └── components/
+│       │   │       └── searchable-select-bootstrap5.css # Bootstrap 5 theme for <searchable-select>
 │       │   ├── js/
 │       │   │   ├── application.js      # Stimulus app bootstrap (registers all controllers)
 │       │   │   ├── controllers/        # Stimulus controllers
@@ -568,13 +635,15 @@ spring-demo/
 │       │   │   │   ├── audit_controller.js
 │       │   │   │   ├── dashboard_controller.js
 │       │   │   │   ├── mention_controller.js
-│       │   │   │   ├── pins_controller.js        # Pinned items drawer + pin state
+│       │   │   │   ├── pins_controller.js            # Pinned items drawer + pin state
 │       │   │   │   ├── presence_controller.js
 │       │   │   │   ├── recent_views_controller.js
-│       │   │   │   ├── notifications/  # Notification controllers
+│       │   │   │   ├── notifications/
 │       │   │   │   │   ├── badge_controller.js
 │       │   │   │   │   └── page_controller.js
-│       │   │   │   └── tasks/          # Task controllers
+│       │   │   │   ├── projects/
+│       │   │   │   │   └── live_update_controller.js # Project stale-data banner (WebSocket)
+│       │   │   │   └── tasks/
 │       │   │   │       ├── bulk_actions_controller.js
 │       │   │   │       ├── dependencies_controller.js
 │       │   │   │       ├── form_controller.js
@@ -588,6 +657,7 @@ spring-demo/
 │       │   │   │   ├── confirm.js      # Styled confirm dialog (showConfirm)
 │       │   │   │   ├── cookies.js      # Cookie utilities
 │       │   │   │   ├── date-range.js   # Date range picker helpers
+│       │   │   │   ├── drawer.js       # Shared drawer tab behavior
 │       │   │   │   ├── flash-toast.js  # Flash message toasts
 │       │   │   │   ├── html.js         # HTML escaping utilities
 │       │   │   │   ├── htmx-csrf.js    # HTMX CSRF token injection
@@ -598,118 +668,137 @@ spring-demo/
 │       │   │   │   ├── notifications.js # Notification event bus
 │       │   │   │   ├── toast.js        # Toast notification system (showToast)
 │       │   │   │   └── websocket.js    # Shared STOMP client
-│       │   │   └── components/         # Web Components
+│       │   │   └── components/
 │       │   │       └── searchable-select.js # <searchable-select> custom element
-│       │   ├── favicon.svg             # SVG favicon
+│       │   └── favicon.svg
 │       ├── templates/
 │       │   ├── fragments/
-│       │   │   ├── audit-diff.html      # Audit diff rendering fragment
-│       │   │   ├── maintenance-banner.html # Maintenance banner with dismiss cookie
-│       │   │   ├── pagination.html      # Reusable pagination controls
-│       │   │   ├── pin-icon.html        # Pin toggle icon fragment
-│       │   │   ├── pinned-items.html    # Pinned items drawer
-│       │   │   └── recent-views.html    # Recently viewed drawer
-│       │   ├── dashboard/
-│       │   │   ├── dashboard.html        # Dashboard page with WebSocket subscriptions
-│       │   │   └── dashboard-stats.html  # Stats fragment (bare, HTMX-refreshable)
-│       │   ├── admin/
-│       │   │   ├── audit.html          # Audit log page (admin only)
-│       │   │   ├── audit-table.html    # Audit table fragment (HTMX partial)
-│       │   │   ├── settings.html       # Admin settings page (admin only)
-│       │   │   ├── tags.html           # Tag management page (admin only)
-│       │   │   ├── tag-table.html      # Tag table with inline create form
-│       │   │   ├── users.html          # User management with modal UI (admin only)
-│       │   │   ├── user-table.html     # User table fragment (HTMX partial)
-│       │   │   └── user-modal.html     # User create/edit modal form
-│       │   ├── error/
-│       │   │   ├── 403.html            # Access Denied page
-│       │   │   ├── 404.html            # Not Found page
-│       │   │   ├── 409.html            # Conflict page (optimistic locking)
-│       │   │   └── 500.html            # Server Error page
+│       │   │   ├── audit-diff.html          # Audit diff rendering fragment
+│       │   │   ├── maintenance-banner.html  # Maintenance banner with dismiss cookie
+│       │   │   ├── pagination.html          # Reusable pagination controls
+│       │   │   ├── pin-icon.html            # Pin toggle icon fragment
+│       │   │   ├── pinned-items.html        # Pinned items drawer
+│       │   │   └── recent-views.html        # Recently viewed drawer
 │       │   ├── layouts/
-│       │   │   ├── audit-diff.html     # Shared audit diff rendering fragment
-│       │   │   ├── base.html           # Base layout + auth-aware navbar
-│       │   │   └── pagination.html     # Reusable pagination fragment
+│       │   │   └── base.html               # Base layout + auth-aware navbar + chrome
+│       │   ├── admin/
+│       │   │   ├── audit.html              # Audit log page (admin only)
+│       │   │   ├── audit-table.html        # Audit table fragment (HTMX partial)
+│       │   │   ├── settings.html           # Admin settings page (admin only)
+│       │   │   ├── tags.html               # Tag management page (admin only)
+│       │   │   ├── tag-table.html          # Tag table with inline create form
+│       │   │   ├── users.html              # User management with modal UI (admin only)
+│       │   │   ├── user-table.html         # User table fragment (HTMX partial)
+│       │   │   └── user-modal.html         # User create/edit modal form
+│       │   ├── analytics/
+│       │   │   └── analytics.html          # Analytics page (charts via JS + API)
+│       │   ├── dashboard/
+│       │   │   ├── dashboard.html          # Dashboard page with WebSocket subscriptions
+│       │   │   └── dashboard-stats.html    # Stats fragment (bare, HTMX-refreshable)
+│       │   ├── error/
+│       │   │   ├── 400.html                # Bad Request page
+│       │   │   ├── 403.html                # Access Denied page
+│       │   │   ├── 404.html                # Not Found page
+│       │   │   ├── 409.html                # Conflict page (optimistic locking)
+│       │   │   └── 500.html                # Server Error page
+│       │   ├── projects/
+│       │   │   ├── projects.html           # Project list with sort/archive toggle
+│       │   │   ├── project.html            # Project home with task filtering
+│       │   │   ├── project-form.html       # Create/edit project form
+│       │   │   ├── project-grid.html       # Project card grid fragment (HTMX partial)
+│       │   │   └── settings/
+│       │   │       ├── settings.html       # Project settings (sidebar nav + content panels)
+│       │   │       ├── member-panel.html   # Member management panel (HTMX partial)
+│       │   │       ├── sprint-panel.html   # Sprint management panel (HTMX partial)
+│       │   │       └── recurring-panel.html # Recurring tasks panel (HTMX partial)
 │       │   ├── tags/
-│       │   │   └── tags.html           # Tag list page
+│       │   │   └── tags.html               # Tag list page
 │       │   ├── tasks/
-│       │   │   ├── tasks.html          # Task list page
-│       │   │   ├── task.html           # Full-page create/edit form
-│       │   │   ├── task-activity.html  # Unified activity timeline (comments + audit history)
-│       │   │   ├── task-layout.html    # Shared two-column layout (form + checklist/timeline)
-│       │   │   ├── task-modal.html     # Modal shell using task-layout
-│       │   │   ├── task-form.html      # Shared form fields fragment
-│       │   │   ├── task-calendar.html  # Calendar view grid fragment
-│       │   │   ├── task-cards.html     # Card grid fragment
-│       │   │   ├── task-card.html      # Single card fragment
-│       │   │   ├── task-table.html     # Table grid fragment
-│       │   │   ├── task-table-row.html # Single table row fragment
-│       │   │   ├── task-board.html    # Kanban board grid fragment
-│       │   │   ├── task-workspace.html # Shared task list controls (search, filters, views)
+│       │   │   ├── tasks.html              # Task list page
+│       │   │   ├── task.html               # Full-page create/edit form
+│       │   │   ├── task-activity.html      # Unified activity timeline (comments + audit)
+│       │   │   ├── task-board.html         # Kanban board grid fragment
+│       │   │   ├── task-calendar.html      # Calendar view grid fragment
+│       │   │   ├── task-card.html          # Single card fragment
+│       │   │   ├── task-cards.html         # Card grid fragment
+│       │   │   ├── task-dependencies.html  # Dependency picker fragment
+│       │   │   ├── task-form.html          # Shared form fields fragment
+│       │   │   ├── task-layout.html        # Shared two-column layout (form + side panels)
+│       │   │   ├── task-modal.html         # Modal shell using task-layout
+│       │   │   ├── task-table.html         # Table grid fragment
+│       │   │   ├── task-table-row.html     # Single table row fragment
+│       │   │   ├── task-workspace.html     # Shared task list controls (search, filters, views)
 │       │   │   └── keyboard-help-modal.html # Keyboard shortcut reference modal
 │       │   ├── users/
-│       │   │   ├── users.html          # User list page with search
-│       │   │   └── user-table.html     # User table fragment (HTMX partial)
-│       │   ├── projects/
-│       │   │   ├── projects.html         # Project list with sort/archive toggle
-│       │   │   ├── project.html          # Project home with task filtering
-│       │   │   ├── project-form.html     # Create/edit project form
-│       │   │   ├── project-grid.html     # Project card grid fragment (HTMX partial)
-│       │   │   ├── project-settings.html # Project settings and member management
-│       │   │   └── member-table.html     # Member management table fragment (HTMX partial)
+│       │   │   ├── users.html              # User list page with search
+│       │   │   └── user-table.html         # User table fragment (HTMX partial)
 │       │   ├── profile/
-│       │   │   └── profile.html         # Self-service profile page
-│       │   ├── home.html               # Home page (project showcase)
-│       │   ├── login.html              # Login page
-│       │   ├── notifications.html      # Notification inbox page
-│       │   └── register.html           # Registration page
+│       │   │   └── profile.html            # Self-service profile page
+│       │   ├── home.html                   # Home page (project showcase)
+│       │   ├── login.html                  # Login page
+│       │   ├── notifications.html          # Notification inbox page
+│       │   └── register.html               # Registration page
 │       ├── META-INF/
 │       │   └── additional-spring-configuration-metadata.json
-│       ├── messages.properties         # UI strings (#{key} in Thymeleaf)
-│       ├── ValidationMessages.properties # Validation messages ({key} in annotations)
+│       ├── messages.properties             # UI strings (#{key} in Thymeleaf)
+│       ├── ValidationMessages.properties   # Validation messages ({key} in annotations)
 │       ├── db/migration/
-│       │   └── V1__initial_schema.sql    # Flyway initial migration (PostgreSQL DDL + admin seed)
-│       ├── application.properties        # Shared config (profile-agnostic)
-│       ├── application-dev.properties    # Dev profile: H2, show-sql, console
-│       └── application-prod.properties   # Prod profile: PostgreSQL, Flyway, no Swagger
+│       │   └── V1__initial_schema.sql      # Flyway initial migration (PostgreSQL DDL + admin seed)
+│       ├── application.properties          # Shared config (profile-agnostic)
+│       ├── application-dev.properties      # Dev profile: H2, show-sql, console
+│       └── application-prod.properties     # Prod profile: PostgreSQL, Flyway, no Swagger
 ├── src/test/
 │   ├── java/cc/desuka/demo/
 │   │   ├── audit/
-│   │   │   ├── AuditDetailsTest.java              # Typed diff + JSON tests (12)
-│   │   │   ├── AuditEventListenerTest.java        # Audit persistence tests (2)
-│   │   │   ├── AuditFieldTest.java                # AuditField record tests (29)
-│   │   │   └── AuditTemplateHelperTest.java       # Template helper tests (20)
+│   │   │   ├── AuditDetailsTest.java
+│   │   │   ├── AuditEventListenerTest.java
+│   │   │   ├── AuditFieldTest.java
+│   │   │   └── AuditTemplateHelperTest.java
 │   │   ├── controller/api/
-│   │   │   ├── AuditApiControllerTest.java       # Audit REST API tests (2)
-│   │   │   ├── CommentApiControllerTest.java     # Comment REST API tests (8)
-│   │   │   ├── NotificationApiControllerTest.java # Notification REST API tests (6)
-│   │   │   ├── PresenceApiControllerTest.java    # Presence REST API tests (2)
-│   │   │   ├── TagApiControllerTest.java         # Tag REST API tests (7)
-│   │   │   ├── TaskApiControllerTest.java        # Task REST API tests (15)
-│   │   │   └── UserApiControllerTest.java        # User REST API tests (8)
+│   │   │   ├── AuditApiControllerTest.java
+│   │   │   ├── CommentApiControllerTest.java
+│   │   │   ├── NotificationApiControllerTest.java
+│   │   │   ├── PinnedItemApiControllerTest.java
+│   │   │   ├── PresenceApiControllerTest.java
+│   │   │   ├── SprintApiControllerTest.java
+│   │   │   ├── TagApiControllerTest.java
+│   │   │   ├── TaskApiControllerTest.java
+│   │   │   └── UserApiControllerTest.java
 │   │   ├── event/
-│   │   │   ├── NotificationEventListenerTest.java # Notification routing tests (8)
-│   │   │   └── WebSocketEventListenerTest.java   # WebSocket broadcast tests (2)
+│   │   │   ├── NotificationEventListenerTest.java
+│   │   │   └── WebSocketEventListenerTest.java
 │   │   ├── repository/
-│   │   │   ├── AuditLogSpecificationsTest.java   # Audit filter tests (11)
-│   │   │   └── TaskSpecificationsTest.java       # Task filter tests (10)
+│   │   │   ├── AuditLogSpecificationsTest.java
+│   │   │   └── TaskSpecificationsTest.java
 │   │   ├── security/
-│   │   │   ├── OwnershipGuardTest.java           # Ownership unit tests (3)
-│   │   │   └── SecurityConfigTest.java           # URL security tests (18)
+│   │   │   ├── OwnershipGuardTest.java
+│   │   │   └── SecurityConfigTest.java
 │   │   ├── service/
-│   │   │   ├── CommentServiceTest.java           # Comment service tests (13)
-│   │   │   ├── NotificationServiceTest.java      # Notification service tests (8)
-│   │   │   ├── ProjectServiceTest.java           # Project service tests (22)
-│   │   │   ├── TagServiceTest.java               # Tag service tests (6)
-│   │   │   ├── TaskServiceTest.java              # Task service tests (16)
-│   │   │   └── UserServiceTest.java              # User service tests (20)
+│   │   │   ├── CommentQueryServiceTest.java
+│   │   │   ├── CommentServiceTest.java
+│   │   │   ├── NotificationQueryServiceTest.java
+│   │   │   ├── NotificationServiceTest.java
+│   │   │   ├── PinnedItemQueryServiceTest.java
+│   │   │   ├── PinnedItemServiceTest.java
+│   │   │   ├── ProjectMemberServiceTest.java
+│   │   │   ├── ProjectQueryServiceTest.java
+│   │   │   ├── ProjectServiceTest.java
+│   │   │   ├── SprintQueryServiceTest.java
+│   │   │   ├── SprintServiceTest.java
+│   │   │   ├── TagQueryServiceTest.java
+│   │   │   ├── TagServiceTest.java
+│   │   │   ├── TaskDependencyServiceTest.java
+│   │   │   ├── TaskQueryServiceTest.java
+│   │   │   ├── TaskServiceTest.java
+│   │   │   ├── UserQueryServiceTest.java
+│   │   │   └── UserServiceTest.java
 │   │   ├── util/
-│   │   │   └── MentionUtilsTest.java             # Mention parsing/rendering tests (12)
+│   │   │   └── MentionUtilsTest.java
 │   │   ├── validation/
-│   │   │   └── UniqueValidatorTest.java          # @Unique validator tests (6)
-│   │   └── DemoApplicationTests.java             # Context load test (1)
+│   │   │   └── UniqueValidatorTest.java
+│   │   └── DemoApplicationTests.java
 │   └── resources/
-│       └── application-test.properties           # Test profile config
+│       └── application-test.properties
 ├── .editorconfig                       # Cross-IDE editor settings (indent, line endings)
 ├── .prettierrc                         # Prettier config for JS/CSS formatting (shared by Spotless)
 ├── rest.http                           # VS Code REST Client test file

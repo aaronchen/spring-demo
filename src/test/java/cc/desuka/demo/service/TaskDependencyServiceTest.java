@@ -25,7 +25,6 @@ class TaskDependencyServiceTest {
     private static final UUID ID_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID ID_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID ID_3 = UUID.fromString("00000000-0000-0000-0000-000000000003");
-    private static final UUID ID_4 = UUID.fromString("00000000-0000-0000-0000-000000000004");
     private static final UUID PROJECT_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
     private static final UUID PROJECT_ID_2 =
             UUID.fromString("00000000-0000-0000-0000-000000000020");
