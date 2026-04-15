@@ -65,12 +65,14 @@ A growing full-stack application built as a hands-on learning project for Spring
 - **Notifications Page** - Full paginated notification history at `/notifications` with clear-all; live updates via client-side event bus
 - **Live Task Updates** - Stale-data banner on task list, detail page, and modal when another user modifies a task; click to refresh with current filters
 - **Live Comment Updates** - Auto-refresh comment lists and counts when another user adds or deletes comments; works in both modal and full-page views
-- **Analytics Dashboard** - Six interactive Chart.js charts: status breakdown, priority breakdown, workload distribution (stacked bar by assignee), 30-day burndown, 12-week velocity, and overdue-by-assignee; available cross-project (`/analytics` with project filter checkboxes) and per-project (`/projects/{id}/analytics`)
+- **Analytics Dashboard** - Seven interactive Chart.js charts: status breakdown, priority breakdown, workload distribution (stacked bar by assignee), 30-day burndown, 12-week velocity, overdue-by-assignee, and effort-by-assignee; available cross-project (`/analytics` with project filter checkboxes) and per-project (`/projects/{id}/analytics`)
 - **Real-Time Dashboard** - Per-project stats (open/in-progress/completed/overdue) with clickable cards linking to filtered task list, due-this-week tasks, recent tasks, and activity feed; admin-only system overview across all projects; auto-refreshes via WebSocket on task and presence changes
 - **Sprints** - Optional time-boxed iterations per project; date-range-based status (past/active/future); non-overlapping enforcement; sprint filter on task views (active sprint / backlog / all); sprint-scoped analytics with burndown using sprint date range; managed via project settings page
 - **Recurring Task Templates** - Automated task generation for non-sprint projects; DAILY/WEEKLY/BIWEEKLY/MONTHLY recurrence; configurable day-of-week/month, relative due dates, optional end date; scheduled 6 AM generation with missed-date skip; auto-disable at end date; managed via project settings with split "New Task" button
+- **Recently Viewed** - Left-side vertical drawer (lg+ screens) showing last 10 viewed projects and tasks; live WebSocket updates; title sync when items are renamed
+- **Pinned Items** - User-initiated bookmarking of projects and tasks; left-side drawer with sort options (date/name/manual drag-and-drop); configurable pin limit; real-time sync via WebSocket
 - **Due Date Reminders** - Daily scheduled notifications for tasks due tomorrow; per-user opt-in/out via profile preferences
-- **Theme System** - Three color schemes (Default, Workshop, Sapphire) switchable from admin settings; CSS custom properties with FOUC prevention
+- **Theme System** - Four color schemes (Default, Workshop, Notebook, Titanium) switchable from admin settings; CSS custom properties with FOUC prevention
 - **Maintenance Banner** - Dismissible site-wide alert banner configurable from admin settings
 - **Dynamic Site Name** - Customizable site name shown in navbar, footer, and page titles
 
@@ -104,9 +106,9 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Custom Thymeleaf dialect (`${#auth}`) for ownership/role checks in templates
 - H2 in-memory database (easy development setup)
 - Spring Data JPA with Specifications for dynamic filtering
-- Event-driven side effects — services publish domain events; three independent listeners handle audit logging, notifications, and WebSocket broadcasting
+- Event-driven side effects — services publish domain events; four independent listeners handle audit logging, notifications, WebSocket broadcasting, and recently-viewed title sync
 - Project-scoped access control via `ProjectAccessGuard` with VIEWER/EDITOR/OWNER roles; admin bypass
-- Service-to-service composition (TaskService delegates to TagService/UserService instead of direct repository access)
+- CQRS service layer — clean read/write split: `*QueryService` (reads, `@Transactional(readOnly = true)`) and `*Service` (writes, `@Transactional`); 33 service classes across 13 domains
 - Generic `@Unique` validation annotation — class-level, `@Repeatable`, uses `EntityManager` JPQL for uniqueness checks with self-exclusion on edit
 - Global string trimming via `GlobalBindingConfig` (`StringTrimmerEditor`) — trims all form fields, converts blank to null
 - User enable/disable pattern — disabled users can't log in and are hidden from assignment dropdowns; users with completed tasks or comments can only be disabled (not deleted)
@@ -141,7 +143,7 @@ A growing full-stack application built as a hands-on learning project for Spring
 - Externalized validation messages via `ValidationMessages.properties` (Hibernate Validator)
 - Externalized frontend routes via `@ConfigurationProperties` + `GlobalModelAttributes` (Thymeleaf) and `/config.js` endpoint (JavaScript)
 - Spotless + google-java-format (AOSP style, 4-space indent) enforced at compile time
-- 207 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
+- 318 automated tests: unit (Mockito), repository (@DataJpaTest), integration (MockMvc), validation, security
 - CI pipeline: GitHub Actions runs `./mvnw verify` on every push to main and PR
 - Spring profiles: `dev` (H2, demo data), `test` (isolated H2, no data seeding), `prod` (PostgreSQL, Flyway migrations)
 - Flyway schema migrations for production (PostgreSQL); dev/test use Hibernate `create-drop`
@@ -173,6 +175,8 @@ A growing full-stack application built as a hands-on learning project for Spring
    - **Web UI**: http://localhost:8080/ (redirects to login if not authenticated)
    - **Projects**: http://localhost:8080/projects (project list)
    - **Dashboard**: http://localhost:8080/dashboard (per-project stats, due this week, real-time updates; admin system overview)
+   - **Analytics**: http://localhost:8080/analytics (cross-project charts; also per-project at `/projects/{id}/analytics`)
+   - **Notifications**: http://localhost:8080/notifications (notification inbox)
    - **Profile**: http://localhost:8080/profile (edit name/email, change password, preferences)
    - **Tag Management**: http://localhost:8080/admin/tags (admin only)
    - **Audit Log**: http://localhost:8080/admin/audit (admin only)
@@ -189,7 +193,7 @@ A growing full-stack application built as a hands-on learning project for Spring
    ```bash
    ./mvnw test
    ```
-   207 tests across 23 test classes (unit, repository, integration, validation, security).
+   318 tests across 39 test classes (unit, repository, integration, validation, security).
 
 ### Build for Production
 
@@ -333,7 +337,7 @@ Cookie: JSESSIONID=your-session-id
 Content-Type: application/json
 
 {
-  "projectId": 1,
+  "projectId": "550e8400-e29b-41d4-a716-446655440000",
   "title": "Write documentation",
   "description": "Document all API endpoints",
   "priority": "HIGH",
@@ -830,7 +834,9 @@ spring-demo/
 | Icons | Bootstrap Icons 1.13.1 |
 | Dynamic UI | HTMX 2.0.4 |
 | JS Framework | Stimulus 3.2.2 (ES modules via import maps) |
+| Charts | Chart.js 4.5.1 |
 | @Mentions | Tribute.js 5.1.3 |
+| WebSocket | STOMP.js 7.3 (SockJS fallback) |
 | Build | Maven |
 | Formatting | Spotless + google-java-format 1.30 (AOSP) |
 | Mapping | MapStruct 1.6 |
@@ -878,7 +884,7 @@ Currently runs with the `dev` profile (H2 in-memory). To switch to PostgreSQL: c
 GitHub Actions (`.github/workflows/ci.yml`) runs on every push to `main` and PR targeting `main`:
 1. Sets up JDK 25
 2. Caches Maven dependencies
-3. Runs `./mvnw verify` (compile + 207 tests)
+3. Runs `./mvnw verify` (compile + 318 tests)
 
 ## Troubleshooting
 
