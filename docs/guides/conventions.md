@@ -87,6 +87,6 @@ If exceptions become common, the guide should be updated.
 
 ## Related Guides
 
-- [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-- [backend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/backend-guide.md)
-- [frontend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/frontend-guide.md)
+- [architecture.md](architecture.md)
+- [backend-guide.md](backend-guide.md)
+- [frontend-guide.md](frontend-guide.md)

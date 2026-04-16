@@ -194,6 +194,6 @@ Use:
 
 ## Related Guides
 
-- [frontend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/frontend-guide.md)
-- [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-- [conventions.md](/Users/aaron/Code/spring-demo/docs/guides/conventions.md)
+- [frontend-guide.md](frontend-guide.md)
+- [architecture.md](architecture.md)
+- [conventions.md](conventions.md)

@@ -214,5 +214,5 @@ For every new interactive page:
 
 ## Related Guides
 
-- [backend-frontend-communication.md](/Users/aaron/Code/spring-demo/docs/guides/backend-frontend-communication.md)
-- [conventions.md](/Users/aaron/Code/spring-demo/docs/guides/conventions.md)
+- [backend-frontend-communication.md](backend-frontend-communication.md)
+- [conventions.md](conventions.md)

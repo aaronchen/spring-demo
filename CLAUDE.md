@@ -193,7 +193,7 @@ Four themes: `default` (stock Bootstrap), `workshop` (cerulean + violet), `noteb
 
 To add a theme: (1) `THEME_*` constant in `Settings.java`, (2) `[data-theme="name"]` palette in `theme.css`, (3) `ThemeOption` in `SettingsController.THEMES`, (4) `admin.settings.theme.<name>.{name,description}` in `messages.properties`.
 
-For detailed color palettes, WCAG contrast ratios, design tokens, component patterns, and anti-patterns, see [CSS-GUIDE.md](CSS-GUIDE.md).
+For detailed color palettes, WCAG contrast ratios, design tokens, component patterns, and anti-patterns, see [docs/guides/css-guide.md](docs/guides/css-guide.md).
 
 ### Security Authorization Patterns
 
@@ -412,7 +412,7 @@ static/js/
 - Task JS files in `static/js/tasks/` subfolder
 - Self-hosted DM Sans font in `static/fonts/` (WOFF2, variable weight 400–600)
 - Bootstrap active state overrides: use CSS custom properties (`--bs-btn-active-bg`). Bootstrap utilities use `!important` — override with `!important`
-- See [CSS-GUIDE.md](CSS-GUIDE.md) for full design reference
+- See [docs/guides/css-guide.md](docs/guides/css-guide.md) for full design reference
 
 ## Development Workflow
 

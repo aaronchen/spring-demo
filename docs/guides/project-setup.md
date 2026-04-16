@@ -2,7 +2,7 @@
 
 Purpose: bootstrap a new Spring Boot project with the same baseline stack and defaults used by this project.
 
-Read this first, then read [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md) and [bootstrap-checklist.md](/Users/aaron/Code/spring-demo/docs/guides/bootstrap-checklist.md).
+Read this first, then read [architecture.md](architecture.md) and [bootstrap-checklist.md](bootstrap-checklist.md).
 
 ## Stack Assumptions
 
@@ -277,7 +277,7 @@ Do not add advanced infrastructure before one full vertical slice works.
 
 ## Related Guides
 
-- [bootstrap-checklist.md](/Users/aaron/Code/spring-demo/docs/guides/bootstrap-checklist.md)
-- [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-- [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md)
-- [testing-guide.md](/Users/aaron/Code/spring-demo/docs/guides/testing-guide.md)
+- [bootstrap-checklist.md](bootstrap-checklist.md)
+- [architecture.md](architecture.md)
+- [security-guide.md](security-guide.md)
+- [testing-guide.md](testing-guide.md)

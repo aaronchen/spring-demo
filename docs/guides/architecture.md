@@ -2,7 +2,7 @@
 
 Purpose: describe the structural patterns this project settled on and should be reused by future projects built on the same stack.
 
-Read after [project-setup.md](/Users/aaron/Code/spring-demo/docs/guides/project-setup.md).
+Read after [project-setup.md](project-setup.md).
 
 ## Core Principles
 
@@ -106,9 +106,9 @@ Use query services when they materially improve:
 
 Do not invent command/query classes for every domain up front. Use them when the service boundary is becoming unclear.
 
-**Command services** handle cross-cutting write operations that multiple services need — extracted to break circular dependencies. Examples: `TaskCommandService` (bulk task unassignment), `UserCommandService` (user deletion cascade). Command services may inject foreign repositories directly when the owning service would create a cycle, and delegate to services for domains that don't.
+**Default split**: `*QueryService` for reads (`@Transactional(readOnly = true)` class-level), `*Service` for writes (`@Transactional` class-level). Write services may perform cross-domain cleanup inline — no separate command/orchestrator layer is needed unless the responsibilities genuinely diverge (e.g., a distinct workflow/policy service).
 
-**Never use `@Lazy`** to break circular dependencies. It hides the cycle, defers errors to runtime, and makes the dependency graph opaque. Extract a command or query service instead.
+**Never use `@Lazy`** to break circular dependencies. It hides the cycle, defers errors to runtime, and makes the dependency graph opaque. Extract a query service (or a focused write service split by responsibility) instead.
 
 ## Transaction Boundaries
 
@@ -153,7 +153,7 @@ This architecture assumes three layers:
 
 Template checks are never a security boundary.
 
-See [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md).
+See [security-guide.md](security-guide.md).
 
 ## Route Single Source Of Truth
 
@@ -214,6 +214,6 @@ Start with:
 
 ## Related Guides
 
-- [backend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/backend-guide.md)
-- [backend-frontend-communication.md](/Users/aaron/Code/spring-demo/docs/guides/backend-frontend-communication.md)
-- [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md)
+- [backend-guide.md](backend-guide.md)
+- [backend-frontend-communication.md](backend-frontend-communication.md)
+- [security-guide.md](security-guide.md)

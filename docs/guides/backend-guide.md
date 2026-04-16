@@ -160,7 +160,7 @@ You may choose whether dev uses:
 
 But document the decision. Do not let it be accidental.
 
-See [database-and-migrations.md](/Users/aaron/Code/spring-demo/docs/guides/database-and-migrations.md).
+See [database-and-migrations.md](database-and-migrations.md).
 
 ## Security-Aware Backend Design
 
@@ -207,7 +207,7 @@ If the project exports CSV or similar data:
 
 ## Related Guides
 
-- [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-- [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md)
-- [testing-guide.md](/Users/aaron/Code/spring-demo/docs/guides/testing-guide.md)
-- [database-and-migrations.md](/Users/aaron/Code/spring-demo/docs/guides/database-and-migrations.md)
+- [architecture.md](architecture.md)
+- [security-guide.md](security-guide.md)
+- [testing-guide.md](testing-guide.md)
+- [database-and-migrations.md](database-and-migrations.md)

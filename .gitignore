@@ -32,5 +32,7 @@ build/
 .vscode/
 
 ### Claude Code ###
-.claude/
+.claude/*
+!.claude/agents/
+!.claude/commands/
 ROADMAP.md

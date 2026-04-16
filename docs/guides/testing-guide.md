@@ -102,5 +102,5 @@ At least test:
 
 ## Related Guides
 
-- [backend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/backend-guide.md)
-- [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md)
+- [backend-guide.md](backend-guide.md)
+- [security-guide.md](security-guide.md)

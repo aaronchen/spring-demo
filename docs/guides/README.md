@@ -17,16 +17,20 @@ If a future project uses a different stack, use these guides selectively.
 
 ## Reading Order
 
-1. [project-setup.md](/Users/aaron/Code/spring-demo/docs/guides/project-setup.md)
-2. [bootstrap-checklist.md](/Users/aaron/Code/spring-demo/docs/guides/bootstrap-checklist.md)
-3. [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-4. [security-guide.md](/Users/aaron/Code/spring-demo/docs/guides/security-guide.md)
-5. [backend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/backend-guide.md)
-6. [frontend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/frontend-guide.md)
-7. [backend-frontend-communication.md](/Users/aaron/Code/spring-demo/docs/guides/backend-frontend-communication.md)
-8. [testing-guide.md](/Users/aaron/Code/spring-demo/docs/guides/testing-guide.md)
-9. [database-and-migrations.md](/Users/aaron/Code/spring-demo/docs/guides/database-and-migrations.md)
-10. [conventions.md](/Users/aaron/Code/spring-demo/docs/guides/conventions.md)
+1. [project-setup.md](project-setup.md)
+2. [bootstrap-checklist.md](bootstrap-checklist.md)
+3. [architecture.md](architecture.md)
+4. [security-guide.md](security-guide.md)
+5. [backend-guide.md](backend-guide.md)
+6. [frontend-guide.md](frontend-guide.md)
+7. [backend-frontend-communication.md](backend-frontend-communication.md)
+8. [testing-guide.md](testing-guide.md)
+9. [database-and-migrations.md](database-and-migrations.md)
+10. [css-guide.md](css-guide.md)
+11. [conventions.md](conventions.md)
+12. [dev-guide.md](dev-guide.md)
+13. [agents-and-commands.md](agents-and-commands.md)
+14. [example-feature-walkthrough.md](example-feature-walkthrough.md)
 
 ## Guide Roles
 
@@ -37,7 +41,11 @@ If a future project uses a different stack, use these guides selectively.
 - Communication: decide how server and browser interact
 - Testing: define quality gates
 - Database: define persistence and migration strategy
+- CSS: define visual design system, palettes, tokens, and component patterns
 - Conventions: quick reference only
+- Dev: everyday Spring Boot dev workflow (profiles, Maven, Docker, CI patterns)
+- Agents and commands: document the Claude Code AI tooling that supports daily development
+- Example walkthrough: concrete shape of one full feature slice, to be used as a reference
 
 ## Important Rule
 

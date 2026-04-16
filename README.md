@@ -204,7 +204,7 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 
 ### Run with PostgreSQL (Prod Profile)
 
-Requires Docker. See [dev-guide.md](dev-guide.md) for full details.
+Requires Docker. See [OPERATIONS.md](OPERATIONS.md) for full details.
 
 ```bash
 # Start PostgreSQL + app in Docker (port 8081)
@@ -806,12 +806,11 @@ spring-demo/
 ├── .editorconfig                       # Cross-IDE editor settings (indent, line endings)
 ├── .prettierrc                         # Prettier config for JS/CSS formatting (shared by Spotless)
 ├── rest.http                           # VS Code REST Client test file
-├── dev-guide.md                        # Developer guide (Maven, Docker, profiles)
+├── OPERATIONS.md                       # Project-specific ops (Docker, Render, CI)
 ├── docker-compose.prod.yml             # Local prod testing (PostgreSQL + app)
 ├── Dockerfile                          # Multi-stage build (JDK → JRE)
 ├── pom.xml
 ├── CLAUDE.md                           # Developer reference
-├── CSS-GUIDE.md                        # UI design guide (palettes, tokens, patterns)
 └── README.md
 ```
 

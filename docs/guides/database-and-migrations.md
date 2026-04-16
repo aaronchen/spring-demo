@@ -60,5 +60,5 @@ If the app uses audit, notification, or cross-cutting support tables:
 
 ## Related Guides
 
-- [backend-guide.md](/Users/aaron/Code/spring-demo/docs/guides/backend-guide.md)
-- [project-setup.md](/Users/aaron/Code/spring-demo/docs/guides/project-setup.md)
+- [backend-guide.md](backend-guide.md)
+- [project-setup.md](project-setup.md)

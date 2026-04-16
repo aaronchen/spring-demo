@@ -116,5 +116,5 @@ Do not let “sometimes admin bypasses, sometimes not” evolve by accident.
 
 ## Related Guides
 
-- [architecture.md](/Users/aaron/Code/spring-demo/docs/guides/architecture.md)
-- [testing-guide.md](/Users/aaron/Code/spring-demo/docs/guides/testing-guide.md)
+- [architecture.md](architecture.md)
+- [testing-guide.md](testing-guide.md)
